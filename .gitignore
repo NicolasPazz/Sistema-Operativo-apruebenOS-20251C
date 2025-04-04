@@ -1,11 +1,19 @@
+# Vscode files
+.vscode/
+**/.vscode/
+
 # Eclipse files
 .metadata/
+.settings/
+**/.metadata/
+**/.settings/
+.cproject
+.project
+
 
 # CLion files
 .idea/
-
-# Log files
-*.log
+**/.idea/
 
 # Prerequisites
 *.d
@@ -59,3 +67,8 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# Generated files
+bin/
+obj/
+*.log
