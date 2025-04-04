@@ -5,6 +5,9 @@ all:
 	make -C ./cpu
 	make -C ./kernel
 
+dos2unix:
+	find . -type f -name "*.config" -exec dos2unix {} +
+
 clean:
 	make clean -C ./utils
 	make clean -C ./io
