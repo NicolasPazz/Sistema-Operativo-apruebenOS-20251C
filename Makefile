@@ -9,16 +9,16 @@ all:
 # /////////////////////// Ejecutar módulos desde el Makefile ///////////////////////
 .PHONY: kernel
 kernel:
-	./kernel/bin/kernel
+	cd kernel && ./bin/kernel
 .PHONY: memoria
 memoria:
-	./memoria/bin/memoria
+	cd memoria && ./bin/memoria
 .PHONY: cpu
 cpu:
-	./cpu/bin/cpu
+	cd cpu && ./bin/cpu
 .PHONY: io
 io:
-	./io/bin/io
+	cd io && ./bin/io
 
 # /////////////////////// Formatear saltos de línea: dos -> unix ///////////////////////
 dos2unix:
