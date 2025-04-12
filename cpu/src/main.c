@@ -1,10 +1,23 @@
 #include "../headers/cpu.h"
 
+
+
 int main(int argc, char* argv[]) {
-    iniciar_config_cpu();
+    
+    printf("INICIA EL MODULO DE CPU");
+    leer_config_cpu();
+    
     iniciar_logger_cpu();
-    iniciar_conexiones_cpu();
-    return EXIT_SUCCESS;
+    cpu_log = log_create("./cpu.log", "CPU", 1, LOG_LEVEL_TRACE);
+    iniciar_conexiones_cpu(); // esta me gustaria modificarla, donde solamente haya 1 funcion con memoria y aca no se si 1 hilo para kernel o 2 hilos...
+    return EXIT_SUCCESS;      // 1 para el interrupt y el otro para dispatch
+    establecer_conexion_cpu_memoria();
+    //ver el tema de hilos para dispatch e interrept, creo que 2 hilos no nos va a alcanzar en el caso de haber varias cpus.
+    establecer_conexion_cpu_kernel();
+
+
+    terminar_programa();
+
 }
 
 void atender_cliente(void* arg) {
@@ -34,4 +47,10 @@ void atender_cliente(void* arg) {
 
 void iterator(char* value) {
     log_info(cpu_log, "%s", value);
+}
+
+
+void terminar_programa() {
+    log_destroy(cpu_log);
+    config_destroy(cpu_config);
 }

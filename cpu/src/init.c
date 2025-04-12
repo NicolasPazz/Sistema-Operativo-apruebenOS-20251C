@@ -20,7 +20,7 @@ char* REEMPLAZO_CACHE;
 char* RETARDO_CACHE;
 char* LOG_LEVEL;
 
-void iniciar_config_cpu() {
+void leer_config_cpu() {
     cpu_config = iniciar_config("cpu.config");
 
     IP_MEMORIA = config_get_string_value(cpu_config, "IP_MEMORIA");
@@ -80,5 +80,16 @@ void iniciar_conexiones_cpu(){
     } else {
         log_info(cpu_log, "Error al conectar CPU a Memoria");
         exit(EXIT_FAILURE);
+    }
+}
+
+void establecer_conexion_cpu_memoria() {
+
+    if((fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA)) == -1){
+        log_trace(cpu_log, "Error al conectar con Memoria. El servidor no esta activo");
+        log_info(cpu_log, "Error al conectar CPU a Memoria");
+        exit(EXIT_FAILURE);
+    } else {
+        log_info(cpu_log, "CPU conectado a Memoria exitosamente");
     }
 }

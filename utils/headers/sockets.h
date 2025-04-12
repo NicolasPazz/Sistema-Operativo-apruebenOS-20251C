@@ -13,16 +13,34 @@
 #include <assert.h>
 #include <pthread.h>
 #include <readline/readline.h>
-
+//agrego libs
+#include <stdint.h>
+#include <semaphore.h>
+#include <math.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 /////////////// Commons ///////////////
 #include<commons/log.h>
 #include<commons/collections/list.h>
 #include<commons/config.h>
+//agrego commons
+#include <commons/bitarray.h>
+#include <commons/temporal.h>
+#include <commons/collections/list.h>
+
 
 /////////////////////////////// Estructuras compartidas ///////////////////////////////
 typedef enum {
 	MENSAJE,
-	PAQUETE
+	PAQUETE,
+	NOOP,
+	WRITE, 
+	READ, 
+	GOTO, 
+	IO, 
+	INIT_PROC, 
+	DUMP_MEMORY, 
+	EXIT
 } op_code;
 
 typedef struct {
@@ -40,6 +58,13 @@ typedef struct {
 	op_code codigo_operacion;
 	t_buffer* buffer;
 } t_paquete;
+
+//Momentaneo si dejarlo aca o solamente en modulo cpu
+typedef struct{
+    char* parametros1;
+    char* parametros2;
+    char* parametros3;
+}t_instruccion;
 
 
 /////////////////////////////// Prototipos ///////////////////////////////
