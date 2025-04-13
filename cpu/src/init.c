@@ -3,11 +3,9 @@
 /////////////////////////////// Inicialización de variables globales ///////////////////////////////
 t_log* cpu_log;
 t_config* cpu_config;
-
 int fd_memoria;
 int fd_kernel_dispatch;
 int fd_kernel_interrupt;
-
 char* IP_MEMORIA;
 char* PUERTO_MEMORIA;
 char* IP_KERNEL;
@@ -54,7 +52,7 @@ void iniciar_logger_cpu() {
     }
 }
 
-void iniciar_conexiones_cpu(){
+void iniciar_establecer_conexion_cpu_kernel_dispatch(){
     //////////////////////////// Conexión hacia Kernel Dispatch ////////////////////////////
     fd_kernel_dispatch = crear_conexion(IP_KERNEL, PUERTO_KERNEL_DISPATCH);
     if (fd_kernel_dispatch != -1) {
@@ -63,22 +61,14 @@ void iniciar_conexiones_cpu(){
         log_info(cpu_log, "Error al conectar CPU a Kernel Dispatch");
         exit(EXIT_FAILURE);
     }
-
+}
+void iniciar_establecer_conexion_cpu_kernel_interrupt(){
     //////////////////////////// Conexión hacia Kernel Interrupt ////////////////////////////
     fd_kernel_interrupt = crear_conexion(IP_KERNEL, PUERTO_KERNEL_INTERRUPT);
     if (fd_kernel_interrupt != -1) {
         log_info(cpu_log, "CPU conectado a Kernel Interrupt exitosamente");
     } else {
         log_info(cpu_log, "Error al conectar CPU a Kernel Interrupt");
-        exit(EXIT_FAILURE);
-    }
-
-    //////////////////////////// Conexión hacia Memoria ////////////////////////////
-    fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA);
-    if (fd_memoria != -1) {
-        log_info(cpu_log, "CPU conectado a Memoria exitosamente");
-    } else {
-        log_info(cpu_log, "Error al conectar CPU a Memoria");
         exit(EXIT_FAILURE);
     }
 }
