@@ -18,7 +18,7 @@ typedef enum Estados {
     EXEC,
     BLOCKED,
     SUSP_READY,
-    SUS_BLOCKED,
+    SUSP_BLOCKED,
     EXIT
 } Estados;
 
