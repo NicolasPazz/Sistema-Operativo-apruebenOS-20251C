@@ -2,13 +2,13 @@
 #define UTILS_SOCKETS_H_
 
 /////////////// C Libs ///////////////
+#include <netdb.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <netdb.h>
 #include <string.h>
 #include <assert.h>
 #include <pthread.h>
@@ -26,7 +26,6 @@
 //agrego commons
 #include <commons/bitarray.h>
 #include <commons/temporal.h>
-#include <commons/collections/list.h>
 
 
 /////////////////////////////// Estructuras compartidas ///////////////////////////////
@@ -40,7 +39,8 @@ typedef enum {
 	IO, 
 	INIT_PROC, 
 	DUMP_MEMORY, 
-	EXIT
+	EXIT,
+	EXEC
 } op_code;
 
 typedef struct {
@@ -96,4 +96,4 @@ void paquete(int conexion);
 void* serializar_paquete(t_paquete* paquete, int bytes);
 void iterator(char* value);
 
-#endif /* UTILS_SOCKETS_H_ */
+#endif

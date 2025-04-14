@@ -1,4 +1,4 @@
-#include "../headers/cpu.h"
+#include "../headers/init.h"
 
 /////////////////////////////// Inicialización de variables globales ///////////////////////////////
 t_log* cpu_log;
@@ -52,28 +52,7 @@ void iniciar_logger_cpu() {
     }
 }
 
-void iniciar_establecer_conexion_cpu_kernel_dispatch(){
-    //////////////////////////// Conexión hacia Kernel Dispatch ////////////////////////////
-    fd_kernel_dispatch = crear_conexion(IP_KERNEL, PUERTO_KERNEL_DISPATCH);
-    if (fd_kernel_dispatch != -1) {
-        log_info(cpu_log, "CPU conectado a Kernel Dispatch exitosamente");
-    } else {
-        log_info(cpu_log, "Error al conectar CPU a Kernel Dispatch");
-        exit(EXIT_FAILURE);
-    }
-}
-void iniciar_establecer_conexion_cpu_kernel_interrupt(){
-    //////////////////////////// Conexión hacia Kernel Interrupt ////////////////////////////
-    fd_kernel_interrupt = crear_conexion(IP_KERNEL, PUERTO_KERNEL_INTERRUPT);
-    if (fd_kernel_interrupt != -1) {
-        log_info(cpu_log, "CPU conectado a Kernel Interrupt exitosamente");
-    } else {
-        log_info(cpu_log, "Error al conectar CPU a Kernel Interrupt");
-        exit(EXIT_FAILURE);
-    }
-}
-
-void establecer_conexion_cpu_memoria() {
+void conectar_cpu_memoria() {
 
     if((fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA)) == -1){
         log_trace(cpu_log, "Error al conectar con Memoria. El servidor no esta activo");
@@ -81,5 +60,25 @@ void establecer_conexion_cpu_memoria() {
         exit(EXIT_FAILURE);
     } else {
         log_info(cpu_log, "CPU conectado a Memoria exitosamente");
+    }
+}
+
+void conectar_kernel_dispatch() {
+    fd_kernel_dispatch = crear_conexion(IP_KERNEL, PUERTO_KERNEL_DISPATCH);
+    if (fd_kernel_dispatch != -1) {
+        log_info(cpu_log, "CPU conectado a Kernel Dispatch exitosamente");
+    } else {
+        log_error(cpu_log, "Error al conectar CPU a Kernel Dispatch");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void conectar_kernel_interrupt() {
+    fd_kernel_interrupt = crear_conexion(IP_KERNEL, PUERTO_KERNEL_INTERRUPT);
+    if (fd_kernel_interrupt != -1) {
+        log_info(cpu_log, "CPU conectado a Kernel Interrupt exitosamente");
+    } else {
+        log_error(cpu_log, "Error al conectar CPU a Kernel Interrupt");
+        exit(EXIT_FAILURE);
     }
 }

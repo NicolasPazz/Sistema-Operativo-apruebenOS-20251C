@@ -1,5 +1,5 @@
-#include <cicloDeInstruccion.h>
-#include "../headers/cpu.h"
+#include "../headers/init.h"
+#include "../headers/cicloDeInstruccion.h"
 
 
 void ejecutar_ciclo_instruccion(int pc, int pid) {
@@ -14,7 +14,7 @@ void ejecutar_ciclo_instruccion(int pc, int pid) {
 
 
 t_instruccion* fetch(int pc, int pid){
-    t_instruccion* instruccion = pedir_instruccion_memoria(pc);
+    t_instruccion* instruccion ;//pedir_instruccion_memoria(pc);
     if (instruccion == NULL)
     {
         log_error("No existe instruccion con el program counter: %d", pc);
@@ -47,7 +47,7 @@ op_code decode(t_instruccion * instruccion){ // LO HICE CHAR VEMOS SI NOS SIRVE 
     return -1; // Código de operación no válido
 }
 
-execute(op_code tipo_instruccion, t_instruccion* instruccion) { //meto las syscalls tambien ??
+void execute(op_code tipo_instruccion, t_instruccion* instruccion) { //meto las syscalls tambien ??
     switch (tipo_instruccion) {
         case NOOP:
             log_info(cpu_log, "INSTRUCCION :%s", tipo_instruccion);
@@ -87,6 +87,42 @@ execute(op_code tipo_instruccion, t_instruccion* instruccion) { //meto las sysca
     }
 }
 
-pedir_funcion_memoria(){
-    
+
+
+void func_noop(t_instruccion* instruccion) {
+
+}
+
+void func_write(t_instruccion* instruccion) {
+
+}
+
+
+void func_read(t_instruccion* instruccion) {
+
+}
+
+
+void func_goto(t_instruccion* instruccion) {
+
+}
+
+
+void func_io(t_instruccion* instruccion) {
+
+}
+
+
+void func_init_proc(t_instruccion* instruccion) {
+
+}
+
+
+void func_dump_memory(t_instruccion* instruccion) {
+
+}
+
+
+void func_exit(t_instruccion* instruccion) {
+
 }
