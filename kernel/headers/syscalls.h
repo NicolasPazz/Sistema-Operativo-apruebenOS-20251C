@@ -2,17 +2,17 @@
 #define SYSCALLS_H
 
 /////////////////////////////// Includes ///////////////////////////////
-
+#include "kernel.h"
 
 /////////////////////////////// Prototipos ///////////////////////////////
 /**
- * @brief Crea un proceso y lo dejar en estado NEW
+ * @brief Crea un proceso y lo deja en estado NEW
  * @param nombre_archivo: Nombre del archivo de pseudocódigo que ejecuta el proceso
  * @param tam_memoria: Tamaño del proceso en memoria
  * 
  * @return Retorna el PCB del proceso creado
  */
-t_pcb INIT_PROC(char* nombre_archivo, uint8_t tam_memoria);
+void INIT_PROC(char* nombre_archivo, uint16_t tam_memoria);
 
 
 /**
@@ -33,6 +33,6 @@ void DUMP_MEMORY();
  * Si existia el IO el proceso va a BLOCKED y se lo agrega a la cola de bloqueados por la IO solicitada
  * Si el IO esta libre se lo usa durante el tiempo_a_usar y se le envia el PID que lo esta usando
  */
-void IO(char* nombre_io, uint8_t tiempo_a_usar);
+void IO(char* nombre_io, uint16_t tiempo_a_usar);
 
 #endif /* SYSCALLS_H */

@@ -18,17 +18,16 @@
 #include <assert.h>
 #include <pthread.h>
 #include <readline/readline.h>
-//agrego libs
 #include <stdint.h>
 #include <semaphore.h>
 #include <math.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+
 /////////////// Commons ///////////////
-#include<commons/log.h>
-#include<commons/collections/list.h>
-#include<commons/config.h>
-//agrego commons
+#include <commons/log.h>
+#include <commons/collections/list.h>
+#include <commons/config.h>
 #include <commons/bitarray.h>
 #include <commons/temporal.h>
 #include <commons/collections/list.h>
@@ -36,16 +35,16 @@
 
 /////////////////////////////// Estructuras compartidas ///////////////////////////////
 typedef enum {
-	MENSAJE,
-	PAQUETE,
-	NOOP,
-	WRITE, 
-	READ, 
-	GOTO, 
-	IO, 
-	INIT_PROC, 
-	DUMP_MEMORY, 
-	EXIT
+	MENSAJE_OP,
+	PAQUETE_OP,
+	NOOP_OP,
+	WRITE_OP, 
+	READ_OP, 
+	GOTO_OP, 
+	IO_OP, 
+	INIT_PROC_OP, 
+	DUMP_MEMORY_OP, 
+	EXIT_OP
 } op_code;
 
 typedef struct {

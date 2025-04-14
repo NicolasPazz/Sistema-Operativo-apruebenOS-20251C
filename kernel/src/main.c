@@ -8,38 +8,32 @@ void* hilo_conexiones(void* _) {
 int main(int argc, char* argv[]) {
     iniciar_config_kernel();
     iniciar_logger_kernel();
+    iniciar_estados_kernel();
     //pthread_t hilo_servidor;
     //pthread_create(&hilo_servidor, NULL, hilo_conexiones, NULL);
 
+    INIT_PROC("Test1", 10);
+    printf("size cola new: %d \n", list_size(cola_new));
+
+    printf("Creando 2 procesos más... \n");
+    INIT_PROC("Test2", 11);
+    INIT_PROC("Test2", 12);
+    printf("size cola new: %d \n", list_size(cola_new)); // 2 procesos
+    printf("size cola ready: %d \n", list_size(cola_ready)); // 1 procesos
+    printf("Cantidad total procesos: %d \n", list_size(cola_procesos)); // 3 procesos
     
+    mostrar_pcb(*(t_pcb*)list_get(cola_new, 2));
+    cambiar_estado_pcb((t_pcb*)list_get(cola_new, 2), cola_new, cola_blocked);
+    
+    printf("size cola new: %d \n", list_size(cola_new)); // 2 procesos
+    printf("size cola ready: %d \n", list_size(cola_ready)); // 1 procesos
+    printf("Cantidad total procesos: %d \n", list_size(cola_procesos)); // 3 procesos
 
-    while(1);
+    mostrar_pcb(*(t_pcb*)list_get(cola_blocked, 0));
+
+    //mostrar_pcb(*(t_pcb*)list_get(cola_running, 0));
+
     return EXIT_SUCCESS;
-}
-
-void atender_cliente(void* arg) {
-    cliente_data_t *data = (cliente_data_t *)arg;
-    int control_key = 1;
-    while (control_key) {
-        int cod_op = recibir_operacion(data->fd);
-        switch (cod_op) {
-            case MENSAJE:
-                recibir_mensaje(data->fd, data->logger);
-                break;
-            case PAQUETE:
-                t_list* lista = recibir_paquete(data->fd);
-                list_iterate(lista, (void*)iterator);
-                list_destroy(lista);
-                break;
-            case -1:
-                log_error(data->logger, "El cliente (%s) se desconectó. Terminando servidor.", data->cliente);
-                control_key = 0;
-                break;
-            default:
-                log_warning(data->logger, "Operación desconocida de %s", data->cliente);
-                break;
-        }
-    }
 }
 
 void iterator(char* value) {
