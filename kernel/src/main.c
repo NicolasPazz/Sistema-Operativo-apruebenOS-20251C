@@ -1,21 +1,19 @@
 #include "../headers/kernel.h"
 
+void* hilo_conexiones(void* _) {
+    iniciar_conexiones_kernel();
+    return NULL;
+}
+
 int main(int argc, char* argv[]) {
     iniciar_config_kernel();
     iniciar_logger_kernel();
-    iniciar_conexiones_kernel();
+    //pthread_t hilo_servidor;
+    //pthread_create(&hilo_servidor, NULL, hilo_conexiones, NULL);
 
+    
 
-    /* TODO Envio de mensajes
-    //////////////////////////// Estructuras de datos para atender clientes ////////////////////////////
-    cliente_data_t *data_memoria = crear_cliente_data(fd_memoria, kernel_log, "Memoria");
-
-    //////////////////////////// Atender Memoria ////////////////////////////
-    pthread_t hilo_memoria;
-    pthread_create(&hilo_memoria, NULL, (void*)atender_cliente, (void*)data_memoria);
-    pthread_join(hilo_memoria, NULL);
-    paquete(fd_memoria);
-    */
+    while(1);
     return EXIT_SUCCESS;
 }
 

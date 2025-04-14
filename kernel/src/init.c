@@ -38,7 +38,6 @@ void iniciar_config_kernel() {
         PUERTO_ESCUCHA_IO && ALGORITMO_PLANIFICACION &&
         ALGORITMO_COLA_NEW && ALFA && TIEMPO_SUSPENSION &&
         LOG_LEVEL) {
-        //printf("Kernel config leído correctamente\n");
     } else {
         printf("Error al leer kernel config\n");
     }
@@ -55,29 +54,11 @@ void iniciar_logger_kernel() {
 
 void iniciar_conexiones_kernel(){
     //////////////////////////// Conexión hacia Memoria ////////////////////////////
-    fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA);
+    fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, CLIENTE_KERNEL);
     if (fd_memoria != -1) {
         log_info(kernel_log, "Kernel conectado a Memoria exitosamente");
     } else {
-        log_info(kernel_log, "Error al conectar Kernel a Memoria");
+        log_error(kernel_log, "Error al conectar Kernel a Memoria");
         exit(EXIT_FAILURE);
     }
-
-    //////////////////////////// Iniciar Servidor Dispatch ////////////////////////////
-    fd_dispatch= iniciar_servidor(PUERTO_ESCUCHA_DISPATCH, kernel_log, "Escuchando conexiones en Dispatch...");
-    if (fd_dispatch != -1) {
-    } else {
-        log_info(kernel_log, "Error al iniciar servidor Dispatch del Kernel");
-        exit(EXIT_FAILURE);
-    }
-
-    //////////////////////////// Iniciar Servidor Interrupt ////////////////////////////
-    fd_interrupt= iniciar_servidor(PUERTO_ESCUCHA_INTERRUPT, kernel_log, "Escuchando conexiones en Interrupt...");
-    if (fd_interrupt != -1) {
-    } else {
-        log_info(kernel_log, "Error al iniciar servidor Interrupt del Kernel");
-        exit(EXIT_FAILURE);
-    }
-
-
 }
