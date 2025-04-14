@@ -1,4 +1,4 @@
-#include "../../headers/sockets.h"
+#include "../headers/sockets.h"
 
 
 /////////////////////////////// Log y Config ///////////////////////////////
@@ -48,6 +48,8 @@ int iniciar_servidor(char *puerto,t_log* logger, char* msj_server) {
 
 	return socket_servidor;
 }
+
+
 
 int crear_conexion(char *ip, char* puerto) {
     struct addrinfo hints;

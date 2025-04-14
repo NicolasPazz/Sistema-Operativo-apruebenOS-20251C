@@ -1,13 +1,17 @@
 #ifndef UTILS_SOCKETS_H_
 #define UTILS_SOCKETS_H_
+#define _POSIX_C_SOURCE 200809L
 
 /////////////// C Libs ///////////////
+#include <sys/types.h> 
 #include <netdb.h>
+#include <sys/socket.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
-#include <sys/socket.h>
 #include <unistd.h>
 #include <string.h>
 #include <assert.h>
@@ -17,8 +21,6 @@
 #include <stdint.h>
 #include <semaphore.h>
 #include <math.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
 /////////////// Commons ///////////////
 #include<commons/log.h>
 #include<commons/collections/list.h>
