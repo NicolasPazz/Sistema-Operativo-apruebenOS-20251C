@@ -1,6 +1,11 @@
 #ifndef UTILS_SOCKETS_H_
 #define UTILS_SOCKETS_H_
 
+#define CLIENTE_KERNEL  1
+#define CLIENTE_CPU		2
+#define CLIENTE_IO 		3
+#define CLIENTE_MEMORIA 4
+
 /////////////// C Libs ///////////////
 #include <stddef.h>
 #include <stdio.h>
@@ -74,7 +79,7 @@ t_config* iniciar_config(char* path);
 
 /////////////// Conexiones ///////////////
 int iniciar_servidor(char *puerto,t_log* logger, char* msj_server);
-int crear_conexion(char *ip, char* puerto);
+int crear_conexion(char *ip, char* puerto, int tipo_cliente);
 int esperar_cliente(int socket_servidor, t_log* logger);
 void atender_cliente(void* arg);
 void liberar_conexion(int socket_cliente);
