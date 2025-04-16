@@ -1,7 +1,6 @@
 #ifndef UTILS_SOCKETS_H_
 #define UTILS_SOCKETS_H_
 #define _POSIX_C_SOURCE 200809L
-#define NIVELES_PAGINACION 2
 /////////////// C Libs ///////////////
 #include <sys/types.h> 
 #include <netdb.h>
