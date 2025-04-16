@@ -1,6 +1,6 @@
 #include "../headers/init.h"
 #include "../headers/cicloDeInstruccion.h"
-
+#include "../headers/mmu.h"
 
 void ejecutar_ciclo_instruccion(int pc, int pid) {
     
@@ -55,11 +55,13 @@ void execute(op_code tipo_instruccion, t_instruccion* instruccion) { //meto las 
             break;
         case WRITE:
             log_info(cpu_log, "INSTRUCCION :%s - PARAMETRO 1: %s - PARAMETRO 2: %s", tipo_instruccion, instruccion->parametros2, instruccion->parametros3);
+            int direccion_logica = atoi(instruccion->parametros1);
             func_write(instruccion);
             break;
         case READ:
             log_info(cpu_log, "INSTRUCCION :%s - PARAMETRO 1: %s - PARAMETRO 2: %s", tipo_instruccion, instruccion->parametros2, instruccion->parametros3);
-            func_read(instruccion);
+            int direccion_logica = atoi(instruccion->parametros1);
+            func_read(instruccion,100);
             break;
         case GOTO:
             log_info(cpu_log, "INSTRUCCION :%s - PARAMETRO 1: %s", tipo_instruccion, instruccion->parametros2);
@@ -93,13 +95,15 @@ void func_noop(t_instruccion* instruccion) {
 
 }
 
-void func_write(t_instruccion* instruccion) {
-
+void func_write(int direccion_logica) {
+    t_direccion_fisica direccion_fisica = transformar_a_fisica(direccion_logica, 0,10,10); // chequear las ultimas 3 parametros, voy a revisar mañana como hago lo d las entradas
+    // hacer el write 
 }
 
 
-void func_read(t_instruccion* instruccion) {
-
+void func_read(int direccion_logica, int tamanio) {
+    t_direccion_fisica direccion_fisica = transformar_a_fisica(direccion_logica, 0,10,10); // chequear las ultimas 3 parametros, voy a revisar mañana como hago lo d las entradas
+    //hacer el read
 }
 
 
@@ -126,3 +130,5 @@ void func_dump_memory(t_instruccion* instruccion) {
 void func_exit(t_instruccion* instruccion) {
 
 }
+
+
