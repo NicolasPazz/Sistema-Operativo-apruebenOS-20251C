@@ -42,6 +42,7 @@ extern t_list* cola_procesos;
 /////////////////////////////// Prototipos ///////////////////////////////
 void iniciar_config_kernel(void);
 void iniciar_logger_kernel(void);
+void iniciar_logger_kernel_debug(void);
 void iniciar_conexiones_kernel(void);
 void iniciar_estados_kernel(void);
 

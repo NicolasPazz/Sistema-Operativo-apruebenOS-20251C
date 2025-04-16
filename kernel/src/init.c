@@ -3,6 +3,7 @@
 /////////////////////////////// Declaración de variables globales ///////////////////////////////
 // Logger
 t_log* kernel_log;
+t_log* kernel_log_debug;
 
 // Sockets
 int fd_dispatch;
@@ -51,25 +52,30 @@ void iniciar_config_kernel() {
     if (!IP_MEMORIA || !PUERTO_MEMORIA || !PUERTO_ESCUCHA_DISPATCH || !PUERTO_ESCUCHA_INTERRUPT ||
         !PUERTO_ESCUCHA_IO || !ALGORITMO_CORTO_PLAZO || !ALGORITMO_INGRESO_A_READY ||
         !ALFA || !TIEMPO_SUSPENSION || !LOG_LEVEL) {
-        log_error(kernel_log, "iniciar_config_kernel: Faltan campos obligatorios en kernel.config");
+        log_error(kernel_log_debug, "iniciar_config_kernel: Faltan campos obligatorios en kernel.config");
         exit(EXIT_FAILURE);
     } else {
-        log_info(kernel_log, "IP_MEMORIA: %s", IP_MEMORIA);
-        log_info(kernel_log, "PUERTO_MEMORIA: %s", PUERTO_MEMORIA);
-        log_info(kernel_log, "PUERTO_ESCUCHA_DISPATCH: %s", PUERTO_ESCUCHA_DISPATCH);
-        log_info(kernel_log, "PUERTO_ESCUCHA_INTERRUPT: %s", PUERTO_ESCUCHA_INTERRUPT);
-        log_info(kernel_log, "PUERTO_ESCUCHA_IO: %s", PUERTO_ESCUCHA_IO);
-        log_info(kernel_log, "ALGORITMO_CORTO_PLAZO: %s", ALGORITMO_CORTO_PLAZO);
-        log_info(kernel_log, "ALGORITMO_INGRESO_A_READY: %s", ALGORITMO_INGRESO_A_READY);
-        log_info(kernel_log, "ALFA: %s", ALFA);
-        log_info(kernel_log, "TIEMPO_SUSPENSION: %s", TIEMPO_SUSPENSION);
-        log_info(kernel_log, "LOG_LEVEL: %s", LOG_LEVEL);
+        log_info(kernel_log_debug, "IP_MEMORIA: %s", IP_MEMORIA);
+        log_info(kernel_log_debug, "PUERTO_MEMORIA: %s", PUERTO_MEMORIA);
+        log_info(kernel_log_debug, "PUERTO_ESCUCHA_DISPATCH: %s", PUERTO_ESCUCHA_DISPATCH);
+        log_info(kernel_log_debug, "PUERTO_ESCUCHA_INTERRUPT: %s", PUERTO_ESCUCHA_INTERRUPT);
+        log_info(kernel_log_debug, "PUERTO_ESCUCHA_IO: %s", PUERTO_ESCUCHA_IO);
+        log_info(kernel_log_debug, "ALGORITMO_CORTO_PLAZO: %s", ALGORITMO_CORTO_PLAZO);
+        log_info(kernel_log_debug, "ALGORITMO_INGRESO_A_READY: %s", ALGORITMO_INGRESO_A_READY);
+        log_info(kernel_log_debug, "ALFA: %s", ALFA);
+        log_info(kernel_log_debug, "TIEMPO_SUSPENSION: %s", TIEMPO_SUSPENSION);
+        log_info(kernel_log_debug, "LOG_LEVEL: %s", LOG_LEVEL);
     }
 }
 
 void iniciar_logger_kernel() {
     kernel_log = iniciar_logger("kernel.log", "kernel", 1, log_level_from_string(LOG_LEVEL));
     log_info(kernel_log, "Kernel log iniciado correctamente!");
+}
+
+void iniciar_logger_kernel_debug() {
+    kernel_log_debug = iniciar_logger("kernel_config_debug.log", "kernel", 1, LOG_LEVEL_TRACE);
+    log_info(kernel_log_debug, "Kernel log de debug iniciado correctamente!");
 }
 
 void iniciar_conexiones_kernel(){
