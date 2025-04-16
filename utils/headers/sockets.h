@@ -1,7 +1,6 @@
 #ifndef UTILS_SOCKETS_H_
 #define UTILS_SOCKETS_H_
 #define _POSIX_C_SOURCE 200809L
-
 /////////////// C Libs ///////////////
 #include <sys/types.h> 
 #include <netdb.h>
@@ -67,7 +66,16 @@ typedef struct{
     char* parametros2;
     char* parametros3;
 }t_instruccion;
+// typedef struct {
+//     int entradas[NIVELES_PAGINACION]; 
+//     int desplazamiento;
+// } t_direccion_logica; lo pusimos como char* no es un struct...
 
+typedef struct {
+    int nro_pagina;
+	int entrada_nivel_x;
+	int desplazamiento;
+} t_direccion_fisica;
 
 /////////////////////////////// Prototipos ///////////////////////////////
 /////////////// Logs y Config///////////////
