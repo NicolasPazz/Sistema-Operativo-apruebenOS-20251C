@@ -21,7 +21,6 @@ char* ALGORITMO_INGRESO_A_READY;
 char* ALFA;
 char* TIEMPO_SUSPENSION;
 char* LOG_LEVEL;
-char* LOG_LEVEL_DEBUG;
 
 // Colas de Estados
 t_list* cola_new;
@@ -48,7 +47,6 @@ void iniciar_config_kernel() {
     ALFA = config_get_string_value(kernel_config, "ALFA");
     TIEMPO_SUSPENSION = config_get_string_value(kernel_config, "TIEMPO_SUSPENSION");
     LOG_LEVEL = config_get_string_value(kernel_config, "LOG_LEVEL");
-    LOG_LEVEL_DEBUG = config_get_string_value(kernel_config, "LOG_LEVEL_DEBUG");
 
     if (!IP_MEMORIA || !PUERTO_MEMORIA || !PUERTO_ESCUCHA_DISPATCH || !PUERTO_ESCUCHA_INTERRUPT ||
         !PUERTO_ESCUCHA_IO || !ALGORITMO_CORTO_PLAZO || !ALGORITMO_INGRESO_A_READY ||
