@@ -16,8 +16,8 @@ char* PUERTO_MEMORIA;
 char* PUERTO_ESCUCHA_DISPATCH;
 char* PUERTO_ESCUCHA_INTERRUPT;
 char* PUERTO_ESCUCHA_IO;
-char* ALGORITMO_PLANIFICACION;
-char* ALGORITMO_COLA_NEW;
+char* ALGORITMO_CORTO_PLAZO;
+char* ALGORITMO_INGRESO_A_READY;
 char* ALFA;
 char* TIEMPO_SUSPENSION;
 char* LOG_LEVEL;
@@ -42,14 +42,14 @@ void iniciar_config_kernel() {
     PUERTO_ESCUCHA_DISPATCH = config_get_string_value(kernel_config, "PUERTO_ESCUCHA_DISPATCH");
     PUERTO_ESCUCHA_INTERRUPT = config_get_string_value(kernel_config, "PUERTO_ESCUCHA_INTERRUPT");
     PUERTO_ESCUCHA_IO = config_get_string_value(kernel_config, "PUERTO_ESCUCHA_IO");
-    ALGORITMO_PLANIFICACION = config_get_string_value(kernel_config, "ALGORITMO_PLANIFICACION");
-    ALGORITMO_COLA_NEW = config_get_string_value(kernel_config, "ALGORITMO_COLA_NEW");
+    ALGORITMO_CORTO_PLAZO = config_get_string_value(kernel_config, "ALGORITMO_CORTO_PLAZO");
+    ALGORITMO_INGRESO_A_READY = config_get_string_value(kernel_config, "ALGORITMO_INGRESO_A_READY");
     ALFA = config_get_string_value(kernel_config, "ALFA");
     TIEMPO_SUSPENSION = config_get_string_value(kernel_config, "TIEMPO_SUSPENSION");
     LOG_LEVEL = config_get_string_value(kernel_config, "LOG_LEVEL");
 
     if (IP_MEMORIA && PUERTO_MEMORIA && PUERTO_ESCUCHA_DISPATCH && PUERTO_ESCUCHA_INTERRUPT && PUERTO_ESCUCHA_IO &&
-        ALGORITMO_PLANIFICACION && ALGORITMO_COLA_NEW && ALFA && TIEMPO_SUSPENSION && LOG_LEVEL) {
+        ALGORITMO_CORTO_PLAZO && ALGORITMO_INGRESO_A_READY && ALFA && TIEMPO_SUSPENSION && LOG_LEVEL) {
     } else {
         printf("Error al leer kernel config\n");
     }
