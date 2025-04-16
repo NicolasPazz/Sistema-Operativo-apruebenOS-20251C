@@ -1,20 +1,25 @@
-#include <cicloDeInstruccion.h>
-#include "../headers/cpu.h"
+#include "../headers/init.h"
+#include "../headers/cicloDeInstruccion.h"
+#include "../headers/mmu.h"
 
-
-void ejecutarCicloInstruccion(int pc, int pid) {
+void ejecutar_ciclo_instruccion(int pc, int pid) {
     
     t_instruccion* instruccion = fetch(pc, pid);
 
-    op_code instruccion_nombre = decode(instruccion);
+    op_code tipo_instruccion = decode(instruccion);
 
-    execute(instruccion_nombre, instruccion);
+    execute(tipo_instruccion, instruccion);
 
 }
 
 
 t_instruccion* fetch(int pc, int pid){
-    t_instruccion* instruccion = pedir_instruccion_memoria(pc);
+    t_instruccion* instruccion ;//pedir_instruccion_memoria(pc);
+    if (instruccion == NULL)
+    {
+        log_error("No existe instruccion con el program counter: %d", pc);
+        EXIT_FAILURE;
+    }
     log_info(cpu_log, "PID: %i - FETCH - Program Counter: %i", pid, pc);
     return instruccion;
 }
@@ -39,48 +44,91 @@ op_code decode(t_instruccion * instruccion){ // LO HICE CHAR VEMOS SI NOS SIRVE 
     } else if (strcmp(instruccion->parametros1, "EXIT") == 0) {
         return EXIT;
     }
-
     return -1; // Código de operación no válido
-
-
 }
 
-execute(op_code instruccion_nombre, t_instruccion* instruccion) { //meto las syscalls tambien ??
-    switch (instruccion_nombre) {
+void execute(op_code tipo_instruccion, t_instruccion* instruccion) { //meto las syscalls tambien ??
+    switch (tipo_instruccion) {
         case NOOP:
-            log_info(cpu_log, "INSTRUCCION :%s", instruccion_nombre);
-            funcNoop(instruccion);
+            log_info(cpu_log, "INSTRUCCION :%s", tipo_instruccion);
+            func_noop(instruccion);
             break;
         case WRITE:
-            log_info(cpu_log, "INSTRUCCION :%s - PARAMETRO 1: %s - PARAMETRO 2: %s", instruccion_nombre, instruccion->parametros2, instruccion->parametros3);
-            funcWrite(instruccion);
+            log_info(cpu_log, "INSTRUCCION :%s - PARAMETRO 1: %s - PARAMETRO 2: %s", tipo_instruccion, instruccion->parametros2, instruccion->parametros3);
+            int direccion_logica = atoi(instruccion->parametros1);
+            func_write(instruccion);
             break;
         case READ:
-            log_info(cpu_log, "INSTRUCCION :%s - PARAMETRO 1: %s - PARAMETRO 2: %s", instruccion_nombre, instruccion->parametros2, instruccion->parametros3);
-            funcRead(instruccion);
+            log_info(cpu_log, "INSTRUCCION :%s - PARAMETRO 1: %s - PARAMETRO 2: %s", tipo_instruccion, instruccion->parametros2, instruccion->parametros3);
+            int direccion_logica = atoi(instruccion->parametros1);
+            func_read(instruccion,100);
             break;
         case GOTO:
-            log_info(cpu_log, "INSTRUCCION :%s - PARAMETRO 1: %s", instruccion_nombre, instruccion->parametros2);
-            funcGoto(instruccion);
+            log_info(cpu_log, "INSTRUCCION :%s - PARAMETRO 1: %s", tipo_instruccion, instruccion->parametros2);
+            func_goto(instruccion);
             break;
         case IO:
-            log_info(cpu_log, "INSTRUCCION :%s - PARAMETRO 1: %s", instruccion_nombre, instruccion->parametros2);
-            funcIO(instruccion);
+            log_info(cpu_log, "INSTRUCCION :%s - PARAMETRO 1: %s", tipo_instruccion, instruccion->parametros2);
+            func_io(instruccion);
             break;
         case INIT_PROC:
-            log_info(cpu_log, "INSTRUCCION :%s - PARAMETRO 1: %s - PARAMETRO 2: %s", instruccion_nombre, instruccion->parametros2, instruccion->parametros3);
-            funcInitProc(instruccion);
+            log_info(cpu_log, "INSTRUCCION :%s - PARAMETRO 1: %s - PARAMETRO 2: %s", tipo_instruccion, instruccion->parametros2, instruccion->parametros3);
+            func_init_proc(instruccion);
             break;
         case DUMP_MEMORY:
-            log_info(cpu_log, "INSTRUCCION :%s", instruccion_nombre);
-            funcDumpMemory(instruccion);
+            log_info(cpu_log, "INSTRUCCION :%s", tipo_instruccion);
+            func_dump_memory(instruccion);
             break;
         case EXIT:
-            log_info(cpu_log, "INSTRUCCION :%s", instruccion_nombre);
-            funcExit(instruccion);
+            log_info(cpu_log, "INSTRUCCION :%s", tipo_instruccion);
+            func_exit(instruccion);
             break;
         default:
             log_info(cpu_log, "Instrucción desconocida\n");
         break;
     }
 }
+
+
+
+void func_noop(t_instruccion* instruccion) {
+
+}
+
+void func_write(int direccion_logica) {
+    t_direccion_fisica direccion_fisica = transformar_a_fisica(direccion_logica, 0,10,10); // chequear las ultimas 3 parametros, voy a revisar mañana como hago lo d las entradas
+    // hacer el write 
+}
+
+
+void func_read(int direccion_logica, int tamanio) {
+    t_direccion_fisica direccion_fisica = transformar_a_fisica(direccion_logica, 0,10,10); // chequear las ultimas 3 parametros, voy a revisar mañana como hago lo d las entradas
+    //hacer el read
+}
+
+
+void func_goto(t_instruccion* instruccion) {
+
+}
+
+
+void func_io(t_instruccion* instruccion) {
+
+}
+
+
+void func_init_proc(t_instruccion* instruccion) {
+
+}
+
+
+void func_dump_memory(t_instruccion* instruccion) {
+
+}
+
+
+void func_exit(t_instruccion* instruccion) {
+
+}
+
+

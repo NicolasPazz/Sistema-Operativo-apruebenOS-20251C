@@ -1,4 +1,5 @@
-#include "../../headers/sockets.h"
+#include "../headers/sockets.h"
+
 
 /////////////////////////////// Log y Config ///////////////////////////////
 t_log* iniciar_logger(char *file, char *process_name, bool is_active_console, t_log_level level) {
@@ -70,7 +71,7 @@ int iniciar_servidor(char *puerto, t_log* logger, char* msj_server) {
 	return socket_servidor;
 }
 
-int crear_conexion(char *ip, char* puerto, int tipo_cliente) {
+int crear_conexion(char *ip, char* puerto) {
     struct addrinfo hints;
     struct addrinfo *server_info;
     int socket_cliente;
@@ -110,13 +111,6 @@ int crear_conexion(char *ip, char* puerto, int tipo_cliente) {
     }
 
     freeaddrinfo(server_info);
-
-    // Enviar tipo de cliente después de conectar
-    if (send(socket_cliente, &tipo_cliente, sizeof(int), 0) != sizeof(int)) {
-        perror("Error al enviar tipo de cliente");
-        close(socket_cliente);
-        return -1;
-    }
 
     return socket_cliente;
 }

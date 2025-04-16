@@ -5,15 +5,19 @@
 #define CLIENTE_CPU		2
 #define CLIENTE_IO 		3
 #define CLIENTE_MEMORIA 4
+#define _POSIX_C_SOURCE 200809L
 
 /////////////// C Libs ///////////////
+#include <sys/types.h> 
+#include <netdb.h>
+#include <sys/socket.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
-#include <sys/socket.h>
 #include <unistd.h>
-#include <netdb.h>
 #include <string.h>
 #include <assert.h>
 #include <pthread.h>
@@ -21,8 +25,6 @@
 #include <stdint.h>
 #include <semaphore.h>
 #include <math.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
 
 /////////////// Commons ///////////////
 #include <commons/log.h>
@@ -30,7 +32,6 @@
 #include <commons/config.h>
 #include <commons/bitarray.h>
 #include <commons/temporal.h>
-#include <commons/collections/list.h>
 
 
 /////////////////////////////// Estructuras compartidas ///////////////////////////////
@@ -44,7 +45,8 @@ typedef enum {
 	IO_OP, 
 	INIT_PROC_OP, 
 	DUMP_MEMORY_OP, 
-	EXIT_OP
+	EXIT_OP,
+	EXEC_OP
 } op_code;
 
 typedef struct {
@@ -69,7 +71,16 @@ typedef struct{
     char* parametros2;
     char* parametros3;
 }t_instruccion;
+// typedef struct {
+//     int entradas[NIVELES_PAGINACION]; 
+//     int desplazamiento;
+// } t_direccion_logica; lo pusimos como char* no es un struct...
 
+typedef struct {
+    int nro_pagina;
+	int entrada_nivel_x;
+	int desplazamiento;
+} t_direccion_fisica;
 
 /////////////////////////////// Prototipos ///////////////////////////////
 /////////////// Logs y Config///////////////
@@ -78,7 +89,7 @@ t_config* iniciar_config(char* path);
 
 /////////////// Conexiones ///////////////
 int iniciar_servidor(char *puerto,t_log* logger, char* msj_server);
-int crear_conexion(char *ip, char* puerto, int tipo_cliente);
+int crear_conexion(char *ip, char* puerto;
 int esperar_cliente(int socket_servidor, t_log* logger);
 void atender_cliente(void* arg);
 void liberar_conexion(int socket_cliente);
@@ -100,4 +111,4 @@ void paquete(int conexion);
 void* serializar_paquete(t_paquete* paquete, int bytes);
 void iterator(char* value);
 
-#endif /* UTILS_SOCKETS_H_ */
+#endif
