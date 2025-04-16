@@ -1,6 +1,12 @@
 #ifndef UTILS_SOCKETS_H_
 #define UTILS_SOCKETS_H_
+
+#define CLIENTE_KERNEL  1
+#define CLIENTE_CPU		2
+#define CLIENTE_IO 		3
+#define CLIENTE_MEMORIA 4
 #define _POSIX_C_SOURCE 200809L
+
 /////////////// C Libs ///////////////
 #include <sys/types.h> 
 #include <netdb.h>
@@ -16,32 +22,31 @@
 #include <assert.h>
 #include <pthread.h>
 #include <readline/readline.h>
-//agrego libs
 #include <stdint.h>
 #include <semaphore.h>
 #include <math.h>
+
 /////////////// Commons ///////////////
-#include<commons/log.h>
-#include<commons/collections/list.h>
-#include<commons/config.h>
-//agrego commons
+#include <commons/log.h>
+#include <commons/collections/list.h>
+#include <commons/config.h>
 #include <commons/bitarray.h>
 #include <commons/temporal.h>
 
 
 /////////////////////////////// Estructuras compartidas ///////////////////////////////
 typedef enum {
-	MENSAJE,
-	PAQUETE,
-	NOOP,
-	WRITE, 
-	READ, 
-	GOTO, 
-	IO, 
-	INIT_PROC, 
-	DUMP_MEMORY, 
-	EXIT,
-	EXEC
+	MENSAJE_OP,
+	PAQUETE_OP,
+	NOOP_OP,
+	WRITE_OP, 
+	READ_OP, 
+	GOTO_OP, 
+	IO_OP, 
+	INIT_PROC_OP, 
+	DUMP_MEMORY_OP, 
+	EXIT_OP,
+	EXEC_OP
 } op_code;
 
 typedef struct {
@@ -84,7 +89,7 @@ t_config* iniciar_config(char* path);
 
 /////////////// Conexiones ///////////////
 int iniciar_servidor(char *puerto,t_log* logger, char* msj_server);
-int crear_conexion(char *ip, char* puerto);
+int crear_conexion(char *ip, char* puerto;
 int esperar_cliente(int socket_servidor, t_log* logger);
 void atender_cliente(void* arg);
 void liberar_conexion(int socket_cliente);

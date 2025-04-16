@@ -14,7 +14,7 @@ t_log* iniciar_logger(char *file, char *process_name, bool is_active_console, t_
 t_config* iniciar_config(char* path) {
 	t_config* nuevo_config = config_create(path);
 	if(nuevo_config == NULL){
-		perror("Error al internar cargar el config");
+		perror("Error al internar leer el config");
 		exit(EXIT_FAILURE);
 	}
 	return nuevo_config;
@@ -22,10 +22,10 @@ t_config* iniciar_config(char* path) {
 
 
 /////////////////////////////// Conexiones ///////////////////////////////
-int iniciar_servidor(char *puerto,t_log* logger, char* msj_server) {
+int iniciar_servidor(char *puerto, t_log* logger, char* msj_server) {
 	int socket_servidor;
-
 	struct addrinfo hints, *servinfo;
+	int optval = 1;
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
@@ -34,22 +34,42 @@ int iniciar_servidor(char *puerto,t_log* logger, char* msj_server) {
 
 	getaddrinfo(NULL, puerto, &hints, &servinfo);
 
-	socket_servidor = socket(servinfo->ai_family,
-                         servinfo->ai_socktype,
-                         servinfo->ai_protocol);
+	// Crear socket
+	socket_servidor = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
+	if (socket_servidor == -1) {
+		perror("Error al crear socket del servidor");
+		freeaddrinfo(servinfo);
+		return -1;
+	}
 
+	// Aplicar SO_REUSEADDR
+	if (setsockopt(socket_servidor, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0) {
+		perror("Error al configurar SO_REUSEADDR en el servidor");
+		close(socket_servidor);
+		freeaddrinfo(servinfo);
+		return -1;
+	}
 
-	bind(socket_servidor, servinfo->ai_addr, servinfo->ai_addrlen);
+	// Bind y Listen
+	if (bind(socket_servidor, servinfo->ai_addr, servinfo->ai_addrlen) < 0) {
+		perror("Error en bind del servidor");
+		close(socket_servidor);
+		freeaddrinfo(servinfo);
+		return -1;
+	}
 
-	listen(socket_servidor, SOMAXCONN);
+	if (listen(socket_servidor, SOMAXCONN) < 0) {
+		perror("Error en listen del servidor");
+		close(socket_servidor);
+		freeaddrinfo(servinfo);
+		return -1;
+	}
 
 	freeaddrinfo(servinfo);
-	log_trace(logger,"SERVER: %s", msj_server);
+	log_trace(logger, "SERVER: %s", msj_server);
 
 	return socket_servidor;
 }
-
-
 
 int crear_conexion(char *ip, char* puerto) {
     struct addrinfo hints;
@@ -57,29 +77,25 @@ int crear_conexion(char *ip, char* puerto) {
     int socket_cliente;
     int optval = 1;
 
-    // Configurar hints para la búsqueda de direcciones
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    // Obtener la información del servidor
     if (getaddrinfo(ip, puerto, &hints, &server_info) != 0) {
         perror("Error en getaddrinfo");
         return -1;
     }
 
-    // Crear el socket
     socket_cliente = socket(server_info->ai_family,
-                           server_info->ai_socktype,
-                           server_info->ai_protocol);
+                            server_info->ai_socktype,
+                            server_info->ai_protocol);
     if (socket_cliente < 0) {
         perror("Error al crear socket");
         freeaddrinfo(server_info);
         return -1;
     }
 
-    // Configurar SO_REUSEADDR (Para evitar errores al ejecutar rápido el proyecto, sin antes haber liberado los puertos)
     if (setsockopt(socket_cliente, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0) {
         perror("Error al configurar SO_REUSEADDR");
         close(socket_cliente);
@@ -87,7 +103,6 @@ int crear_conexion(char *ip, char* puerto) {
         return -1;
     }
 
-    // Conectar al servidor
     if (connect(socket_cliente, server_info->ai_addr, server_info->ai_addrlen) == -1) {
         perror("Error al conectar");
         close(socket_cliente);
@@ -102,9 +117,33 @@ int crear_conexion(char *ip, char* puerto) {
 
 int esperar_cliente(int socket_servidor, t_log* logger) {
 	int socket_cliente = accept(socket_servidor, NULL, NULL);
-	log_info(logger, "Se conecto un cliente!");
-
+	log_info(logger, "Se conecto el cliente <%d>", socket_cliente);
 	return socket_cliente;
+}
+
+void atender_cliente(void* arg) {
+    cliente_data_t *data = (cliente_data_t *)arg;
+    int control_key = 1;
+    while (control_key) {
+        int cod_op = recibir_operacion(data->fd);
+        switch (cod_op) {
+            case MENSAJE_OP:
+                recibir_mensaje(data->fd, data->logger);
+                break;
+            case PAQUETE_OP:
+                t_list* lista = recibir_paquete(data->fd);
+                list_iterate(lista, (void*)iterator);
+                list_destroy(lista);
+                break;
+            case -1:
+                log_error(data->logger, "El cliente (%s) se desconectó. Terminando servidor.", data->cliente);
+                control_key = 0;
+                break;
+            default:
+                log_warning(data->logger, "Operación desconocida de %s", data->cliente);
+                break;
+        }
+    }
 }
 
 void liberar_conexion(int socket_cliente) {
@@ -112,13 +151,13 @@ void liberar_conexion(int socket_cliente) {
 }
 
 /////////////////////////////// Mensajes y paquetes ///////////////////////////////
-cliente_data_t *crear_cliente_data(int fd, t_log* logger, char* cliente) {
+cliente_data_t *crear_cliente_data(int fd_cliente, t_log* logger, char* cliente) {
     cliente_data_t *data = malloc(sizeof(cliente_data_t));
     if (data == NULL) {
         perror("Error al asignar memoria para cliente_data_t*");
         return NULL;
     }
-    data->fd = fd;
+    data->fd = fd_cliente;
     data->logger = logger;
     data->cliente = strdup(cliente);
     if (data->cliente == NULL) {
@@ -190,7 +229,7 @@ t_list* recibir_paquete(int socket_cliente) {
 void enviar_mensaje(char* mensaje, int socket_cliente) {
 	t_paquete* paquete = malloc(sizeof(t_paquete));
 
-	paquete->codigo_operacion = MENSAJE;
+	paquete->codigo_operacion = MENSAJE_OP;
 	paquete->buffer = malloc(sizeof(t_buffer));
 	paquete->buffer->size = strlen(mensaje) + 1;
 	paquete->buffer->stream = malloc(paquete->buffer->size);
@@ -214,7 +253,7 @@ void crear_buffer(t_paquete* paquete) {
 
 t_paquete* crear_paquete(void) {
 	t_paquete* paquete = malloc(sizeof(t_paquete));
-	paquete->codigo_operacion = PAQUETE;
+	paquete->codigo_operacion = PAQUETE_OP;
 	crear_buffer(paquete);
 	return paquete;
 }
