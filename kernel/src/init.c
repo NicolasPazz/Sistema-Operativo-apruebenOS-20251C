@@ -21,6 +21,7 @@ char* ALGORITMO_INGRESO_A_READY;
 char* ALFA;
 char* TIEMPO_SUSPENSION;
 char* LOG_LEVEL;
+char* LOG_LEVEL_DEBUG;
 
 // Colas de Estados
 t_list* cola_new;
@@ -47,21 +48,30 @@ void iniciar_config_kernel() {
     ALFA = config_get_string_value(kernel_config, "ALFA");
     TIEMPO_SUSPENSION = config_get_string_value(kernel_config, "TIEMPO_SUSPENSION");
     LOG_LEVEL = config_get_string_value(kernel_config, "LOG_LEVEL");
+    LOG_LEVEL_DEBUG = config_get_string_value(kernel_config, "LOG_LEVEL_DEBUG");
 
-    if (IP_MEMORIA && PUERTO_MEMORIA && PUERTO_ESCUCHA_DISPATCH && PUERTO_ESCUCHA_INTERRUPT && PUERTO_ESCUCHA_IO &&
-        ALGORITMO_CORTO_PLAZO && ALGORITMO_INGRESO_A_READY && ALFA && TIEMPO_SUSPENSION && LOG_LEVEL) {
+    if (!IP_MEMORIA || !PUERTO_MEMORIA || !PUERTO_ESCUCHA_DISPATCH || !PUERTO_ESCUCHA_INTERRUPT ||
+        !PUERTO_ESCUCHA_IO || !ALGORITMO_CORTO_PLAZO || !ALGORITMO_INGRESO_A_READY ||
+        !ALFA || !TIEMPO_SUSPENSION || !LOG_LEVEL) {
+        log_error(kernel_log, "iniciar_config_kernel: Faltan campos obligatorios en kernel.config");
+        exit(EXIT_FAILURE);
     } else {
-        printf("Error al leer kernel config\n");
+        log_info(kernel_log, "IP_MEMORIA: %s", IP_MEMORIA);
+        log_info(kernel_log, "PUERTO_MEMORIA: %s", PUERTO_MEMORIA);
+        log_info(kernel_log, "PUERTO_ESCUCHA_DISPATCH: %s", PUERTO_ESCUCHA_DISPATCH);
+        log_info(kernel_log, "PUERTO_ESCUCHA_INTERRUPT: %s", PUERTO_ESCUCHA_INTERRUPT);
+        log_info(kernel_log, "PUERTO_ESCUCHA_IO: %s", PUERTO_ESCUCHA_IO);
+        log_info(kernel_log, "ALGORITMO_CORTO_PLAZO: %s", ALGORITMO_CORTO_PLAZO);
+        log_info(kernel_log, "ALGORITMO_INGRESO_A_READY: %s", ALGORITMO_INGRESO_A_READY);
+        log_info(kernel_log, "ALFA: %s", ALFA);
+        log_info(kernel_log, "TIEMPO_SUSPENSION: %s", TIEMPO_SUSPENSION);
+        log_info(kernel_log, "LOG_LEVEL: %s", LOG_LEVEL);
     }
 }
 
 void iniciar_logger_kernel() {
     kernel_log = iniciar_logger("kernel.log", "kernel", 1, log_level_from_string(LOG_LEVEL));
-    if (kernel_log == NULL) {
-        printf("Error al iniciar kernel logs\n");
-    } else {
-        log_info(kernel_log, "Kernel logs iniciados correctamente!");
-    }
+    log_info(kernel_log, "Kernel log iniciado correctamente!");
 }
 
 void iniciar_conexiones_kernel(){
@@ -70,7 +80,7 @@ void iniciar_conexiones_kernel(){
     if (fd_memoria != -1) {
         log_info(kernel_log, "Kernel conectado a Memoria exitosamente");
     } else {
-        log_error(kernel_log, "Error al conectar Kernel a Memoria");
+        log_error(kernel_log, "iniciar_conexiones_kernel: Error al conectar Kernel a Memoria");
         exit(EXIT_FAILURE);
     }
 }

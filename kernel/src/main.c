@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
     printf("Cantidad total procesos: %d \n", list_size(cola_procesos)); // 3 procesos
     
     mostrar_pcb(*(t_pcb*)list_get(cola_new, 2));
-    cambiar_estado_pcb((t_pcb*)list_get(cola_new, 2), cola_new, cola_blocked);
+    cambiar_estado_pcb((t_pcb*)list_get(cola_new, 2), BLOCKED);
     
     printf("size cola new: %d \n", list_size(cola_new)); // 2 procesos
     printf("size cola ready: %d \n", list_size(cola_ready)); // 1 procesos
