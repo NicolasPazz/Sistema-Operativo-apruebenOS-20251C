@@ -15,13 +15,13 @@ const char* estado_to_string(Estados estado) {
 }
 
 void mostrar_pcb(t_pcb PCB) {
-    printf("----- PCB -----\n");
+    printf("-*-*-*-*-*- PCB -*-*-*-*-*-\n");
     printf("PID: %u\n", PCB.PID);
     printf("PC: %u\n", PCB.PC);
     mostrar_metrica("ME", PCB.ME);
     mostrar_metrica("MT", PCB.MT);
     printf("Estado: %s\n", estado_to_string(PCB.Estado));
-    printf("----------------\n");
+    printf("-*-*-*-*-*-*-*-*-*-*-*-*-*-\n");
 }
 
 void mostrar_metrica(const char* nombre, uint16_t* metrica) {
@@ -38,7 +38,7 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
         log_error(kernel_log, "cambiar_estado_pcb: PCB es NULL");
         return;
     }
-    
+
     if (!transicion_valida(PCB->Estado, nuevo_estado_enum)) {
         log_error(kernel_log, "cambiar_estado_pcb: Transicion no valida: %s → %s",
                   estado_to_string(PCB->Estado),

@@ -12,7 +12,7 @@ void INIT_PROC(char* nombre_archivo, uint16_t tam_memoria) {
         nuevo_pcb->MT[i] = 0;
     }
     nuevo_pcb->Estado = NEW;
-
+    
     list_add(cola_new, nuevo_pcb);
     list_add(cola_procesos, nuevo_pcb);
 }
