@@ -82,3 +82,54 @@ void conectar_kernel_interrupt() {
         exit(EXIT_FAILURE);
     }
 }
+
+
+int realizar_handshake(char* ip, char* puerto, char* quien_realiza_solicitud, char* con_quien_se_conecta) {
+    // Crear conexión al servidor
+    int conexion = crear_conexion(ip, puerto);
+
+    if (conexion == -1) {
+        perror("Error al crear conexión");
+        log_error(cpu_log, "No se pudo conectar a %s:%s", ip, puerto);
+        return -1;
+    }
+
+    uint32_t handshake = 1; // Código del handshake
+    uint32_t result;        // Respuesta del servidor
+    int bytes_enviados, bytes_recibidos;
+
+    // Enviar el handshake
+    bytes_enviados = send(conexion, &handshake, sizeof(handshake), MSG_NOSIGNAL);
+    if (bytes_enviados == -1) {
+        perror("Error al enviar handshake");
+        log_error(cpu_log, "Fallo al enviar handshake a %s:%s", ip, puerto);
+        close(conexion);
+        return -1;
+    }
+
+    // Esperar la respuesta del servidor
+    bytes_recibidos = recv(conexion, &result, sizeof(result), MSG_WAITALL);
+    if (bytes_recibidos <= 0) {
+        if (bytes_recibidos == 0) {
+            log_error(cpu_log, "El servidor %s:%s cerró la conexión inesperadamente", ip, puerto);
+        } else {
+            perror("Error al recibir respuesta");
+        }
+        close(conexion);
+        return -1;
+    }
+
+    // Validar la respuesta del handshake
+    if (result != 0) {
+        log_error(cpu_log, "Handshake rechazado por el servidor %s:%s", ip, puerto);
+        close(conexion);
+        return -1;
+    }
+
+    // Loggear éxito del handshake
+    log_info(cpu_log, "Handshake exitoso. %s se conectó con %s en %s:%s",
+             quien_realiza_solicitud, con_quien_se_conecta, ip, puerto);
+
+    // Devolver el descriptor de la conexión
+    return conexion;
+}

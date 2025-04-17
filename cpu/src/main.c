@@ -10,12 +10,27 @@ int main(int argc, char* argv[]) {
     leer_config_cpu();    
     iniciar_logger_cpu();
 
-    conectar_cpu_memoria();
-    conectar_kernel_dispatch();
-    conectar_kernel_interrupt();
+    //conectar_cpu_memoria();
+    // conectar_kernel_dispatch();
+    // conectar_kernel_interrupt();
 
-    pthread_create(&hilo_dispatch, NULL, recibir_kernel_dispatch, NULL);
-    pthread_create(&hilo_interrupt, NULL, recibir_kernel_interrupt, NULL);
+    // pthread_create(&hilo_dispatch, NULL, recibir_kernel_dispatch, NULL);
+    // pthread_create(&hilo_interrupt, NULL, recibir_kernel_interrupt, NULL);
+
+    int conexion_memoria = realizar_handshake(IP_MEMORIA, PUERTO_MEMORIA, "CPU", "MEMORIA");
+    enviar_mensaje("Hola memoria soy CPU",conexion_memoria);
+    int conexion_kernel_dispatch = realizar_handshake(IP_KERNEL, PUERTO_KERNEL_DISPATCH, "CPU", "KERNEL_DISPATCH");
+
+    int conexion_kernel_interrupt = realizar_handshake(IP_KERNEL, PUERTO_KERNEL_INTERRUPT, "CPU", "KERNEL_INTERRUPT");
+
+    pthread_t atiende_respuestas_kernel_dispatch;
+    pthread_create(&atiende_respuestas_kernel_dispatch, NULL, (void *)recibir_kernel_dispatch, (void *) (intptr_t) conexion_kernel_dispatch);
+    pthread_detach(atiende_respuestas_kernel_dispatch);
+
+    pthread_t atiende_respuestas_kernel_interrupt;
+    pthread_create(&atiende_respuestas_kernel_interrupt, NULL, (void *)recibir_kernel_interrupt, (void *)(intptr_t)conexion_kernel_interrupt);
+    pthread_detach(atiende_respuestas_kernel_interrupt);
+
 
     //ejecutar_ciclo_instruccion();
     terminar_programa();
@@ -23,36 +38,41 @@ int main(int argc, char* argv[]) {
 }
 
 // NO UTIL POR EL MOMENTOS
-void atender_cliente(void* arg) { 
-    cliente_data_t *data = (cliente_data_t *)arg;
-    int control_key = 1;
-    while (control_key) {
-        int cod_op = recibir_operacion(data->fd);
-        switch (cod_op) {
-            case MENSAJE:
-                recibir_mensaje(data->fd, data->logger);
-                break;
-            case PAQUETE:
-                t_list* lista = recibir_paquete(data->fd);
-                list_iterate(lista, (void*)iterator);
-                list_destroy(lista);
-                break;
-            case -1:
-                log_error(data->logger, "El cliente (%s) se desconectó. Terminando servidor.", data->cliente);
-                control_key = 0;
-                break;
-            default:
-                log_warning(data->logger, "Operación desconocida de %s", data->cliente);
-                break;
-        }
-    }
-}
+// void atender_cliente(void* arg) { 
+//     cliente_data_t *data = (cliente_data_t *)arg;
+//     int control_key = 1;
+//     while (control_key) {
+//         int cod_op = recibir_operacion(data->fd);
+//         switch (cod_op) {
+//             case MENSAJE:
+//                 recibir_mensaje(data->fd, data->logger);
+//                 break;
+//             case PAQUETE:
+//                 t_list* lista = recibir_paquete(data->fd);
+//                 list_iterate(lista, (void*)iterator);
+//                 list_destroy(lista);
+//                 break;
+//             case -1:
+//                 log_error(data->logger, "El cliente (%s) se desconectó. Terminando servidor.", data->cliente);
+//                 control_key = 0;
+//                 break;
+//             default:
+//                 log_warning(data->logger, "Operación desconocida de %s", data->cliente);
+//                 break;
+//         }
+//     }
+// }
 
-void* recibir_kernel_dispatch(void* arg) {
-    while (1) {
+int recibir_kernel_dispatch(int fd_kernel_dispatch) {
+    int noFinalizar = 0;
+    while (noFinalizar != -1) {
         int cod_op = recibir_operacion(fd_kernel_dispatch);
         switch (cod_op) {
-            case EXEC:
+            case MENSAJE_OP:
+			    recibir_mensaje(fd_kernel_dispatch, cpu_log);
+			    break;
+            case EXEC_OP:
+                //int pid_exec = recibir_pid(fd_kernel_dispatch);
                 //int pid = recibir_pid(fd_kernel_dispatch);
                 int pc, pid;//= recibir_instruccion(fd_kernel_dispatch);
                 //log_info(cpu_log, "EXEC - PID: %d, Instrucción: %s", pid, instruccion->parametros1);
@@ -69,7 +89,7 @@ void* recibir_kernel_dispatch(void* arg) {
     }
 }
 
-void* recibir_kernel_interrupt(void* arg) {
+int recibir_kernel_interrupt(int fd_kernel_interrupt) {
     while (1) {
         int cod_op = recibir_operacion(fd_kernel_interrupt);
         switch (cod_op) {

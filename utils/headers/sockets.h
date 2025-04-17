@@ -46,7 +46,9 @@ typedef enum {
 	INIT_PROC_OP, 
 	DUMP_MEMORY_OP, 
 	EXIT_OP,
-	EXEC_OP
+	EXEC_OP,
+	INTERRUPCION_OP,
+	PEDIR_INSTRUCCION_OP
 } op_code;
 
 typedef struct {
@@ -89,10 +91,11 @@ t_config* iniciar_config(char* path);
 
 /////////////// Conexiones ///////////////
 int iniciar_servidor(char *puerto,t_log* logger, char* msj_server);
-int crear_conexion(char *ip, char* puerto;
+int crear_conexion(char *ip, char* puerto);
 int esperar_cliente(int socket_servidor, t_log* logger);
 void atender_cliente(void* arg);
 void liberar_conexion(int socket_cliente);
+
 
 /////////////// Mensajes y paquetes ///////////////
 cliente_data_t* crear_cliente_data(int fd, t_log* logger, char* cliente);
@@ -110,5 +113,8 @@ void eliminar_paquete(t_paquete* paquete);
 void paquete(int conexion);
 void* serializar_paquete(t_paquete* paquete, int bytes);
 void iterator(char* value);
+t_paquete* crear_paquete_op(op_code codop);
+t_instruccion* recibir_instruccion(int conexion);
+void agregar_entero_a_paquete(t_paquete *paquete, int numero);
 
 #endif

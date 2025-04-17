@@ -30,5 +30,6 @@ void iniciar_logger_cpu(void);
 //void iniciar_conexiones_cpu(void);
 void conectar_kernel_dispatch();
 void conectar_kernel_interrupt();
+int realizar_handshake(char* ip, char* puerto, char* quien_realiza_solicitud, char* con_quien_se_conecta);
 
 #endif /* CPU_H */
