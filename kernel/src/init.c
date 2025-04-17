@@ -80,7 +80,7 @@ void iniciar_logger_kernel_debug() {
 
 void iniciar_conexiones_kernel(){
     //////////////////////////// Conexión hacia Memoria ////////////////////////////
-    //fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, CLIENTE_KERNEL);
+    fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA);
     if (fd_memoria != -1) {
         log_info(kernel_log, "Kernel conectado a Memoria exitosamente");
     } else {

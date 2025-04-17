@@ -14,7 +14,7 @@ t_log* iniciar_logger(char *file, char *process_name, bool is_active_console, t_
 t_config* iniciar_config(char* path) {
 	t_config* nuevo_config = config_create(path);
 	if(nuevo_config == NULL){
-		perror("Error al internar leer el config");
+		perror("Error al intentar leer el config");
 		exit(EXIT_FAILURE);
 	}
 	return nuevo_config;

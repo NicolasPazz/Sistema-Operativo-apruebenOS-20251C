@@ -8,7 +8,7 @@
 #define _POSIX_C_SOURCE 200809L
 
 /////////////// C Libs ///////////////
-#include <sys/types.h> 
+#include <sys/types.h>
 #include <netdb.h>
 #include <sys/socket.h>
 #include <sys/mman.h>
@@ -89,7 +89,7 @@ t_config* iniciar_config(char* path);
 
 /////////////// Conexiones ///////////////
 int iniciar_servidor(char *puerto,t_log* logger, char* msj_server);
-int crear_conexion(char *ip, char* puerto;
+int crear_conexion(char *ip, char* puerto);
 int esperar_cliente(int socket_servidor, t_log* logger);
 void atender_cliente(void* arg);
 void liberar_conexion(int socket_cliente);
@@ -111,4 +111,4 @@ void paquete(int conexion);
 void* serializar_paquete(t_paquete* paquete, int bytes);
 void iterator(char* value);
 
-#endif
+#endif /* UTILS_SOCKETS_H_ */
