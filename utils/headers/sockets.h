@@ -8,7 +8,7 @@
 #define _POSIX_C_SOURCE 200809L
 
 /////////////// C Libs ///////////////
-#include <sys/types.h> 
+#include <sys/types.h>
 #include <netdb.h>
 #include <sys/socket.h>
 #include <sys/mman.h>
@@ -117,4 +117,4 @@ t_paquete* crear_paquete_op(op_code codop);
 t_instruccion* recibir_instruccion(int conexion);
 void agregar_entero_a_paquete(t_paquete *paquete, int numero);
 
-#endif
+#endif /* UTILS_SOCKETS_H_ */
