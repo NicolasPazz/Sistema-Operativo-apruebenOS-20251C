@@ -54,11 +54,14 @@ void iniciar_conexiones_memoria(){
     //////////////////////////// Iniciar Server Memoria ////////////////////////////
     fd_memoria = iniciar_servidor(PUERTO_ESCUCHA, memoria_log, "Server Memoria iniciado");
 
+
+    while(1){
     //////////////////////////// Esperar al Cliente Kernel ////////////////////////////
-    log_info(memoria_log,"Esperando la conexion del Kernel...");
+    //log_info(memoria_log,"Esperando la conexion del Kernel...");
     fd_kernel = esperar_cliente(fd_memoria, memoria_log);
 
     //////////////////////////// Esperar al Cliente CPU ////////////////////////////
-    log_info(memoria_log,"Esperando la conexion del CPU ...");
+    //log_info(memoria_log,"Esperando la conexion del CPU ...");
     fd_cpu= esperar_cliente(fd_memoria,memoria_log);
+    }   
 }

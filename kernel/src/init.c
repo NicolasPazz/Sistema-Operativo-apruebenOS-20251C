@@ -7,8 +7,14 @@ t_log* kernel_log_debug;
 
 // Sockets
 int fd_dispatch;
+int fd_cpu_dispatch;
 int fd_interrupt;
+int fd_cpu_interrupt;
 int fd_memoria;
+int fd_kernel_io;
+int fd_io;
+
+
 
 // Config
 t_config* kernel_config;
@@ -78,17 +84,6 @@ void iniciar_logger_kernel_debug() {
     log_info(kernel_log_debug, "Kernel log de debug iniciado correctamente!");
 }
 
-void iniciar_conexiones_kernel(){
-    //////////////////////////// Conexión hacia Memoria ////////////////////////////
-    fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA);
-    if (fd_memoria != -1) {
-        log_info(kernel_log, "Kernel conectado a Memoria exitosamente");
-    } else {
-        log_error(kernel_log, "iniciar_conexiones_kernel: Error al conectar Kernel a Memoria");
-        exit(EXIT_FAILURE);
-    }
-}
-
 void iniciar_estados_kernel(){ 
     cola_new = list_create();
     cola_ready = list_create();
@@ -99,3 +94,65 @@ void iniciar_estados_kernel(){
     cola_exit = list_create();
     cola_procesos = list_create();
 }
+
+//////////////////////////// Conexiones del Kernel ////////////////////////////
+void* hilo_cliente_memoria(void* _){
+    ////////// Conexión hacia Memoria //////////
+    fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA);
+    if (fd_memoria != -1) {
+        log_info(kernel_log, "Kernel conectado a Memoria exitosamente");
+    } else {
+        log_error(kernel_log, "iniciar_conexiones_kernel: Error al conectar Kernel a Memoria");
+        exit(EXIT_FAILURE);
+    }
+    return NULL;
+}
+
+void* hilo_servidor_dispatch(void* _){
+    ////////// Servidor Dispatch escuchando conexiones  //////////
+    fd_dispatch = iniciar_servidor(PUERTO_ESCUCHA_DISPATCH, kernel_log, "Servidor Dispatch");
+
+    while(1){
+        fd_cpu_dispatch = esperar_cliente(fd_dispatch, kernel_log);
+        if (fd_cpu_dispatch != -1) {
+            log_info(kernel_log, "CPU conectado a Dispatch exitosamente");
+        } else {
+            log_error(kernel_log, "hilo_servidor_dispatch: Error al recibir cliente");
+            exit(EXIT_FAILURE);
+        }
+    }
+    return NULL;
+}
+
+void* hilo_servidor_interrupt(void* _){
+    ////////// Servidor Interrupt escuchando conexiones  //////////
+    fd_interrupt = iniciar_servidor(PUERTO_ESCUCHA_INTERRUPT, kernel_log, "Servidor Interrupt");
+
+    while(1){
+        fd_cpu_interrupt = esperar_cliente(fd_interrupt, kernel_log);
+        if (fd_cpu_interrupt != -1) {
+            log_info(kernel_log, "CPU conectado a Interrupt exitosamente");
+        } else {
+            log_error(kernel_log, "hilo_servidor_interrupt: Error al recibir cliente");
+            exit(EXIT_FAILURE);
+        }
+    }
+    return NULL;
+}
+
+void* hilo_servidor_io(void* _){
+    ////////// Servidor IO //////////
+    fd_kernel_io = iniciar_servidor(PUERTO_ESCUCHA_IO, kernel_log, "Servidor IO");
+
+    while(1){
+        fd_io = esperar_cliente(fd_kernel_io, kernel_log);
+        if (fd_io != -1) {
+            log_info(kernel_log, "IO conectado a Kernel exitosamente");
+        } else {
+            log_error(kernel_log, "hilo_servidor_io: Error al recibir cliente");
+            exit(EXIT_FAILURE);
+        }
+    }
+    return NULL;
+}
+

@@ -4,7 +4,7 @@
 t_log* io_log;
 t_config* io_config;
 
-int fd_kernel;
+int fd_kernel_io;
 
 char* IP_KERNEL;
 char* PUERTO_KERNEL;
@@ -34,8 +34,8 @@ void iniciar_logger_io() {
 
 void iniciar_conexiones_io(){
     //////////////////////////// Conexión hacia Kernel ////////////////////////////
-    fd_kernel = crear_conexion(IP_KERNEL, PUERTO_KERNEL);
-    if (fd_kernel != -1) {
+    fd_kernel_io = crear_conexion(IP_KERNEL, PUERTO_KERNEL);
+    if (fd_kernel_io != -1) {
         log_info(io_log, "IO conectado a Kernel exitosamente");
     } else {
         log_info(io_log, "Error al conectar IO a Kernel");
