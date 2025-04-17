@@ -43,7 +43,10 @@ extern t_list* cola_procesos;
 void iniciar_config_kernel(void);
 void iniciar_logger_kernel(void);
 void iniciar_logger_kernel_debug(void);
-void iniciar_conexiones_kernel(void);
+void* hilo_cliente_memoria(void* _);
+void* hilo_servidor_dispatch(void* _);
+void* hilo_servidor_interrupt(void* _);
+void* hilo_servidor_io(void* _);
 void iniciar_estados_kernel(void);
 
 #endif /* KERNEL_H */

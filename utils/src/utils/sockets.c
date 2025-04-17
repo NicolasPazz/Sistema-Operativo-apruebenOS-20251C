@@ -324,7 +324,6 @@ t_paquete* crear_paquete_op(op_code codop)
 }
 
 t_instruccion* recibir_instruccion(int conexion){
-
 }
 
 void agregar_entero_a_paquete(t_paquete *paquete, int numero)

@@ -10,12 +10,12 @@ int main(int argc, char* argv[]) {
     leer_config_cpu();    
     iniciar_logger_cpu();
 
-    //conectar_cpu_memoria();
-    // conectar_kernel_dispatch();
-    // conectar_kernel_interrupt();
+    conectar_cpu_memoria();
+    conectar_kernel_dispatch();
+    conectar_kernel_interrupt();
 
-    // pthread_create(&hilo_dispatch, NULL, recibir_kernel_dispatch, NULL);
-    // pthread_create(&hilo_interrupt, NULL, recibir_kernel_interrupt, NULL);
+    //pthread_create(&hilo_dispatch, NULL, recibir_kernel_dispatch, NULL);
+    //pthread_create(&hilo_interrupt, NULL, recibir_kernel_interrupt, NULL);
 
     int conexion_memoria = realizar_handshake(IP_MEMORIA, PUERTO_MEMORIA, "CPU", "MEMORIA");
     enviar_mensaje("Hola memoria soy CPU",conexion_memoria);

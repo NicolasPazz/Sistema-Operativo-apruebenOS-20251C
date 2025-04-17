@@ -1,18 +1,31 @@
 #include "../headers/kernel.h"
 
-void* hilo_conexiones(void* _) {
-    iniciar_conexiones_kernel();
-    return NULL;
-}
-
 int main(int argc, char* argv[]) {
     iniciar_logger_kernel_debug();
     iniciar_config_kernel();
     iniciar_logger_kernel();
     iniciar_estados_kernel();
-    //pthread_t hilo_servidor;
-    //pthread_create(&hilo_servidor, NULL, hilo_conexiones, NULL);
 
+
+    //////////////////////////// Conexiones del Kernel ////////////////////////////
+    pthread_t hilo_dispatch;
+    pthread_create(&hilo_dispatch, NULL, hilo_servidor_dispatch, NULL);
+    pthread_detach(hilo_dispatch);
+
+    pthread_t hilo_interrupt;
+    pthread_create(&hilo_interrupt, NULL, hilo_servidor_interrupt, NULL);
+    pthread_detach(hilo_interrupt);
+
+    pthread_t hilo_memoria;
+    pthread_create(&hilo_memoria, NULL, hilo_cliente_memoria, NULL);
+    pthread_detach(hilo_memoria);
+
+    pthread_t hilo_io;
+    pthread_create(&hilo_io, NULL, hilo_servidor_io, NULL);
+    pthread_join(hilo_io, NULL);
+
+
+    //////////////////////////// Procesos ////////////////////////////
     printf("size cola new: %d \n", list_size(cola_new));
     INIT_PROC("Test1", 10);
     printf("size cola new: %d \n", list_size(cola_new));

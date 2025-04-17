@@ -4,6 +4,8 @@ int main(int argc, char* argv[]) {
     iniciar_config_memoria();
     iniciar_logger_memoria();
     iniciar_conexiones_memoria();
+
+    while(1);
     return EXIT_SUCCESS;
 }
 
