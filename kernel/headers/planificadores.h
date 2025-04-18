@@ -7,8 +7,9 @@
 
 /////////////////////////////// Prototipos ///////////////////////////////
 void iniciar_planificador_corto_plazo(char* algoritmo);
-t_pcb* planificar_por_fifo(void);
-t_pcb* planificar_por_sjf(void);
-t_pcb* planificar_por_srt(void);
+void dispatch(t_pcb* proceso_a_ejecutar);
+t_pcb* elegir_por_fifo(void);
+t_pcb* elegir_por_sjf(void);
+t_pcb* elegir_por_srt(void);
 
 #endif /* PLANIFICADORES_H */

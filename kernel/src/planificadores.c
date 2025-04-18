@@ -2,14 +2,14 @@
 
 
 /////////////////////////////// Planificador Corto Plazo ///////////////////////////////
-t_pcb* planificar_por_fifo(){
+t_pcb* elegir_por_fifo(){
     log_debug(kernel_log, "PLANIFICANDO FIFO");
 
     // Se elegirá al siguiente proceso a ejecutar según su orden de llegada a READY.
     return (t_pcb*)list_get(cola_ready, 0);
 }
 
-t_pcb* planificar_por_sjf(){
+t_pcb* elegir_por_sjf(){
     log_debug(kernel_log, "PLANIFICANDO SJF");
 
     /*  Se elegirá el proceso que tenga la rafaga más corta.
@@ -25,7 +25,7 @@ t_pcb* planificar_por_sjf(){
 
 }
 
-t_pcb* planificar_por_srt(){
+t_pcb* elegir_por_srt(){
     log_debug(kernel_log, "PLANIFICANDO SRT");
 
     /*
@@ -37,23 +37,31 @@ t_pcb* planificar_por_srt(){
 
 }
 
+void dispatch(t_pcb* proceso_a_ejecutar){
+
+    // Una vez seleccionado el proceso a ejecutar, se lo transicionará al estado EXEC
+    cambiar_estado_pcb(proceso_a_ejecutar, EXEC);
+
+    // Enviar a CPU el PID del proceso a ejecutar
+    log_trace(kernel_log, "Enviando PID %d a CPU por Dispatch para que lo ejecute", proceso_a_ejecutar->PID);
+}
+
 void iniciar_planificador_corto_plazo(char* algoritmo){
     t_pcb* proceso_elegido;
+
     if (!list_is_empty(cola_ready) && strcmp(algoritmo, "FIFO") == 0) {
-        proceso_elegido = planificar_por_fifo();
+        proceso_elegido = elegir_por_fifo();
     } else if (!list_is_empty(cola_ready) && strcmp(algoritmo, "SJF") == 0) {
-        proceso_elegido = planificar_por_sjf();
+        proceso_elegido = elegir_por_sjf();
     } else if (!list_is_empty(cola_ready) && strcmp(algoritmo, "SRT") == 0) {
-        proceso_elegido = planificar_por_srt();
+        proceso_elegido = elegir_por_srt();
     }
-      else if (list_is_empty(cola_ready)) {
+    else if (list_is_empty(cola_ready)) {
         log_error(kernel_log, "iniciar_planificador_corto_plazo: Cola READY vacía");
     }
-      else {
+    else {
         log_error(kernel_log, "iniciar_planificador_corto_plazo: Algoritmo no reconocido");
     }
 
-    //proceso_elegido->PID;
-    //proceso_elegido->PC;
-    // exec(proceso_elegido);
+    dispatch(proceso_elegido);
 }

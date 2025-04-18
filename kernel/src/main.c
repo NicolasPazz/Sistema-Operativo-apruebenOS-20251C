@@ -96,7 +96,12 @@ int main(int argc, char* argv[]) {
     printf("Cola procesos totales: %d\n", list_size(cola_procesos));
     mostrar_pcb(*(t_pcb*)list_get(cola_new, 0));
     mostrar_pcb(*(t_pcb*)list_get(cola_new, 1));
+    
+    t_pcb* test = (t_pcb*)list_get(cola_ready, 0);
+    test->PID = 23;
     mostrar_pcb(*(t_pcb*)list_get(cola_ready, 0));
+
+    
 
     //////////////////////////// Planificacion de corto plazo ////////////////////////////
     iniciar_planificador_corto_plazo(ALGORITMO_CORTO_PLAZO);

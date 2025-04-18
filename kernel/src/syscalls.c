@@ -14,7 +14,9 @@ void INIT_PROC(char* nombre_archivo, uint16_t tam_memoria) {
     nuevo_pcb->Estado = NEW;
     
     list_add(cola_new, nuevo_pcb);
+    nuevo_pcb->ME[NEW] += 1;
     list_add(cola_procesos, nuevo_pcb);
+    log_info(kernel_log, "## (<%d>) Se crea el proceso - Estado: NEW", nuevo_pcb->PID);
 }
 
 void DUMP_MEMORY();
