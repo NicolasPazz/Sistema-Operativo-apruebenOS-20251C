@@ -358,3 +358,10 @@ char* leer_string(char* buffer, int* desplazamiento) {
 
     return palabra;
 }
+
+int leer_entero(char *buffer, int * desplazamiento){
+    int entero;
+    memcpy(&entero, buffer + (*desplazamiento), sizeof(int));
+    (*desplazamiento) += sizeof(int);
+    return entero;
+}
