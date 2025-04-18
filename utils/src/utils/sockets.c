@@ -337,13 +337,31 @@ t_paquete* crear_paquete_op(op_code codop)
     return paquete;
 }
 
-t_instruccion* recibir_instruccion(int conexion){
-}
-
 void agregar_entero_a_paquete(t_paquete *paquete, int numero)
 {
 
     paquete->buffer->stream = realloc(paquete->buffer->stream, paquete->buffer->size + sizeof(int));
     memcpy(paquete->buffer->stream + paquete->buffer->size, &numero, sizeof(int));
     paquete->buffer->size += sizeof(int);
+}
+
+char* leer_string(char* buffer, int* desplazamiento) {
+    int tamanio = leer_entero(buffer, desplazamiento);
+
+    char* palabra = malloc(tamanio + 1);
+
+    memcpy(palabra, buffer + *desplazamiento, tamanio);
+
+    palabra[tamanio] = '\0';
+
+    *desplazamiento += tamanio;
+
+    return palabra;
+}
+
+int leer_entero(char *buffer, int * desplazamiento){
+    int entero;
+    memcpy(&entero, buffer + (*desplazamiento), sizeof(int));
+    (*desplazamiento) += sizeof(int);
+    return entero;
 }

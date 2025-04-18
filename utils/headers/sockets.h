@@ -125,5 +125,7 @@ void iterator(char* value);
 t_paquete* crear_paquete_op(op_code codop);
 t_instruccion* recibir_instruccion(int conexion);
 void agregar_entero_a_paquete(t_paquete *paquete, int numero);
+char* leer_string(char* buffer, int* desplazamiento);
+int leer_entero(char *buffer, int * desplazamiento);
 
 #endif /* UTILS_SOCKETS_H_ */
