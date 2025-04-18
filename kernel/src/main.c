@@ -18,6 +18,8 @@ int main(int argc, char* argv[]) {
     iniciar_estados_kernel();
     iniciar_sincronizacion_kernel();
 
+    iniciar_planificador_corto_plazo(ALGORITMO_CORTO_PLAZO);
+
     //////////////////////////// Conexiones del Kernel ////////////////////////////
       // Servidor de CPU
     pthread_t hilo_dispatch;
