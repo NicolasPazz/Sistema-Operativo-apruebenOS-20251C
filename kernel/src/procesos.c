@@ -54,7 +54,7 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
         return;
     }
 
-    log_info(kernel_log, "Proceso %u cambio de estado: %s → %s",
+    log_info(kernel_log, "## (<%u>) Pasa del estado <%s> al estado <%s>",
              PCB->PID,
              estado_to_string(PCB->Estado),
              estado_to_string(nuevo_estado_enum));
@@ -62,6 +62,7 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
     list_remove_element(cola_origen, PCB);
     PCB->Estado = nuevo_estado_enum;
     list_add(cola_destino, PCB);
+    PCB->ME[nuevo_estado_enum] += 1; // Se suma 1 en las Métricas de estado del estado al que pasa
 }
 
 bool transicion_valida(Estados actual, Estados destino) {
