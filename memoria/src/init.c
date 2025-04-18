@@ -50,18 +50,46 @@ void iniciar_logger_memoria() {
     }
 }
 
-void iniciar_conexiones_memoria(){
+void iniciar_conexiones_memoria() {
     //////////////////////////// Iniciar Server Memoria ////////////////////////////
     fd_memoria = iniciar_servidor(PUERTO_ESCUCHA, memoria_log, "Server Memoria iniciado");
 
+    if (fd_memoria == -1) {
+        log_error(memoria_log, "No se pudo iniciar el servidor de Memoria");
+        exit(EXIT_FAILURE);
+    }
 
-    while(1){
-    //////////////////////////// Esperar al Cliente Kernel ////////////////////////////
-    //log_info(memoria_log,"Esperando la conexion del Kernel...");
-    fd_kernel = esperar_cliente(fd_memoria, memoria_log);
+    log_info(memoria_log, "Esperando conexiones entrantes en Memoria...");
 
-    //////////////////////////// Esperar al Cliente CPU ////////////////////////////
-    //log_info(memoria_log,"Esperando la conexion del CPU ...");
-    fd_cpu= esperar_cliente(fd_memoria,memoria_log);
-    }   
+    while (1) {
+        int fd_cliente = esperar_cliente(fd_memoria, memoria_log);
+        if (fd_cliente == -1) {
+            log_error(memoria_log, "Error al aceptar cliente en Memoria");
+            continue;
+        }
+
+        int handshake = -1;
+        if (recv(fd_cliente, &handshake, sizeof(int), 0) <= 0) {
+            log_error(memoria_log, "Error al recibir handshake del cliente (fd=%d): %s", fd_cliente, strerror(errno));
+            close(fd_cliente);
+            continue;
+        }
+
+        switch (handshake) {
+            case HANDSHAKE_MEMORIA_KERNEL:
+                log_info(memoria_log, "HANDSHAKE_MEMORIA_KERNEL: Se conectó el Kernel (fd=%d)", fd_cliente);
+                fd_kernel = fd_cliente;
+                break;
+
+            case HANDSHAKE_MEMORIA_CPU:
+                log_info(memoria_log, "HANDSHAKE_MEMORIA_CPU: Se conectó una CPU (fd=%d)", fd_cliente);
+                fd_cpu = fd_cliente;
+                break;
+
+            default:
+                log_error(memoria_log, "Handshake inválido recibido (fd=%d): %d", fd_cliente, handshake);
+                close(fd_cliente);
+                break;
+        }
+    }
 }

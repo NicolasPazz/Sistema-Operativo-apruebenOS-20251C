@@ -17,6 +17,6 @@ extern char* LOG_LEVEL;
 /////////////////////////////// Prototipos ///////////////////////////////
 void iniciar_config_io(void);
 void iniciar_logger_io(void);
-void iniciar_conexiones_io(void);
+void iniciar_conexiones_io(char* nombre_io);
 
 #endif /* IO_H */

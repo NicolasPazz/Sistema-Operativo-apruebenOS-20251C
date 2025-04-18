@@ -1,9 +1,18 @@
 #include "../headers/io.h"
 
 int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        fprintf(stderr, "[IO] Uso: %s <NOMBRE_IO>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    char* nombre_io = argv[1];
+
     iniciar_config_io();
     iniciar_logger_io();
-    iniciar_conexiones_io();
+    iniciar_conexiones_io(nombre_io);
+
+    // atender_cliente();
 
     while(1);
     return EXIT_SUCCESS;

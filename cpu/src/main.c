@@ -2,35 +2,35 @@
 #include "../headers/init.h"
 #include "../headers/cicloDeInstruccion.h"
 
-pthread_t hilo_dispatch, hilo_interrupt;
+pthread_t hilo_dispatch, hilo_interrupt, hilo_memoria;
 
 int main(int argc, char* argv[]) {
-    
-    printf("INICIA EL MODULO DE CPU");
-    leer_config_cpu();    
+    if (argc < 2) {
+        fprintf(stderr, "[CPU] Uso: %s <ID_CPU>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    uint32_t numero_cpu = atoi(argv[1]);
+    leer_config_cpu();
     iniciar_logger_cpu();
 
-    conectar_cpu_memoria();
+    log_info(cpu_log, "[CPU %i] Iniciando proceso CPU", numero_cpu);
+
     conectar_kernel_dispatch();
+    send(fd_kernel_dispatch, &numero_cpu, sizeof(uint32_t), 0);
+
     conectar_kernel_interrupt();
+    send(fd_kernel_interrupt, &numero_cpu, sizeof(uint32_t), 0);
 
-    //pthread_create(&hilo_dispatch, NULL, recibir_kernel_dispatch, NULL);
-    //pthread_create(&hilo_interrupt, NULL, recibir_kernel_interrupt, NULL);
-
-    int conexion_memoria = realizar_handshake(IP_MEMORIA, PUERTO_MEMORIA, "CPU", "MEMORIA");
-    enviar_mensaje("Hola memoria soy CPU",conexion_memoria);
-    int conexion_kernel_dispatch = realizar_handshake(IP_KERNEL, PUERTO_KERNEL_DISPATCH, "CPU", "KERNEL_DISPATCH");
-
-    int conexion_kernel_interrupt = realizar_handshake(IP_KERNEL, PUERTO_KERNEL_INTERRUPT, "CPU", "KERNEL_INTERRUPT");
+    conectar_cpu_memoria();
 
     pthread_t atiende_respuestas_kernel_dispatch;
-    pthread_create(&atiende_respuestas_kernel_dispatch, NULL, (void *)recibir_kernel_dispatch, (void *) (intptr_t) conexion_kernel_dispatch);
+    pthread_create(&atiende_respuestas_kernel_dispatch, NULL, (void *)recibir_kernel_dispatch, (void *)(intptr_t)fd_kernel_dispatch);
     pthread_detach(atiende_respuestas_kernel_dispatch);
 
     pthread_t atiende_respuestas_kernel_interrupt;
-    pthread_create(&atiende_respuestas_kernel_interrupt, NULL, (void *)recibir_kernel_interrupt, (void *)(intptr_t)conexion_kernel_interrupt);
+    pthread_create(&atiende_respuestas_kernel_interrupt, NULL, (void *)recibir_kernel_interrupt, (void *)(intptr_t)fd_kernel_interrupt);
     pthread_detach(atiende_respuestas_kernel_interrupt);
-
 
     //ejecutar_ciclo_instruccion();
     terminar_programa();

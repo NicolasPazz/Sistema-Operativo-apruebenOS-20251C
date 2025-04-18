@@ -6,6 +6,7 @@ t_config* cpu_config;
 int fd_memoria;
 int fd_kernel_dispatch;
 int fd_kernel_interrupt;
+
 char* IP_MEMORIA;
 char* PUERTO_MEMORIA;
 char* IP_KERNEL;
@@ -52,84 +53,56 @@ void iniciar_logger_cpu() {
     }
 }
 
-void conectar_cpu_memoria() {
-
-    if((fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA)) == -1){
-        log_trace(cpu_log, "Error al conectar con Memoria. El servidor no esta activo");
-        log_info(cpu_log, "Error al conectar CPU a Memoria");
+void* conectar_cpu_memoria() {
+    fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, cpu_log);
+    if (fd_memoria == -1) {
+        log_error(cpu_log, "Error al conectar CPU a Memoria");
         exit(EXIT_FAILURE);
-    } else {
-        log_info(cpu_log, "CPU conectado a Memoria exitosamente");
     }
+
+    int handshake = HANDSHAKE_MEMORIA_CPU;
+    if (send(fd_memoria, &handshake, sizeof(int), 0) <= 0) {
+        log_error(cpu_log, "Error al enviar handshake a Memoria: %s", strerror(errno));
+        close(fd_memoria);
+        exit(EXIT_FAILURE);
+    }
+
+    log_info(cpu_log, "HANDSHAKE_MEMORIA_CPU: CPU conectado exitosamente a Memoria (fd=%d)", fd_memoria);
+    return NULL;
 }
 
-void conectar_kernel_dispatch() {
-    fd_kernel_dispatch = crear_conexion(IP_KERNEL, PUERTO_KERNEL_DISPATCH);
-    if (fd_kernel_dispatch != -1) {
-        log_info(cpu_log, "CPU conectado a Kernel Dispatch exitosamente");
-    } else {
+void* conectar_kernel_dispatch() {
+    fd_kernel_dispatch = crear_conexion(IP_KERNEL, PUERTO_KERNEL_DISPATCH, cpu_log);
+    if (fd_kernel_dispatch == -1) {
         log_error(cpu_log, "Error al conectar CPU a Kernel Dispatch");
         exit(EXIT_FAILURE);
     }
+
+    int handshake = HANDSHAKE_CPU_KERNEL_DISPATCH;
+    if (send(fd_kernel_dispatch, &handshake, sizeof(int), 0) <= 0) {
+        log_error(cpu_log, "Error al enviar handshake a Kernel Dispatch: %s", strerror(errno));
+        close(fd_kernel_dispatch);
+        exit(EXIT_FAILURE);
+    }
+
+    log_info(cpu_log, "HANDSHAKE_CPU_KERNEL_DISPATCH: CPU conectado exitosamente a Kernel Dispatch (fd=%d)", fd_kernel_dispatch);
+    return NULL;
 }
 
-void conectar_kernel_interrupt() {
-    fd_kernel_interrupt = crear_conexion(IP_KERNEL, PUERTO_KERNEL_INTERRUPT);
-    if (fd_kernel_interrupt != -1) {
-        log_info(cpu_log, "CPU conectado a Kernel Interrupt exitosamente");
-    } else {
+void* conectar_kernel_interrupt() {
+    fd_kernel_interrupt = crear_conexion(IP_KERNEL, PUERTO_KERNEL_INTERRUPT, cpu_log);
+    if (fd_kernel_interrupt == -1) {
         log_error(cpu_log, "Error al conectar CPU a Kernel Interrupt");
         exit(EXIT_FAILURE);
     }
-}
 
-
-int realizar_handshake(char* ip, char* puerto, char* quien_realiza_solicitud, char* con_quien_se_conecta) {
-    // Crear conexión al servidor
-    int conexion = crear_conexion(ip, puerto);
-
-    if (conexion == -1) {
-        perror("Error al crear conexión");
-        log_error(cpu_log, "No se pudo conectar a %s:%s", ip, puerto);
-        return -1;
+    int handshake = HANDSHAKE_CPU_KERNEL_INTERRUPT;
+    if (send(fd_kernel_interrupt, &handshake, sizeof(int), 0) <= 0) {
+        log_error(cpu_log, "Error al enviar handshake a Kernel Interrupt: %s", strerror(errno));
+        close(fd_kernel_interrupt);
+        exit(EXIT_FAILURE);
     }
 
-    uint32_t handshake = 1; // Código del handshake
-    uint32_t result;        // Respuesta del servidor
-    int bytes_enviados, bytes_recibidos;
-
-    // Enviar el handshake
-    bytes_enviados = send(conexion, &handshake, sizeof(handshake), MSG_NOSIGNAL);
-    if (bytes_enviados == -1) {
-        perror("Error al enviar handshake");
-        log_error(cpu_log, "Fallo al enviar handshake a %s:%s", ip, puerto);
-        close(conexion);
-        return -1;
-    }
-
-    // Esperar la respuesta del servidor
-    bytes_recibidos = recv(conexion, &result, sizeof(result), MSG_WAITALL);
-    if (bytes_recibidos <= 0) {
-        if (bytes_recibidos == 0) {
-            log_error(cpu_log, "El servidor %s:%s cerró la conexión inesperadamente", ip, puerto);
-        } else {
-            perror("Error al recibir respuesta");
-        }
-        close(conexion);
-        return -1;
-    }
-
-    // Validar la respuesta del handshake
-    if (result != 0) {
-        log_error(cpu_log, "Handshake rechazado por el servidor %s:%s", ip, puerto);
-        close(conexion);
-        return -1;
-    }
-
-    // Loggear éxito del handshake
-    log_info(cpu_log, "Handshake exitoso. %s se conectó con %s en %s:%s",
-             quien_realiza_solicitud, con_quien_se_conecta, ip, puerto);
-
-    // Devolver el descriptor de la conexión
-    return conexion;
+    log_info(cpu_log, "HANDSHAKE_CPU_KERNEL_INTERRUPT: CPU conectado exitosamente a Kernel Interrupt (fd=%d)", fd_kernel_interrupt);
+    return NULL;
 }
