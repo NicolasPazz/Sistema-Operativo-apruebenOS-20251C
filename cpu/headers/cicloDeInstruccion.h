@@ -19,6 +19,7 @@ void func_dump_memory();
 void func_exit();
 void pedir_funcion_memoria();
 void check_interrupt();
+t_instruccion* recibir_instruccion(int conexion);
 
 
 #endif

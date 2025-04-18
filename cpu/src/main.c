@@ -33,6 +33,7 @@ int main(int argc, char* argv[]) {
     pthread_detach(atiende_respuestas_kernel_interrupt);
 
     //ejecutar_ciclo_instruccion();
+    
     terminar_programa();
     return EXIT_SUCCESS;  
 }
