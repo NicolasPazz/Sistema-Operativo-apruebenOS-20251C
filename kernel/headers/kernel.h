@@ -7,29 +7,6 @@
 #include "syscalls.h"
 #include "planificadores.h"
 
-typedef enum {
-    CPU_DISPATCH,
-    CPU_INTERRUPT
-} tipo_conexion_cpu;
-
-typedef struct {
-    int fd;
-    int id;
-    tipo_conexion_cpu tipo_conexion;
-    
-} cpu;
-
-typedef enum {
-    IO_DISPONIBLE,
-    IO_OCUPADO
-} estado_io;
-
-typedef struct {
-    int fd;
-    char* nombre;
-    estado_io estado;
-} io;
-
 /////////////////////////////// Declaración de variables globales ///////////////////////////////
 // Logger
 extern t_log* kernel_log;

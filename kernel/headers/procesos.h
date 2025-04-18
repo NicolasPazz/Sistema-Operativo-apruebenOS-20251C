@@ -2,29 +2,10 @@
 #define PROCESOS_H
 
 /////////////////////////////// Includes ///////////////////////////////
-#include "kernel.h"
 #include <stdint.h>
 #include <stdio.h>
-
-/////////////////////////////// Estructuras ///////////////////////////////
-typedef struct PCB {
-    uint16_t PID;
-    uint16_t PC;
-    uint16_t ME[7];
-    uint16_t MT[7];
-    uint16_t Estado;
-} t_pcb;
-
-typedef enum Estados {
-    NEW,
-    READY,
-    EXEC,
-    BLOCKED,
-    SUSP_READY,
-    SUSP_BLOCKED,
-    EXIT_ESTADO
-} Estados;
-
+#include "kernel.h"
+#include "types.h"
 
 /////////////////////////////// Prototipos ///////////////////////////////
 void mostrar_pcb(t_pcb PCB); // Muestra por pantalla los valores de un PCB
