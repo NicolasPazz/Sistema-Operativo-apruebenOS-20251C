@@ -18,8 +18,6 @@ int main(int argc, char* argv[]) {
     iniciar_estados_kernel();
     iniciar_sincronizacion_kernel();
 
-    iniciar_planificador_corto_plazo(ALGORITMO_CORTO_PLAZO);
-
     //////////////////////////// Conexiones del Kernel ////////////////////////////
       // Servidor de CPU
     pthread_t hilo_dispatch;
@@ -99,6 +97,9 @@ int main(int argc, char* argv[]) {
     mostrar_pcb(*(t_pcb*)list_get(cola_new, 0));
     mostrar_pcb(*(t_pcb*)list_get(cola_new, 1));
     mostrar_pcb(*(t_pcb*)list_get(cola_ready, 0));
+
+    //////////////////////////// Planificacion de corto plazo ////////////////////////////
+    iniciar_planificador_corto_plazo(ALGORITMO_CORTO_PLAZO);
 
     //////////////////////////// Terminar ////////////////////////////  
     terminar_kernel();
