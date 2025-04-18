@@ -23,7 +23,6 @@ t_config* iniciar_config(char* path) {
 
 /////////////////////////////// Conexiones ///////////////////////////////
 int iniciar_servidor(char *puerto, t_log* logger, char* msj_server) {
-	int socket_servidor;
 	struct addrinfo hints, *servinfo;
 	int optval = 1;
 
@@ -32,19 +31,22 @@ int iniciar_servidor(char *puerto, t_log* logger, char* msj_server) {
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
 
-	getaddrinfo(NULL, puerto, &hints, &servinfo);
+	if (getaddrinfo(NULL, puerto, &hints, &servinfo) != 0) {
+		log_error(logger, "%s: error en getaddrinfo para el puerto %s", msj_server, puerto);
+		return -1;
+	}
 
 	// Crear socket
-	socket_servidor = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
-	if (socket_servidor == -1) {
-		perror("Error al crear socket del servidor");
+	int socket_servidor = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
+	if (socket_servidor < 0) {
+		log_error(logger, "%s: error al crear un socket servidor para el puerto %s: %s", msj_server, puerto, strerror(errno));
 		freeaddrinfo(servinfo);
 		return -1;
 	}
 
 	// Aplicar SO_REUSEADDR
 	if (setsockopt(socket_servidor, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0) {
-		perror("Error al configurar SO_REUSEADDR en el servidor");
+		log_error(logger, "%s: error al aplicar SO_REUSEADDR para el puerto %s: %s", msj_server, puerto, strerror(errno));
 		close(socket_servidor);
 		freeaddrinfo(servinfo);
 		return -1;
@@ -52,26 +54,26 @@ int iniciar_servidor(char *puerto, t_log* logger, char* msj_server) {
 
 	// Bind y Listen
 	if (bind(socket_servidor, servinfo->ai_addr, servinfo->ai_addrlen) < 0) {
-		perror("Error en bind del servidor");
+		log_error(logger, "%s: error en bind para el puerto %s: %s", msj_server, puerto, strerror(errno));
 		close(socket_servidor);
 		freeaddrinfo(servinfo);
 		return -1;
 	}
 
 	if (listen(socket_servidor, SOMAXCONN) < 0) {
-		perror("Error en listen del servidor");
+		log_error(logger, "%s: error en listen para el puerto %s: %s", msj_server, puerto, strerror(errno));
 		close(socket_servidor);
 		freeaddrinfo(servinfo);
 		return -1;
 	}
 
 	freeaddrinfo(servinfo);
-	log_trace(logger, "SERVER: %s", msj_server);
+	log_trace(logger, "%s escuchando en puerto %s", msj_server, puerto);
 
 	return socket_servidor;
 }
 
-int crear_conexion(char *ip, char* puerto) {
+int crear_conexion(char *ip, char* puerto, t_log* logger) {
     struct addrinfo hints;
     struct addrinfo *server_info;
     int socket_cliente;
@@ -82,42 +84,39 @@ int crear_conexion(char *ip, char* puerto) {
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    if (getaddrinfo(ip, puerto, &hints, &server_info) != 0) {
-        perror("Error en getaddrinfo");
+	if (getaddrinfo(ip, puerto, &hints, &server_info) != 0) {
+        log_error(logger, "crear_conexion: Error en getaddrinfo para %s:%s", ip, puerto);
         return -1;
     }
 
-    socket_cliente = socket(server_info->ai_family,
-                            server_info->ai_socktype,
-                            server_info->ai_protocol);
+    socket_cliente = socket(server_info->ai_family, server_info->ai_socktype, server_info->ai_protocol);
     if (socket_cliente < 0) {
-        perror("Error al crear socket");
+        log_error(logger, "crear_conexion: Error al crear socket para %s:%s", ip, puerto);
         freeaddrinfo(server_info);
         return -1;
     }
 
     if (setsockopt(socket_cliente, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0) {
-        perror("Error al configurar SO_REUSEADDR");
+        log_error(logger, "crear_conexion: Error al aplicar SO_REUSEADDR para %s:%s", ip, puerto);
         close(socket_cliente);
         freeaddrinfo(server_info);
         return -1;
     }
 
     if (connect(socket_cliente, server_info->ai_addr, server_info->ai_addrlen) == -1) {
-        perror("Error al conectar");
+        log_error(logger, "crear_conexion: No se pudo conectar a %s:%s", ip, puerto);
         close(socket_cliente);
         freeaddrinfo(server_info);
         return -1;
     }
 
     freeaddrinfo(server_info);
-
     return socket_cliente;
 }
 
 int esperar_cliente(int socket_servidor, t_log* logger) {
 	int socket_cliente = accept(socket_servidor, NULL, NULL);
-	log_info(logger, "Se conecto el cliente <%d>", socket_cliente);
+	log_info(logger, "Se conecto un nuevo cliente (fd = %d)", socket_cliente);
 	return socket_cliente;
 }
 
@@ -148,6 +147,21 @@ void atender_cliente(void* arg) {
 
 void liberar_conexion(int socket_cliente) {
 	close(socket_cliente);
+}
+
+bool validar_handshake(int fd, handshake_code esperado, t_log* log) {
+    int recibido;
+    if (recv(fd, &recibido, sizeof(int), 0) <= 0) {
+        log_error(log, "Error recibiendo handshake (fd=%d): %s", fd, strerror(errno));
+        return false;
+    }
+
+    if (recibido != esperado) {
+        log_error(log, "Handshake inválido (fd=%d): se esperaba %d, se recibió %d", fd, esperado, recibido);
+        return false;
+    }
+
+    return true;
 }
 
 /////////////////////////////// Mensajes y paquetes ///////////////////////////////

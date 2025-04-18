@@ -7,6 +7,29 @@
 #include "syscalls.h"
 #include "planificadores.h"
 
+typedef enum {
+    CPU_DISPATCH,
+    CPU_INTERRUPT
+} tipo_conexion_cpu;
+
+typedef struct {
+    int fd;
+    int id;
+    tipo_conexion_cpu tipo_conexion;
+    
+} cpu;
+
+typedef enum {
+    IO_DISPONIBLE,
+    IO_OCUPADO
+} estado_io;
+
+typedef struct {
+    int fd;
+    char* nombre;
+    estado_io estado;
+} io;
+
 /////////////////////////////// Declaración de variables globales ///////////////////////////////
 // Logger
 extern t_log* kernel_log;
@@ -39,6 +62,11 @@ extern t_list* cola_susp_blocked;
 extern t_list* cola_exit;
 extern t_list* cola_procesos;
 
+// Conexiones
+extern bool conectado_cpu;
+extern bool conectado_io;
+extern pthread_mutex_t mutex_conexiones;
+
 /////////////////////////////// Prototipos ///////////////////////////////
 void iniciar_config_kernel(void);
 void iniciar_logger_kernel(void);
@@ -48,5 +76,7 @@ void* hilo_servidor_dispatch(void* _);
 void* hilo_servidor_interrupt(void* _);
 void* hilo_servidor_io(void* _);
 void iniciar_estados_kernel(void);
+void iniciar_sincronizacion_kernel(void);
+void terminar_kernel(void);
 
 #endif /* KERNEL_H */

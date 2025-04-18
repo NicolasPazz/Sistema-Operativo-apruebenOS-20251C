@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <semaphore.h>
 #include <math.h>
+#include <errno.h>
 
 /////////////// Commons ///////////////
 #include <commons/log.h>
@@ -84,6 +85,14 @@ typedef struct {
 	int desplazamiento;
 } t_direccion_fisica;
 
+typedef enum {
+  HANDSHAKE_MEMORIA_CPU,
+  HANDSHAKE_MEMORIA_KERNEL,
+  HANDSHAKE_CPU_KERNEL_INTERRUPT,
+  HANDSHAKE_CPU_KERNEL_DISPATCH,
+  HANDSHAKE_IO_KERNEL
+} handshake_code;
+
 /////////////////////////////// Prototipos ///////////////////////////////
 /////////////// Logs y Config///////////////
 t_log* iniciar_logger(char *file, char *process_name, bool is_active_console, t_log_level level);
@@ -91,11 +100,11 @@ t_config* iniciar_config(char* path);
 
 /////////////// Conexiones ///////////////
 int iniciar_servidor(char *puerto,t_log* logger, char* msj_server);
-int crear_conexion(char *ip, char* puerto);
+int crear_conexion(char *ip, char* puerto, t_log* logger);
 int esperar_cliente(int socket_servidor, t_log* logger);
 void atender_cliente(void* arg);
 void liberar_conexion(int socket_cliente);
-
+bool validar_handshake(int fd, handshake_code esperado, t_log* log);
 
 /////////////// Mensajes y paquetes ///////////////
 cliente_data_t* crear_cliente_data(int fd, t_log* logger, char* cliente);

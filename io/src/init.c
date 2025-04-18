@@ -32,13 +32,26 @@ void iniciar_logger_io() {
     }
 }
 
-void iniciar_conexiones_io(){
+void iniciar_conexiones_io(char* nombre_io){
     //////////////////////////// Conexión hacia Kernel ////////////////////////////
-    fd_kernel_io = crear_conexion(IP_KERNEL, PUERTO_KERNEL);
-    if (fd_kernel_io != -1) {
-        log_info(io_log, "IO conectado a Kernel exitosamente");
-    } else {
-        log_info(io_log, "Error al conectar IO a Kernel");
+    fd_kernel_io = crear_conexion(IP_KERNEL, PUERTO_KERNEL, io_log);
+    if (fd_kernel_io == -1) {
+        log_error(io_log, "Error al conectar IO a Kernel");
         exit(EXIT_FAILURE);
     }
+
+    int handshake = HANDSHAKE_IO_KERNEL;
+    if (send(fd_kernel_io, &handshake, sizeof(int), 0) <= 0) {
+        log_error(io_log, "Error al enviar handshake a Kernel: %s", strerror(errno));
+        close(fd_kernel_io);
+        exit(EXIT_FAILURE);
+    }
+
+    if (send(fd_kernel_io, nombre_io, strlen(nombre_io) + 1, 0) <= 0) {
+        log_error(io_log, "Error al enviar el nombre de IO a Kernel: %s", strerror(errno));
+        close(fd_kernel_io);
+        exit(EXIT_FAILURE);
+    }
+
+    log_info(io_log, "HANDSHAKE_IO_KERNEL: IO conectado exitosamente a Kernel (fd=%d)", fd_kernel_io);
 }
