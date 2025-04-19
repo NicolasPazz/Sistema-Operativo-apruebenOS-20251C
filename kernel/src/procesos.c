@@ -98,9 +98,9 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
         PCB->tiempo_inicio_exec = get_time();
     } else if (PCB->Estado == EXEC && nuevo_estado_enum == BLOCKED){
         // Cuando SALE de EXEC calculo la estimacion proxima
-        double rafaga_real = get_time() - pcb->tiempo_inicio_exec;
+        double rafaga_real = get_time() - PCB->tiempo_inicio_exec;
         double alfa = 0.5;
-        pcb->estimacion_rafaga = alfa * rafaga_real + (1 - alfa) * pcb->estimacion_rafaga;
+        PCB->estimacion_rafaga = alfa * rafaga_real + (1 - alfa) * PCB->estimacion_rafaga;
 
     }
 
