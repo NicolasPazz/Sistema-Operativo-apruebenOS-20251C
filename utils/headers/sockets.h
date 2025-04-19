@@ -33,6 +33,7 @@
 #include <commons/config.h>
 #include <commons/bitarray.h>
 #include <commons/temporal.h>
+#include <commons/string.h>
 
 
 /////////////////////////////// Estructuras compartidas ///////////////////////////////
