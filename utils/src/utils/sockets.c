@@ -365,3 +365,32 @@ int leer_entero(char *buffer, int * desplazamiento){
     (*desplazamiento) += sizeof(int);
     return entero;
 }
+
+t_list* recibir_4_enteros(int socket){
+	uint32_t entero1;
+	int entero2;
+	int entero3;
+	int entero4;
+	
+
+	int size = 0;
+    char *buffer;
+    int desp = 0;
+	t_list* lista = list_create();
+
+    buffer = recibir_buffer(&size, socket);
+
+	entero1 = leer_entero(buffer,&desp);
+	entero2 = leer_entero(buffer,&desp);
+	entero3 = leer_entero(buffer,&desp);
+	entero4 = leer_entero(buffer,&desp);
+
+	list_add(lista, (void *)(uintptr_t)entero1);
+	list_add(lista, (void *)(uintptr_t)entero2);
+	list_add(lista, (void *)(uintptr_t)entero3);
+	list_add(lista, (void *)(uintptr_t)entero4);
+	
+
+	free(buffer);
+	return lista;
+}
