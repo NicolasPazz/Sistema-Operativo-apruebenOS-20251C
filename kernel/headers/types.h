@@ -22,6 +22,11 @@ typedef enum Estados {
     EXIT_ESTADO
 } Estados;
 
+typedef struct {
+    t_pcb* pcb;
+    t_temporal* cronometro;
+} t_pcb_temporal;
+
     ///// CPU
 typedef enum {
     CPU_DISPATCH,

@@ -5,6 +5,9 @@
 t_log* kernel_log;
 t_log* kernel_log_debug;
 
+// Hashmap de cronometros por PCB
+t_dictionary* tiempos_por_pid;
+
 // Sockets
 int fd_dispatch;
 int fd_cpu_dispatch;
@@ -114,6 +117,10 @@ void iniciar_sincronizacion_kernel(){
 
     conectado_cpu = false;
     conectado_io = false;
+}
+
+void iniciar_diccionario_tiempos() {
+    tiempos_por_pid = dictionary_create();
 }
 
 void terminar_kernel(){

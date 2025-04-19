@@ -1,5 +1,7 @@
 #include "../headers/syscalls.h"
 
+t_temporal* tiempo_estado_actual;
+
 /////////////////////////////// Funciones ///////////////////////////////
 void INIT_PROC(char* nombre_archivo, uint16_t tam_memoria) {
     t_pcb* nuevo_pcb = malloc(sizeof(t_pcb));
@@ -15,6 +17,13 @@ void INIT_PROC(char* nombre_archivo, uint16_t tam_memoria) {
     
     list_add(cola_new, nuevo_pcb);
     nuevo_pcb->ME[NEW] += 1;
+    
+    // Manejar Cronometro para MT
+    char* pid_key = string_itoa(nuevo_pcb->PID);
+    t_temporal* nuevo_cronometro = temporal_create();
+    dictionary_put(tiempos_por_pid, pid_key, nuevo_cronometro);
+    free(pid_key);
+    
     list_add(cola_procesos, nuevo_pcb);
     log_info(kernel_log, "## (<%d>) Se crea el proceso - Estado: NEW", nuevo_pcb->PID);
 }

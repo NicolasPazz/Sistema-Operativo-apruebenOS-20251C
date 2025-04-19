@@ -16,6 +16,7 @@ int main(int argc, char* argv[]) {
     iniciar_config_kernel();
     iniciar_logger_kernel();
     iniciar_estados_kernel();
+    iniciar_diccionario_tiempos();
     iniciar_sincronizacion_kernel();
 
     //////////////////////////// Conexiones del Kernel ////////////////////////////
@@ -96,13 +97,24 @@ int main(int argc, char* argv[]) {
     printf("Cola procesos totales: %d\n", list_size(cola_procesos));
     mostrar_pcb(*(t_pcb*)list_get(cola_new, 0));
     mostrar_pcb(*(t_pcb*)list_get(cola_new, 1));
-    
+
     t_pcb* test = (t_pcb*)list_get(cola_ready, 0);
-    test->PID = 23;
-    mostrar_pcb(*(t_pcb*)list_get(cola_ready, 0));
+
+    cambiar_estado_pcb(test, EXEC);
+    sleep(1);  // Ejecuta 1 segundo
+    cambiar_estado_pcb(test, BLOCKED);
+    sleep(2);  // Bloqueado 2 segundos
+    cambiar_estado_pcb(test, SUSP_BLOCKED);
+    sleep(1);  // Susp. Bloqueado 1 segundo
+    cambiar_estado_pcb(test, SUSP_READY);
+    cambiar_estado_pcb(test, READY);
+    sleep(3);  // Espera 3 segundos en READY
+    cambiar_estado_pcb(test, EXEC);
+    sleep(1);  // Segunda vez ejecutando, 1 segundo
+    cambiar_estado_pcb(test, EXIT_ESTADO);
+    mostrar_pcb(*(t_pcb*)list_get(cola_exit, 0));
 
     
-
     //////////////////////////// Planificacion de corto plazo ////////////////////////////
     iniciar_planificador_corto_plazo(ALGORITMO_CORTO_PLAZO);
 

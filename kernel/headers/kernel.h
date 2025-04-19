@@ -11,6 +11,10 @@
 // Logger
 extern t_log* kernel_log;
 
+// Cronometro para MT en PCB
+extern t_temporal* tiempo_estado_actual;
+extern t_dictionary* tiempos_por_pid;
+
 // Sockets
 extern int fd_memoria;
 extern int fd_dispatch;
@@ -48,6 +52,7 @@ extern pthread_mutex_t mutex_conexiones;
 void iniciar_config_kernel(void);
 void iniciar_logger_kernel(void);
 void iniciar_logger_kernel_debug(void);
+void iniciar_diccionario_tiempos(void);
 void* hilo_cliente_memoria(void* _);
 void* hilo_servidor_dispatch(void* _);
 void* hilo_servidor_interrupt(void* _);
