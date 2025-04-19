@@ -1,5 +1,5 @@
 #include "../headers/planificadores.h"
-
+#include <sys/time.h>
 
 /////////////////////////////// Planificador Corto Plazo ///////////////////////////////
 t_pcb* elegir_por_fifo(){
@@ -12,7 +12,7 @@ t_pcb* elegir_por_fifo(){
 void* menor_rafaga(void* a, void* b) {
     t_pcb* pcb_a = (t_pcb*) a;
     t_pcb* pcb_b = (t_pcb*) b;
-    return pcb_a->MT[READY] <= pcb_b->MT[READY] ? pcb_a : pcb_b;
+    return pcb_a->estimacion_rafaga <= pcb_b->estimacion_rafaga ? pcb_a : pcb_b;
 }
 t_pcb* elegir_por_sjf(){
     log_debug(kernel_log, "PLANIFICANDO SJF");
@@ -27,7 +27,7 @@ t_pcb* elegir_por_sjf(){
         Est(n+1) =  R(n) + (1-) Est(n) ;     [0,1]
     */
 
-    return (t_pcb*)list_get_minimum(cola_ready, menor_rafaga);
+    return (t_pcb*)list_get_minimum(cola_ready, menor_rafaga); // Elige al PCB con la menor ESTIMACIÓN de ráfaga
 }
 
 t_pcb* elegir_por_srt(){
@@ -53,6 +53,7 @@ void dispatch(t_pcb* proceso_a_ejecutar){
 
     // Una vez seleccionado el proceso a ejecutar, se lo transicionará al estado EXEC
     cambiar_estado_pcb(proceso_a_ejecutar, EXEC);
+    proceso_a_ejecutar->tiempo_inicio_exec = get_time();
 
     // Enviar a CPU el PID del proceso a ejecutar
     log_trace(kernel_log, "Enviando PID %d a CPU por Dispatch para que lo ejecute", proceso_a_ejecutar->PID);
@@ -78,4 +79,21 @@ void iniciar_planificador_corto_plazo(char* algoritmo){
     }
 
     dispatch(proceso_elegido);
+}
+
+double get_time() {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec * 1000 + tv.tv_usec / 1000;
+}
+
+void fin_io(t_pcb* pcb){
+
+    // Actualizar la ráfaga estimada para el SJF
+    double rafaga_real = get_time() - pcb->tiempo_inicio_exec;
+    double alfa = 0.5;
+    pcb->estimacion_rafaga = alfa * rafaga_real + (1 - alfa) * pcb->estimacion_rafaga;
+
+    // Cambiar a estado READY
+    cambiar_estado_pcb(pcb, READY);
 }

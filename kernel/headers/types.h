@@ -10,6 +10,8 @@ typedef struct PCB {
     uint16_t ME[7];
     uint16_t MT[7];
     uint16_t Estado;
+    double tiempo_inicio_exec;
+    double estimacion_rafaga;
 } t_pcb;
 
 typedef enum Estados {

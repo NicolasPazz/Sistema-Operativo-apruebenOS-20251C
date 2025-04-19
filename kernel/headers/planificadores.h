@@ -12,5 +12,7 @@ t_pcb* elegir_por_fifo(void);
 void* menor_rafaga(void* a, void* b);
 t_pcb* elegir_por_sjf(void);
 t_pcb* elegir_por_srt(void);
+double get_time(void);
+void fin_io(t_pcb* pcb);
 
 #endif /* PLANIFICADORES_H */

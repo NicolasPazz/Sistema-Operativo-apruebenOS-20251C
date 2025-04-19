@@ -91,13 +91,28 @@ int main(int argc, char* argv[]) {
     cambiar_estado_pcb((t_pcb*)list_get(cola_procesos, 2), READY);
     mostrar_colas_estados(); // 3 Procesos en READY
 
+    cambiar_estado_pcb((t_pcb*)list_get(cola_procesos, 0), EXEC);
+    sleep(3);
+
+    cambiar_estado_pcb((t_pcb*)list_get(cola_procesos, 1), EXEC);
+    sleep(1);
+
+    cambiar_estado_pcb((t_pcb*)list_get(cola_procesos, 2), EXEC);
+    sleep(4);
+
     t_pcb* pid0 = (t_pcb*)list_get(cola_procesos, 0);
     t_pcb* pid1 = (t_pcb*)list_get(cola_procesos, 1);
     t_pcb* pid2 = (t_pcb*)list_get(cola_procesos, 2);
 
-    pid0->MT[READY] = 999;
-    pid1->MT[READY] = 100; // Tienen el mismo tiempo en ready, SJF desempata por FIFO
-    pid2->MT[READY] = 100;
+    fin_io(pid2);
+    fin_io(pid1);
+    fin_io(pid0);
+
+    /*
+    pid0->estimacion_rafaga = 9.0;
+    pid1->estimacion_rafaga = 32132100.0;
+    pid2->estimacion_rafaga = 100.0;
+    */
     
     //////////////////////////// Planificacion de corto plazo ////////////////////////////
     iniciar_planificador_corto_plazo(ALGORITMO_CORTO_PLAZO);

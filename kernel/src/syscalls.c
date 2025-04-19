@@ -1,4 +1,5 @@
 #include "../headers/syscalls.h"
+#define ESTIMACION_INICIAL 1
 
 t_temporal* tiempo_estado_actual;
 
@@ -14,6 +15,8 @@ void INIT_PROC(char* nombre_archivo, uint16_t tam_memoria) {
         nuevo_pcb->MT[i] = 0;
     }
     nuevo_pcb->Estado = NEW;
+    nuevo_pcb->tiempo_inicio_exec = 0;
+    nuevo_pcb->estimacion_rafaga = ESTIMACION_INICIAL;
     
     list_add(cola_new, nuevo_pcb);
     nuevo_pcb->ME[NEW] += 1;

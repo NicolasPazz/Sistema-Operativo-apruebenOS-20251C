@@ -21,6 +21,8 @@ void mostrar_pcb(t_pcb PCB) {
     mostrar_metrica("ME", PCB.ME);
     mostrar_metrica("MT", PCB.MT);
     printf("Estado: %s\n", estado_to_string(PCB.Estado));
+    printf("Tiempo inicio exec: %f\n", PCB.tiempo_inicio_exec);
+    printf("Ráfaga estimada: %.2f\n", PCB.estimacion_rafaga);
     printf("-*-*-*-*-*-*-*-*-*-*-*-*-*-\n");
 }
 
@@ -94,6 +96,11 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
     // Cambiar Estado y actualizar Métricas de Estados
     PCB->Estado = nuevo_estado_enum;
     PCB->ME[nuevo_estado_enum] += 1;  // Se suma 1 en las Métricas de estado del nuevo estado
+
+    // Si pasa al Estado EXEC hay que actualizar el tiempo_inicio_exec
+    if(nuevo_estado_enum == EXEC){
+        PCB->tiempo_inicio_exec = get_time();
+    }
 
     list_add(cola_destino, PCB);
 }
