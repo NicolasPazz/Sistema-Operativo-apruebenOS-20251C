@@ -58,9 +58,11 @@ void iniciar_planificador_corto_plazo(char* algoritmo){
     }
     else if (list_is_empty(cola_ready)) {
         log_error(kernel_log, "iniciar_planificador_corto_plazo: Cola READY vacía");
+        return NULL;
     }
     else {
         log_error(kernel_log, "iniciar_planificador_corto_plazo: Algoritmo no reconocido");
+        return NULL;
     }
 
     dispatch(proceso_elegido);
