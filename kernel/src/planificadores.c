@@ -89,11 +89,6 @@ double get_time() {
 
 void fin_io(t_pcb* pcb){
 
-    // Actualizar la ráfaga estimada para el SJF
-    double rafaga_real = get_time() - pcb->tiempo_inicio_exec;
-    double alfa = 0.5;
-    pcb->estimacion_rafaga = alfa * rafaga_real + (1 - alfa) * pcb->estimacion_rafaga;
-
     // Cambiar a estado READY
     cambiar_estado_pcb(pcb, READY);
     log_info(kernel_log, "## (<%d>) finalizó IO y pasa a READY", pcb->PID);

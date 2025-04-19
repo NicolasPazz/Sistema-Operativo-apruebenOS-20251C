@@ -93,14 +93,20 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
     }
     free(pid_key);
 
-    // Cambiar Estado y actualizar Métricas de Estados
-    PCB->Estado = nuevo_estado_enum;
-    PCB->ME[nuevo_estado_enum] += 1;  // Se suma 1 en las Métricas de estado del nuevo estado
-
     // Si pasa al Estado EXEC hay que actualizar el tiempo_inicio_exec
     if(nuevo_estado_enum == EXEC){
         PCB->tiempo_inicio_exec = get_time();
+    } else if (PCB->Estado == EXEC && nuevo_estado_enum == BLOCKED){
+        // Cuando SALE de EXEC calculo la estimacion proxima
+        double rafaga_real = get_time() - pcb->tiempo_inicio_exec;
+        double alfa = 0.5;
+        pcb->estimacion_rafaga = alfa * rafaga_real + (1 - alfa) * pcb->estimacion_rafaga;
+
     }
+
+    // Cambiar Estado y actualizar Métricas de Estados
+    PCB->Estado = nuevo_estado_enum;
+    PCB->ME[nuevo_estado_enum] += 1;  // Se suma 1 en las Métricas de estado del nuevo estado
 
     list_add(cola_destino, PCB);
 }
