@@ -107,12 +107,6 @@ int main(int argc, char* argv[]) {
     fin_io(pid2);
     fin_io(pid1);
     fin_io(pid0);
-
-    /*
-    pid0->estimacion_rafaga = 9.0;
-    pid1->estimacion_rafaga = 32132100.0;
-    pid2->estimacion_rafaga = 100.0;
-    */
     
     //////////////////////////// Planificacion de corto plazo ////////////////////////////
     iniciar_planificador_corto_plazo(ALGORITMO_CORTO_PLAZO);
