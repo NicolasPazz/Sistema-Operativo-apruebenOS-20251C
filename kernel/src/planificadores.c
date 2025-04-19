@@ -9,6 +9,11 @@ t_pcb* elegir_por_fifo(){
     return (t_pcb*)list_get(cola_ready, 0);
 }
 
+void* menor_rafaga(void* a, void* b) {
+    t_pcb* pcb_a = (t_pcb*) a;
+    t_pcb* pcb_b = (t_pcb*) b;
+    return pcb_a->MT[READY] <= pcb_b->MT[READY] ? pcb_a : pcb_b;
+}
 t_pcb* elegir_por_sjf(){
     log_debug(kernel_log, "PLANIFICANDO SJF");
 
@@ -22,7 +27,7 @@ t_pcb* elegir_por_sjf(){
         Est(n+1) =  R(n) + (1-) Est(n) ;     [0,1]
     */
 
-
+    return (t_pcb*)list_get_minimum(cola_ready, menor_rafaga);
 }
 
 t_pcb* elegir_por_srt(){
@@ -33,8 +38,15 @@ t_pcb* elegir_por_srt(){
         existiendo al menos un proceso en Exec, se debe evaluar si dicho proceso tiene una rafaga más corta que 
         los que se encuentran en ejecución. En caso de ser así, se debe informar al CPU que posee al Proceso 
         con el tiempo más alto que debe desalojar al mismo para que pueda ser planificado el nuevo.
-    */
+    
 
+    pthread_t hilo_algoritmo_srt;
+    pthread_create(&hilo_algoritmo_srt, NULL, chequear_ready, NULL);
+    pthread_detach(hilo_algoritmo_srt);
+    */
+    //t_pcb* menor_rafaga = list_get_minimum(cola_ready, menor_rafaga);
+
+    return (t_pcb*)list_get(cola_ready, 0);
 }
 
 void dispatch(t_pcb* proceso_a_ejecutar){
@@ -58,11 +70,11 @@ void iniciar_planificador_corto_plazo(char* algoritmo){
     }
     else if (list_is_empty(cola_ready)) {
         log_error(kernel_log, "iniciar_planificador_corto_plazo: Cola READY vacía");
-        return NULL;
+        return;
     }
     else {
         log_error(kernel_log, "iniciar_planificador_corto_plazo: Algoritmo no reconocido");
-        return NULL;
+        return;
     }
 
     dispatch(proceso_elegido);

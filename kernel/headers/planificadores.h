@@ -9,6 +9,7 @@
 void iniciar_planificador_corto_plazo(char* algoritmo);
 void dispatch(t_pcb* proceso_a_ejecutar);
 t_pcb* elegir_por_fifo(void);
+void* menor_rafaga(void* a, void* b);
 t_pcb* elegir_por_sjf(void);
 t_pcb* elegir_por_srt(void);
 

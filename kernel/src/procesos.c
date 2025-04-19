@@ -33,6 +33,18 @@ void mostrar_metrica(const char* nombre, uint16_t* metrica) {
     printf("]\n");
 }
 
+void mostrar_colas_estados() {
+    printf("Colas -> [NEW: %d, READY: %d, EXEC: %d, BLOCK: %d, SUSP.BLOCK: %d, SUSP.READY: %d, EXIT: %d] | Procesos en total: %d\n",
+        list_size(cola_new),
+        list_size(cola_ready),
+        list_size(cola_running),
+        list_size(cola_blocked),
+        list_size(cola_susp_blocked),
+        list_size(cola_susp_ready),
+        list_size(cola_exit),
+        list_size(cola_procesos));
+}
+
 void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
     if (PCB == NULL) {
         log_error(kernel_log, "cambiar_estado_pcb: PCB es NULL");

@@ -52,17 +52,13 @@ int main(int argc, char* argv[]) {
     log_info(kernel_log, "CPU y IO conectados. Continuando ejecucion");
   
     //////////////////////////// Primer proceso ////////////////////////////  
-    printf("Cola NEW: %d\n", list_size(cola_new));
-    printf("Cola READY: %d\n", list_size(cola_ready));
-    printf("Cola procesos totales: %d\n", list_size(cola_procesos));
+    printf("\n\n\n");
+    mostrar_colas_estados();
 
     log_info(kernel_log, "Creando proceso inicial:  Archivo: %s, Tamaño: %d", archivo_pseudocodigo, tamanio_proceso);
     INIT_PROC(archivo_pseudocodigo, tamanio_proceso);
 
-    mostrar_pcb(*(t_pcb*)list_get(cola_new, 0));
-    printf("Cola NEW: %d\n", list_size(cola_new));
-    printf("Cola READY: %d\n", list_size(cola_ready));
-    printf("Cola procesos totales: %d\n", list_size(cola_procesos));
+    mostrar_colas_estados();
 
     printf("\nPresione ENTER para iniciar planificación...\n");
 
@@ -83,40 +79,35 @@ int main(int argc, char* argv[]) {
     printf("Creando 2 procesos más... \n");
     INIT_PROC("Test2", 11);
     INIT_PROC("Test2", 12);
-    printf("Cola NEW: %d\n", list_size(cola_new));
-    printf("Cola READY: %d\n", list_size(cola_ready));
-    printf("Cola procesos totales: %d\n", list_size(cola_procesos));
-    mostrar_pcb(*(t_pcb*)list_get(cola_new, 0));
-    mostrar_pcb(*(t_pcb*)list_get(cola_new, 1));
-    mostrar_pcb(*(t_pcb*)list_get(cola_new, 2));
 
-    cambiar_estado_pcb((t_pcb*)list_get(cola_new, 0), READY);
+    mostrar_colas_estados(); // 3 Procesos en new
+
+    mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 0));
+    mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 1));
+    mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 2));
     
-    printf("Cola NEW: %d\n", list_size(cola_new));
-    printf("Cola READY: %d\n", list_size(cola_ready));
-    printf("Cola procesos totales: %d\n", list_size(cola_procesos));
-    mostrar_pcb(*(t_pcb*)list_get(cola_new, 0));
-    mostrar_pcb(*(t_pcb*)list_get(cola_new, 1));
+    cambiar_estado_pcb((t_pcb*)list_get(cola_procesos, 0), READY);
+    cambiar_estado_pcb((t_pcb*)list_get(cola_procesos, 1), READY);
+    cambiar_estado_pcb((t_pcb*)list_get(cola_procesos, 2), READY);
+    mostrar_colas_estados(); // 3 Procesos en READY
 
-    t_pcb* test = (t_pcb*)list_get(cola_ready, 0);
+    t_pcb* pid0 = (t_pcb*)list_get(cola_procesos, 0);
+    t_pcb* pid1 = (t_pcb*)list_get(cola_procesos, 1);
+    t_pcb* pid2 = (t_pcb*)list_get(cola_procesos, 2);
 
-    cambiar_estado_pcb(test, EXEC);
-    sleep(1);  // Ejecuta 1 segundo
-    cambiar_estado_pcb(test, BLOCKED);
-    sleep(2);  // Bloqueado 2 segundos
-    cambiar_estado_pcb(test, SUSP_BLOCKED);
-    sleep(1);  // Susp. Bloqueado 1 segundo
-    cambiar_estado_pcb(test, SUSP_READY);
-    cambiar_estado_pcb(test, READY);
-    sleep(3);  // Espera 3 segundos en READY
-    cambiar_estado_pcb(test, EXEC);
-    sleep(1);  // Segunda vez ejecutando, 1 segundo
-    cambiar_estado_pcb(test, EXIT_ESTADO);
-    mostrar_pcb(*(t_pcb*)list_get(cola_exit, 0));
-
+    pid0->MT[READY] = 999;
+    pid1->MT[READY] = 100; // Tienen el mismo tiempo en ready, SJF desempata por FIFO
+    pid2->MT[READY] = 100;
     
     //////////////////////////// Planificacion de corto plazo ////////////////////////////
     iniciar_planificador_corto_plazo(ALGORITMO_CORTO_PLAZO);
+
+    mostrar_colas_estados(); // PID 0 en EXEC
+
+    mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 0));
+    mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 1));
+    mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 2));
+    
 
     //////////////////////////// Terminar ////////////////////////////  
     terminar_kernel();
