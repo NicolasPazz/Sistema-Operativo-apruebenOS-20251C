@@ -1,8 +1,16 @@
-#ifndef MEMORIA_H
-#define MEMORIA_H
+#ifndef COMUNICACION_H_
+#define COMUNICACION_H_
 
-/////////////////////////////// Includes ///////////////////////////////
-#include "../../utils/headers/sockets.h"
+#include <stdint.h>
+#include <string.h>
+#include <pthread.h>
+#include <inttypes.h>
+#include <commons/log.h>
+#include <commons/config.h>
+#include <../../utils/headers/sockets.h>
+
+#include "init_memoria.h"
+#include "interfaz_memoria.h"
 
 /////////////////////////////// Declaración de variables globales ///////////////////////////////
 extern t_log* memoria_log;
@@ -25,8 +33,12 @@ extern char* LOG_LEVEL;
 extern char* DUMP_PATH;
 
 /////////////////////////////// Prototipos ///////////////////////////////
-void iniciar_config_memoria(void);
 void iniciar_logger_memoria(void);
-void iniciar_conexiones_memoria(void);
+void procesar_conexion(void*);
 
-#endif /* MEMORIA_H */
+
+int iniciar_conexiones_memoria(char* puerto, t_log* logger);
+int server_escuchar(char* server_name, int server_socket);
+
+
+#endif 

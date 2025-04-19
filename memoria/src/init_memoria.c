@@ -1,0 +1,105 @@
+#include "../headers/init_memoria.h"
+
+// varios
+t_log* logger;
+t_config_memoria* cfg;
+//bool seg;
+
+// segmentacion
+t_list* segmentos_libres;
+t_list* segmentos_usados;
+uint32_t memoria_disponible;
+t_list* ts_patotas;
+t_list* ts_tripulantes;
+//segmento_t* (*proximo_hueco)(uint32_t);
+
+// paginacion
+//frame_t* tabla_frames;
+//frame_swap_t* tabla_frames_swap;
+t_list* tp_patotas;
+t_list* tid_pid_lookup;
+uint32_t espacio_disponible_swap;
+uint32_t global_TUR; // evil
+
+void* area_swap;
+
+void* memoria_principal;
+
+
+void iniciar_logger_memoria() {
+    logger = iniciar_logger("memoria.log", MODULENAME, 1, LOG_LEVEL_INFO);
+    if (logger == NULL) {
+        printf("Error al iniciar memoria logs\n");
+    } else {
+        log_info(logger, "Memoria logs iniciados correctamente!");
+    }
+}
+
+uint8_t cargar_configuracion(char* path) {
+    t_config* cfg_file = config_create(path);
+
+    if (cfg_file == NULL) {
+        log_error(logger, "No se encontró el archivo de configuración: %s", path);
+        return 0;
+    }
+
+    char* properties[] = {
+        "PUERTO_ESCUCHA",
+        "TAM_MEMORIA",
+        "TAM_PAGINA",
+        "ENTRADAS_POR_TABLA",
+        "CANTIDAD_NIVELES",
+        "RETARDO_MEMORIA",
+        "PATH_SWAPFILE",
+        "RETARDO_SWAP",
+        "LOG_LEVEL",
+        "DUMP_PATH",
+        NULL
+    };
+
+    if (!config_has_all_properties(cfg_file, properties)) {
+        log_error(logger, "Propiedades faltantes en el archivo de configuración");
+        config_destroy(cfg_file);
+        return 0;
+    }
+
+    cfg = malloc(sizeof(t_config_memoria));
+    if (cfg == NULL) {
+        log_error(logger, "Error al asignar memoria para la configuración");
+        config_destroy(cfg_file);
+        return 0;
+    }
+
+    cfg->PUERTO_ESCUCHA = config_get_int_value(cfg_file, "PUERTO_ESCUCHA");
+    cfg->TAM_MEMORIA = config_get_int_value(cfg_file, "TAM_MEMORIA");
+    cfg->TAM_PAGINA = config_get_int_value(cfg_file, "TAM_PAGINA");
+    cfg->ENTRADAS_POR_TABLA = config_get_int_value(cfg_file, "ENTRADAS_POR_TABLA");
+    cfg->CANTIDAD_NIVELES = config_get_int_value(cfg_file, "CANTIDAD_NIVELES");
+    cfg->RETARDO_MEMORIA = config_get_int_value(cfg_file, "RETARDO_MEMORIA");
+    cfg->PATH_SWAPFILE = strdup(config_get_string_value(cfg_file, "PATH_SWAPFILE"));
+    cfg->RETARDO_SWAP = config_get_int_value(cfg_file, "RETARDO_SWAP");
+    cfg->LOG_LEVEL = strdup(config_get_string_value(cfg_file, "LOG_LEVEL"));
+    cfg->DUMP_PATH = strdup(config_get_string_value(cfg_file, "DUMP_PATH"));
+
+    log_info(logger, "Archivo de configuración cargado correctamente");
+    config_destroy(cfg_file);
+
+    return 1;
+}
+
+
+
+void cerrar_programa() {
+    log_info(logger, "Finalizando programa...");
+
+    if (cfg != NULL) {
+        if (cfg->PATH_SWAPFILE) free(cfg->PATH_SWAPFILE);
+        if (cfg->LOG_LEVEL) free(cfg->LOG_LEVEL);
+        if (cfg->DUMP_PATH) free(cfg->DUMP_PATH);
+        free(cfg);
+    }
+
+    if (logger != NULL) {
+        log_destroy(logger);
+    }
+}
