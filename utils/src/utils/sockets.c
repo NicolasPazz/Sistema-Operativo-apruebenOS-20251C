@@ -350,13 +350,60 @@ t_paquete* crear_paquete_op(op_code codop)
     return paquete;
 }
 
-t_instruccion* recibir_instruccion(int conexion){
-}
-
 void agregar_entero_a_paquete(t_paquete *paquete, int numero)
 {
 
     paquete->buffer->stream = realloc(paquete->buffer->stream, paquete->buffer->size + sizeof(int));
     memcpy(paquete->buffer->stream + paquete->buffer->size, &numero, sizeof(int));
     paquete->buffer->size += sizeof(int);
+}
+
+char* leer_string(char* buffer, int* desplazamiento) {
+    int tamanio = leer_entero(buffer, desplazamiento);
+
+    char* palabra = malloc(tamanio + 1);
+
+    memcpy(palabra, buffer + *desplazamiento, tamanio);
+
+    palabra[tamanio] = '\0';
+
+    *desplazamiento += tamanio;
+
+    return palabra;
+}
+
+int leer_entero(char *buffer, int * desplazamiento){
+    int entero;
+    memcpy(&entero, buffer + (*desplazamiento), sizeof(int));
+    (*desplazamiento) += sizeof(int);
+    return entero;
+}
+
+t_list* recibir_4_enteros(int socket){
+	uint32_t entero1;
+	int entero2;
+	int entero3;
+	int entero4;
+	
+
+	int size = 0;
+    char *buffer;
+    int desp = 0;
+	t_list* lista = list_create();
+
+    buffer = recibir_buffer(&size, socket);
+
+	entero1 = leer_entero(buffer,&desp);
+	entero2 = leer_entero(buffer,&desp);
+	entero3 = leer_entero(buffer,&desp);
+	entero4 = leer_entero(buffer,&desp);
+
+	list_add(lista, (void *)(uintptr_t)entero1);
+	list_add(lista, (void *)(uintptr_t)entero2);
+	list_add(lista, (void *)(uintptr_t)entero3);
+	list_add(lista, (void *)(uintptr_t)entero4);
+	
+
+	free(buffer);
+	return lista;
 }
