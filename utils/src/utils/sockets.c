@@ -23,6 +23,10 @@ t_config* iniciar_config(char* path) {
 
 /////////////////////////////// Conexiones ///////////////////////////////
 int iniciar_servidor(char *puerto, t_log* logger, char* msj_server) {
+	if (logger == NULL) {
+        printf("Error: Logger no inicializado\n");
+        return -1;
+    }
 	struct addrinfo hints, *servinfo;
 	int optval = 1;
 
@@ -115,10 +119,19 @@ int crear_conexion(char *ip, char* puerto, t_log* logger) {
 }
 
 int esperar_cliente(int socket_servidor, t_log* logger) {
-	int socket_cliente = accept(socket_servidor, NULL, NULL);
-	log_info(logger, "Se conecto un nuevo cliente (fd = %d)", socket_cliente);
-	return socket_cliente;
+	if (logger == NULL) {
+        printf("Error: Logger no inicializado en esperar_cliente\n");
+        return -1;
+    }
+    int socket_cliente = accept(socket_servidor, NULL, NULL);
+    if (socket_cliente == -1) {
+        log_error(logger, "Error al aceptar cliente: %s", strerror(errno));
+        return -1;
+    }
+    log_info(logger, "Se conecto un nuevo cliente (fd = %d)", socket_cliente);
+    return socket_cliente;
 }
+
 
 void atender_cliente(void* arg) {
     cliente_data_t *data = (cliente_data_t *)arg;
@@ -364,4 +377,33 @@ int leer_entero(char *buffer, int * desplazamiento){
     memcpy(&entero, buffer + (*desplazamiento), sizeof(int));
     (*desplazamiento) += sizeof(int);
     return entero;
+}
+
+t_list* recibir_4_enteros(int socket){
+	uint32_t entero1;
+	int entero2;
+	int entero3;
+	int entero4;
+	
+
+	int size = 0;
+    char *buffer;
+    int desp = 0;
+	t_list* lista = list_create();
+
+    buffer = recibir_buffer(&size, socket);
+
+	entero1 = leer_entero(buffer,&desp);
+	entero2 = leer_entero(buffer,&desp);
+	entero3 = leer_entero(buffer,&desp);
+	entero4 = leer_entero(buffer,&desp);
+
+	list_add(lista, (void *)(uintptr_t)entero1);
+	list_add(lista, (void *)(uintptr_t)entero2);
+	list_add(lista, (void *)(uintptr_t)entero3);
+	list_add(lista, (void *)(uintptr_t)entero4);
+	
+
+	free(buffer);
+	return lista;
 }

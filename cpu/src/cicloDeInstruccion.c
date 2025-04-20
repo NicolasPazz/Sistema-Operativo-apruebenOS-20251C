@@ -143,9 +143,23 @@ void func_noop() {
     sleep(1000);
 }
 
-void func_write(char* direccion, char* datos) {
-    //t_direccion_fisica direccion_fisica = transformar_a_fisica(direccion_logica, 0,10,10); // chequear las ultimas 3 parametros, voy a revisar mañana como hago lo d las entradas
-    // hacer el write 
+void func_write(char* direccion_logica_str, char* datos) {
+    uint32_t desplazamiento = 0;
+    uint32_t direccion_logica = atoi(direccion_logica_str);
+
+    uint32_t frame = traducir_direccion(direccion_logica, &desplazamiento, datos);
+
+    if (cache_habilitada() && cache_contiene_pagina(frame)) {
+        cache_escribir(frame, desplazamiento, datos);
+    } else if (cache_habilitada()) {
+        //solicitar_pagina_a_memoria(frame); paquete y pedirle por medio de op code VER
+        cache_escribir(frame, desplazamiento, datos);
+    } else {
+        //memoria_escribir(frame, desplazamiento, datos); VER
+        sleep(1);
+    }
+
+    
 }
 
 
@@ -173,7 +187,7 @@ void func_io(char* tiempo_str) { // tiempo no se si seria int ...
 }
 
 
-void func_init_proc(t_instruccion* instruccion) {
+void func_init_proc(t_instruccion* instruccion) { // mal los parametros VER
 
 }
 
@@ -226,3 +240,4 @@ t_instruccion* recibir_instruccion(int conexion) {
     free(buffer);
     return instruccion_nueva;
 }
+
