@@ -12,7 +12,7 @@ t_cache_paginas* inicializar_cache(){
         exit(EXIT_FAILURE);
     }
     cache->entradas = NULL;
-    if (ENTRADAS_CACHE > 0) {
+    if (cache_habilitada()) {
         cache->entradas = (t_entrada_cache*)malloc(atoi(ENTRADAS_CACHE) * sizeof(t_entrada_cache));
         if(cache->entradas == NULL){
             log_error(cpu_log, "Error al asignar memoria para las entradas de la cache");
@@ -35,9 +35,11 @@ t_cache_paginas* inicializar_cache(){
     cache->puntero_clock = 0;
     return cache;
 }
-
+bool cache_habilitada(){
+    return ENTRADAS_CACHE > 0;
+}
 int buscar_pagina_en_cache (t_cache_paginas* cache, int numero_pagina){
-    if (ENTRADAS_CACHE == 0)
+    if (!cache_habilitada())
         return -1;
     for(int i = 0; i < ENTRADAS_CACHE; i++){
         if (cache->entradas[i].numero_pagina == numero_pagina){
@@ -84,7 +86,7 @@ int seleccionar_victima_clock_m (t_cache_paginas* cache){
 char* acceder_a_pagina_en_cache(t_cache_paginas* cache, int numero_pagina){
     if(cache == NULL)
         return NULL;
-    if (ENTRADAS_CACHE < 1){
+    if (!cache_habilitada()){
         log_info(cpu_log, "La cache esta deshabilitada.");
         return NULL;
     }
@@ -95,7 +97,7 @@ char* acceder_a_pagina_en_cache(t_cache_paginas* cache, int numero_pagina){
 }
 
 void desalojar_proceso_cache(t_cache_paginas* cache){ 
-    if (ENTRADAS_CACHE <= 0){
+    if (!cache_habilitada()){
         log_error(cpu_log, "Cache deshabilitada");
         EXIT_FAILURE;
     }
@@ -120,7 +122,7 @@ void liberar_cache(t_cache_paginas* cache){
         log_info(cpu_log,"la cache ya estaba liberada.");
         EXIT_SUCCESS;
     }
-    if(ENTRADAS_CACHE <= 0){
+    if(!cache_habilitada()){
         log_info(cpu_log, "No hay entradas en la cache.");
         EXIT_SUCCESS;
     }

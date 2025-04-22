@@ -3,14 +3,14 @@
 #include "../headers/init.h"
 #include "../headers/cache.h"
 t_list* tlb = NULL;
-t_list* cache_paginas = NULL;
+t_list* cache = NULL;
 uint32_t orden_fifo = 0;
 
 
 void inicializar_mmu() {
     tlb = list_create();
-    // Inicializar caché de páginas
-    cache_paginas = inicializar_cache();
+    // Inicializar caché de páginas (Fijarse en funciones.c como hacer para solo inicializar una vez la cache...)
+    cache = inicializar_cache();
 }
 
 // t_direccion_fisica transformar_a_fisica(int direccion_logica, int nro_pagina, int tamanio_pagina, int cantidad_entradas){
