@@ -1,16 +1,31 @@
 #ifndef CACHE_H
 #define CACHE_H
-#include "sockets.h"
+#include "../../utils/headers/sockets.h"
+
+t_cache_paginas* inicializar_cache();
+int buscar_pagina_en_cache (t_cache_paginas* cache, int numero_pagina);
+int seleccionar_victima_clock(t_cache_paginas* cache);
+int seleccionar_victima_clock_m (t_cache_paginas* cache);
+char* acceder_a_pagina_en_cache(t_cache_paginas* cache, int numero_pagina);
+void desalojar_proceso_cache(t_cache_paginas* cache);
+void liberar_cache(t_cache_paginas* cache);
+typedef struct {
+    int numero_pagina;
+    char* contenido;
+    bool modificado;
+    int bit_referencia;
+} t_entrada_cache;
 
 typedef struct {
-    uint32_t frame;
-    char* contenido;
-    bool bit_uso;
-    bool bit_modificado;
-} entrada_cache_t;
+    int cantidad_entradas;
+    t_entrada_cache* entradas;
+    char* algoritmo_reemplazo;
+    int puntero_clock;
+} t_cache_paginas;
 
-void cache_habilitada();
-void cache_contiene_pagina(uint32_t frame);
-void cache_escribir(uint32_t frame, uint32_t desplazamiento, char* datos);
-
-#endif
+#endif#include "../headers/cache.h"
+#include "../headers/mmu.h"
+#include "../headers/init.h"
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
