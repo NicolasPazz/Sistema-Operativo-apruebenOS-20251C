@@ -1,6 +1,7 @@
 #include "../headers/cicloDeInstruccion.h"
 #include "../headers/init.h"
 #include "../headers/mmu.h"
+#include "../headers/cache.h"
 
 void func_noop() {
     sleep(1000);
@@ -9,10 +10,9 @@ void func_noop() {
 void func_write(char* direccion_logica_str, char* datos) {
     uint32_t desplazamiento = 0;
     uint32_t direccion_logica = atoi(direccion_logica_str);
-
     uint32_t frame = traducir_direccion(direccion_logica, &desplazamiento, datos);
-
-    if (cache_habilitada() && cache_contiene_pagina(frame)) {
+    t_cache_paginas* cache = inicializar_cache();
+    if (cache_habilitada(cache) && (buscar_pagina_en_cache(cache,frame) != -1)){
         cache_escribir(frame, desplazamiento, datos);
     } else if (cache_habilitada()) {
         //solicitar_pagina_a_memoria(frame); paquete y pedirle por medio de op code VER
