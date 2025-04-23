@@ -1,15 +1,10 @@
 #ifndef CACHE_H
 #define CACHE_H
+#include "../headers/cache.h"
+#include "../headers/mmu.h"
+#include "../headers/init.h"
 #include "../../utils/headers/sockets.h"
 
-t_cache_paginas* inicializar_cache();
-int buscar_pagina_en_cache (t_cache_paginas* cache, int numero_pagina);
-int seleccionar_victima_clock(t_cache_paginas* cache);
-int seleccionar_victima_clock_m (t_cache_paginas* cache);
-char* acceder_a_pagina_en_cache(t_cache_paginas* cache, int numero_pagina);
-void desalojar_proceso_cache(t_cache_paginas* cache);
-void liberar_cache(t_cache_paginas* cache);
-bool cache_habilitada(); 
 typedef struct {
     int numero_pagina;
     char* contenido;
@@ -24,9 +19,14 @@ typedef struct {
     int puntero_clock;
 } t_cache_paginas;
 
-#endif#include "../headers/cache.h"
-#include "../headers/mmu.h"
-#include "../headers/init.h"
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
+
+t_cache_paginas* inicializar_cache();
+int buscar_pagina_en_cache (t_cache_paginas* cache, int numero_pagina);
+int seleccionar_victima_clock(t_cache_paginas* cache);
+int seleccionar_victima_clock_m (t_cache_paginas* cache);
+char* acceder_a_pagina_en_cache(t_cache_paginas* cache, int numero_pagina);
+void desalojar_proceso_cache(t_cache_paginas* cache);
+void liberar_cache(t_cache_paginas* cache);
+bool cache_habilitada(t_cache_paginas* cache); 
+
+#endif
