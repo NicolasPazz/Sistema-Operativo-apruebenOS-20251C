@@ -15,7 +15,7 @@ void ejecutar_ciclo_instruccion(int pc, int pid) {
         t_instruccion* instruccion = fetch(pc, pid);
         op_code tipo_instruccion = decode(instruccion->parametros1);
         //una idea despues ver de donde sacar el pc, si pasarlo por parametro o hacerlo global
-        if(tipo_instruccion =! GOTO_OP){
+        if(tipo_instruccion != GOTO_OP){
             pc++;
         }    
         execute(tipo_instruccion, instruccion);

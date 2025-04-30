@@ -18,7 +18,7 @@ t_instruccion* fetch(int pc, int pid){
     enviar_paquete(paquete, fd_memoria);
     eliminar_paquete(paquete);
 
-    int codigo = recibir_operacion(fd_memoria);
+    //int codigo = recibir_operacion(fd_memoria);
 
     t_instruccion* instruccion = recibir_instruccion(fd_memoria);
 

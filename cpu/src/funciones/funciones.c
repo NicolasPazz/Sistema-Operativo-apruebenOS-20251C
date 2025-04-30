@@ -13,14 +13,14 @@ void func_write(char* direccion_logica_str, char* datos) {
     uint32_t frame = traducir_direccion(direccion_logica, &desplazamiento, datos);
     t_cache_paginas* cache = inicializar_cache();
     if (cache_habilitada(cache) && (buscar_pagina_en_cache(cache,frame) != -1)){
-        //cache_escribir(frame, desplazamiento, datos);
+        //cache_modificar(frame, desplazamiento, datos);
         sleep(1);
     } else if (cache_habilitada(cache)) {
         //solicitar_pagina_a_memoria(frame); paquete y pedirle por medio de op code VER
         //cache_escribir(frame, desplazamiento, datos);
         sleep(1);
     } else {
-        //memoria_escribir(frame, desplazamiento, datos); VER
+        //memoria_escribir(frame, desplazamiento, datos);
         sleep(1);
     }
 
@@ -70,8 +70,7 @@ void func_init_proc(t_instruccion* instruccion) {
 
 void func_dump_memory() {
     t_paquete* paquete = crear_paquete_op(DUMP_MEMORY_OP);
-    agregar_entero_a_paquete(paquete, pid_ejecutando);
-    enviar_paquete(paquete, fd_memoria);
+    enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 }
 

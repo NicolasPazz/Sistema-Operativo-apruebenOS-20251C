@@ -1,6 +1,7 @@
 #include "../headers/cicloDeInstruccion.h"
 #include "../headers/init.h"
 #include "../headers/mmu.h"
+#include "../../headers/funciones/funciones.h"
 
 void execute(op_code tipo_instruccion, t_instruccion* instruccion) { //meto las syscalls tambien ??
     switch (tipo_instruccion) {
