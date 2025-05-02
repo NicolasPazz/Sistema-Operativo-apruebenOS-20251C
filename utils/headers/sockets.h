@@ -40,10 +40,6 @@
 typedef enum {
 	MENSAJE_OP,
 	PAQUETE_OP,
-	NOOP_OP,
-	WRITE_OP, 
-	READ_OP, 
-	GOTO_OP, 
 	IO_OP, 
 	INIT_PROC_OP, 
 	DUMP_MEMORY_OP, 
@@ -51,7 +47,12 @@ typedef enum {
 	EXEC_OP,
 	INTERRUPCION_OP,
 	PEDIR_INSTRUCCION_OP,
-	PEDIR_CONFIG_CPU_OP
+	PEDIR_CONFIG_CPU_OP,
+	// Instrucciones de cpu
+	NOOP_OP,
+	WRITE_OP, 
+	READ_OP, 
+	GOTO_OP
 } op_code;
 
 typedef struct {

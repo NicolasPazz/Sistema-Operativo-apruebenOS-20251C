@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
 
     printf("\nPresione ENTER para iniciar planificación...\n");
 
-    //////////////////////////// Planificacion de largo plazo ////////////////////////////
+    //////////////////////////// Planificacion ////////////////////////////
     int c = getchar();
     while (c != '\n') {
         fprintf(stderr, "Error: Debe presionar solo ENTER para continuar.\n");
@@ -74,6 +74,10 @@ int main(int argc, char* argv[]) {
     }
     
     // Iniciar planificacion de largo plazo
+
+    // Iniciar planificacion de mediano plazo
+
+    // Iniciar planificacion de corto plazo
 
     //////////////////////////// Test ////////////////////////////
     printf("Creando 2 procesos más... \n");
