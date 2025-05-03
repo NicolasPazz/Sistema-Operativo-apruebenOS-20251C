@@ -48,8 +48,8 @@ typedef enum {
 	INTERRUPCION_OP,
 	PEDIR_INSTRUCCION_OP,
 	PEDIR_CONFIG_CPU_OP,
-  DEBUGGER, // para probar
-	SEND_PSEUDOCOD_FILE // cod_op para mandar de kernel a memoria la ruta del archivo de pseudocodigo
+  	DEBUGGER, // para probar
+	SEND_PSEUDOCOD_FILE, // cod_op para mandar de kernel a memoria la ruta del archivo de pseudocodigo
 	// Instrucciones de cpu
 	NOOP_OP,
 	WRITE_OP, 

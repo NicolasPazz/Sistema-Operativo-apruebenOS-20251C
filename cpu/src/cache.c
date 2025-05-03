@@ -133,7 +133,7 @@ void liberar_cache(t_cache_paginas* cache){
             free(cache->entradas);
         }
         free(cache->algoritmo_reemplazo);
-        free(cache->puntero_clock);
+        free(cache->puntero_clock); // warning: passing argument 1 of ‘free’ makes pointer from integer without a cast
         free(cache);
     }
 }

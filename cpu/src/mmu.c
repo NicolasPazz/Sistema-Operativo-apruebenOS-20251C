@@ -10,7 +10,7 @@ uint32_t orden_fifo = 0;
 void inicializar_mmu() {
     tlb = list_create();
     // Inicializar caché de páginas (Fijarse en funciones.c como hacer para solo inicializar una vez la cache...)
-    cache = inicializar_cache();
+    cache = inicializar_cache();    // warning: assignment to ‘t_list *’ from incompatible pointer type ‘t_cache_paginas *’
 }
 
 // t_direccion_fisica transformar_a_fisica(int direccion_logica, int nro_pagina, int tamanio_pagina, int cantidad_entradas){
