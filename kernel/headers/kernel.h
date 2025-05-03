@@ -31,6 +31,7 @@ extern char* ALGORITMO_CORTO_PLAZO;
 extern char* ALGORITMO_INGRESO_A_READY;
 extern char* ALFA;
 extern char* TIEMPO_SUSPENSION;
+extern char* ESTIMACION_INICIAL;
 extern char* LOG_LEVEL;
 
 // Colas de Estados

@@ -20,24 +20,47 @@ int main(int argc, char* argv[]) {
     iniciar_sincronizacion_kernel();
 
     //////////////////////////// Conexiones del Kernel ////////////////////////////
-      // Servidor de CPU
+
+    // Servidor de CPU (Dispatch)
     pthread_t hilo_dispatch;
-    pthread_create(&hilo_dispatch, NULL, hilo_servidor_dispatch, NULL);
+    if (pthread_create(&hilo_dispatch, NULL, hilo_servidor_dispatch, NULL) != 0) {
+        log_error(kernel_log, "Error al crear hilo de servidor Dispatch");
+        terminar_kernel();
+        exit(EXIT_FAILURE);
+    }
     pthread_detach(hilo_dispatch);
+    log_info(kernel_log, "Hilo de servidor Dispatch creado correctamente");
 
+    // Servidor de CPU (Interrupt)
     pthread_t hilo_interrupt;
-    pthread_create(&hilo_interrupt, NULL, hilo_servidor_interrupt, NULL);
+    if (pthread_create(&hilo_interrupt, NULL, hilo_servidor_interrupt, NULL) != 0) {
+        log_error(kernel_log, "Error al crear hilo de servidor Interrupt");
+        terminar_kernel();
+        exit(EXIT_FAILURE);
+    }
     pthread_detach(hilo_interrupt);
+    log_info(kernel_log, "Hilo de servidor Interrupt creado correctamente");
 
-      // Cliente de Memoria
+    // Cliente de Memoria
     pthread_t hilo_memoria;
-    pthread_create(&hilo_memoria, NULL, hilo_cliente_memoria, NULL);
+    if (pthread_create(&hilo_memoria, NULL, hilo_cliente_memoria, NULL) != 0) {
+        log_error(kernel_log, "Error al crear hilo cliente de Memoria");
+        terminar_kernel();
+        exit(EXIT_FAILURE);
+    }
     pthread_detach(hilo_memoria);
+    log_info(kernel_log, "Hilo cliente de Memoria creado correctamente");
 
-      // Servidor de IO
+    // Servidor de IO
     pthread_t hilo_io;
-    pthread_create(&hilo_io, NULL, hilo_servidor_io, NULL);
-    pthread_detach(hilo_io);  
+    if (pthread_create(&hilo_io, NULL, hilo_servidor_io, NULL) != 0) {
+        log_error(kernel_log, "Error al crear hilo de servidor IO");
+        terminar_kernel();
+        exit(EXIT_FAILURE);
+    }
+    pthread_detach(hilo_io);
+    log_info(kernel_log, "Hilo de servidor IO creado correctamente");
+
 
     //////////////////////////// Esperar conexiones minimas ////////////////////////////
     log_info(kernel_log, "Esperando conexion con al menos una CPU y una IO");
@@ -51,18 +74,10 @@ int main(int argc, char* argv[]) {
 
     log_info(kernel_log, "CPU y IO conectados. Continuando ejecucion");
   
-    //////////////////////////// Primer proceso ////////////////////////////  
-    printf("\n\n\n");
-    mostrar_colas_estados();
-
-    log_info(kernel_log, "Creando proceso inicial:  Archivo: %s, Tamaño: %d", archivo_pseudocodigo, tamanio_proceso);
-    INIT_PROC(archivo_pseudocodigo, tamanio_proceso);
-
-    mostrar_colas_estados();
+    //////////////////////////// Esperar enter ////////////////////////////
 
     printf("\nPresione ENTER para iniciar planificación...\n");
-
-    //////////////////////////// Planificacion ////////////////////////////
+    
     int c = getchar();
     while (c != '\n') {
         fprintf(stderr, "Error: Debe presionar solo ENTER para continuar.\n");
@@ -73,11 +88,18 @@ int main(int argc, char* argv[]) {
         c = getchar();
     }
     
-    // Iniciar planificacion de largo plazo
+    //////////////////////////// Primer proceso ////////////////////////////  
+    printf("\n\n\n");
+    mostrar_colas_estados();
 
-    // Iniciar planificacion de mediano plazo
+    log_info(kernel_log, "Creando proceso inicial:  Archivo: %s, Tamaño: %d", archivo_pseudocodigo, tamanio_proceso);
+    INIT_PROC(archivo_pseudocodigo, tamanio_proceso);
 
-    // Iniciar planificacion de corto plazo
+    mostrar_colas_estados();
+
+    //////////////////////////// Planificacion ////////////////////////////
+
+    iniciar_planificador_largo_plazo();
 
     //////////////////////////// Test ////////////////////////////
     printf("Creando 2 procesos más... \n");
@@ -90,10 +112,10 @@ int main(int argc, char* argv[]) {
     mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 1));
     mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 2));
     
-    cambiar_estado_pcb((t_pcb*)list_get(cola_procesos, 0), READY);
+    /*cambiar_estado_pcb((t_pcb*)list_get(cola_procesos, 0), READY);
     cambiar_estado_pcb((t_pcb*)list_get(cola_procesos, 1), READY);
     cambiar_estado_pcb((t_pcb*)list_get(cola_procesos, 2), READY);
-    mostrar_colas_estados(); // 3 Procesos en READY
+    mostrar_colas_estados(); // 3 Procesos en READY*/
 
     cambiar_estado_pcb((t_pcb*)list_get(cola_procesos, 0), EXEC);
     sleep(3);

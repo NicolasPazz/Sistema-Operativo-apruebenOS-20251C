@@ -89,6 +89,11 @@ typedef struct {
 } t_direccion_fisica;
 
 typedef enum {
+    OK,
+	ERROR
+} t_respuesta_memoria;
+
+typedef enum {
   HANDSHAKE_MEMORIA_CPU,
   HANDSHAKE_MEMORIA_KERNEL,
   HANDSHAKE_CPU_KERNEL_INTERRUPT,

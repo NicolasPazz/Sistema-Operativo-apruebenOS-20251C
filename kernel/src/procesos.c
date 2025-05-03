@@ -23,6 +23,8 @@ void mostrar_pcb(t_pcb PCB) {
     printf("Estado: %s\n", estado_to_string(PCB.Estado));
     printf("Tiempo inicio exec: %f\n", PCB.tiempo_inicio_exec);
     printf("Ráfaga estimada: %.2f\n", PCB.estimacion_rafaga);
+    printf("Path: %s\n", PCB.path);
+    printf("Tamaño de memoria: %u\n", PCB.tamanio_memoria);
     printf("-*-*-*-*-*-*-*-*-*-*-*-*-*-\n");
 }
 

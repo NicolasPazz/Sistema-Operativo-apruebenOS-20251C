@@ -78,12 +78,12 @@ int recibir_kernel_dispatch(int fd_kernel_dispatch) {
                 int pc, pid;//= recibir_instruccion(fd_kernel_dispatch);
                 //log_info(cpu_log, "EXEC - PID: %d, Instrucción: %s", pid, instruccion->parametros1);
                 // Ejecutar la instrucción
-                ejecutar_ciclo_instruccion(pc, pid);
+                ejecutar_ciclo_instruccion(pc, pid);    // warning: pc/‘pid’ may be used uninitialized
                 break;
             case -1:
                 log_error(cpu_log, "Desconexión de Kernel (Dispatch)");
                 close(fd_kernel_dispatch);
-                return NULL;
+                return NULL;    // warning: returning ‘void *’ from a function with return type ‘int’
             default:
                 log_warning(cpu_log, "Operación desconocida de Dispatch: %d", cod_op);
         }
@@ -97,7 +97,7 @@ int recibir_kernel_interrupt(int fd_kernel_interrupt) {
             case -1:
                 log_error(cpu_log, "Desconexión de Kernel (Interrupt)");
                 close(fd_kernel_interrupt);
-                return NULL;
+                return NULL;    // warning: returning ‘void *’ from a function with return type ‘int’
             default:
                 log_warning(cpu_log, "Operación desconocida de Interrupt: %d", cod_op);
         }

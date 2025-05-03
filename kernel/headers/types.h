@@ -12,6 +12,8 @@ typedef struct PCB {
     uint16_t Estado;
     double tiempo_inicio_exec;
     double estimacion_rafaga;
+    char* path;
+    uint16_t tamanio_memoria;
 } t_pcb;
 
 typedef enum Estados {
