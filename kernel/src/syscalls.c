@@ -24,7 +24,7 @@ void INIT_PROC(char* nombre_archivo, uint16_t tam_memoria) {
     nuevo_pcb->tiempo_inicio_exec = 0;
     nuevo_pcb->estimacion_rafaga = atof(ESTIMACION_INICIAL);
 
-    // Asignar path y tamaño
+    // Asignar path y tamanio
     nuevo_pcb->path = strdup(nombre_archivo);
     nuevo_pcb->tamanio_memoria = tam_memoria;
 
@@ -35,7 +35,7 @@ void INIT_PROC(char* nombre_archivo, uint16_t tam_memoria) {
     }
 
     if (nuevo_pcb->tamanio_memoria < 0) {
-        log_error(kernel_log, "INIT_PROC: Error al copiar el tamaño de memoria");
+        log_error(kernel_log, "INIT_PROC: Error al copiar el tamanio de memoria");
         free(nuevo_pcb);
         return;
     }
@@ -45,12 +45,10 @@ void INIT_PROC(char* nombre_archivo, uint16_t tam_memoria) {
     list_add(cola_new, nuevo_pcb);
     nuevo_pcb->ME[NEW]++;
     pthread_mutex_unlock(&mutex_cola_new);
-    pthread_cond_signal(&cond_nuevo_proceso);  // Notificar al planificador LP
-    pthread_mutex_lock(&mutex_replanificar_pmcp);
-    pthread_cond_signal(&cond_replanificar_pmcp);
-    pthread_mutex_unlock(&mutex_replanificar_pmcp);
 
-    // Cronómetro de métricas de tiempo
+    // Notificar al planificador LP
+    
+    // Cronometro de metricas de tiempo
     char* pid_key = string_itoa(nuevo_pcb->PID);
     t_temporal* nuevo_cronometro = temporal_create();
     dictionary_put(tiempos_por_pid, pid_key, nuevo_cronometro);

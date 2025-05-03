@@ -1,6 +1,6 @@
 #include "../headers/kernel.h"
 
-/////////////////////////////// Declaración de variables globales ///////////////////////////////
+/////////////////////////////// Declaracion de variables globales ///////////////////////////////
 // Logger
 t_log* kernel_log;
 t_log* kernel_log_debug;
@@ -52,21 +52,17 @@ bool conectado_cpu = false;
 bool conectado_io = false;
 pthread_mutex_t mutex_conexiones;
 
-// Semaforos y condiciones de planificacion
+// Semaforos de planificacion
 pthread_mutex_t mutex_cola_new;
-pthread_cond_t cond_nuevo_proceso;
-pthread_cond_t cond_susp_ready_vacia;
 pthread_mutex_t mutex_cola_susp_ready;
 pthread_mutex_t mutex_cola_susp_blocked;
 pthread_mutex_t mutex_cola_ready;
 pthread_mutex_t mutex_cola_running;
 pthread_mutex_t mutex_cola_blocked;
 pthread_mutex_t mutex_cola_exit;
-pthread_cond_t cond_exit;
-pthread_mutex_t mutex_replanificar_pmcp;
-pthread_cond_t cond_replanificar_pmcp;
 
-/////////////////////////////// Inicialización de variables globales ///////////////////////////////
+
+/////////////////////////////// Inicializacion de variables globales ///////////////////////////////
 void iniciar_config_kernel() {
     kernel_config = iniciar_config("kernel.config");
 
@@ -88,28 +84,28 @@ void iniciar_config_kernel() {
         log_error(kernel_log_debug, "iniciar_config_kernel: Faltan campos obligatorios en kernel.config");
         exit(EXIT_FAILURE);
     } else {
-        log_info(kernel_log_debug, "IP_MEMORIA: %s", IP_MEMORIA);
-        log_info(kernel_log_debug, "PUERTO_MEMORIA: %s", PUERTO_MEMORIA);
-        log_info(kernel_log_debug, "PUERTO_ESCUCHA_DISPATCH: %s", PUERTO_ESCUCHA_DISPATCH);
-        log_info(kernel_log_debug, "PUERTO_ESCUCHA_INTERRUPT: %s", PUERTO_ESCUCHA_INTERRUPT);
-        log_info(kernel_log_debug, "PUERTO_ESCUCHA_IO: %s", PUERTO_ESCUCHA_IO);
-        log_info(kernel_log_debug, "ALGORITMO_CORTO_PLAZO: %s", ALGORITMO_CORTO_PLAZO);
-        log_info(kernel_log_debug, "ALGORITMO_INGRESO_A_READY: %s", ALGORITMO_INGRESO_A_READY);
-        log_info(kernel_log_debug, "ALFA: %s", ALFA);
-        log_info(kernel_log_debug, "ESTIMACION_INICIAL: %s", ESTIMACION_INICIAL);
-        log_info(kernel_log_debug, "TIEMPO_SUSPENSION: %s", TIEMPO_SUSPENSION);
-        log_info(kernel_log_debug, "LOG_LEVEL: %s", LOG_LEVEL);
+        log_debug(kernel_log_debug, "IP_MEMORIA: %s", IP_MEMORIA);
+        log_debug(kernel_log_debug, "PUERTO_MEMORIA: %s", PUERTO_MEMORIA);
+        log_debug(kernel_log_debug, "PUERTO_ESCUCHA_DISPATCH: %s", PUERTO_ESCUCHA_DISPATCH);
+        log_debug(kernel_log_debug, "PUERTO_ESCUCHA_INTERRUPT: %s", PUERTO_ESCUCHA_INTERRUPT);
+        log_debug(kernel_log_debug, "PUERTO_ESCUCHA_IO: %s", PUERTO_ESCUCHA_IO);
+        log_debug(kernel_log_debug, "ALGORITMO_CORTO_PLAZO: %s", ALGORITMO_CORTO_PLAZO);
+        log_debug(kernel_log_debug, "ALGORITMO_INGRESO_A_READY: %s", ALGORITMO_INGRESO_A_READY);
+        log_debug(kernel_log_debug, "ALFA: %s", ALFA);
+        log_debug(kernel_log_debug, "ESTIMACION_INICIAL: %s", ESTIMACION_INICIAL);
+        log_debug(kernel_log_debug, "TIEMPO_SUSPENSION: %s", TIEMPO_SUSPENSION);
+        log_debug(kernel_log_debug, "LOG_LEVEL: %s", LOG_LEVEL);
     }
 }
 
 void iniciar_logger_kernel() {
     kernel_log = iniciar_logger("kernel.log", "kernel", 1, log_level_from_string(LOG_LEVEL));
-    log_info(kernel_log, "Kernel log iniciado correctamente!");
+    log_debug(kernel_log, "Kernel log iniciado correctamente!");
 }
 
 void iniciar_logger_kernel_debug() {
     kernel_log_debug = iniciar_logger("kernel_config_debug.log", "kernel", 1, LOG_LEVEL_TRACE);
-    log_info(kernel_log_debug, "Kernel log de debug iniciado correctamente!");
+    log_debug(kernel_log_debug, "Kernel log de debug iniciado correctamente!");
 }
 
 void iniciar_estados_kernel(){ 
@@ -129,17 +125,12 @@ void iniciar_sincronizacion_kernel() {
     pthread_mutex_init(&mutex_conexiones, NULL);
 
     pthread_mutex_init(&mutex_cola_new, NULL);
-    pthread_cond_init(&cond_nuevo_proceso, NULL);
-    pthread_cond_init(&cond_susp_ready_vacia, NULL);
     pthread_mutex_init(&mutex_cola_susp_ready, NULL);
     pthread_mutex_init(&mutex_cola_susp_blocked, NULL);
     pthread_mutex_init(&mutex_cola_ready, NULL);
     pthread_mutex_init(&mutex_cola_running, NULL);
     pthread_mutex_init(&mutex_cola_blocked, NULL);
     pthread_mutex_init(&mutex_cola_exit, NULL);
-    pthread_cond_init(&cond_exit, NULL);
-    pthread_mutex_init(&mutex_replanificar_pmcp, NULL);
-    pthread_cond_init(&cond_replanificar_pmcp, NULL);
 
     lista_cpus = list_create();
     lista_ios = list_create();
@@ -171,18 +162,13 @@ void terminar_kernel(){
     pthread_mutex_destroy(&mutex_ios);
     pthread_mutex_destroy(&mutex_conexiones);
     pthread_mutex_destroy(&mutex_cola_new);
-    pthread_cond_destroy(&cond_nuevo_proceso);
-    pthread_cond_destroy(&cond_susp_ready_vacia);
     pthread_mutex_destroy(&mutex_cola_susp_ready);
     pthread_mutex_destroy(&mutex_cola_susp_blocked);
     pthread_mutex_destroy(&mutex_cola_ready);
     pthread_mutex_destroy(&mutex_cola_running);
     pthread_mutex_destroy(&mutex_cola_blocked);
     pthread_mutex_destroy(&mutex_cola_exit);
-    pthread_cond_destroy(&cond_exit);
-    pthread_mutex_destroy(&mutex_replanificar_pmcp);
-    pthread_cond_destroy(&cond_replanificar_pmcp);
-    
+
     list_destroy(lista_cpus);
     list_destroy(lista_ios);
 
@@ -197,7 +183,7 @@ void terminar_kernel(){
 
 //////////////////////////// Conexiones del Kernel ////////////////////////////
 void* hilo_cliente_memoria(void* _){
-    ////////// Conexión hacia Memoria //////////
+    ////////// Conexion hacia Memoria //////////
     fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, kernel_log);
 
     if (fd_memoria == -1) {
@@ -212,7 +198,7 @@ void* hilo_cliente_memoria(void* _){
         exit(EXIT_FAILURE);
     }
 
-    log_info(kernel_log, "HANDSHAKE_MEMORIA_KERNEL: Kernel conectado correctamente a Memoria (fd=%d)", fd_memoria);
+    log_debug(kernel_log, "HANDSHAKE_MEMORIA_KERNEL: Kernel conectado correctamente a Memoria (fd=%d)", fd_memoria);
 
     return NULL;
 }
@@ -253,7 +239,7 @@ void* hilo_servidor_dispatch(void* _) {
         conectado_cpu = true;
         pthread_mutex_unlock(&mutex_conexiones);
 
-        log_info(kernel_log, "HANDSHAKE_CPU_KERNEL_DISPATCH: CPU conectada exitosamente a Dispatch (fd=%d), ID=%d", nueva_cpu->fd, nueva_cpu->id);
+        log_debug(kernel_log, "HANDSHAKE_CPU_KERNEL_DISPATCH: CPU conectada exitosamente a Dispatch (fd=%d), ID=%d", nueva_cpu->fd, nueva_cpu->id);
     }
 
     return NULL;
@@ -295,7 +281,7 @@ void* hilo_servidor_interrupt(void* _){
         conectado_cpu = true;
         pthread_mutex_unlock(&mutex_conexiones);
 
-        log_info(kernel_log, "HANDSHAKE_CPU_KERNEL_INTERRUPT: CPU conectada exitosamente a Interrupt (fd=%d), ID=%d", nueva_cpu->fd, nueva_cpu->id);
+        log_debug(kernel_log, "HANDSHAKE_CPU_KERNEL_INTERRUPT: CPU conectada exitosamente a Interrupt (fd=%d), ID=%d", nueva_cpu->fd, nueva_cpu->id);
     }
 
     return NULL;
@@ -337,7 +323,7 @@ void* hilo_servidor_io(void* _){
         conectado_io = true;
         pthread_mutex_unlock(&mutex_conexiones);
 
-        log_info(kernel_log, "HANDSHAKE_IO_KERNEL: IO '%s' conectada exitosamente (fd=%d)", nueva_io->nombre, fd_io);
+        log_debug(kernel_log, "HANDSHAKE_IO_KERNEL: IO '%s' conectada exitosamente (fd=%d)", nueva_io->nombre, fd_io);
     }
 
     return NULL;

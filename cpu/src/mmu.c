@@ -9,7 +9,7 @@ uint32_t orden_fifo = 0;
 
 void inicializar_mmu() {
     tlb = list_create();
-    // Inicializar caché de páginas (Fijarse en funciones.c como hacer para solo inicializar una vez la cache...)
+    // Inicializar cache de paginas (Fijarse en funciones.c como hacer para solo inicializar una vez la cache...)
     cache = inicializar_cache();    // warning: assignment to ‘t_list *’ from incompatible pointer type ‘t_cache_paginas *’
 }
 
@@ -51,7 +51,7 @@ uint32_t traducir_direccion(uint32_t direccion_logica, uint32_t* desplazamiento,
         }
     }
 
-    log_info(cpu_log, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %s", pid_ejecutando, frame * tam_pagina + desplazamiento, datos); // warning: format ‘%d’ expects argument of type ‘int’, but argument 4 has type ‘uint32_t *’ {aka ‘unsigned int *’}
+    log_info(cpu_log, "PID: %d - Accion: ESCRIBIR - Direccion Fisica: %d - Valor: %s", pid_ejecutando, frame * tam_pagina + desplazamiento, datos); // warning: format ‘%d’ expects argument of type ‘int’, but argument 4 has type ‘uint32_t *’ {aka ‘unsigned int *’}
     return frame;
 
 

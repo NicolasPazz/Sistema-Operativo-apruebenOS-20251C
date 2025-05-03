@@ -22,9 +22,9 @@ void mostrar_pcb(t_pcb PCB) {
     mostrar_metrica("MT", PCB.MT);
     printf("Estado: %s\n", estado_to_string(PCB.Estado));
     printf("Tiempo inicio exec: %f\n", PCB.tiempo_inicio_exec);
-    printf("Ráfaga estimada: %.2f\n", PCB.estimacion_rafaga);
+    printf("Rafaga estimada: %.2f\n", PCB.estimacion_rafaga);
     printf("Path: %s\n", PCB.path);
-    printf("Tamaño de memoria: %u\n", PCB.tamanio_memoria);
+    printf("Tamanio de memoria: %u\n", PCB.tamanio_memoria);
     printf("-*-*-*-*-*-*-*-*-*-*-*-*-*-\n");
 }
 
@@ -51,12 +51,12 @@ void mostrar_colas_estados() {
 
 void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
     if (PCB == NULL) {
-        log_error(kernel_log, "cambiar_estado_pcb: PCB es NULL");
+        log_trace(kernel_log, "cambiar_estado_pcb: PCB es NULL");
         return;
     }
 
     if (!transicion_valida(PCB->Estado, nuevo_estado_enum)) {
-        log_error(kernel_log, "cambiar_estado_pcb: Transicion no valida: %s → %s",
+        log_trace(kernel_log, "cambiar_estado_pcb: Transicion no valida: %s → %s",
                   estado_to_string(PCB->Estado),
                   estado_to_string(nuevo_estado_enum));
         return;
@@ -77,7 +77,7 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
 
     list_remove_element(cola_origen, PCB);
 
-    // Actualizar Métricas de Tiempo antes de cambiar de Estado
+    // Actualizar Metricas de Tiempo antes de cambiar de Estado
     char* pid_key = string_itoa(PCB->PID);
     t_temporal* cronometro = dictionary_get(tiempos_por_pid, pid_key); 
     if (cronometro != NULL) {
@@ -89,7 +89,7 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
         log_trace(kernel_log, "Se actualizo el MT en el estado %s del PID %d con %ld", estado_to_string(PCB->Estado), PCB->PID, tiempo);
         temporal_destroy(cronometro);
 
-        // Reiniciar el cronómetro para el nuevo estado
+        // Reiniciar el cronometro para el nuevo estado
         cronometro = temporal_create();
         dictionary_put(tiempos_por_pid, pid_key, cronometro);
     }
@@ -106,9 +106,9 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
 
     }
 
-    // Cambiar Estado y actualizar Métricas de Estados
+    // Cambiar Estado y actualizar Metricas de Estados
     PCB->Estado = nuevo_estado_enum;
-    PCB->ME[nuevo_estado_enum] += 1;  // Se suma 1 en las Métricas de estado del nuevo estado
+    PCB->ME[nuevo_estado_enum] += 1;  // Se suma 1 en las Metricas de estado del nuevo estado
 
     list_add(cola_destino, PCB);
 }
@@ -141,7 +141,7 @@ t_list* obtener_cola_por_estado(Estados estado) {
 
 /*
 
-    4. Cuando el PCB termina (EXIT), destruís su cronómetro y lo quitás del diccionario:
+    4. Cuando el PCB termina (EXIT), destruis su cronometro y lo quitas del diccionario:
     c
     Copiar
     Editar
@@ -151,7 +151,7 @@ t_list* obtener_cola_por_estado(Estados estado) {
 
 
 
-    5. Cuando el sistema termina, limpiás todo:
+    5. Cuando el sistema termina, limpias todo:
     c
     Copiar
     Editar

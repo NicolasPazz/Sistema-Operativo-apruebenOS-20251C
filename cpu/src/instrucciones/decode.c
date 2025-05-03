@@ -23,5 +23,5 @@ op_code decode(char* nombre_instruccion){ // LO HICE CHAR VEMOS SI NOS SIRVE ASI
     } else if (strcmp(nombre_instruccion, "EXIT") == 0) {
         return EXIT_OP;
     }
-    return -1; // Código de operación no válido
+    return -1; // Codigo de operacion no valido
 }

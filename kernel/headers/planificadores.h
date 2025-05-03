@@ -7,19 +7,14 @@
 
 /////////////////////////////// Prototipos ///////////////////////////////
 
-// Semaforos y condiciones de planificacion
+// Semaforos de planificacion
 extern pthread_mutex_t mutex_cola_new;
-extern pthread_cond_t cond_nuevo_proceso;
-extern pthread_cond_t cond_susp_ready_vacia;
 extern pthread_mutex_t mutex_cola_susp_ready;
 extern pthread_mutex_t mutex_cola_susp_blocked;
 extern pthread_mutex_t mutex_cola_ready;
 extern pthread_mutex_t mutex_cola_running;
 extern pthread_mutex_t mutex_cola_blocked;
 extern pthread_mutex_t mutex_cola_exit;
-extern pthread_cond_t cond_exit;
-extern pthread_mutex_t mutex_replanificar_pmcp;
-extern pthread_cond_t cond_replanificar_pmcp;
 
 
 void iniciar_planificador_corto_plazo(char* algoritmo);

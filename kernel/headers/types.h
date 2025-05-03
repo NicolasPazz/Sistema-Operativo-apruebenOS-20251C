@@ -40,6 +40,7 @@ typedef enum {
 typedef struct {
     int fd;
     int id;
+    int pid;
     tipo_conexion_cpu tipo_conexion;
 } cpu;
 

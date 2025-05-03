@@ -6,7 +6,7 @@ t_instruccion* fetch(int pc, int pid){
     // t_instruccion* instruccion ;//pedir_instruccion_memoria(pc);
     // if (instruccion == NULL)
     // {
-    //     log_error("No existe instruccion con el program counter: %d", pc);
+    //     log_trace("No existe instruccion con el program counter: %d", pc);
     //     EXIT_FAILURE;
     // }
     // log_info(cpu_log, "PID: %i - FETCH - Program Counter: %i", pid, pc);

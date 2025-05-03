@@ -7,7 +7,7 @@
 #include "syscalls.h"
 #include "planificadores.h"
 
-/////////////////////////////// Declaración de variables globales ///////////////////////////////
+/////////////////////////////// Declaracion de variables globales ///////////////////////////////
 // Logger
 extern t_log* kernel_log;
 

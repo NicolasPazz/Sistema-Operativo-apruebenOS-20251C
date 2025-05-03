@@ -85,7 +85,7 @@ char* acceder_a_pagina_en_cache(t_cache_paginas* cache, int numero_pagina){
     if(cache == NULL)
         return NULL;
     if (!cache_habilitada(cache)){
-        log_info(cpu_log, "La cache esta deshabilitada.");
+        log_trace(cpu_log, "La cache esta deshabilitada.");
         return NULL;
     }
     int nro_pagina_en_cache = buscar_pagina_en_cache(cache,numero_pagina);
@@ -96,13 +96,13 @@ char* acceder_a_pagina_en_cache(t_cache_paginas* cache, int numero_pagina){
 
 void desalojar_proceso_cache(t_cache_paginas* cache){ 
     if (!cache_habilitada(cache)){
-        log_error(cpu_log, "Cache deshabilitada");
+        log_trace(cpu_log, "Cache deshabilitada");
         EXIT_FAILURE;
     }
     for (int i = 0; i < cache->cantidad_entradas; i++){
-        log_info(cpu_log, "Limpiando cache");
+        log_trace(cpu_log, "Limpiando cache");
         if (cache->entradas[i].modificado && !(cache->entradas[i].numero_pagina <= -1)){
-            log_info(cpu_log, "Actualizando pagina modificada %d en memoria", cache->entradas[i].numero_pagina);
+            log_trace(cpu_log, "Actualizando pagina modificada %d en memoria", cache->entradas[i].numero_pagina);
             //escribir_pagina_en_memoria();
 
         }
@@ -117,11 +117,11 @@ void desalojar_proceso_cache(t_cache_paginas* cache){
 
 void liberar_cache(t_cache_paginas* cache){
     if (cache == NULL){
-        log_info(cpu_log,"la cache ya estaba liberada.");
+        log_trace(cpu_log,"la cache ya estaba liberada.");
         EXIT_SUCCESS;
     }
     if(!cache_habilitada(cache)){
-        log_info(cpu_log, "No hay entradas en la cache.");
+        log_trace(cpu_log, "No hay entradas en la cache.");
         EXIT_SUCCESS;
     }
     for (int i = 0; i<cache->cantidad_entradas; i++){
