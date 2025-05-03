@@ -112,10 +112,10 @@ int main(int argc, char* argv[]) {
     mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 1));
     mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 2));
     
-    /*cambiar_estado_pcb((t_pcb*)list_get(cola_procesos, 0), READY);
+    cambiar_estado_pcb((t_pcb*)list_get(cola_procesos, 0), READY);
     cambiar_estado_pcb((t_pcb*)list_get(cola_procesos, 1), READY);
     cambiar_estado_pcb((t_pcb*)list_get(cola_procesos, 2), READY);
-    mostrar_colas_estados(); // 3 Procesos en READY*/
+    mostrar_colas_estados(); // 3 Procesos en READY
 
     cambiar_estado_pcb((t_pcb*)list_get(cola_procesos, 0), EXEC);
     sleep(3);

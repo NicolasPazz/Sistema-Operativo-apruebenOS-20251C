@@ -78,9 +78,9 @@ int recibir_kernel_dispatch(int fd_kernel_dispatch) {
                 int pc, pid;//= recibir_instruccion(fd_kernel_dispatch);
                 //log_info(cpu_log, "EXEC - PID: %d, Instrucción: %s", pid, instruccion->parametros1);
                 // Ejecutar la instrucción
-                t_list* lista = recibir_2_enteros(fd_kernel_dispatch);
-                int pc = list_get(lista, 0);
-                int pid = list_get(lista, 1);
+                /*t_list* lista = recibir_2_enteros(fd_kernel_dispatch);
+                pc = (int)(intptr_t) list_get(lista, 0);
+                pid = (int)(intptr_t) list_get(lista, 1);*/
                 ejecutar_ciclo_instruccion(pc, pid);
                 break;
             case -1:
