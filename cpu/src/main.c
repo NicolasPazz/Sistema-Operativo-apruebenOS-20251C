@@ -78,7 +78,10 @@ int recibir_kernel_dispatch(int fd_kernel_dispatch) {
                 int pc, pid;//= recibir_instruccion(fd_kernel_dispatch);
                 //log_info(cpu_log, "EXEC - PID: %d, Instrucción: %s", pid, instruccion->parametros1);
                 // Ejecutar la instrucción
-                ejecutar_ciclo_instruccion(pc, pid);    // warning: pc/‘pid’ may be used uninitialized
+                t_list* lista = recibir_2_enteros(fd_kernel_dispatch);
+                int pc = list_get(lista, 0);
+                int pid = list_get(lista, 1);
+                ejecutar_ciclo_instruccion(pc, pid);
                 break;
             case -1:
                 log_error(cpu_log, "Desconexión de Kernel (Dispatch)");

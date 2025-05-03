@@ -8,6 +8,7 @@
 #include <commons/log.h>
 #include <commons/config.h>
 #include <../../utils/headers/sockets.h>
+#include <../../utils/headers/utils.h>
 
 #include "init_memoria.h"
 #include "interfaz_memoria.h"
@@ -35,7 +36,7 @@ extern char* DUMP_PATH;
 /////////////////////////////// Prototipos ///////////////////////////////
 void iniciar_logger_memoria(void);
 void procesar_conexion(void*);
-
+void procesar_cod_ops(op_code cop, int cliente_socket);
 
 int iniciar_conexiones_memoria(char* puerto, t_log* logger);
 int server_escuchar(char* server_name, int server_socket);
