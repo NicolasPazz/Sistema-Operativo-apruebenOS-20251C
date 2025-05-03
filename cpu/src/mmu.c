@@ -40,7 +40,7 @@ uint32_t traducir_direccion(uint32_t direccion_logica, uint32_t* desplazamiento,
     uint32_t frame = 0;
     int pid_ejecutando; // VER TEMA PID
     if (tlb_habilitada() && tlb_buscar(nro_pagina, &frame)) {
-        log_info(cpu_log, "PID: %d - TLB HIT - Pagina: %d", pid_ejecutando, nro_pagina);
+        log_info(cpu_log, "PID: %d - TLB HIT - Pagina: %d", pid_ejecutando, nro_pagina);    // warning: ‘pid_ejecutando’ may be used uninitialized
     } else {
         log_info(cpu_log, "PID: %d - TLB MISS - Pagina: %d", pid_ejecutando, nro_pagina);
 
@@ -51,7 +51,7 @@ uint32_t traducir_direccion(uint32_t direccion_logica, uint32_t* desplazamiento,
         }
     }
 
-    log_info(cpu_log, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %s", pid_ejecutando, frame * tam_pagina + desplazamiento, datos);
+    log_info(cpu_log, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %s", pid_ejecutando, frame * tam_pagina + desplazamiento, datos); // warning: format ‘%d’ expects argument of type ‘int’, but argument 4 has type ‘uint32_t *’ {aka ‘unsigned int *’}
     return frame;
 
 
@@ -81,7 +81,7 @@ void tlb_insertar(uint32_t pagina, uint32_t frame) {
     nueva_entrada->tiempo_uso = timestamp_actual(); // Para LRU
     nueva_entrada->orden_fifo = orden_fifo++;        // Para FIFO
 
-    if (list_size(tlb) < ENTRADAS_TLB) {
+    if (list_size(tlb) < ENTRADAS_TLB) {    // warning: comparison between pointer and integer
         list_add(tlb, nueva_entrada);
     } else {
         // TLB llena

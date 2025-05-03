@@ -5,6 +5,9 @@
 t_log* kernel_log;
 t_log* kernel_log_debug;
 
+// Hashmap de cronometros por PCB
+t_dictionary* tiempos_por_pid;
+
 // Sockets
 int fd_dispatch;
 int fd_cpu_dispatch;
@@ -25,6 +28,7 @@ char* ALGORITMO_CORTO_PLAZO;
 char* ALGORITMO_INGRESO_A_READY;
 char* ALFA;
 char* TIEMPO_SUSPENSION;
+char* ESTIMACION_INICIAL;
 char* LOG_LEVEL;
 
 // Colas de Estados
@@ -48,6 +52,20 @@ bool conectado_cpu = false;
 bool conectado_io = false;
 pthread_mutex_t mutex_conexiones;
 
+// Semaforos y condiciones de planificacion
+pthread_mutex_t mutex_cola_new;
+pthread_cond_t cond_nuevo_proceso;
+pthread_cond_t cond_susp_ready_vacia;
+pthread_mutex_t mutex_cola_susp_ready;
+pthread_mutex_t mutex_cola_susp_blocked;
+pthread_mutex_t mutex_cola_ready;
+pthread_mutex_t mutex_cola_running;
+pthread_mutex_t mutex_cola_blocked;
+pthread_mutex_t mutex_cola_exit;
+pthread_cond_t cond_exit;
+pthread_mutex_t mutex_replanificar_pmcp;
+pthread_cond_t cond_replanificar_pmcp;
+
 /////////////////////////////// Inicialización de variables globales ///////////////////////////////
 void iniciar_config_kernel() {
     kernel_config = iniciar_config("kernel.config");
@@ -60,12 +78,13 @@ void iniciar_config_kernel() {
     ALGORITMO_CORTO_PLAZO = config_get_string_value(kernel_config, "ALGORITMO_CORTO_PLAZO");
     ALGORITMO_INGRESO_A_READY = config_get_string_value(kernel_config, "ALGORITMO_INGRESO_A_READY");
     ALFA = config_get_string_value(kernel_config, "ALFA");
+    ESTIMACION_INICIAL = config_get_string_value(kernel_config, "ESTIMACION_INICIAL");
     TIEMPO_SUSPENSION = config_get_string_value(kernel_config, "TIEMPO_SUSPENSION");
     LOG_LEVEL = config_get_string_value(kernel_config, "LOG_LEVEL");
 
     if (!IP_MEMORIA || !PUERTO_MEMORIA || !PUERTO_ESCUCHA_DISPATCH || !PUERTO_ESCUCHA_INTERRUPT ||
         !PUERTO_ESCUCHA_IO || !ALGORITMO_CORTO_PLAZO || !ALGORITMO_INGRESO_A_READY ||
-        !ALFA || !TIEMPO_SUSPENSION || !LOG_LEVEL) {
+        !ALFA || !ESTIMACION_INICIAL || !TIEMPO_SUSPENSION || !LOG_LEVEL) {
         log_error(kernel_log_debug, "iniciar_config_kernel: Faltan campos obligatorios en kernel.config");
         exit(EXIT_FAILURE);
     } else {
@@ -77,6 +96,7 @@ void iniciar_config_kernel() {
         log_info(kernel_log_debug, "ALGORITMO_CORTO_PLAZO: %s", ALGORITMO_CORTO_PLAZO);
         log_info(kernel_log_debug, "ALGORITMO_INGRESO_A_READY: %s", ALGORITMO_INGRESO_A_READY);
         log_info(kernel_log_debug, "ALFA: %s", ALFA);
+        log_info(kernel_log_debug, "ESTIMACION_INICIAL: %s", ESTIMACION_INICIAL);
         log_info(kernel_log_debug, "TIEMPO_SUSPENSION: %s", TIEMPO_SUSPENSION);
         log_info(kernel_log_debug, "LOG_LEVEL: %s", LOG_LEVEL);
     }
@@ -103,17 +123,34 @@ void iniciar_estados_kernel(){
     cola_procesos = list_create();
 }
 
-void iniciar_sincronizacion_kernel(){
-    pthread_mutex_init(&mutex_lista_cpus, NULL);
+void iniciar_sincronizacion_kernel() {
     pthread_mutex_init(&mutex_lista_cpus, NULL);
     pthread_mutex_init(&mutex_ios, NULL);
     pthread_mutex_init(&mutex_conexiones, NULL);
+
+    pthread_mutex_init(&mutex_cola_new, NULL);
+    pthread_cond_init(&cond_nuevo_proceso, NULL);
+    pthread_cond_init(&cond_susp_ready_vacia, NULL);
+    pthread_mutex_init(&mutex_cola_susp_ready, NULL);
+    pthread_mutex_init(&mutex_cola_susp_blocked, NULL);
+    pthread_mutex_init(&mutex_cola_ready, NULL);
+    pthread_mutex_init(&mutex_cola_running, NULL);
+    pthread_mutex_init(&mutex_cola_blocked, NULL);
+    pthread_mutex_init(&mutex_cola_exit, NULL);
+    pthread_cond_init(&cond_exit, NULL);
+    pthread_mutex_init(&mutex_replanificar_pmcp, NULL);
+    pthread_cond_init(&cond_replanificar_pmcp, NULL);
 
     lista_cpus = list_create();
     lista_ios = list_create();
 
     conectado_cpu = false;
     conectado_io = false;
+}
+
+
+void iniciar_diccionario_tiempos() {
+    tiempos_por_pid = dictionary_create();
 }
 
 void terminar_kernel(){
@@ -131,10 +168,21 @@ void terminar_kernel(){
     list_destroy(cola_procesos);
 
     pthread_mutex_destroy(&mutex_lista_cpus);
-    pthread_mutex_destroy(&mutex_lista_cpus);
     pthread_mutex_destroy(&mutex_ios);
     pthread_mutex_destroy(&mutex_conexiones);
-
+    pthread_mutex_destroy(&mutex_cola_new);
+    pthread_cond_destroy(&cond_nuevo_proceso);
+    pthread_cond_destroy(&cond_susp_ready_vacia);
+    pthread_mutex_destroy(&mutex_cola_susp_ready);
+    pthread_mutex_destroy(&mutex_cola_susp_blocked);
+    pthread_mutex_destroy(&mutex_cola_ready);
+    pthread_mutex_destroy(&mutex_cola_running);
+    pthread_mutex_destroy(&mutex_cola_blocked);
+    pthread_mutex_destroy(&mutex_cola_exit);
+    pthread_cond_destroy(&cond_exit);
+    pthread_mutex_destroy(&mutex_replanificar_pmcp);
+    pthread_cond_destroy(&cond_replanificar_pmcp);
+    
     list_destroy(lista_cpus);
     list_destroy(lista_ios);
 

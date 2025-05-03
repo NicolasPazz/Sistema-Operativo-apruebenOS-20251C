@@ -86,7 +86,7 @@ int recibir_kernel_dispatch(int fd_kernel_dispatch) {
             case -1:
                 log_error(cpu_log, "Desconexión de Kernel (Dispatch)");
                 close(fd_kernel_dispatch);
-                return NULL;
+                return NULL;    // warning: returning ‘void *’ from a function with return type ‘int’
             default:
                 log_warning(cpu_log, "Operación desconocida de Dispatch: %d", cod_op);
         }
@@ -100,7 +100,7 @@ int recibir_kernel_interrupt(int fd_kernel_interrupt) {
             case -1:
                 log_error(cpu_log, "Desconexión de Kernel (Interrupt)");
                 close(fd_kernel_interrupt);
-                return NULL;
+                return NULL;    // warning: returning ‘void *’ from a function with return type ‘int’
             default:
                 log_warning(cpu_log, "Operación desconocida de Interrupt: %d", cod_op);
         }
