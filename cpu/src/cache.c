@@ -3,7 +3,7 @@
 #include "../headers/init.h"
 
 t_cache_paginas* inicializar_cache(){
-    t_cache_paginas* cache = (t_cache_paginas*)malloc(sizeof(t_cache_paginas));
+    cache = (t_cache_paginas*)malloc(sizeof(t_cache_paginas));
     if (cache == NULL){
         log_error(cpu_log,"No se pudo inicializar la cache");
         exit(EXIT_FAILURE);
@@ -136,4 +136,41 @@ void liberar_cache(t_cache_paginas* cache){
         free(cache->puntero_clock); // warning: passing argument 1 of ‘free’ makes pointer from integer without a cast
         free(cache);
     }
+}
+
+void cache_modificar(uint32_t frame, char* datos){
+    if (cache == NULL){
+        log_info(cpu_log,"la cache ya estaba liberada.");
+        return;
+    }
+    if (!cache_habilitada(cache)){
+        log_info(cpu_log, "La cache esta deshabilitada.");
+        return;
+    }
+    int nro_pagina_en_cache = buscar_pagina_en_cache(cache, frame);
+    if (nro_pagina_en_cache <= -1){
+        log_info(cpu_log, "No se encontro la pagina %d en la cache", frame);
+        return;
+    }
+    cache->entradas[nro_pagina_en_cache].contenido = datos;
+    cache->entradas[nro_pagina_en_cache].modificado = true;
+}
+
+void cache_escribir(uint32_t frame, char* datos){
+    if (cache == NULL){
+        log_info(cpu_log,"la cache ya estaba liberada.");
+        
+    }
+    if (!cache_habilitada(cache)){
+        log_info(cpu_log, "La cache esta deshabilitada.");
+        
+    }
+    
+    t_entrada_cache* entrada = malloc(sizeof(t_entrada_cache));
+    entrada->numero_pagina = frame;
+    entrada->contenido = datos;
+    entrada->modificado = false;
+    entrada->bit_referencia = 0;
+    list_add(cache->entradas, entrada);
+    
 }
