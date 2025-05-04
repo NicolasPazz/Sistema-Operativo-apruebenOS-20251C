@@ -25,11 +25,11 @@ int main(int argc, char* argv[]) {
     conectar_cpu_memoria();
 
     pthread_t atiende_respuestas_kernel_dispatch;
-    pthread_create(&atiende_respuestas_kernel_dispatch, NULL, (void *)recibir_kernel_dispatch, (void *)(intptr_t)fd_kernel_dispatch);
+    pthread_create(&atiende_respuestas_kernel_dispatch, NULL, (void *)recibir_kernel_dispatch, fd_kernel_dispatch);
     pthread_detach(atiende_respuestas_kernel_dispatch);
 
     pthread_t atiende_respuestas_kernel_interrupt;
-    pthread_create(&atiende_respuestas_kernel_interrupt, NULL, (void *)recibir_kernel_interrupt, (void *)(intptr_t)fd_kernel_interrupt);
+    pthread_create(&atiende_respuestas_kernel_interrupt, NULL, (void *)recibir_kernel_interrupt, fd_kernel_interrupt);
     pthread_detach(atiende_respuestas_kernel_interrupt);
 
     //ejecutar_ciclo_instruccion();
@@ -64,7 +64,7 @@ int main(int argc, char* argv[]) {
 //     }
 // }
 
-int recibir_kernel_dispatch(int fd_kernel_dispatch) {
+int recibir_kernel_dispatch() {
     int noFinalizar = 0;
     while (noFinalizar != -1) {
         int cod_op = recibir_operacion(fd_kernel_dispatch);
@@ -73,15 +73,11 @@ int recibir_kernel_dispatch(int fd_kernel_dispatch) {
 			    recibir_mensaje(fd_kernel_dispatch, cpu_log);
 			    break;
             case EXEC_OP:
-                //int pid_exec = recibir_pid(fd_kernel_dispatch);
-                //int pid = recibir_pid(fd_kernel_dispatch);
-                int pc, pid;//= recibir_instruccion(fd_kernel_dispatch);
-                //log_info(cpu_log, "EXEC - PID: %d, Instrucción: %s", pid, instruccion->parametros1);
                 // Ejecutar la instrucción
-                /*t_list* lista = recibir_2_enteros(fd_kernel_dispatch);
+                t_list* lista = recibir_2_enteros(fd_kernel_dispatch);
                 pc = (int)(intptr_t) list_get(lista, 0);
-                pid = (int)(intptr_t) list_get(lista, 1);*/
-                ejecutar_ciclo_instruccion(pc, pid);
+                pid_ejecutando = (int)(intptr_t) list_get(lista, 1);
+                ejecutar_ciclo_instruccion();
                 break;
             case -1:
                 log_error(cpu_log, "Desconexión de Kernel (Dispatch)");
@@ -93,7 +89,7 @@ int recibir_kernel_dispatch(int fd_kernel_dispatch) {
     }
 }
 
-int recibir_kernel_interrupt(int fd_kernel_interrupt) {
+int recibir_kernel_interrupt() {
     while (1) {
         int cod_op = recibir_operacion(fd_kernel_interrupt);
         switch (cod_op) {
