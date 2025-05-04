@@ -1,18 +1,14 @@
 #include "../headers/cicloDeInstruccion.h"
 #include "../headers/init.h"
 #include "../headers/mmu.h"
-#include "../headers/instrucciones/execute.h"
-#include "../headers/instrucciones/fetch.h"
-#include "../headers/instrucciones/decode.h"
-#include "../headers/instrucciones/checkinterrupt.h"
 #include "../headers/funciones.h"
 
-int seguir_ejecutando;
-int pid_ejecutando, pid_interrupt, hay_interrupcion, pc; // ver de donde sacar estos, ademas de donde setear el hay interrupcion
-void ejecutar_ciclo_instruccion(int pc, int pid) {
+
+int  hay_interrupcion, pc; // ver de donde sacar estos, ademas de donde setear el hay interrupcion
+void ejecutar_ciclo_instruccion() {
     seguir_ejecutando = 1;
     while(seguir_ejecutando == 1){
-        t_instruccion* instruccion = fetch(pc, pid);
+        t_instruccion* instruccion = fetch();
         op_code tipo_instruccion = decode(instruccion->parametros1);
         //una idea despues ver de donde sacar el pc, si pasarlo por parametro o hacerlo global
         if(tipo_instruccion != GOTO_OP){
@@ -26,7 +22,7 @@ void ejecutar_ciclo_instruccion(int pc, int pid) {
 }
 
 // fetch
-t_instruccion* fetch(int pc, int pid){
+t_instruccion* fetch(){
     // t_instruccion* instruccion ;//pedir_instruccion_memoria(pc);
     // if (instruccion == NULL)
     // {
@@ -38,7 +34,7 @@ t_instruccion* fetch(int pc, int pid){
 
     t_paquete* paquete = crear_paquete_op(PEDIR_INSTRUCCION_OP);
     agregar_entero_a_paquete(paquete, pc);
-    agregar_entero_a_paquete(paquete, pid);
+    agregar_entero_a_paquete(paquete, pid_ejecutando);
     enviar_paquete(paquete, fd_memoria);
     eliminar_paquete(paquete);
 
@@ -119,7 +115,7 @@ void execute(op_code tipo_instruccion, t_instruccion* instruccion) { //meto las 
 }
 
 // check interrupt
-void check_interrupt(int seguir_ejecutando) {
+void check_interrupt() {
     hay_interrupcion = 0;
      if (pid_ejecutando == pid_interrupt) {
       seguir_ejecutando = 0;
