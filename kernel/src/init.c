@@ -491,7 +491,7 @@ void* atender_io(void* arg) {
                 // TODO
                 break;
             default:
-                log_warning(kernel_log, "Codigo op desconocido recibido desde IO (fd=%d): %d", fd_io, cop);
+                log_error(kernel_log, "Codigo op desconocido recibido desde IO (fd=%d): %d", fd_io, cop);
                 break;
         }
     }

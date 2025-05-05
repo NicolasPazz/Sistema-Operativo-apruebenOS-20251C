@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
     iniciar_logger_memoria();
 
     if (!cargar_configuracion("memoria.config")) {
-        log_debug(logger, "Error al cargar la configuracion de memoria.");
+        log_error(logger, "Error al cargar la configuracion de memoria.");
         cerrar_programa();
         return EXIT_FAILURE;
     }
@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
     free(puerto);
 
     /* if (memoria_server == -1) {
-        log_debug(logger, "No se pudo iniciar el servidor de memoria.");
+        log_error(logger, "No se pudo iniciar el servidor de memoria.");
         cerrar_programa();
         return EXIT_FAILURE;
     } */

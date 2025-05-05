@@ -58,11 +58,11 @@ int main(int argc, char* argv[]) {
 //                 list_destroy(lista);
 //                 break;
 //             case -1:
-//                 log_debug(data->logger, "El cliente (%s) se desconecto. Terminando servidor.", data->cliente);
+//                 log_error(data->logger, "El cliente (%s) se desconecto. Terminando servidor.", data->cliente);
 //                 control_key = 0;
 //                 break;
 //             default:
-//                 log_debug(data->logger, "Operacion desconocida de %s", data->cliente);
+//                 log_error(data->logger, "Operacion desconocida de %s", data->cliente);
 //                 break;
 //         }
 //     }
@@ -78,17 +78,17 @@ int recibir_kernel_dispatch() {
 			    break;
             case EXEC_OP:
                 // Ejecutar la instrucción
-                t_list* lista = recibir_2_enteros(fd_kernel_dispatch);
-                pc = (int)(intptr_t) list_get(lista, 0);
-                pid_ejecutando = (int)(intptr_t) list_get(lista, 1);
+                //t_list* lista = recibir_2_enteros(fd_kernel_dispatch);    recibir_2_enteros no existe
+                //pc = (int)(intptr_t) list_get(lista, 0);      lista no esta definido
+                //pid_ejecutando = (int)(intptr_t) list_get(lista, 1);      lista no esta definido
                 ejecutar_ciclo_instruccion();
                 break;
             case -1:
-                log_debug(cpu_log, "Desconexion de Kernel (Dispatch)");
+                log_error(cpu_log, "Desconexion de Kernel (Dispatch)");
                 close(fd_kernel_dispatch);
                 return NULL;    // warning: returning ‘void *’ from a function with return type ‘int’
             default:
-                log_debug(cpu_log, "Operacion desconocida de Dispatch: %d", cod_op);
+            log_error(cpu_log, "Operacion desconocida de Dispatch: %d", cod_op);
         }
     }
 }
@@ -98,11 +98,11 @@ int recibir_kernel_interrupt() {
         int cod_op = recibir_operacion(fd_kernel_interrupt);
         switch (cod_op) {
             case -1:
-                log_debug(cpu_log, "Desconexion de Kernel (Interrupt)");
+                log_error(cpu_log, "Desconexion de Kernel (Interrupt)");
                 close(fd_kernel_interrupt);
                 return NULL;    // warning: returning ‘void *’ from a function with return type ‘int’
             default:
-                log_debug(cpu_log, "Operacion desconocida de Interrupt: %d", cod_op);
+                log_error(cpu_log, "Operacion desconocida de Interrupt: %d", cod_op);
         }
     }
 }

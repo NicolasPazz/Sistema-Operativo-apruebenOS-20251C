@@ -148,6 +148,9 @@ int main(int argc, char* argv[]) {
     //////////////////////////// Terminar ////////////////////////////  
     terminar_kernel();
     
+    while(1){
+      sleep(100);
+    };
     return EXIT_SUCCESS;
   
 }
