@@ -10,6 +10,10 @@ typedef struct {
     bool valido;
 } entrada_tlb_t;
 
+t_list* tlb = NULL;
+t_cache_paginas* cache = NULL;
+uint32_t orden_fifo = 0;
+
 void inicializar_mmu(void);
 uint32_t traducir_direccion(uint32_t direccion_logica, uint32_t* desplazamiento, char* datos);
 bool tlb_buscar(uint32_t pagina, uint32_t* frame);

@@ -13,15 +13,24 @@ void func_write(char* direccion_logica_str, char* datos) {
     uint32_t frame = traducir_direccion(direccion_logica, &desplazamiento, datos);
     t_cache_paginas* cache = inicializar_cache();
     if (cache_habilitada(cache) && (buscar_pagina_en_cache(cache,frame) != -1)){
-        //cache_modificar(frame, desplazamiento, datos);
-        sleep(1);
+        cache_modificar(frame, datos);
     } else if (cache_habilitada(cache)) {
         //solicitar_pagina_a_memoria(frame); paquete y pedirle por medio de op code VER
-        //cache_escribir(frame, desplazamiento, datos);
-        sleep(1);
+        t_paquete* paquete = crear_paquete_op(PEDIR_PAGINA_OP);
+        agregar_entero_a_paquete(paquete, frame);
+        enviar_paquete(paquete, fd_memoria);
+        eliminar_paquete(paquete);
+
+        uint32_t pagina = recibir_entero(fd_memoria);
+        cache_escribir(pagina, datos);
     } else {
-        //memoria_escribir(frame, desplazamiento, datos);
-        sleep(1);
+        t_paquete* paquete = crear_paquete_op(WRITE_OP);
+        agregar_entero_a_paquete(paquete, frame);
+        agregar_entero_a_paquete(paquete, desplazamiento);
+        agregar_string_a_paquete(paquete, datos);
+        enviar_paquete(paquete, fd_memoria);
+        eliminar_paquete(paquete);
+
     }
 
     
@@ -40,8 +49,7 @@ void func_goto(char* valor) {
 }
 
 
-void func_io(char* tiempo_str) { // tiempo no se si seria int ...
-    int tiempo = atoi(tiempo_str);
+void func_io(char* nombre_dispositivo, u_int32_t tiempo) {
     t_paquete* paquete = crear_paquete_op(IO_OP);
     agregar_entero_a_paquete(paquete, pid_ejecutando);
     agregar_entero_a_paquete(paquete, tiempo);

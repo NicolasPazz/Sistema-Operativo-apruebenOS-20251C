@@ -2,9 +2,7 @@
 #include "../../utils/headers/sockets.h"
 #include "../headers/init.h"
 #include "../headers/cache.h"
-t_list* tlb = NULL;
-t_list* cache = NULL;
-uint32_t orden_fifo = 0;
+
 
 
 void inicializar_mmu() {
