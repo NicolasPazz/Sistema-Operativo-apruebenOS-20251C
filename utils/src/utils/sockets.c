@@ -72,7 +72,7 @@ int iniciar_servidor(char *puerto, t_log* logger, char* msj_server) {
 	}
 
 	freeaddrinfo(servinfo);
-	log_trace(logger, "%s escuchando en puerto %s", msj_server, puerto);
+	log_debug(logger, "%s escuchando en puerto %s", msj_server, puerto);
 
 	return socket_servidor;
 }
@@ -128,7 +128,7 @@ int esperar_cliente(int socket_servidor, t_log* logger) {
         log_error(logger, "Error al aceptar cliente: %s", strerror(errno));
         return -1;
     }
-    log_info(logger, "Se conecto un nuevo cliente (fd = %d)", socket_cliente);
+    log_debug(logger, "Se conecto un nuevo cliente (fd = %d)", socket_cliente);
     return socket_cliente;
 }
 
@@ -148,11 +148,11 @@ void atender_cliente(void* arg) {
                 list_destroy(lista);
                 break;
             case -1:
-                log_error(data->logger, "El cliente (%s) se desconectó. Terminando servidor.", data->cliente);
+                log_debug(data->logger, "El cliente (%s) se desconecto. Terminando servidor.", data->cliente);
                 control_key = 0;
                 break;
             default:
-                log_warning(data->logger, "Operación desconocida de %s", data->cliente);
+                log_debug(data->logger, "Operacion desconocida de %s", data->cliente);
                 break;
         }
     }
@@ -170,7 +170,7 @@ bool validar_handshake(int fd, handshake_code esperado, t_log* log) {
     }
 
     if (recibido != esperado) {
-        log_error(log, "Handshake inválido (fd=%d): se esperaba %d, se recibió %d", fd, esperado, recibido);
+        log_warning(log, "Handshake invalido (fd=%d): se esperaba %d, se recibio %d", fd, esperado, recibido);
         return false;
     }
 
@@ -228,7 +228,7 @@ void* recibir_buffer(int* size, int socket_cliente) {
 void recibir_mensaje(int socket_cliente,t_log* logger) {
 	int size;
 	char* buffer = recibir_buffer(&size, socket_cliente);
-	log_info(logger, "Me llego el mensaje: %s", buffer);
+	log_debug(logger, "Me llego el mensaje: %s", buffer);
 	free(buffer);
 }
 

@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
     pthread_detach(hilo_dispatch);
-    log_info(kernel_log, "Hilo de servidor Dispatch creado correctamente");
+    log_debug(kernel_log, "Hilo de servidor Dispatch creado correctamente");
 
     // Servidor de CPU (Interrupt)
     pthread_t hilo_interrupt;
@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
     pthread_detach(hilo_interrupt);
-    log_info(kernel_log, "Hilo de servidor Interrupt creado correctamente");
+    log_debug(kernel_log, "Hilo de servidor Interrupt creado correctamente");
 
     // Cliente de Memoria
     pthread_t hilo_memoria;
@@ -49,7 +49,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
     pthread_detach(hilo_memoria);
-    log_info(kernel_log, "Hilo cliente de Memoria creado correctamente");
+    log_debug(kernel_log, "Hilo cliente de Memoria creado correctamente");
 
     // Servidor de IO
     pthread_t hilo_io;
@@ -59,11 +59,11 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
     pthread_detach(hilo_io);
-    log_info(kernel_log, "Hilo de servidor IO creado correctamente");
+    log_debug(kernel_log, "Hilo de servidor IO creado correctamente");
 
 
     //////////////////////////// Esperar conexiones minimas ////////////////////////////
-    log_info(kernel_log, "Esperando conexion con al menos una CPU y una IO");
+    log_debug(kernel_log, "Esperando conexion con al menos una CPU y una IO");
 
     while (true) {
         pthread_mutex_lock(&mutex_conexiones);
@@ -72,11 +72,11 @@ int main(int argc, char* argv[]) {
         sleep(1);
     }
 
-    log_info(kernel_log, "CPU y IO conectados. Continuando ejecucion");
+    log_debug(kernel_log, "CPU y IO conectados. Continuando ejecucion");
   
     //////////////////////////// Esperar enter ////////////////////////////
 
-    printf("\nPresione ENTER para iniciar planificación...\n");
+    printf("\nPresione ENTER para iniciar planificacion...\n");
     
     int c = getchar();
     while (c != '\n') {
@@ -84,7 +84,7 @@ int main(int argc, char* argv[]) {
 
         while ((c = getchar()) != '\n' && c != EOF);
 
-        printf("\nPresione ENTER para iniciar planificación...\n");
+        printf("\nPresione ENTER para iniciar planificacion...\n");
         c = getchar();
     }
     
@@ -92,9 +92,10 @@ int main(int argc, char* argv[]) {
     printf("\n\n\n");
     mostrar_colas_estados();
 
-    log_info(kernel_log, "Creando proceso inicial:  Archivo: %s, Tamaño: %d", archivo_pseudocodigo, tamanio_proceso);
+    log_debug(kernel_log, "Creando proceso inicial:  Archivo: %s, Tamanio: %d", archivo_pseudocodigo, tamanio_proceso);
     INIT_PROC(archivo_pseudocodigo, tamanio_proceso);
-
+    
+    loguear_metricas_estado(list_get(cola_new, 0));
     mostrar_colas_estados();
 
     //////////////////////////// Planificacion ////////////////////////////
@@ -102,7 +103,7 @@ int main(int argc, char* argv[]) {
     iniciar_planificador_largo_plazo();
 
     //////////////////////////// Test ////////////////////////////
-    printf("Creando 2 procesos más... \n");
+    log_debug(kernel_log, "Creando 2 procesos mas... \n");
     INIT_PROC("Test2", 11);
     INIT_PROC("Test2", 12);
 
@@ -152,5 +153,5 @@ int main(int argc, char* argv[]) {
 }
 
 void iterator(char* value) {
-    log_info(kernel_log, "%s", value);
+    log_debug(kernel_log, "%s", value);
 }

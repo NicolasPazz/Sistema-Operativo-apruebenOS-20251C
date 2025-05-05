@@ -38,7 +38,7 @@ void func_write(char* direccion_logica_str, char* datos) {
 
 
 void func_read(int direccion, int tamanio) {
-    //t_direccion_fisica direccion_fisica = transformar_a_fisica(direccion_logica, 0,10,10); // chequear las ultimas 3 parametros, voy a revisar mañana como hago lo d las entradas
+    //t_direccion_fisica direccion_fisica = transformar_a_fisica(direccion_logica, 0,10,10); // chequear las ultimas 3 parametros, voy a revisar maniana como hago lo d las entradas
     //hacer el read
 }
 
@@ -71,7 +71,7 @@ void func_init_proc(t_instruccion* instruccion) {
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 
-    log_info(cpu_log, "PID: %i - INIT_PROC - Archivo: %s - Tamaño: %i", pid_ejecutando, path, size);
+    log_info(cpu_log, "PID: %i - INIT_PROC - Archivo: %s - Tamanio: %i", pid_ejecutando, path, size);
     seguir_ejecutando = 0;
 }
 
@@ -89,7 +89,7 @@ void func_exit() {
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 
-    seguir_ejecutando = 0; // Proceso terminó
+    seguir_ejecutando = 0; // Proceso termino
 }
 
 t_instruccion* recibir_instruccion(int conexion) {
@@ -117,7 +117,7 @@ t_instruccion* recibir_instruccion(int conexion) {
         instruccion_nueva->parametros3 = leer_string(buffer, &desp);
     }
     else {
-        log_error(cpu_log, "Instrucción desconocida recibida: %s", instruccion_nueva->parametros1);
+        log_trace(cpu_log, "Instruccion desconocida recibida: %s", instruccion_nueva->parametros1);
     }
 
     free(buffer);
