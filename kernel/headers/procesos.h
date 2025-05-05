@@ -15,5 +15,6 @@ const char* estado_to_string(Estados estado); // Asocia el valor del enum con el
 void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum);
 bool transicion_valida(Estados actual, Estados destino); // Valida transiciones de estados en base al diagrama de 7 estados
 t_list* obtener_cola_por_estado(Estados estado);
+void loguear_metricas_estado(t_pcb* pcb);
 
 #endif /* PROCESOS_H */

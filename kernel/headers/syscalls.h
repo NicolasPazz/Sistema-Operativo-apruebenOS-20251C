@@ -3,6 +3,7 @@
 
 /////////////////////////////// Includes ///////////////////////////////
 #include "kernel.h"
+#include "types.h"
 
 /////////////////////////////// Prototipos ///////////////////////////////
 /**
@@ -21,7 +22,7 @@ void INIT_PROC(char* nombre_archivo, uint16_t tam_memoria);
  * @details Bloquea el proceso que la use hasta que memoria confirme la finalizacion del Dump
  * en caso de Error el proceso pasa a EXIT, si no hay error pasa a READY
  */
-void DUMP_MEMORY();
+void DUMP_MEMORY(void);
 
 
 /**
@@ -34,5 +35,7 @@ void DUMP_MEMORY();
  * Si el IO esta libre se lo usa durante el tiempo_a_usar y se le envia el PID que lo esta usando
  */
 void IO(char* nombre_io, uint16_t tiempo_a_usar);
+
+void EXIT(t_pcb* pcb_a_finalizar);
 
 #endif /* SYSCALLS_H */

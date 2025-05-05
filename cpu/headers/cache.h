@@ -20,7 +20,7 @@ typedef struct {
 } t_cache_paginas;
 
 
-t_cache_paginas* inicializar_cache();
+t_cache_paginas* inicializar_cache(void);
 int buscar_pagina_en_cache (t_cache_paginas* cache, int numero_pagina);
 int seleccionar_victima_clock(t_cache_paginas* cache);
 int seleccionar_victima_clock_m (t_cache_paginas* cache);

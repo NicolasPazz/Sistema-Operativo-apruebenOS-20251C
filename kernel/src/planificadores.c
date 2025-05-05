@@ -55,7 +55,7 @@ void dispatch(t_pcb* proceso_a_ejecutar){
     cambiar_estado_pcb(proceso_a_ejecutar, EXEC);
     proceso_a_ejecutar->tiempo_inicio_exec = get_time();
 
-    // Enviar a CPU el PID del proceso a ejecutar
+    // Enviar a CPU el PID del proceso a ejecutar y en lista_cpus relacionar el pid del proceso enviado, con la cpu a la que se manda a ejecutar
     log_trace(kernel_log, "Enviando PID %d a CPU por Dispatch para que lo ejecute", proceso_a_ejecutar->PID);
 }
 
@@ -70,12 +70,14 @@ void iniciar_planificador_corto_plazo(char* algoritmo){
         proceso_elegido = elegir_por_srt();
     }
     else if (list_is_empty(cola_ready)) {
-        log_trace(kernel_log, "iniciar_planificador_corto_plazo: Cola READY vacia");
-        return;
+        log_error(kernel_log, "iniciar_planificador_corto_plazo: Cola READY vacia");
+        terminar_kernel();
+        exit(EXIT_FAILURE);
     }
     else {
-        log_trace(kernel_log, "iniciar_planificador_corto_plazo: Algoritmo no reconocido");
-        return;
+        log_error(kernel_log, "iniciar_planificador_corto_plazo: Algoritmo no reconocido");
+        terminar_kernel();
+        exit(EXIT_FAILURE);
     }
 
     dispatch(proceso_elegido);
@@ -124,18 +126,35 @@ void iniciar_planificador_largo_plazo() {
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
+
+    pthread_t hilo_exit;
+    if (pthread_create(&hilo_exit, NULL, gestionar_exit, NULL) != 0) {
+        log_error(kernel_log, "Error al crear hilo para gestionar procesos en EXIT");
+        terminar_kernel();
+        exit(EXIT_FAILURE);
+    }
+    pthread_detach(hilo_exit);
 }
 
-void* planificar_FIFO_lp() {
+void* planificar_FIFO_lp(void* arg) {
     while (1) {
         // Esperar a que cola_new no este vacia (INIT_OP) 
-        
+        sem_wait(&sem_proceso_a_new);
+
         // Esperar a que cola_susp_ready este vacia
-        
+        sem_wait(&sem_susp_ready_vacia);
+
         // Elijo el primer proceso de la cola NEW
         pthread_mutex_lock(&mutex_cola_new);
         t_pcb* pcb = (t_pcb*)list_get(cola_new, 0);
         pthread_mutex_unlock(&mutex_cola_new);
+
+        if (!pcb) {
+            log_error(kernel_log, "planificar_FIFO_lp: No hay proceso en cola NEW pese a semáforo");
+            terminar_kernel();
+            exit(EXIT_FAILURE);
+        }
+
         log_trace(kernel_log, "planificar_FIFO_lp: Intentando inicializar PID %d", pcb->PID);
 
         // Solicitar memoria para el proceso elegido
@@ -152,7 +171,8 @@ void* planificar_FIFO_lp() {
         t_respuesta_memoria respuesta;
         if (recv(fd_memoria, &respuesta, sizeof(t_respuesta_memoria), 0) <= 0) {
             log_error(kernel_log, "FIFO-LP: Error al recibir respuesta de Memoria para PID %d", pcb->PID);
-            continue;
+            terminar_kernel();
+            exit(EXIT_FAILURE);
         }
 
         // Si la respuesta es positiva: transicionar a READY y seguir con el proximo
@@ -167,24 +187,28 @@ void* planificar_FIFO_lp() {
         } else if (respuesta == ERROR) {    // Si la respuesta es negativa: se debera esperar al semaforo en EXIT que le avise que termino un proceso y reintentar
             log_trace(kernel_log, "FIFO-LP: Memoria rechazo PID %d, esperando liberacion de memoria", pcb->PID);
 
-            // Esperar senial de memoria liberada
+            // Esperar finalizacion de otro proceso
+            sem_wait(&sem_finalizacion_de_proceso);
             
         } else {
             log_error(kernel_log, "FIFO-LP: error al intentar iniciar memoria para el proceso PID %d, mensaje de retorno invalido", pcb->PID);
             terminar_kernel();
             exit(EXIT_FAILURE);
-        }       
+        }   
+        sem_post(&sem_susp_ready_vacia);    
     }
 
     return NULL;
 }
 
-void* planificar_PMCP_lp() {
+void* planificar_PMCP_lp(void* arg) {
     while (1) {
         // Esperar a que cola_new no este vacia (INIT_OP) 
-        
+        sem_wait(&sem_proceso_a_new);
+
         // Esperar a que cola_susp_ready este vacia
-        
+        sem_wait(&sem_susp_ready_vacia);
+
         // Elijo el proceso de la cola NEW
         t_pcb* pcb = elegir_por_pmcp();
         log_trace(kernel_log, "planificar_PMCP_lp: Intentando inicializar PID %d", pcb->PID);
@@ -204,8 +228,10 @@ void* planificar_PMCP_lp() {
         t_respuesta_memoria respuesta;
         if (recv(fd_memoria, &respuesta, sizeof(t_respuesta_memoria), 0) <= 0) {
             log_error(kernel_log, "PMCP-LP: Error al recibir respuesta de Memoria para PID %d", pcb->PID);
-            continue;
+            terminar_kernel();
+            exit(EXIT_FAILURE);
         }
+
         // Si la respuesta es positiva: transicionar a READY y seguir con el proximo
         if (respuesta == OK) {
             pthread_mutex_lock(&mutex_cola_new);
@@ -218,13 +244,15 @@ void* planificar_PMCP_lp() {
         } else if (respuesta == ERROR) {    // Si la respuesta es negativa: se debera esperar al semaforo en EXIT que le avise que termino un proceso o que entre un nuevo proceso a cola_new, y reintentar
             log_trace(kernel_log, "PMCP-LP: Memoria rechazo PID %d, esperando liberacion de memoria o entrada de nuevo proceso", pcb->PID);
 
-            // Esperar senial de memoria liberada o proceso nuevo
+            // Esperar finalizacion de otro proceso o liberacion de memoria
+            // sem_wait(&sem_finalizacion_de_proceso);
             
         } else {
             log_error(kernel_log, "PMCP-LP: error al intentar iniciar memoria para el proceso PID %d, mensaje de retorno invalido", pcb->PID);
             terminar_kernel();
             exit(EXIT_FAILURE);
         }       
+        sem_post(&sem_susp_ready_vacia);
     }
 
     return NULL;
@@ -242,4 +270,32 @@ t_pcb* elegir_por_pmcp() {
     t_pcb* pcb_mas_chico = (t_pcb*)list_get_minimum(cola_new, menor_tamanio);
     pthread_mutex_unlock(&mutex_cola_new);
     return (t_pcb*)pcb_mas_chico;
+}
+
+void* gestionar_exit(void* arg) {
+    while (1) {
+        sem_wait(&sem_proceso_a_exit);
+
+        pthread_mutex_lock(&mutex_cola_exit);
+        if (list_is_empty(cola_exit)) {
+            pthread_mutex_unlock(&mutex_cola_exit);
+            log_error(kernel_log, "gestionar_exit: Se despertó pero no hay procesos en EXIT");
+            terminar_kernel();
+            exit(EXIT_FAILURE);
+        }
+
+        t_pcb* pcb = list_get(cola_exit, 0);
+        pthread_mutex_unlock(&mutex_cola_exit);
+
+        if (!pcb) {
+            log_error(kernel_log, "gestionar_exit: No se pudo obtener PCB desde EXIT");
+            terminar_kernel();
+            exit(EXIT_FAILURE);
+        }
+
+        log_debug(kernel_log, "gestionar_exit: Ejecutando syscall EXIT para PID=%d", pcb->PID);
+        EXIT(pcb);
+    }
+
+    return NULL;
 }

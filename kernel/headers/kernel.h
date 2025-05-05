@@ -61,5 +61,9 @@ void* hilo_servidor_io(void* _);
 void iniciar_estados_kernel(void);
 void iniciar_sincronizacion_kernel(void);
 void terminar_kernel(void);
+bool cpu_por_fd(void* ptr);
+void* atender_cpu_dispatch(void* arg);
+void* atender_cpu_interrupt(void* arg);
+void* atender_io(void* arg);
 
 #endif /* KERNEL_H */

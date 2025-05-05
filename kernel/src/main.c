@@ -94,7 +94,8 @@ int main(int argc, char* argv[]) {
 
     log_debug(kernel_log, "Creando proceso inicial:  Archivo: %s, Tamanio: %d", archivo_pseudocodigo, tamanio_proceso);
     INIT_PROC(archivo_pseudocodigo, tamanio_proceso);
-
+    
+    loguear_metricas_estado(list_get(cola_new, 0));
     mostrar_colas_estados();
 
     //////////////////////////// Planificacion ////////////////////////////
@@ -102,7 +103,7 @@ int main(int argc, char* argv[]) {
     iniciar_planificador_largo_plazo();
 
     //////////////////////////// Test ////////////////////////////
-    printf("Creando 2 procesos mas... \n");
+    log_debug(kernel_log, "Creando 2 procesos mas... \n");
     INIT_PROC("Test2", 11);
     INIT_PROC("Test2", 12);
 

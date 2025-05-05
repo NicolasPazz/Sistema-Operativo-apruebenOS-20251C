@@ -38,12 +38,12 @@ typedef struct {
 
 #define MODULENAME "MEMORIA"
 
-uint8_t init();                 // inicializa loger, cfg, y semaforos
-uint8_t cargar_configuracion(); // carga cfg en strut cfg
-//uint8_t cargar_memoria();       // Init de segmentos_libres -- por ahora no necesito nada similar
+uint8_t init(void);                 // inicializa loger, cfg, y semaforos
+uint8_t cargar_configuracion(char* path); // carga cfg en strut cfg
+//uint8_t cargar_memoria(void);       // Init de segmentos_libres -- por ahora no necesito nada similar
 
-void iniciar_logger_memoria();
-void cerrar_programa();
+void iniciar_logger_memoria(void);
+void cerrar_programa(void);
 int server_escuchar(char*, int);
 
 #endif

@@ -34,6 +34,10 @@ int main(int argc, char* argv[]) {
 
     //ejecutar_ciclo_instruccion();
     
+    while(1){
+        sleep(100);
+    };
+
     terminar_programa();
     return EXIT_SUCCESS;  
 }
@@ -81,7 +85,7 @@ int recibir_kernel_dispatch(int fd_kernel_dispatch) {
                 /*t_list* lista = recibir_2_enteros(fd_kernel_dispatch);
                 pc = (int)(intptr_t) list_get(lista, 0);
                 pid = (int)(intptr_t) list_get(lista, 1);*/
-                ejecutar_ciclo_instruccion(pc, pid);
+                ejecutar_ciclo_instruccion(pc, pid);        // warning: ‘pc’/pid may be used uninitialized
                 break;
             case -1:
                 log_debug(cpu_log, "Desconexion de Kernel (Dispatch)");
