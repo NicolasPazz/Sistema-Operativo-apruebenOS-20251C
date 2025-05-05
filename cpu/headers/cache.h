@@ -19,6 +19,7 @@ typedef struct {
     int puntero_clock;
 } t_cache_paginas;
 
+extern t_cache_paginas* cache;
 
 t_cache_paginas* inicializar_cache(void);
 int buscar_pagina_en_cache (t_cache_paginas* cache, int numero_pagina);

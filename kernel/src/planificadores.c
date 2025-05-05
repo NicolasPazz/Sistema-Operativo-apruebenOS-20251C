@@ -93,7 +93,7 @@ void fin_io(t_pcb* pcb){
 
     // Cambiar a estado READY
     cambiar_estado_pcb(pcb, READY);
-    log_info(kernel_log, "## (<%d>) finalizo IO y pasa a READY", pcb->PID);
+    log_info(kernel_log, "## (<%d>) finalizó IO y pasa a READY", pcb->PID);
 }
 
 //////////////////////////// Planificacion de Largo Plazo ////////////////////////////

@@ -35,11 +35,11 @@ int main(int argc, char* argv[]) {
 //                 list_destroy(lista);
 //                 break;
 //             case -1:
-//                 log_debug(data->logger, "El cliente (%s) se desconecto. Terminando servidor.", data->cliente);
+//                 log_error(data->logger, "El cliente (%s) se desconecto. Terminando servidor.", data->cliente);
 //                 control_key = 0;
 //                 break;
 //             default:
-//                 log_debug(data->logger, "Operacion desconocida de %s", data->cliente);
+//                 log_error(data->logger, "Operacion desconocida de %s", data->cliente);
 //                 break;
 //         }
 //     }

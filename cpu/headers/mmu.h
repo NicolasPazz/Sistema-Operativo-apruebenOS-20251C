@@ -10,9 +10,9 @@ typedef struct {
     bool valido;
 } entrada_tlb_t;
 
-t_list* tlb = NULL;
-t_cache_paginas* cache = NULL;
-uint32_t orden_fifo = 0;
+//extern t_cache_paginas* cache;
+extern t_list* tlb;
+extern uint32_t orden_fifo;
 
 void inicializar_mmu(void);
 uint32_t traducir_direccion(uint32_t direccion_logica, uint32_t* desplazamiento, char* datos);

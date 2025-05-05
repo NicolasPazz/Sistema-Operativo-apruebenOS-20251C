@@ -171,7 +171,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             break;
 
         default:
-            log_debug(logger, "Codigo de operacion desconocido: %d", cop);
+            log_error(logger, "Codigo de operacion desconocido: %d", cop);
             break;
     }
 }

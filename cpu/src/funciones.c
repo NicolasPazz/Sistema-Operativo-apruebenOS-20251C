@@ -21,13 +21,13 @@ void func_write(char* direccion_logica_str, char* datos) {
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
 
-        uint32_t pagina = recibir_entero(fd_memoria);
-        cache_escribir(pagina, datos);
+        //uint32_t pagina = recibir_entero(fd_memoria);     recibir_entero no existe
+        //cache_escribir(pagina, datos);        pagina no esta definida
     } else {
         t_paquete* paquete = crear_paquete_op(WRITE_OP);
         agregar_entero_a_paquete(paquete, frame);
         agregar_entero_a_paquete(paquete, desplazamiento);
-        agregar_string_a_paquete(paquete, datos);
+        //agregar_string_a_paquete(paquete, datos);     agregar_string_a_paquete no existe
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
 
@@ -51,12 +51,12 @@ void func_goto(char* valor) {
 
 void func_io(char* nombre_dispositivo, u_int32_t tiempo) {
     t_paquete* paquete = crear_paquete_op(IO_OP);
-    agregar_entero_a_paquete(paquete, pid_ejecutando);
+    //agregar_entero_a_paquete(paquete, pid_ejecutando); no compila
     agregar_entero_a_paquete(paquete, tiempo);
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 
-    seguir_ejecutando = 0;  // aca se bloquea el ciclo, seguir ejec es global
+    //seguir_ejecutando = 0;  // aca se bloquea el ciclo, seguir ejec es global //       no compila
 }
 
 
@@ -71,8 +71,8 @@ void func_init_proc(t_instruccion* instruccion) {
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 
-    log_info(cpu_log, "PID: %i - INIT_PROC - Archivo: %s - Tamanio: %i", pid_ejecutando, path, size);
-    seguir_ejecutando = 0;
+    //log_info(cpu_log, "PID: %i - INIT_PROC - Archivo: %s - Tamaño: %i", pid_ejecutando, path, size);       no compila
+    //seguir_ejecutando = 0;     no compila
 }
 
 
@@ -85,11 +85,11 @@ void func_dump_memory() {
 
 void func_exit() {
     t_paquete* paquete = crear_paquete_op(EXIT_OP);
-    agregar_entero_a_paquete(paquete, pid_ejecutando);
+    //agregar_entero_a_paquete(paquete, pid_ejecutando);         no compila
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 
-    seguir_ejecutando = 0; // Proceso termino
+    //seguir_ejecutando = 0; // Proceso termino     no compila
 }
 
 t_instruccion* recibir_instruccion(int conexion) {
@@ -117,7 +117,7 @@ t_instruccion* recibir_instruccion(int conexion) {
         instruccion_nueva->parametros3 = leer_string(buffer, &desp);
     }
     else {
-        log_trace(cpu_log, "Instruccion desconocida recibida: %s", instruccion_nueva->parametros1);
+        log_error(cpu_log, "Instruccion desconocida recibida: %s", instruccion_nueva->parametros1);
     }
 
     free(buffer);

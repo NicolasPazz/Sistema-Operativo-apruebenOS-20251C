@@ -39,7 +39,7 @@ uint8_t cargar_configuracion(char* path) {
     t_config* cfg_file = config_create(path);
 
     if (cfg_file == NULL) {
-        log_debug(logger, "No se encontro el archivo de configuracion: %s", path);
+        log_error(logger, "No se encontro el archivo de configuracion: %s", path);
         return 0;
     }
 
@@ -58,7 +58,7 @@ uint8_t cargar_configuracion(char* path) {
     };
 
     if (!config_has_all_properties(cfg_file, properties)) {
-        log_debug(logger, "Propiedades faltantes en el archivo de configuracion");
+        log_error(logger, "Propiedades faltantes en el archivo de configuracion");
         config_destroy(cfg_file);
         return 0;
     }
