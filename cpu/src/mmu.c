@@ -2,15 +2,15 @@
 #include "../../utils/headers/sockets.h"
 #include "../headers/init.h"
 #include "../headers/cache.h"
-t_list* tlb = NULL;
-t_list* cache = NULL;
-uint32_t orden_fifo = 0;
 
+t_cache_paginas* cache = NULL;
+t_list* tlb = NULL;
+uint32_t orden_fifo = 0;
 
 void inicializar_mmu() {
     tlb = list_create();
-    // Inicializar caché de páginas (Fijarse en funciones.c como hacer para solo inicializar una vez la cache...)
-    cache = inicializar_cache();
+    // Inicializar cache de paginas (Fijarse en funciones.c como hacer para solo inicializar una vez la cache...)
+    cache = inicializar_cache();    // warning: assignment to ‘t_list *’ from incompatible pointer type ‘t_cache_paginas *’
 }
 
 // t_direccion_fisica transformar_a_fisica(int direccion_logica, int nro_pagina, int tamanio_pagina, int cantidad_entradas){
@@ -40,9 +40,9 @@ uint32_t traducir_direccion(uint32_t direccion_logica, uint32_t* desplazamiento,
     uint32_t frame = 0;
     int pid_ejecutando; // VER TEMA PID
     if (tlb_habilitada() && tlb_buscar(nro_pagina, &frame)) {
-        log_info(cpu_log, "PID: %d - TLB HIT - Pagina: %d", pid_ejecutando, nro_pagina);
+        log_info(cpu_log, "PID: %d - TLB HIT - Página: %d", pid_ejecutando, nro_pagina);    // warning: ‘pid_ejecutando’ may be used uninitialized
     } else {
-        log_info(cpu_log, "PID: %d - TLB MISS - Pagina: %d", pid_ejecutando, nro_pagina);
+        log_info(cpu_log, "PID: %d - TLB MISS - Página: %d", pid_ejecutando, nro_pagina);
 
         frame =5;
         //solicitar_frame_memoria(nro_pagina);  VER PEDIR POR PAQUETE PEDIR FRAM MEMORIA COMO OP CODE Y AGREGAR AL PAQUETE EL FRAME QUE NECESITO
@@ -51,7 +51,7 @@ uint32_t traducir_direccion(uint32_t direccion_logica, uint32_t* desplazamiento,
         }
     }
 
-    log_info(cpu_log, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %s", pid_ejecutando, frame * tam_pagina + desplazamiento, datos);
+    log_info(cpu_log, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %s", pid_ejecutando, frame * tam_pagina + desplazamiento, datos); // warning: format ‘%d’ expects argument of type ‘int’, but argument 4 has type ‘uint32_t *’ {aka ‘unsigned int *’}
     return frame;
 
 
@@ -81,7 +81,7 @@ void tlb_insertar(uint32_t pagina, uint32_t frame) {
     nueva_entrada->tiempo_uso = timestamp_actual(); // Para LRU
     nueva_entrada->orden_fifo = orden_fifo++;        // Para FIFO
 
-    if (list_size(tlb) < ENTRADAS_TLB) {
+    if (list_size(tlb) < ENTRADAS_TLB) {    // warning: comparison between pointer and integer
         list_add(tlb, nueva_entrada);
     } else {
         // TLB llena

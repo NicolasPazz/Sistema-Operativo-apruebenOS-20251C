@@ -2,8 +2,12 @@
 #define CICLO_DE_INSTRUCCION_H
 #include "sockets.h"
 
-void ejecutar_ciclo_instruccion(int pc, int pid);
+void ejecutar_ciclo_instruccion();
 t_instruccion* recibir_instruccion(int conexion);
+t_instruccion* fetch();
+op_code decode(char* instruccion);
+void execute(op_code tipo_instruccion, t_instruccion* instruccion);
+void check_interrupt();
 extern int seguir_ejecutando;
 extern int pid_ejecutando;
 extern int pid_interrupt;

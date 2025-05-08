@@ -33,16 +33,13 @@
 #include <commons/config.h>
 #include <commons/bitarray.h>
 #include <commons/temporal.h>
+#include <commons/string.h>
 
 
 /////////////////////////////// Estructuras compartidas ///////////////////////////////
 typedef enum {
 	MENSAJE_OP,
 	PAQUETE_OP,
-	NOOP_OP,
-	WRITE_OP, 
-	READ_OP, 
-	GOTO_OP, 
 	IO_OP, 
 	INIT_PROC_OP, 
 	DUMP_MEMORY_OP, 
@@ -51,8 +48,16 @@ typedef enum {
 	INTERRUPCION_OP,
 	PEDIR_INSTRUCCION_OP,
 	PEDIR_CONFIG_CPU_OP,
-	DEBUGGER, // para probar
-	SEND_PSEUDOCOD_FILE // cod_op para mandar de kernel a memoria la ruta del archivo de pseudocodigo
+	IO_FINALIZADA_OP,
+	FINALIZAR_PROC_OP,
+  	DEBUGGER, // para probar
+	SEND_PSEUDOCOD_FILE, // cod_op para mandar de kernel a memoria la ruta del archivo de pseudocodigo
+	// Instrucciones de cpu
+	NOOP_OP,
+	WRITE_OP, 
+	READ_OP, 
+	GOTO_OP,
+	PEDIR_PAGINA_OP
 } op_code;
 
 typedef struct {
@@ -87,6 +92,11 @@ typedef struct {
 	int entrada_nivel_x;
 	int desplazamiento;
 } t_direccion_fisica;
+
+typedef enum {
+    OK,
+	ERROR
+} t_respuesta_memoria;
 
 typedef enum {
   HANDSHAKE_MEMORIA_CPU,

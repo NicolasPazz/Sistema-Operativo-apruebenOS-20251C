@@ -14,7 +14,9 @@ int main(int argc, char* argv[]) {
 
     // atender_cliente();
 
-    while(1);
+    while(1){
+        sleep(100);
+    };
     return EXIT_SUCCESS;
 }
 
@@ -33,16 +35,16 @@ int main(int argc, char* argv[]) {
 //                 list_destroy(lista);
 //                 break;
 //             case -1:
-//                 log_error(data->logger, "El cliente (%s) se desconectó. Terminando servidor.", data->cliente);
+//                 log_error(data->logger, "El cliente (%s) se desconecto. Terminando servidor.", data->cliente);
 //                 control_key = 0;
 //                 break;
 //             default:
-//                 log_warning(data->logger, "Operación desconocida de %s", data->cliente);
+//                 log_error(data->logger, "Operacion desconocida de %s", data->cliente);
 //                 break;
 //         }
 //     }
 // }
 
 void iterator(char* value) {
-    log_info(io_log, "%s", value);
+    log_debug(io_log, "%s", value);
 }

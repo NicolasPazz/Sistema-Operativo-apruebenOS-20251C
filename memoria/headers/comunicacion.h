@@ -13,7 +13,7 @@
 #include "init_memoria.h"
 #include "interfaz_memoria.h"
 
-/////////////////////////////// Declaración de variables globales ///////////////////////////////
+/////////////////////////////// Declaracion de variables globales ///////////////////////////////
 extern t_log* memoria_log;
 extern t_config* memoria_config;
 

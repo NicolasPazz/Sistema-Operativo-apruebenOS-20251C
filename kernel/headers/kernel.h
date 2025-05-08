@@ -7,32 +7,13 @@
 #include "syscalls.h"
 #include "planificadores.h"
 
-typedef enum {
-    CPU_DISPATCH,
-    CPU_INTERRUPT
-} tipo_conexion_cpu;
-
-typedef struct {
-    int fd;
-    int id;
-    tipo_conexion_cpu tipo_conexion;
-    
-} cpu;
-
-typedef enum {
-    IO_DISPONIBLE,
-    IO_OCUPADO
-} estado_io;
-
-typedef struct {
-    int fd;
-    char* nombre;
-    estado_io estado;
-} io;
-
-/////////////////////////////// Declaración de variables globales ///////////////////////////////
+/////////////////////////////// Declaracion de variables globales ///////////////////////////////
 // Logger
 extern t_log* kernel_log;
+
+// Cronometro para MT en PCB
+extern t_temporal* tiempo_estado_actual;
+extern t_dictionary* tiempos_por_pid;
 
 // Sockets
 extern int fd_memoria;
@@ -50,6 +31,7 @@ extern char* ALGORITMO_CORTO_PLAZO;
 extern char* ALGORITMO_INGRESO_A_READY;
 extern char* ALFA;
 extern char* TIEMPO_SUSPENSION;
+extern char* ESTIMACION_INICIAL;
 extern char* LOG_LEVEL;
 
 // Colas de Estados
@@ -71,6 +53,7 @@ extern pthread_mutex_t mutex_conexiones;
 void iniciar_config_kernel(void);
 void iniciar_logger_kernel(void);
 void iniciar_logger_kernel_debug(void);
+void iniciar_diccionario_tiempos(void);
 void* hilo_cliente_memoria(void* _);
 void* hilo_servidor_dispatch(void* _);
 void* hilo_servidor_interrupt(void* _);
@@ -78,5 +61,9 @@ void* hilo_servidor_io(void* _);
 void iniciar_estados_kernel(void);
 void iniciar_sincronizacion_kernel(void);
 void terminar_kernel(void);
+bool cpu_por_fd(void* ptr);
+void* atender_cpu_dispatch(void* arg);
+void* atender_cpu_interrupt(void* arg);
+void* atender_io(void* arg);
 
 #endif /* KERNEL_H */

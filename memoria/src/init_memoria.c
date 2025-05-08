@@ -27,11 +27,11 @@ void* memoria_principal;
 
 
 void iniciar_logger_memoria() {
-    logger = iniciar_logger("memoria.log", MODULENAME, 1, LOG_LEVEL_INFO);
+    logger = iniciar_logger("memoria.log", MODULENAME, 1, LOG_LEVEL_TRACE);  // Log level deberia venir del config, no hardcodeado
     if (logger == NULL) {
         printf("Error al iniciar memoria logs\n");
     } else {
-        log_info(logger, "Memoria logs iniciados correctamente!");
+        log_debug(logger, "Memoria logs iniciados correctamente!");
     }
 }
 
@@ -39,7 +39,7 @@ uint8_t cargar_configuracion(char* path) {
     t_config* cfg_file = config_create(path);
 
     if (cfg_file == NULL) {
-        log_error(logger, "No se encontró el archivo de configuración: %s", path);
+        log_error(logger, "No se encontro el archivo de configuracion: %s", path);
         return 0;
     }
 
@@ -58,14 +58,14 @@ uint8_t cargar_configuracion(char* path) {
     };
 
     if (!config_has_all_properties(cfg_file, properties)) {
-        log_error(logger, "Propiedades faltantes en el archivo de configuración");
+        log_error(logger, "Propiedades faltantes en el archivo de configuracion");
         config_destroy(cfg_file);
         return 0;
     }
 
     cfg = malloc(sizeof(t_config_memoria));
     if (cfg == NULL) {
-        log_error(logger, "Error al asignar memoria para la configuración");
+        log_error(logger, "Error al asignar memoria para la configuracion");
         config_destroy(cfg_file);
         return 0;
     }
@@ -81,7 +81,7 @@ uint8_t cargar_configuracion(char* path) {
     cfg->LOG_LEVEL = strdup(config_get_string_value(cfg_file, "LOG_LEVEL"));
     cfg->DUMP_PATH = strdup(config_get_string_value(cfg_file, "DUMP_PATH"));
 
-    log_info(logger, "Archivo de configuración cargado correctamente");
+    log_debug(logger, "Archivo de configuracion cargado correctamente");
     config_destroy(cfg_file);
 
     return 1;
@@ -90,7 +90,7 @@ uint8_t cargar_configuracion(char* path) {
 
 
 void cerrar_programa() {
-    log_info(logger, "Finalizando programa...");
+    log_debug(logger, "Finalizando programa...");
 
     if (cfg != NULL) {
         if (cfg->PATH_SWAPFILE) free(cfg->PATH_SWAPFILE);

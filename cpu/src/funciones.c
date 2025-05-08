@@ -13,15 +13,24 @@ void func_write(char* direccion_logica_str, char* datos) {
     uint32_t frame = traducir_direccion(direccion_logica, &desplazamiento, datos);
     t_cache_paginas* cache = inicializar_cache();
     if (cache_habilitada(cache) && (buscar_pagina_en_cache(cache,frame) != -1)){
-        //cache_escribir(frame, desplazamiento, datos);
-        sleep(1);
+        cache_modificar(frame, datos);
     } else if (cache_habilitada(cache)) {
         //solicitar_pagina_a_memoria(frame); paquete y pedirle por medio de op code VER
-        //cache_escribir(frame, desplazamiento, datos);
-        sleep(1);
+        t_paquete* paquete = crear_paquete_op(PEDIR_PAGINA_OP);
+        agregar_entero_a_paquete(paquete, frame);
+        enviar_paquete(paquete, fd_memoria);
+        eliminar_paquete(paquete);
+
+        //uint32_t pagina = recibir_entero(fd_memoria);     recibir_entero no existe
+        //cache_escribir(pagina, datos);        pagina no esta definida
     } else {
-        //memoria_escribir(frame, desplazamiento, datos); VER
-        sleep(1);
+        t_paquete* paquete = crear_paquete_op(WRITE_OP);
+        agregar_entero_a_paquete(paquete, frame);
+        agregar_entero_a_paquete(paquete, desplazamiento);
+        //agregar_string_a_paquete(paquete, datos);     agregar_string_a_paquete no existe
+        enviar_paquete(paquete, fd_memoria);
+        eliminar_paquete(paquete);
+
     }
 
     
@@ -29,7 +38,7 @@ void func_write(char* direccion_logica_str, char* datos) {
 
 
 void func_read(int direccion, int tamanio) {
-    //t_direccion_fisica direccion_fisica = transformar_a_fisica(direccion_logica, 0,10,10); // chequear las ultimas 3 parametros, voy a revisar mañana como hago lo d las entradas
+    //t_direccion_fisica direccion_fisica = transformar_a_fisica(direccion_logica, 0,10,10); // chequear las ultimas 3 parametros, voy a revisar maniana como hago lo d las entradas
     //hacer el read
 }
 
@@ -40,15 +49,14 @@ void func_goto(char* valor) {
 }
 
 
-void func_io(char* tiempo_str) { // tiempo no se si seria int ...
-    int tiempo = atoi(tiempo_str);
+void func_io(char* nombre_dispositivo, u_int32_t tiempo) {
     t_paquete* paquete = crear_paquete_op(IO_OP);
-    agregar_entero_a_paquete(paquete, pid_ejecutando);
+    //agregar_entero_a_paquete(paquete, pid_ejecutando); no compila
     agregar_entero_a_paquete(paquete, tiempo);
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 
-    seguir_ejecutando = 0;  // aca se bloquea el ciclo, seguir ejec es global
+    //seguir_ejecutando = 0;  // aca se bloquea el ciclo, seguir ejec es global //       no compila
 }
 
 
@@ -63,26 +71,25 @@ void func_init_proc(t_instruccion* instruccion) {
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 
-    log_info(cpu_log, "PID: %i - INIT_PROC - Archivo: %s - Tamaño: %i", pid_ejecutando, path, size);
-    seguir_ejecutando = 0;
+    //log_info(cpu_log, "PID: %i - INIT_PROC - Archivo: %s - Tamaño: %i", pid_ejecutando, path, size);       no compila
+    //seguir_ejecutando = 0;     no compila
 }
 
 
 void func_dump_memory() {
     t_paquete* paquete = crear_paquete_op(DUMP_MEMORY_OP);
-    agregar_entero_a_paquete(paquete, pid_ejecutando);
-    enviar_paquete(paquete, fd_memoria);
+    enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 }
 
 
 void func_exit() {
     t_paquete* paquete = crear_paquete_op(EXIT_OP);
-    agregar_entero_a_paquete(paquete, pid_ejecutando);
+    //agregar_entero_a_paquete(paquete, pid_ejecutando);         no compila
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 
-    seguir_ejecutando = 0; // Proceso terminó
+    //seguir_ejecutando = 0; // Proceso termino     no compila
 }
 
 t_instruccion* recibir_instruccion(int conexion) {
@@ -110,7 +117,7 @@ t_instruccion* recibir_instruccion(int conexion) {
         instruccion_nueva->parametros3 = leer_string(buffer, &desp);
     }
     else {
-        log_error(cpu_log, "Instrucción desconocida recibida: %s", instruccion_nueva->parametros1);
+        log_error(cpu_log, "Instruccion desconocida recibida: %s", instruccion_nueva->parametros1);
     }
 
     free(buffer);

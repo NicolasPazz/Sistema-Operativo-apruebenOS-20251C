@@ -1,6 +1,6 @@
 #include "../headers/io.h"
 
-/////////////////////////////// Inicialización de variables globales ///////////////////////////////
+/////////////////////////////// Inicializacion de variables globales ///////////////////////////////
 t_log* io_log;
 t_config* io_config;
 
@@ -28,12 +28,12 @@ void iniciar_logger_io() {
     if (io_log == NULL) {
         printf("Error al iniciar IO logs\n");
     } else {
-        log_info(io_log, "IO logs iniciados correctamente!");
+        log_debug(io_log, "IO logs iniciados correctamente!");
     }
 }
 
 void iniciar_conexiones_io(char* nombre_io){
-    //////////////////////////// Conexión hacia Kernel ////////////////////////////
+    //////////////////////////// Conexion hacia Kernel ////////////////////////////
     fd_kernel_io = crear_conexion(IP_KERNEL, PUERTO_KERNEL, io_log);
     if (fd_kernel_io == -1) {
         log_error(io_log, "Error al conectar IO a Kernel");
@@ -53,5 +53,5 @@ void iniciar_conexiones_io(char* nombre_io){
         exit(EXIT_FAILURE);
     }
 
-    log_info(io_log, "HANDSHAKE_IO_KERNEL: IO conectado exitosamente a Kernel (fd=%d)", fd_kernel_io);
+    log_debug(io_log, "HANDSHAKE_IO_KERNEL: IO conectado exitosamente a Kernel (fd=%d)", fd_kernel_io);
 }

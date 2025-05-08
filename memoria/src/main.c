@@ -15,16 +15,16 @@ int main(int argc, char* argv[]) {
     iniciar_logger_memoria();
 
     if (!cargar_configuracion("memoria.config")) {
-        log_error(logger, "Error al cargar la configuración de memoria.");
+        log_error(logger, "Error al cargar la configuracion de memoria.");
         cerrar_programa();
         return EXIT_FAILURE;
     }
 
     char* puerto = string_itoa(cfg->PUERTO_ESCUCHA);
     //int memoria_server = iniciar_servidor(puerto, logger, "Servidor de memoria");
-    //log_info(logger, "Antes de iniciar conexiones de memoria");
+    //log_debug(logger, "Antes de iniciar conexiones de memoria");
     int memoria_server = iniciar_conexiones_memoria(puerto, logger);
-    //log_info(logger, "Después de iniciar conexiones de memoria");
+    //log_debug(logger, "Despues de iniciar conexiones de memoria");
     free(puerto);
 
     /* if (memoria_server == -1) {
@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     } */
 
-    log_info(logger, "Servidor de memoria iniciado correctamente. Esperando conexiones...");
+    log_debug(logger, "Servidor de memoria iniciado correctamente. Esperando conexiones...");
 
     while (server_escuchar("Memoria", memoria_server));
 
@@ -44,6 +44,6 @@ int main(int argc, char* argv[]) {
 }
 
 void iterator(char* value) {
-    log_info(logger, "%s", value);
+    log_debug(logger, "%s", value);
 }
 

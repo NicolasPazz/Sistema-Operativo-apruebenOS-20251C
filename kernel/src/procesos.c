@@ -1,4 +1,5 @@
 #include "../headers/procesos.h"
+#include <commons/collections/list.h>
 
 /////////////////////////////// Funciones ///////////////////////////////
 const char* estado_to_string(Estados estado) {
@@ -15,35 +16,58 @@ const char* estado_to_string(Estados estado) {
 }
 
 void mostrar_pcb(t_pcb PCB) {
-    printf("-*-*-*-*-*- PCB -*-*-*-*-*-\n");
-    printf("PID: %u\n", PCB.PID);
-    printf("PC: %u\n", PCB.PC);
+    log_debug(kernel_log, "-*-*-*-*-*- PCB -*-*-*-*-*-\n");
+    log_debug(kernel_log, "PID: %u\n", PCB.PID);
+    log_debug(kernel_log, "PC: %u\n", PCB.PC);
     mostrar_metrica("ME", PCB.ME);
     mostrar_metrica("MT", PCB.MT);
-    printf("Estado: %s\n", estado_to_string(PCB.Estado));
-    printf("-*-*-*-*-*-*-*-*-*-*-*-*-*-\n");
+    log_debug(kernel_log, "Estado: %s\n", estado_to_string(PCB.Estado));
+    log_debug(kernel_log, "Tiempo inicio exec: %f\n", PCB.tiempo_inicio_exec);
+    log_debug(kernel_log, "Rafaga estimada: %.2f\n", PCB.estimacion_rafaga);
+    log_debug(kernel_log, "Path: %s\n", PCB.path);
+    log_debug(kernel_log, "Tamanio de memoria: %u\n", PCB.tamanio_memoria);
+    log_debug(kernel_log, "-*-*-*-*-*-*-*-*-*-*-*-*-*-\n");
 }
 
 void mostrar_metrica(const char* nombre, uint16_t* metrica) {
-    printf("%s: [", nombre);
+    char buffer[256];
+    int offset = snprintf(buffer, sizeof(buffer), "%s: [", nombre);
+
     for (int i = 0; i < 7; i++) {
-        printf("%u", metrica[i]);
-        if (i < 6) printf(", ");
+        offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%u", metrica[i]);
+        if (i < 6) offset += snprintf(buffer + offset, sizeof(buffer) - offset, ", ");
     }
-    printf("]\n");
+
+    snprintf(buffer + offset, sizeof(buffer) - offset, "]");
+
+    log_debug(kernel_log, "%s", buffer);
+}
+
+void mostrar_colas_estados() {
+    log_debug(kernel_log, "Colas -> [NEW: %d, READY: %d, EXEC: %d, BLOCK: %d, SUSP.BLOCK: %d, SUSP.READY: %d, EXIT: %d] | Procesos en total: %d\n",
+        list_size(cola_new),
+        list_size(cola_ready),
+        list_size(cola_running),
+        list_size(cola_blocked),
+        list_size(cola_susp_blocked),
+        list_size(cola_susp_ready),
+        list_size(cola_exit),
+        list_size(cola_procesos));
 }
 
 void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
     if (PCB == NULL) {
         log_error(kernel_log, "cambiar_estado_pcb: PCB es NULL");
-        return;
+        terminar_kernel();
+        exit(EXIT_FAILURE);
     }
 
     if (!transicion_valida(PCB->Estado, nuevo_estado_enum)) {
         log_error(kernel_log, "cambiar_estado_pcb: Transicion no valida: %s → %s",
                   estado_to_string(PCB->Estado),
                   estado_to_string(nuevo_estado_enum));
-        return;
+        terminar_kernel();
+        exit(EXIT_FAILURE);
     }
 
     t_list* cola_origen = obtener_cola_por_estado(PCB->Estado);
@@ -51,24 +75,83 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
 
     if (!cola_destino || !cola_origen) {
         log_error(kernel_log, "cambiar_estado_pcb: Error al obtener las colas correspondientes");
-        return;
+        terminar_kernel();
+        exit(EXIT_FAILURE);
     }
 
-    log_info(kernel_log, "Proceso %u cambio de estado: %s → %s",
+    log_info(kernel_log, "## (<%u>) Pasa del estado <%s> al estado <%s>",
              PCB->PID,
              estado_to_string(PCB->Estado),
              estado_to_string(nuevo_estado_enum));
-
+    
+    //agregar mutex para evitar condiciones de carrera
     list_remove_element(cola_origen, PCB);
+
+    // Actualizar Metricas de Tiempo antes de cambiar de Estado
+    char* pid_key = string_itoa(PCB->PID);
+    t_temporal* cronometro = dictionary_get(tiempos_por_pid, pid_key); 
+    if (cronometro != NULL) {
+        temporal_stop(cronometro);
+        int64_t tiempo = temporal_gettime(cronometro); // 10 seg
+
+        // Guardar el tiempo en el estado ANTERIOR
+        PCB->MT[PCB->Estado] += (uint16_t)tiempo;
+        log_trace(kernel_log, "Se actualizo el MT en el estado %s del PID %d con %ld", estado_to_string(PCB->Estado), PCB->PID, tiempo);
+        temporal_destroy(cronometro);
+
+        // Reiniciar el cronometro para el nuevo estado
+        cronometro = temporal_create();
+        dictionary_put(tiempos_por_pid, pid_key, cronometro);
+    }
+    free(pid_key);
+
+    // Si pasa al Estado EXEC hay que actualizar el tiempo_inicio_exec
+    if(nuevo_estado_enum == EXEC){
+        PCB->tiempo_inicio_exec = get_time();
+    } else if (PCB->Estado == EXEC && nuevo_estado_enum == BLOCKED){
+        // Cuando SALE de EXEC calculo la estimacion proxima
+        double rafaga_real = get_time() - PCB->tiempo_inicio_exec;
+        double alfa = 0.5;
+        PCB->estimacion_rafaga = alfa * rafaga_real + (1 - alfa) * PCB->estimacion_rafaga;
+
+    }
+
+    switch(PCB->Estado) {
+        case NEW: break;
+        case READY: break;
+        case EXEC: break;
+        case BLOCKED: break;
+        case SUSP_READY: 
+            sem_post(&sem_susp_ready_vacia); // Sumar 1 al semaforo
+            break;
+        case SUSP_BLOCKED: break;
+    }
+
+    // Cambiar Estado y actualizar Metricas de Estados
     PCB->Estado = nuevo_estado_enum;
+    PCB->ME[nuevo_estado_enum] += 1;  // Se suma 1 en las Metricas de estado del nuevo estado
+
+    // agregar mutex para evitar condiciones de carrera
     list_add(cola_destino, PCB);
+
+    switch(nuevo_estado_enum) {
+        case NEW: sem_post(&sem_proceso_a_new); break;
+        case READY: sem_post(&sem_proceso_a_ready); break;
+        case EXEC: sem_post(&sem_proceso_a_running); break;
+        case BLOCKED: sem_post(&sem_proceso_a_blocked); break;
+        case SUSP_READY:    sem_post(&sem_proceso_a_susp_ready);
+                            sem_wait(&sem_susp_ready_vacia); // Restar 1 al semaforo
+                            break;
+        case SUSP_BLOCKED: sem_post(&sem_proceso_a_susp_blocked); break;
+        case EXIT_ESTADO: sem_post(&sem_proceso_a_exit); break;
+    }
 }
 
 bool transicion_valida(Estados actual, Estados destino) {
     switch (actual) {
         case NEW: return destino == READY;
         case READY: return destino == EXEC;
-        case EXEC: return destino == BLOCKED || destino == READY;
+        case EXEC: return destino == BLOCKED || destino == READY || destino == EXIT_ESTADO;
         case BLOCKED: return destino == READY || destino == SUSP_BLOCKED;
         case SUSP_BLOCKED: return destino == SUSP_READY;
         case SUSP_READY: return destino == READY;
@@ -87,4 +170,41 @@ t_list* obtener_cola_por_estado(Estados estado) {
         case EXIT_ESTADO: return cola_exit;
         default: return NULL;
     }
+}
+
+
+/*
+
+    4. Cuando el PCB termina (EXIT), destruis su cronometro y lo quitas del diccionario:
+    c
+    Copiar
+    Editar
+    char* pid_key = string_itoa(PCB->PID);
+    dictionary_remove_and_destroy(tiempos_por_pid, pid_key, (void*)temporal_destroy);
+    free(pid_key);
+
+
+
+    5. Cuando el sistema termina, limpias todo:
+    c
+    Copiar
+    Editar
+    dictionary_destroy_and_destroy_elements(tiempos_por_pid, (void*)temporal_destroy);
+
+*/
+
+void loguear_metricas_estado(t_pcb* pcb) {
+    if (!pcb) return;
+
+    char buffer[512];
+    int offset = snprintf(buffer, sizeof(buffer), "## (<%d>) - Métricas de estado: ", pcb->PID);
+
+    for (int i = 0; i < 7; i++) {
+        offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+            "%s (%u) (%u)", estado_to_string((Estados)i), pcb->ME[i], pcb->MT[i]);
+
+        if (i < 6) offset += snprintf(buffer + offset, sizeof(buffer) - offset, ", ");
+    }
+
+    log_info(kernel_log, "%s", buffer);
 }

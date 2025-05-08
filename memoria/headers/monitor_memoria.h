@@ -14,8 +14,8 @@
 #include "estructuras.h"
 
 // init
-void iniciar_mutex();
-void finalizar_mutex();
+void iniciar_mutex(void);
+void finalizar_mutex(void);
 
 
 #endif
