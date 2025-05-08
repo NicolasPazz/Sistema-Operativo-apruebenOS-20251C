@@ -42,6 +42,9 @@ typedef struct {
     int id;
     int pid;
     tipo_conexion_cpu tipo_conexion;
+    // syscall -> la proceso -> termino: borro
+    // pid = get_pid_from_cpu(syscall IO) -> antes del return del pid -> cpu -> syscall = null;
+    // cpu -> instruccion -> kernel where instruccion : IO
 } cpu;
 
     ///// IO
@@ -55,5 +58,11 @@ typedef struct {
     char* nombre;
     estado_io estado;
 } io;
+
+    ///// PCBs IO
+typedef struct PCB_IO{
+    t_pcb* pcb;
+    io* io;
+} t_pcb_io;
 
 #endif /* TYPES_H */

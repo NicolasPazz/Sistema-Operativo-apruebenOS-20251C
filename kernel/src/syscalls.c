@@ -1,10 +1,10 @@
 #include "../headers/syscalls.h"
 #include "../headers/planificadores.h"
-//#define ESTIMACION_INICIAL 1
+#define ESTIMACION_INICIAL 1
 
 t_temporal* tiempo_estado_actual;
 
-/////////////////////////////// Funciones ///////////////////////////////
+//////////////////////////////////////////////////////////// INIT PROC ////////////////////////////////////////////////////////////
 void INIT_PROC(char* nombre_archivo, uint16_t tam_memoria) {
     t_pcb* nuevo_pcb = malloc(sizeof(t_pcb));
     if (nuevo_pcb == NULL) {
@@ -65,62 +65,66 @@ void INIT_PROC(char* nombre_archivo, uint16_t tam_memoria) {
     log_info(kernel_log, "## (<%d>) Se crea el proceso - Estado: NEW", nuevo_pcb->PID);
 }
 
+//////////////////////////////////////////////////////////// DUMP MEMORY ////////////////////////////////////////////////////////////
 void DUMP_MEMORY(){
     
 }
 
 
-t_dictionary * IOs_conectadas;
-int get_fd_from_io(char* nombre_io){
-    int fd_io_a_usar = *(int*) dictionary_get(IOs_conectadas, nombre_io);
+//////////////////////////////////////////////////////////// IO ////////////////////////////////////////////////////////////
 
-    return fd_io_a_usar;
+io* get_io(char* nombre_io){
+    bool _name_is(void* ptr) {
+        io* io = (io*) ptr;
+        return strcmp(io->nombre, nombre_io);
+    }
+    return list_find(lista_ios, _name_is);
 }
 
-t_pcb* get_pcb_from_queue(char* archivo_path) {
-    bool match_path(void* elem) {
-        t_pcb* pcb = (t_pcb*) elem;
-        return strcmp(pcb->path, archivo_path) == 0;
+bool esta_libre_io(io* io){
+    switch (io->estado)
+    {
+    case IO_OCUPADO:
+        return false;
+        break;
+    case IO_DISPONIBLE:
+        return true;
+        break;
+    default:
+        log_debug(kernel_log, "esta_libre_io: No se reconoce el estado de la IO <%s>", io->nombre);
+        return false;
+        break;
     }
-
-    return (t_pcb*) list_find(cola_procesos, match_path);
 }
 
-void IO(char* nombre_io, uint16_t tiempo_a_usar){
-    //1. validar que la IO solicitada existe en el sistema
-    // si no existe ninguna IO con ese nombre => enviar proceso a EXIT
-    // si hace match con una IO (aunque este OCUPADA) => marcar estado del proceso como BLOCKED && Agregar a cola de bloqueados por IO solicitado
-    //
-
-    // Obtener el Socket de la IO que se va a usar 
-    //
-    // Buscar la CPU que envio el EXIT_OP
-    pthread_mutex_lock(&mutex_lista_cpus);
-    cpu* cpu_asociada = list_find(lista_cpus, cpu_por_fd);
-    pthread_mutex_unlock(&mutex_lista_cpus);
-
-    if (!cpu_asociada) {
-        log_error(kernel_log, "No se encontró CPU asociada a fd=%d", fd_cpu_dispatch);
-        terminar_kernel();
-        exit(EXIT_FAILURE);
-    }
-
-    uint16_t pid = cpu_asociada->pid;
-    log_debug(kernel_log, "EXIT_OP asociado a PID=%d", pid); 
-    
-    t_pcb* pcb = get_pcb_from_queue(dictionary_get(archivo_por_pcb, string_itoa(pcb->PID)));
-    // traer del diccionario
-    int fd_io  = get_fd_from_io(nombre_io);
-    if(fd_io == NULL){
-        log_error(kernel_log, "No existe la IO solicitada");
-        
-        cambiar_estado_pcb(pcb, EXIT_ESTADO);
-        gestionar_exit(pcb);
-    }
-    free(string_itoa(pcb->PID));
-
+void bloquear_pbc_por_io(io_a_usar, pcb){
+    list_add(pcbs_bloqueados_por_io, pcb);
 }
 
+void IO(char* nombre_io, uint16_t tiempo_a_usar, t_pcb* pcb_a_io){
+    // Obtener la IO a usar
+    io* io_a_usar  = get_io(nombre_io);
+
+        //1. validar que la IO solicitada existe en el sistema
+    if(io_a_usar == NULL){
+        log_error(kernel_log, "No existe la IO solicitada"); 
+        cambiar_estado_pcb(pcb_a_io, EXIT_ESTADO); // si no existe ninguna IO con ese nombre => enviar proceso a EXIT
+    }
+    cambiar_estado_pcb(pcb_a_io, BLOCKED); // si hace match con una IO (aunque este OCUPADA)
+    bloquear_pbc_por_io(io_a_usar, pcb_a_io);  // => marcar estado del proceso como BLOCKED y Agregar a cola de bloqueados por IO solicitado
+
+    if(esta_libre_io(io_a_usar)){
+        if(send_un_char_y_un_int(io_a_usar->fd, nombre_io, tiempo_a_usar)){
+            log_info(kernel_log, "Enviado PCB <PID: %d> a ejecutar IO <%s>", pcb_a_io->pid, io->nombre);
+        }
+        else {
+            log_error(kernel_log, "No se pudo enviar el nombre_io y tiempo_a_usar a la IO <%s>", io->nombre);
+        }
+    }
+}
+
+
+//////////////////////////////////////////////////////////// EXIT ////////////////////////////////////////////////////////////
 void EXIT(t_pcb* pcb_a_finalizar) {
     if (!pcb_a_finalizar) {
         log_error(kernel_log, "EXIT: PCB nulo");

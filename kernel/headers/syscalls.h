@@ -33,7 +33,7 @@ void DUMP_MEMORY(void);
  * Si existia el IO el proceso va a BLOCKED y se lo agrega a la cola de bloqueados por la IO solicitada
  * Si el IO esta libre se lo usa durante el tiempo_a_usar y se le envia el PID que lo esta usando
  */
-void IO(char* nombre_io, uint16_t tiempo_a_usar);
+void IO(char* nombre_io, uint16_t tiempo_a_usar, t_pcb* pcb_a_io);
 
 void EXIT(t_pcb* pcb_a_finalizar);
 

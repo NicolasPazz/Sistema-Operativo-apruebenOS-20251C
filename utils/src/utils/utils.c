@@ -31,14 +31,14 @@ static void deserializar_dos_ints(void* stream, uint8_t* int1, uint8_t* int2) {
 }
 
 // ***** funciones para serializar***
-static void* serializar_un_char_y_un_int(size_t* size, char* cadena, uint8_t entero) {
+static void* serializar_un_char_y_un_int(size_t* size, char* cadena, uint16_t entero) {
     size_t size_cadena = strlen(cadena) + 1;
     *size =
           sizeof(op_code)   // cop
         + sizeof(size_t)    // total
         + sizeof(size_t)    // size de char* cadena
         + size_cadena         // char* cadena
-        + sizeof(uint8_t);  // entero
+        + sizeof(uint16_t);  // entero
     size_t size_payload = *size - sizeof(op_code) - sizeof(size_t);
 
     void* stream = malloc(*size);
@@ -67,7 +67,7 @@ static void* serializar_dos_ints(uint8_t int1, uint8_t int2) {
 
 //** ej de funciones de SEND -> serializan */
 
-bool send_un_char_y_un_int(int fd, char* cadena, uint8_t entero) {
+bool send_un_char_y_un_int(int fd, char* cadena, uint16_t entero) {
     size_t size;
     void* stream = serializar_un_char_y_un_int(&size, cadena, entero);
     if (send(fd, stream, size, 0) != size) {
