@@ -54,8 +54,10 @@ void INIT_PROC(char* nombre_archivo, uint16_t tam_memoria) {
     
     // Cronometro de metricas de tiempo
     char* pid_key = string_itoa(nuevo_pcb->PID);
+    char* path = nuevo_pcb->path;
     t_temporal* nuevo_cronometro = temporal_create();
     dictionary_put(tiempos_por_pid, pid_key, nuevo_cronometro);
+    dictionary_put(archivo_por_pcb, pid_key, path);
     free(pid_key);
 
     // Agregar a cola general de procesos
@@ -67,7 +69,55 @@ void DUMP_MEMORY(){
     
 }
 
+
+t_dictionary * IOs_conectadas;
+int get_fd_from_io(char* nombre_io){
+    int fd_io_a_usar = *(int*) dictionary_get(IOs_conectadas, nombre_io);
+
+    return fd_io_a_usar;
+}
+
+t_pcb* get_pcb_from_queue(char* archivo_path) {
+    bool match_path(void* elem) {
+        t_pcb* pcb = (t_pcb*) elem;
+        return strcmp(pcb->path, archivo_path) == 0;
+    }
+
+    return (t_pcb*) list_find(cola_procesos, match_path);
+}
+
 void IO(char* nombre_io, uint16_t tiempo_a_usar){
+    //1. validar que la IO solicitada existe en el sistema
+    // si no existe ninguna IO con ese nombre => enviar proceso a EXIT
+    // si hace match con una IO (aunque este OCUPADA) => marcar estado del proceso como BLOCKED && Agregar a cola de bloqueados por IO solicitado
+    //
+
+    // Obtener el Socket de la IO que se va a usar 
+    //
+    // Buscar la CPU que envio el EXIT_OP
+    pthread_mutex_lock(&mutex_lista_cpus);
+    cpu* cpu_asociada = list_find(lista_cpus, cpu_por_fd);
+    pthread_mutex_unlock(&mutex_lista_cpus);
+
+    if (!cpu_asociada) {
+        log_error(kernel_log, "No se encontró CPU asociada a fd=%d", fd_cpu_dispatch);
+        terminar_kernel();
+        exit(EXIT_FAILURE);
+    }
+
+    uint16_t pid = cpu_asociada->pid;
+    log_debug(kernel_log, "EXIT_OP asociado a PID=%d", pid); 
+    
+    t_pcb* pcb = get_pcb_from_queue(dictionary_get(archivo_por_pcb, string_itoa(pcb->PID)));
+    // traer del diccionario
+    int fd_io  = get_fd_from_io(nombre_io);
+    if(fd_io == NULL){
+        log_error(kernel_log, "No existe la IO solicitada");
+        
+        cambiar_estado_pcb(pcb, EXIT_ESTADO);
+        gestionar_exit(pcb);
+    }
+    free(string_itoa(pcb->PID));
 
 }
 

@@ -11,7 +11,6 @@
  * @param nombre_archivo: Nombre del archivo de pseudocodigo que ejecuta el proceso
  * @param tam_memoria: Tamanio del proceso en memoria
  * 
- * @return Retorna el PCB del proceso creado
  */
 void INIT_PROC(char* nombre_archivo, uint16_t tam_memoria);
 

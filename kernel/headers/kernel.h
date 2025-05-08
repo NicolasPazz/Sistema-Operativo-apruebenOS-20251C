@@ -15,6 +15,11 @@ extern t_log* kernel_log;
 extern t_temporal* tiempo_estado_actual;
 extern t_dictionary* tiempos_por_pid;
 
+// Cronometro para MT en PCB
+extern t_temporal* tiempo_estado_actual;
+extern t_dictionary* tiempos_por_pid;
+extern t_dictionary* archivo_por_pcb;
+
 // Sockets
 extern int fd_memoria;
 extern int fd_dispatch;

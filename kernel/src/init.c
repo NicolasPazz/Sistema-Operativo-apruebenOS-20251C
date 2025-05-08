@@ -8,6 +8,8 @@ t_log* kernel_log_debug;
 // Hashmap de cronometros por PCB
 t_dictionary* tiempos_por_pid;
 
+t_dictionary* archivo_por_pcb;
+
 // Sockets
 int fd_dispatch;
 int fd_cpu_dispatch;
@@ -157,9 +159,12 @@ void iniciar_sincronizacion_kernel() {
     conectado_io = false;
 }
 
-
 void iniciar_diccionario_tiempos() {
     tiempos_por_pid = dictionary_create();
+}
+
+void iniciar_diccionario_archivos_por_pcb() {
+    archivo_por_pcb = dictionary_create();
 }
 
 void terminar_kernel(){
@@ -391,7 +396,14 @@ void* atender_cpu_dispatch(void* arg) {
         switch (cop) {
             case IO_OP:
                 log_debug(kernel_log, "IO_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
-                // TODO
+                char* nombre_IO;
+                int cant_tiempo;
+                if(recv_IO_from_CPU(fd_io,&nombre_IO, &cant_tiempo)){
+                    log_info(kernel_log, "Se recibio correctamente la IO desde CPU");
+                    procesar_IO_from_CPU(nombre_IO, cant_tiempo);
+                }else{
+                    log_error(kernel_log, "Error al recibir la IO desde CPU");
+                }
                 break;
             case EXIT_OP:
                 log_debug(kernel_log, "EXIT_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
