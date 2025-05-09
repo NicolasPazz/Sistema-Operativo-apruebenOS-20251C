@@ -94,7 +94,14 @@ void procesar_conexion(void* void_args) {
         procesar_cod_ops(cop, cliente_socket);
     }
 
-    log_warning(logger, "El cliente (fd=%d) se desconecto de %s", cliente_socket, server_name);
+    log_warning(logger, "El cliente (fd=%d) se desconectó de %s", cliente_socket, server_name);
+
+    if (cliente_socket == fd_kernel) {
+        log_warning(logger, "Se desconectó el Kernel. Finalizando Memoria...");
+        cerrar_programa();
+        exit(EXIT_SUCCESS);
+    }
+
     close(cliente_socket);
 }
 

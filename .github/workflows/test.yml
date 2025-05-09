@@ -1,4 +1,4 @@
-name: Verificar compilacion
+name: Validacion completa
 
 on:
   push:
@@ -25,12 +25,12 @@ jobs:
       - name: Instalar dependencias
         run: |
           sudo apt update
-          sudo apt install -y build-essential libreadline-dev
+          sudo apt install -y build-essential libreadline-dev valgrind psmisc
           git clone https://github.com/sisoputnfrba/so-commons-library.git
           cd so-commons-library
           make install
 
-      - name: Compilar proyecto completo
+      - name: Ejecutar test local completo con Valgrind
         run: |
-          make clean
-          make
+          chmod +x test.sh
+          ./test.sh

@@ -76,16 +76,20 @@ int main(int argc, char* argv[]) {
   
     //////////////////////////// Esperar enter ////////////////////////////
 
-    printf("\nPresione ENTER para iniciar planificacion...\n");
-    
-    int c = getchar();
-    while (c != '\n') {
-        fprintf(stderr, "Error: Debe presionar solo ENTER para continuar.\n");
-
-        while ((c = getchar()) != '\n' && c != EOF);
-
+    if (argv[3] == NULL) {
         printf("\nPresione ENTER para iniciar planificacion...\n");
-        c = getchar();
+    
+        int c = getchar();
+        while (c != '\n') {
+            fprintf(stderr, "Error: Debe presionar solo ENTER para continuar.\n");
+            while ((c = getchar()) != '\n' && c != EOF);
+            printf("\nPresione ENTER para iniciar planificacion...\n");
+            c = getchar();
+        }
+    } else if (strcmp(argv[3], "--action") != 0) {
+        log_error(kernel_log, "Parametro desconocido: %s", argv[3]);
+        terminar_kernel();
+        exit(EXIT_FAILURE);
     }
     
     //////////////////////////// Primer proceso ////////////////////////////  
@@ -147,10 +151,7 @@ int main(int argc, char* argv[]) {
 
     //////////////////////////// Terminar ////////////////////////////  
     terminar_kernel();
-    
-    while(1){
-      sleep(100);
-    };
+
     return EXIT_SUCCESS;
   
 }

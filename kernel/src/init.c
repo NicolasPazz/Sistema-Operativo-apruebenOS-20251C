@@ -72,7 +72,7 @@ sem_t sem_finalizacion_de_proceso;
 
 /////////////////////////////// Inicializacion de variables globales ///////////////////////////////
 void iniciar_config_kernel() {
-    kernel_config = iniciar_config("kernel.config");
+    kernel_config = iniciar_config("kernel.config");    // lanzar error
 
     IP_MEMORIA = config_get_string_value(kernel_config, "IP_MEMORIA");
     PUERTO_MEMORIA = config_get_string_value(kernel_config, "PUERTO_MEMORIA");

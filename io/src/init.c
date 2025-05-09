@@ -55,3 +55,22 @@ void iniciar_conexiones_io(char* nombre_io){
 
     log_debug(io_log, "HANDSHAKE_IO_KERNEL: IO conectado exitosamente a Kernel (fd=%d)", fd_kernel_io);
 }
+
+void atender_kernel() {
+    op_code cop;
+    while (recv(fd_kernel_io, &cop, sizeof(op_code), 0) > 0) {
+        switch (cop) {
+            case IO_OP:
+                log_debug(io_log, "IO_OP recibido");
+                // procesar op
+                break;
+            default:
+                log_warning(io_log, "Operacion desconocida recibida: %d", cop);
+                break;
+        }
+    }
+
+    log_warning(io_log, "Se desconectó el Kernel. Finalizando IO...");
+    // terminar_programa();
+    exit(EXIT_SUCCESS);
+}

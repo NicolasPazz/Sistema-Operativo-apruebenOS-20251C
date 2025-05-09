@@ -12,11 +12,8 @@ int main(int argc, char* argv[]) {
     iniciar_logger_io();
     iniciar_conexiones_io(nombre_io);
 
-    // atender_cliente();
+    atender_kernel();
 
-    while(1){
-        sleep(100);
-    };
     return EXIT_SUCCESS;
 }
 
