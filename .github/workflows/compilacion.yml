@@ -1,0 +1,36 @@
+name: Verificar compilacion
+
+on:
+  push:
+    branches:
+      - main
+      - Kernel
+      - memoria
+      - branch_cpu
+  pull_request:
+    branches:
+      - main
+      - Kernel
+      - memoria
+      - branch_cpu
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar dependencias
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential libreadline-dev
+          git clone https://github.com/sisoputnfrba/so-commons-library.git
+          cd so-commons-library
+          make install
+
+      - name: Compilar proyecto completo
+        run: |
+          make clean
+          make
