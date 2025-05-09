@@ -1,6 +1,8 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#include "../../utils/headers/sockets.h"
+
 /////////////////////////////// TADs ///////////////////////////////
 
     ///// PCB
@@ -42,6 +44,7 @@ typedef struct {
     int id;
     int pid;
     tipo_conexion_cpu tipo_conexion;
+    op_code instruccion_actual;
     // syscall -> la proceso -> termino: borro
     // pid = get_pid_from_cpu(syscall IO) -> antes del return del pid -> cpu -> syscall = null;
     // cpu -> instruccion -> kernel where instruccion : IO
@@ -63,6 +66,7 @@ typedef struct {
 typedef struct PCB_IO{
     t_pcb* pcb;
     io* io;
+    uint16_t tiempo_a_usar;  // Tiempo en ms que se va a usar el dispositivo IO
 } t_pcb_io;
 
 #endif /* TYPES_H */

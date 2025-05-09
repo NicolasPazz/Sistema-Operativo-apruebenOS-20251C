@@ -383,25 +383,25 @@ void* hilo_servidor_io(void* _){
     return NULL;
 }
 
-bool cpu_por_fd(void* ptr) {
-    cpu* c = (cpu*) ptr;
-    return c->fd == fd_cpu_dispatch;
-}
-
-bool cpu_por_fd(void* ptr, int fd) {
+// Funciones auxiliares para buscar CPU por file descriptor
+bool cpu_por_fd_simple(void* ptr, int fd) {
     cpu* c = (cpu*) ptr;
     return c->fd == fd;
 }
 
+// Encuentra la CPU por su fd y devuelve el PID del proceso que está ejecutando
 uint16_t get_pid_from_cpu(int fd, op_code instruccion) {
     pthread_mutex_lock(&mutex_lista_cpus);
 
-    // Buscar la CPU asociada al fd y a la instrucción actual
-    bool cpu_por_fd_e_instruccion(void* ptr) {
-        cpu* c = (cpu*) ptr;
-        return c->fd == fd && c->instruccion_actual == instruccion;
+    // Buscar por fd e instrucción
+    cpu* cpu_asociada = NULL;
+    for (int i = 0; i < list_size(lista_cpus); i++) {
+        cpu* c = list_get(lista_cpus, i);
+        if (c->fd == fd && c->instruccion_actual == instruccion) {
+            cpu_asociada = c;
+            break;
+        }
     }
-    cpu* cpu_asociada = list_find(lista_cpus, cpu_por_fd_e_instruccion);
 
     pthread_mutex_unlock(&mutex_lista_cpus);
 
@@ -420,15 +420,27 @@ void* atender_cpu_dispatch(void* arg) {
 
     op_code cop;
     while (recv(fd_cpu_dispatch, &cop, sizeof(op_code), 0) > 0) {
-        // Asignar la instrucción actual a la CPU
+        // Asignar la instrucción actual a la CPU y asociar el PID
         pthread_mutex_lock(&mutex_lista_cpus);
-        bool cpu_por_fd(void* ptr) {
-            cpu* c = (cpu*) ptr;
-            return c->fd == fd_cpu_dispatch;
+        
+        // Buscar CPU por fd
+        cpu* cpu_actual = NULL;
+        for (int i = 0; i < list_size(lista_cpus); i++) {
+            cpu* c = list_get(lista_cpus, i);
+            if (c->fd == fd_cpu_dispatch) {
+                cpu_actual = c;
+                break;
+            }
         }
-        cpu* cpu_actual = list_find(lista_cpus, cpu_por_fd);
+        
         if (cpu_actual) {
+            // Actualizar la operación actual que está procesando esta CPU
             cpu_actual->instruccion_actual = cop;
+            log_debug(kernel_log, "CPU ID=%d está procesando operación %d", cpu_actual->id, cop);
+        } else {
+            log_error(kernel_log, "No se encontró la CPU con fd=%d en la lista", fd_cpu_dispatch);
+            pthread_mutex_unlock(&mutex_lista_cpus);
+            break;
         }
         pthread_mutex_unlock(&mutex_lista_cpus);
 
@@ -437,157 +449,110 @@ void* atender_cpu_dispatch(void* arg) {
                 log_debug(kernel_log, "IO_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
 
                 // Recibir el nombre_io y cant_tiempo desde CPU
-                char* nombre_IO;
-                int cant_tiempo;
+                char* nombre_IO = NULL;
+                uint16_t cant_tiempo;
                 if (recv_IO_from_CPU(fd_cpu_dispatch, &nombre_IO, &cant_tiempo)) {
-                    log_info(kernel_log, "Se recibió correctamente la IO desde CPU");
+                    log_info(kernel_log, "Se recibió correctamente la IO '%s' desde CPU, tiempo=%d", 
+                             nombre_IO, cant_tiempo);
+                    
+                    // Obtener PID del proceso que está ejecutando esta CPU
+                    pthread_mutex_lock(&mutex_lista_cpus);
+                    uint16_t pid = cpu_actual->pid;
+                    pthread_mutex_unlock(&mutex_lista_cpus);
+                    
+                    log_debug(kernel_log, "IO_OP asociado a PID=%d", pid);
+                    
+                    // Obtener PCB por PID
+                    t_pcb* pcb_a_io = NULL;
+                    for (int i = 0; i < list_size(cola_procesos); i++) {
+                        t_pcb* pcb = list_get(cola_procesos, i);
+                        if (pcb->PID == pid) {
+                            pcb_a_io = pcb;
+                            break;
+                        }
+                    }
+                    
+                    if (pcb_a_io) {
+                        // Exec Syscall: IO
+                        procesar_IO_from_CPU(nombre_IO, cant_tiempo, pcb_a_io);
+                    } else {
+                        log_error(kernel_log, "No se encontró PCB para PID=%d", pid);
+                    }
+                    
+                    free(nombre_IO);
                 } else {
                     log_error(kernel_log, "Error al recibir la IO desde CPU");
                 }
 
-                uint16_t pid = get_pid_from_cpu(fd_cpu_dispatch, IO_OP);
-                log_debug(kernel_log, "IO_OP asociado a PID=%d", pid);
-
-                // Exec Syscall: IO
-                t_pcb* pcb_a_io = list_get(cola_procesos, pid);
-                procesar_IO_from_CPU(nombre_IO, cant_tiempo, pcb_a_io);
-
                 break;
 
             case EXIT_OP:
                 log_debug(kernel_log, "EXIT_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
 
-                uint16_t pid = get_pid_from_cpu(fd_cpu_dispatch, EXIT_OP);
+                // Obtener PID del proceso que está ejecutando esta CPU
+                pthread_mutex_lock(&mutex_lista_cpus);
+                uint16_t pid = cpu_actual->pid;
+                pthread_mutex_unlock(&mutex_lista_cpus);
+                
                 log_debug(kernel_log, "EXIT_OP asociado a PID=%d", pid);
 
-                // Procesar salida del proceso
+                // Buscar PCB en RUNNING
                 pthread_mutex_lock(&mutex_cola_running);
-                t_pcb* pcb = list_remove_by_condition(cola_running, (void*)pid);
+                t_pcb* pcb_a_finalizar = NULL;
+                for (int i = 0; i < list_size(cola_running); i++) {
+                    t_pcb* pcb = list_get(cola_running, i);
+                    if (pcb->PID == pid) {
+                        pcb_a_finalizar = list_remove(cola_running, i);
+                        break;
+                    }
+                }
                 pthread_mutex_unlock(&mutex_cola_running);
 
-                cambiar_estado_pcb(pcb, EXIT_ESTADO);
+                // Confirmar que se encontró el PCB
+                if (pcb_a_finalizar) {
+                    // Cambiar estado y finalizar
+                    cambiar_estado_pcb(pcb_a_finalizar, EXIT_ESTADO);
+                } else {
+                    log_error(kernel_log, "EXIT: No se encontró PCB para PID=%d en RUNNING", pid);
+                }
 
+                // Limpiar PID de la CPU asociada
+                pthread_mutex_lock(&mutex_lista_cpus);
+                cpu_actual->pid = -1; // Limpiar PID de la CPU
+                pthread_mutex_unlock(&mutex_lista_cpus);
+                
                 break;
 
+            case DUMP_MEMORY_OP:
+                log_debug(kernel_log, "DUMP_MEMORY_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
+                // TODO: Implementar DUMP_MEMORY
+                break;
+                
             default:
                 log_error(kernel_log, "Código op desconocido recibido de Dispatch: %d", cop);
-                terminar_kernel();
-                exit(EXIT_FAILURE);
+                break;
         }
 
         // Limpiar la instrucción actual de la CPU
         pthread_mutex_lock(&mutex_lista_cpus);
-        if (cpu_actual) {
-            cpu_actual->instruccion_actual = -1; // Valor inválido para indicar que está libre
-        }
+        cpu_actual->instruccion_actual = -1; // Valor inválido para indicar que está libre
         pthread_mutex_unlock(&mutex_lista_cpus);
     }
 
     log_warning(kernel_log, "CPU Dispatch desconectada (fd=%d)", fd_cpu_dispatch);
-    close(fd_cpu_dispatch);
-    return NULL;
-}
-typedef struct {
-    int fd;
-    int id;
-    int pid;
-    tipo_conexion_cpu tipo_conexion;
-    op_code instruccion_actual; // Nueva variable para almacenar la instrucción actual
-} cpu;
-uint16_t get_pid_from_cpu(){
-     pthread_mutex_lock(&mutex_lista_cpus);
-     cpu* cpu_asociada = list_find(lista_cpus, cpu_por_fd);
-     pthread_mutex_unlock(&mutex_lista_cpus);
-
-     if (!cpu_asociada) {
-         log_error(kernel_log, "No se encontró CPU asociada a fd=%d", fd_cpu_dispatch);
-         terminar_kernel();
-         exit(EXIT_FAILURE);
-     }
-
-    uint16_t pid = cpu_asociada->pid;
-
-    return pid;
-}
-void* atender_cpu_dispatch(void* arg) {
-    int fd_cpu_dispatch = *(int*)arg;
-    free(arg);
-
-    op_code cop;
-    while (recv(fd_cpu_dispatch, &cop, sizeof(op_code), 0) > 0) {
-        switch (cop) {
-            case IO_OP:
-                log_debug(kernel_log, "IO_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
-
-                // Recibir el nombre_io y cant_tiempo desde CPU
-                char* nombre_IO;
-                int cant_tiempo;
-                if(recv_IO_from_CPU(fd_io,&nombre_IO, &cant_tiempo)){
-                    log_info(kernel_log, "Se recibio correctamente la IO desde CPU");
-                }else{
-                    log_error(kernel_log, "Error al recibir la IO desde CPU");
-                }
-
-                uint16_t pid = get_pid_from_cpu();
-                log_debug(kernel_log, "IO_OP asociado a PID=%d", pid);
-
-                // Exec Syscall: IO
-                t_pcb* pcb_a_io = list_get(cola_procesos, pid);
-                procesar_IO_from_CPU(nombre_IO, cant_tiempo, pcb_a_io);
-
-                break;
-            case EXIT_OP:
-                log_debug(kernel_log, "EXIT_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
-
-                uint16_t pid = get_pid_from_cpu();
-                log_debug(kernel_log, "EXIT_OP asociado a PID=%d", pid);
-
-                // Validar que haya solo un proceso en RUNNING y que coincida con el PID esperado
-                pthread_mutex_lock(&mutex_cola_running);
-                int size = list_size(cola_running);
-                if (size != 1) {
-                    pthread_mutex_unlock(&mutex_cola_running);
-                    log_error(kernel_log, "EXIT: Esperaba exactamente 1 proceso en RUNNING, pero hay %d", size);
-                    terminar_kernel();
-                    exit(EXIT_FAILURE);
-                }
-
-                t_pcb* pcb = list_get(cola_running, 0);
-                pthread_mutex_unlock(&mutex_cola_running);
-
-                if (!pcb) {
-                    log_error(kernel_log, "EXIT: No se encontró PCB en la posición 0 de RUNNING");
-                    terminar_kernel();
-                    exit(EXIT_FAILURE);
-                }
-
-                if (pcb->PID != pid) {
-                    log_error(kernel_log, "EXIT: PID en CPU (%d) no coincide con PID en RUNNING (%d)", pid, pcb->PID);
-                    terminar_kernel();
-                    exit(EXIT_FAILURE);
-                }
-
-                // Enviar a EXIT
-                cambiar_estado_pcb(pcb, EXIT_ESTADO);
-
-                // Limpiar pid del cpu y pasarla a lista de cpus libres
-
-                cpu_asociada->pid = -1; // Limpiar PID de la CPU
-                                
-                break;
-            case DUMP_MEMORY_OP:
-                log_debug(kernel_log, "DUMP_MEMORY_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
-                // TODO
-                break;
-            default:
-                log_error(kernel_log, "Codigo op desconocido recibido de Dispatch: %d", cop);
-                terminar_kernel();
-                exit(EXIT_FAILURE);
-                break;
+    
+    // Eliminar esta CPU de la lista de CPUs
+    pthread_mutex_lock(&mutex_lista_cpus);
+    for (int i = 0; i < list_size(lista_cpus); i++) {
+        cpu* c = list_get(lista_cpus, i);
+        if (c->fd == fd_cpu_dispatch) {
+            cpu* cpu_eliminada = list_remove(lista_cpus, i);
+            free(cpu_eliminada);
+            break;
         }
     }
-
-    log_warning(kernel_log, "CPU Dispatch desconectada (fd=%d)", fd_cpu_dispatch);
+    pthread_mutex_unlock(&mutex_lista_cpus);
+    
     close(fd_cpu_dispatch);
     return NULL;
 }
@@ -611,25 +576,136 @@ void* atender_cpu_interrupt(void* arg) {
     return NULL;
 }
 
+// Declaraciones de funciones auxiliares
+static bool es_bloqueado_por_io(void* elemento, io* dispositivo_io);
+static bool es_misma_instancia(void* e, t_pcb_io* instancia);
+static bool es_misma_io(void* elemento, io* disp_io);
+
 void* atender_io(void* arg) {
     int fd_io = *(int*)arg;
     free(arg);
 
+    // Encontrar la IO asociada a este file descriptor
+    io* dispositivo_io = NULL;
+    pthread_mutex_lock(&mutex_ios);
+    for (int i = 0; i < list_size(lista_ios); i++) {
+        io* disp = list_get(lista_ios, i);
+        if (disp->fd == fd_io) {
+            dispositivo_io = disp;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&mutex_ios);
+
+    if (!dispositivo_io) {
+        log_error(kernel_log, "atender_io: No se encontró IO con fd=%d", fd_io);
+        close(fd_io);
+        return NULL;
+    }
+
+    log_debug(kernel_log, "Atendiendo IO '%s' (fd=%d)", dispositivo_io->nombre, fd_io);
+
     op_code cop;
     while (recv(fd_io, &cop, sizeof(op_code), 0) > 0) {
         switch (cop) {
-            case IO_FINALIZADA_OP:
-                log_debug(kernel_log, "IO_FINALIZADA_OP recibido (fd=%d)", fd_io);
-                // TODO
-
+            case IO_FINALIZADA_OP: {
+                log_debug(kernel_log, "IO_FINALIZADA_OP recibido de '%s' (fd=%d)", dispositivo_io->nombre, fd_io);
+                
+                // Recibir el PID del proceso que finalizó
+                uint16_t pid_finalizado;
+                if (recv(fd_io, &pid_finalizado, sizeof(uint16_t), 0) <= 0) {
+                    log_error(kernel_log, "Error al recibir PID finalizado de IO '%s'", dispositivo_io->nombre);
+                    continue;
+                }
+                
+                log_info(kernel_log, "IO '%s' finalizó para PID=%d", dispositivo_io->nombre, pid_finalizado);
+                
+                // Procesar finalización de IO
+                fin_io(dispositivo_io, pid_finalizado);
                 break;
+            }
+                
             default:
-                log_error(kernel_log, "Codigo op desconocido recibido desde IO (fd=%d): %d", fd_io, cop);
+                log_error(kernel_log, "Código op desconocido recibido desde IO '%s' (fd=%d): %d", 
+                          dispositivo_io->nombre, fd_io, cop);
                 break;
         }
     }
 
-    log_warning(kernel_log, "IO desconectada (fd=%d)", fd_io);
+    // Si llegamos aquí, la IO se desconectó
+    log_warning(kernel_log, "IO '%s' desconectada (fd=%d)", dispositivo_io->nombre, fd_io);
+    
+    // Manejar la desconexión: mover todos los procesos bloqueados por esta IO a EXIT
+    pthread_mutex_lock(&mutex_ios);
+    dispositivo_io->estado = IO_DISPONIBLE; // Para evitar que se envíen nuevos procesos
+    
+    // Crear lista con PCBs afectados por la desconexión
+    t_list* pcbs_afectados = list_create();
+    
+    // Filtrar manualmente los PCBs bloqueados por esta IO
+    for (int i = 0; i < list_size(pcbs_bloqueados_por_io); i++) {
+        t_pcb_io* pcb_io = list_get(pcbs_bloqueados_por_io, i);
+        if (pcb_io->io == dispositivo_io) {
+            list_add(pcbs_afectados, pcb_io);
+        }
+    }
+    
+    // Remover estos PCBs de la lista de bloqueados
+    t_pcb_io* pcb_io_actual = NULL;
+    for (int i = 0; i < list_size(pcbs_afectados); i++) {
+        pcb_io_actual = list_get(pcbs_afectados, i);
+        t_pcb* pcb = pcb_io_actual->pcb;
+        
+        log_warning(kernel_log, "Proceso PID=%d en IO desconectada, moviendo a EXIT", pcb->PID);
+        
+        // Quitar de la lista de bloqueados manualmente
+        for (int j = 0; j < list_size(pcbs_bloqueados_por_io); j++) {
+            if (list_get(pcbs_bloqueados_por_io, j) == pcb_io_actual) {
+                list_remove(pcbs_bloqueados_por_io, j);
+                break;
+            }
+        }
+        
+        // Mover a EXIT
+        cambiar_estado_pcb(pcb, EXIT_ESTADO);
+        
+        // Liberar memoria
+        free(pcb_io_actual);
+    }
+    
+    // Eliminar la IO de la lista
+    io* io_eliminada = NULL;
+    for (int i = 0; i < list_size(lista_ios); i++) {
+        if (list_get(lista_ios, i) == dispositivo_io) {
+            io_eliminada = list_remove(lista_ios, i);
+            break;
+        }
+    }
+    
+    pthread_mutex_unlock(&mutex_ios);
+    
+    // Liberar recursos
+    list_destroy(pcbs_afectados);
+    if (io_eliminada) {
+        free(io_eliminada->nombre);
+        free(io_eliminada);
+    }
+    
     close(fd_io);
     return NULL;
+}
+
+// Implementaciones de funciones auxiliares
+static bool es_bloqueado_por_io(void* elemento, io* dispositivo_io) {
+    t_pcb_io* pcb_io = (t_pcb_io*) elemento;
+    return pcb_io->io == dispositivo_io;
+}
+
+static bool es_misma_instancia(void* e, t_pcb_io* instancia) {
+    return e == instancia;
+}
+
+static bool es_misma_io(void* elemento, io* disp_io) {
+    io* io_ptr = (io*) elemento;
+    return io_ptr == disp_io;
 }
