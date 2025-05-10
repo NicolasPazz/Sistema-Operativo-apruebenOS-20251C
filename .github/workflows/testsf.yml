@@ -32,6 +32,5 @@ jobs:
 
       - name: Ejecutar test de Segmentation fault
         run: |
-          cd tests
-          chmod +x testsf.sh
-          ./testsf.sh
+          chmod +x tests/testsf.sh
+          ./tests/testsf.sh

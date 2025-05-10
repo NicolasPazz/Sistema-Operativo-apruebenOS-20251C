@@ -32,6 +32,5 @@ jobs:
 
       - name: Ejecutar test de Valgrind
         run: |
-          cd tests
-          chmod +x testvg.sh
-          ./testvg.sh
+          chmod +x tests/testvg.sh
+          ./tests/testvg.sh

@@ -32,6 +32,5 @@ jobs:
 
       - name: Ejecutar test de Helgrind
         run: |
-          cd tests
-          chmod +x testhg.sh
-          ./testhg.sh
+          chmod +x tests/testhg.sh
+          ./tests/testhg.sh
