@@ -4,7 +4,7 @@ int main(int argc, char* argv[]) {
   
     //////////////////////////// Primer Proceso ////////////////////////////
     if (argc < 3) {
-        fprintf(stderr, "Uso: %s [archivo_pseudocodigo] [tamanio_proceso]\nEJ: ./bin/kernel kernel/script/proceso_inicial.pseudo 128\n", argv[0]);
+        fprintf(stderr, "Uso: %s [archivo_pseudocodigo] [tamanio_proceso]\nEJ: ./bin/kernel scripts/PROCESO_INICIAL 128\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 

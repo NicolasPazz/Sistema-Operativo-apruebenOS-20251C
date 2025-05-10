@@ -1,4 +1,4 @@
-name: Validacion completa
+name: Test de Valgrind
 
 on:
   push:
@@ -30,7 +30,8 @@ jobs:
           cd so-commons-library
           make install
 
-      - name: Ejecutar test local completo con Valgrind
+      - name: Ejecutar test de Valgrind
         run: |
-          chmod +x test.sh
-          ./test.sh
+          cd tests
+          chmod +x testvg.sh
+          ./testvg.sh

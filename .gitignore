@@ -73,5 +73,6 @@ bin/
 obj/
 *.log
 *.valgrind
+*.helgrind
 
 # Other
