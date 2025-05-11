@@ -1,5 +1,4 @@
 #include "../headers/io.h"
-
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         fprintf(stderr, "[IO] Uso: %s <NOMBRE_IO>\n", argv[0]);
@@ -10,9 +9,10 @@ int main(int argc, char* argv[]) {
 
     iniciar_config_io();
     iniciar_logger_io();
-    iniciar_conexiones_io(nombre_io);
 
-    // atender_cliente();
+    log_debug(io_log, "Iniciando proceso IO: %s", nombre_io);
+
+    iniciar_conexiones_io(nombre_io);
 
     while(1){
         sleep(100);

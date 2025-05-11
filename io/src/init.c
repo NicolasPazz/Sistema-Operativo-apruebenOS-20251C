@@ -3,9 +3,7 @@
 /////////////////////////////// Inicializacion de variables globales ///////////////////////////////
 t_log* io_log;
 t_config* io_config;
-
 int fd_kernel_io;
-
 char* IP_KERNEL;
 char* PUERTO_KERNEL;
 char* LOG_LEVEL;
