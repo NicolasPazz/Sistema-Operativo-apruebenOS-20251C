@@ -6,35 +6,26 @@
 
 int  hay_interrupcion, pc; // ver de donde sacar estos, ademas de donde setear el hay interrupcion
 void ejecutar_ciclo_instruccion() {
-    //seguir_ejecutando = 1;     no compila
-    //while(seguir_ejecutando == 1){         no compila
+    seguir_ejecutando = 1;
+    while(seguir_ejecutando == 1){
         t_instruccion* instruccion = fetch();
         op_code tipo_instruccion = decode(instruccion->parametros1);
-        //una idea despues ver de donde sacar el pc, si pasarlo por parametro o hacerlo global
         if(tipo_instruccion != GOTO_OP){
             pc++;
         }    
         execute(tipo_instruccion, instruccion);
-        //if(seguir_ejecutando){     no compila
+        if(seguir_ejecutando){     
             check_interrupt();
-        //}
-    //}
+        }
+    }
 }
 
 // fetch
 t_instruccion* fetch(){
-    // t_instruccion* instruccion ;//pedir_instruccion_memoria(pc);
-    // if (instruccion == NULL)
-    // {
-    //     log_error("No existe instruccion con el program counter: %d", pc);
-    //     EXIT_FAILURE;
-    // }
-    // log_info(cpu_log, "PID: %i - FETCH - Program Counter: %i", pid, pc);
-    // return instruccion;
 
     t_paquete* paquete = crear_paquete_op(PEDIR_INSTRUCCION_OP);
     agregar_entero_a_paquete(paquete, pc);
-    //agregar_entero_a_paquete(paquete, pid_ejecutando);         no compila
+    agregar_entero_a_paquete(paquete, pid_ejecutando);
     enviar_paquete(paquete, fd_memoria);
     eliminar_paquete(paquete);
 
@@ -46,7 +37,7 @@ t_instruccion* fetch(){
 }
 
 // decode
-op_code decode(char* nombre_instruccion){ // LO HICE CHAR VEMOS SI NOS SIRVE ASI
+op_code decode(char* nombre_instruccion){
     //INSTRUCCIONES
     if (strcmp(nombre_instruccion, "NOOP") == 0) {
         return NOOP_OP;
@@ -94,7 +85,7 @@ void execute(op_code tipo_instruccion, t_instruccion* instruccion) { //meto las 
             break;
         case IO_OP:
             log_debug(cpu_log, "INSTRUCCION :%s - PARAMETRO 1: %s", tipo_instruccion, instruccion->parametros2); // warning: format ‘%s’ expects argument of type ‘char *’, but argument 3 has type ‘unsigned int’
-            // func_io(instruccion->parametros2); LO COMENTO PORQUE LE FALTA UN ARGUMENTO, NO COMPILA
+            func_io(instruccion->parametros2, instruccion->parametros3); 
             break;
         case INIT_PROC_OP:
             log_debug(cpu_log, "INSTRUCCION :%s - PARAMETRO 1: %s - PARAMETRO 2: %s", tipo_instruccion, instruccion->parametros2, instruccion->parametros3); // warning: format ‘%s’ expects argument of type ‘char *’, but argument 3 has type ‘unsigned int’
@@ -117,12 +108,12 @@ void execute(op_code tipo_instruccion, t_instruccion* instruccion) { //meto las 
 // check interrupt
 void check_interrupt() {
     hay_interrupcion = 0;
-     //if (pid_ejecutando == pid_interrupt) {        no compila
-      //seguir_ejecutando = 0;   no compila
+     if (pid_ejecutando == pid_interrupt) {        
+      seguir_ejecutando = 0;
         t_paquete* paquete_kernel = crear_paquete_op(INTERRUPCION_OP);
-        //agregar_entero_a_paquete(paquete_kernel, pid_ejecutando);      no compila
+        agregar_entero_a_paquete(paquete_kernel, pid_ejecutando);
         agregar_entero_a_paquete(paquete_kernel, pc);
         enviar_paquete(paquete_kernel, fd_kernel_interrupt);
         eliminar_paquete(paquete_kernel);
- //}
+    }
 }

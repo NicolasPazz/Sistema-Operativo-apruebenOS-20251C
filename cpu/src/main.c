@@ -79,9 +79,9 @@ int recibir_kernel_dispatch() {
 			    break;
             case EXEC_OP:
                 // Ejecutar la instrucción
-                //t_list* lista = recibir_2_enteros(fd_kernel_dispatch);    recibir_2_enteros no existe
-                //pc = (int)(intptr_t) list_get(lista, 0);      lista no esta definido
-                //pid_ejecutando = (int)(intptr_t) list_get(lista, 1);      lista no esta definido
+                t_list* lista = recibir_2_enteros(fd_kernel_dispatch);
+                pc = (int)(intptr_t) list_get(lista, 0);
+                pid_ejecutando = (int)(intptr_t) list_get(lista, 1);
                 ejecutar_ciclo_instruccion();
                 break;
             case -1:
