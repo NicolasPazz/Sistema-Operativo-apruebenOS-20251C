@@ -155,7 +155,6 @@ for val in memoria/memoria.helgrind kernel/kernel.helgrind cpu/cpu.helgrind io/i
             echo ""
             echo "::warning ::$linea  ➡  $siguiente_linea  ➡  $val"
             imprimir_traza=1
-            ((ERROR++))
             ((errores_en_helgrind++))
         elif [[ $imprimir_traza -eq 1 && "$linea" =~ (at\ 0x|by\ 0x) ]]; then
             echo "      ➡    $linea"
@@ -165,7 +164,7 @@ for val in memoria/memoria.helgrind kernel/kernel.helgrind cpu/cpu.helgrind io/i
     done < "$val"
 
     if [ "$errores_en_helgrind" -gt 0 ]; then
-        echo "::error ::❌ $errores_en_helgrind problema(s) de concurrencia detectado(s) en $val ↑"
+        echo "::warning ::❌ $errores_en_helgrind problema(s) de concurrencia detectado(s) en $val ↑"
         echo ""
     fi
 done

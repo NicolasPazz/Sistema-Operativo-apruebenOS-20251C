@@ -1,6 +1,6 @@
 #include "../headers/monitor_tablas.h"
 
-extern t_log* logger;
+extern t_log* memoria_log;
 extern t_config_memoria* cfg;
 
 extern pthread_mutex_t MUTEX_TS_PATOTAS;

@@ -12,13 +12,13 @@ int main(int argc, char* argv[]) {
     int tamanio_proceso = atoi(argv[2]);
   
     //////////////////////////// Config, log e inicializaciones ////////////////////////////
+    iniciar_sincronizacion_kernel();
     iniciar_logger_kernel_debug();
     iniciar_config_kernel();
     iniciar_logger_kernel();
     iniciar_estados_kernel();
     iniciar_diccionario_tiempos();
-    iniciar_sincronizacion_kernel();
-
+    
     //////////////////////////// Conexiones del Kernel ////////////////////////////
 
     // Servidor de CPU (Dispatch)
@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
     pthread_detach(hilo_dispatch);
-    log_debug(kernel_log, "Hilo de servidor Dispatch creado correctamente");
+    //log_debug(kernel_log, "Hilo de servidor Dispatch creado correctamente");
 
     // Servidor de CPU (Interrupt)
     pthread_t hilo_interrupt;
@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
     pthread_detach(hilo_interrupt);
-    log_debug(kernel_log, "Hilo de servidor Interrupt creado correctamente");
+    //log_debug(kernel_log, "Hilo de servidor Interrupt creado correctamente");
 
     // Cliente de Memoria
     pthread_t hilo_memoria;
@@ -49,7 +49,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
     pthread_detach(hilo_memoria);
-    log_debug(kernel_log, "Hilo cliente de Memoria creado correctamente");
+    //log_debug(kernel_log, "Hilo cliente de Memoria creado correctamente");
 
     // Servidor de IO
     pthread_t hilo_io;
@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
     pthread_detach(hilo_io);
-    log_debug(kernel_log, "Hilo de servidor IO creado correctamente");
+    //log_debug(kernel_log, "Hilo de servidor IO creado correctamente");
 
 
     //////////////////////////// Esperar conexiones minimas ////////////////////////////

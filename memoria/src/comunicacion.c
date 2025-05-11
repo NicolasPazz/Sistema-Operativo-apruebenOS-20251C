@@ -6,7 +6,7 @@
 int fd_memoria;
 int fd_kernel;
 int fd_cpu;
-extern t_log* logger;
+extern t_log* memoria_log;
 
 typedef struct {
     int fd;
@@ -14,29 +14,29 @@ typedef struct {
 } t_procesar_conexion_args;
 
 
-int iniciar_conexiones_memoria(char* PUERTO_ESCUCHA, t_log* logger) {
-    if (logger == NULL) {
-        printf("Error: Logger no inicializado\n");
+int iniciar_conexiones_memoria(char* PUERTO_ESCUCHA, t_log* memoria_log) {
+    if (memoria_log == NULL) {
+        printf("Error: memoria_log no inicializado\n");
         exit(EXIT_FAILURE);
     }
 
-    fd_memoria = iniciar_servidor(PUERTO_ESCUCHA, logger, "Server Memoria iniciado");
+    fd_memoria = iniciar_servidor(PUERTO_ESCUCHA, memoria_log, "Server Memoria iniciado");
 
     if (fd_memoria == -1) {
-        log_error(logger, "No se pudo iniciar el servidor de Memoria");
+        log_error(memoria_log, "No se pudo iniciar el servidor de Memoria");
         exit(EXIT_FAILURE);
     }
 
-    log_debug(logger, "Esperando conexiones entrantes en Memoria...");
+    log_debug(memoria_log, "Esperando conexiones entrantes en Memoria...");
     return fd_memoria; // Devuelve el socket del servidor
 }
 
 int server_escuchar(char* server_name, int server_socket) {
-    if (logger == NULL) {
+    if (memoria_log == NULL) {
         printf("Error: Logger no inicializado en server_escuchar\n");
         return 0;
     }
-    int cliente_socket = esperar_cliente(server_socket, logger);
+    int cliente_socket = esperar_cliente(server_socket, memoria_log);
 
     if (cliente_socket != -1) {
         pthread_t hilo;
@@ -54,7 +54,7 @@ int server_escuchar(char* server_name, int server_socket) {
 void procesar_conexion(void* void_args) {
     t_procesar_conexion_args* args = (t_procesar_conexion_args*) void_args;
     if (args == NULL) {
-        log_error(logger, "Error: Argumentos de conexion nulos");
+        log_error(memoria_log, "Error: Argumentos de conexion nulos");
         return;
     }
 
@@ -65,39 +65,39 @@ void procesar_conexion(void* void_args) {
     int handshake = -1;
 
     if (recv(cliente_socket, &handshake, sizeof(int), 0) <= 0) {
-        log_error(logger, "Error al recibir handshake del cliente (fd=%d): %s", cliente_socket, strerror(errno));
+        log_error(memoria_log, "Error al recibir handshake del cliente (fd=%d): %s", cliente_socket, strerror(errno));
         close(cliente_socket);
         return;
     }
     switch (handshake) {
         case HANDSHAKE_MEMORIA_KERNEL:
-            log_debug(logger, "HANDSHAKE_MEMORIA_KERNEL: Se conecto el Kernel (fd=%d)", cliente_socket);
+            log_debug(memoria_log, "HANDSHAKE_MEMORIA_KERNEL: Se conecto el Kernel (fd=%d)", cliente_socket);
 
             fd_kernel = cliente_socket;
             break;
 
         case HANDSHAKE_MEMORIA_CPU:
-            log_debug(logger, "HANDSHAKE_MEMORIA_CPU: Se conecto una CPU (fd=%d)", cliente_socket);
+            log_debug(memoria_log, "HANDSHAKE_MEMORIA_CPU: Se conecto una CPU (fd=%d)", cliente_socket);
             fd_cpu = cliente_socket;
             break;
 
         default:
-            log_warning(logger, "Handshake invalido recibido (fd=%d): %d", cliente_socket, handshake);
+            log_warning(memoria_log, "Handshake invalido recibido (fd=%d): %d", cliente_socket, handshake);
             close(cliente_socket);
             return;
     }
 
-    log_debug(logger, "Conexion procesada exitosamente para %s (fd=%d)", server_name, cliente_socket);
+    log_debug(memoria_log, "Conexion procesada exitosamente para %s (fd=%d)", server_name, cliente_socket);
     // manejo aca los codops
     op_code cop;
     while (recv(cliente_socket, &cop, sizeof(op_code), 0) > 0) {
         procesar_cod_ops(cop, cliente_socket);
     }
 
-    log_warning(logger, "El cliente (fd=%d) se desconectó de %s", cliente_socket, server_name);
+    log_warning(memoria_log, "El cliente (fd=%d) se desconectó de %s", cliente_socket, server_name);
 
     if (cliente_socket == fd_kernel) {
-        log_warning(logger, "Se desconectó el Kernel. Finalizando Memoria...");
+        log_warning(memoria_log, "Se desconectó el Kernel. Finalizando Memoria...");
         cerrar_programa();
         exit(EXIT_SUCCESS);
     }
@@ -108,77 +108,77 @@ void procesar_conexion(void* void_args) {
 void procesar_cod_ops(op_code cop, int cliente_socket) {
     switch (cop) {
         case MENSAJE_OP:
-            log_debug(logger, "MENSAJE_OP recibido");
+            log_debug(memoria_log, "MENSAJE_OP recibido");
             // Logica para manejar MENSAJE_OP
             break;
 
         case PAQUETE_OP:
-            log_debug(logger, "PAQUETE_OP recibido");
+            log_debug(memoria_log, "PAQUETE_OP recibido");
             // Logica para manejar PAQUETE_OP
             break;
 
         case NOOP_OP:
-            log_debug(logger, "NOOP_OP recibido");
+            log_debug(memoria_log, "NOOP_OP recibido");
             // Logica para manejar NOOP_OP
             break;
 
         case WRITE_OP:
-            log_debug(logger, "WRITE_OP recibido");
+            log_debug(memoria_log, "WRITE_OP recibido");
             // Logica para manejar WRITE_OP
             break;
 
         case READ_OP:
-            log_debug(logger, "READ_OP recibido");
+            log_debug(memoria_log, "READ_OP recibido");
             // Logica para manejar READ_OP
             break;
 
         case GOTO_OP:
-            log_debug(logger, "GOTO_OP recibido");
+            log_debug(memoria_log, "GOTO_OP recibido");
             // Logica para manejar GOTO_OP
             break;
 
         case IO_OP:
-            log_debug(logger, "IO_OP recibido");
+            log_debug(memoria_log, "IO_OP recibido");
             // Logica para manejar IO_OP
             break;
 
         case INIT_PROC_OP:
-            log_debug(logger, "INIT_PROC_OP recibido");
+            log_debug(memoria_log, "INIT_PROC_OP recibido");
             // Logica para manejar INIT_PROC_OP
             break;
 
         case DUMP_MEMORY_OP:
-            log_debug(logger, "DUMP_MEMORY_OP recibido");
+            log_debug(memoria_log, "DUMP_MEMORY_OP recibido");
             // Logica para manejar DUMP_MEMORY_OP
             break;
 
         case EXIT_OP:
-            log_debug(logger, "EXIT_OP recibido. Cerrando conexion con el cliente (fd=%d)", cliente_socket);
+            log_debug(memoria_log, "EXIT_OP recibido. Cerrando conexion con el cliente (fd=%d)", cliente_socket);
             close(cliente_socket);
             return;
 
         case EXEC_OP:
-            log_debug(logger, "EXEC_OP recibido");
+            log_debug(memoria_log, "EXEC_OP recibido");
             // Logica para manejar EXEC_OP
             break;
 
         case INTERRUPCION_OP:
-            log_debug(logger, "INTERRUPCION_OP recibido");
+            log_debug(memoria_log, "INTERRUPCION_OP recibido");
             // Logica para manejar INTERRUPCION_OP
             break;
 
         case PEDIR_INSTRUCCION_OP:
-            log_debug(logger, "PEDIR_INSTRUCCION_OP recibido");
+            log_debug(memoria_log, "PEDIR_INSTRUCCION_OP recibido");
             // Logica para manejar PEDIR_INSTRUCCION_OP
             break;
 
         case PEDIR_CONFIG_CPU_OP:
-            log_debug(logger, "PEDIR_CONFIG_CPU_OP recibido");
+            log_debug(memoria_log, "PEDIR_CONFIG_CPU_OP recibido");
             // Logica para manejar PEDIR_CONFIG_CPU_OP
             break;
 
         default:
-            log_error(logger, "Codigo de operacion desconocido: %d", cop);
+            log_error(memoria_log, "Codigo de operacion desconocido: %d", cop);
             break;
     }
 }

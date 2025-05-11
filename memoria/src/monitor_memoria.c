@@ -1,6 +1,6 @@
 #include "../headers/monitor_memoria.h"
 
-extern t_log* logger; // por funciones de debug
+extern t_log* memoria_log; // por funciones de debug
 extern t_config_memoria* cfg;
 extern t_list* segmentos_libres;
 extern t_list* segmentos_usados;
