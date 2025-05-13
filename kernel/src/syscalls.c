@@ -1,6 +1,5 @@
 #include "../headers/syscalls.h"
 #include "../headers/planificadores.h"
-#define ESTIMACION_INICIAL 1
 
 t_temporal* tiempo_estado_actual;
 
@@ -75,8 +74,8 @@ void DUMP_MEMORY(){
 
 io* get_io(char* nombre_io){
     bool _name_is(void* ptr) {
-        io* io = (io*) ptr;
-        return strcmp(io->nombre, nombre_io);
+        io* io_element = (io*)ptr;
+        return strcmp(io_element->nombre, nombre_io) == 0;
     }
     return list_find(lista_ios, _name_is);
 }
@@ -97,7 +96,7 @@ bool esta_libre_io(io* io){
     }
 }
 
-void bloquear_pbc_por_io(io_a_usar, pcb){
+void bloquear_pbc_por_io(io* io_a_usar, t_pcb* pcb){
     list_add(pcbs_bloqueados_por_io, pcb);
 }
 
@@ -115,10 +114,10 @@ void IO(char* nombre_io, uint16_t tiempo_a_usar, t_pcb* pcb_a_io){
 
     if(esta_libre_io(io_a_usar)){
         if(send_un_char_y_un_int(io_a_usar->fd, nombre_io, tiempo_a_usar)){
-            log_info(kernel_log, "Enviado PCB <PID: %d> a ejecutar IO <%s>", pcb_a_io->pid, io->nombre);
+            log_info(kernel_log, "Enviado PCB <PID: %d> a ejecutar IO <%s>", pcb_a_io->PID, io_a_usar->nombre);
         }
         else {
-            log_error(kernel_log, "No se pudo enviar el nombre_io y tiempo_a_usar a la IO <%s>", io->nombre);
+            log_error(kernel_log, "No se pudo enviar el nombre_io y tiempo_a_usar a la IO <%s>", io_a_usar->nombre);
         }
     }
 }

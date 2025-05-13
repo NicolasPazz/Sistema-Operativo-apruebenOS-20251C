@@ -50,6 +50,12 @@ extern t_list* cola_exit;
 extern t_list* cola_procesos;
 extern t_list* pcbs_bloqueados_por_io;
 
+// Listas y semaforos de CPUs y IOs conectadas
+extern t_list* lista_cpus;
+extern t_list* lista_ios;
+extern pthread_mutex_t mutex_lista_cpus;
+extern pthread_mutex_t mutex_ios;
+
 // Conexiones
 extern bool conectado_cpu;
 extern bool conectado_io;

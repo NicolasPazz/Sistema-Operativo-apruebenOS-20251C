@@ -18,7 +18,6 @@ bool recv_IO_from_CPU(int fd, char** nombre_IO, uint8_t* cant_tiempo) {
         free(stream);
         return false;
     }
-
     deserializar_un_char_y_un_int(stream, nombre_IO, cant_tiempo);
 
     free(stream);

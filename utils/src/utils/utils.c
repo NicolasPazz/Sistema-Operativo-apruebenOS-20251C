@@ -13,7 +13,7 @@ bool config_has_all_properties(t_config* cfg, char** properties) {
 // ***** funciones para deserializar***
 
 //definimos x protocolo q primero la cadena y desp el entero
-static void deserializar_un_char_y_un_int (void* stream, char** cadena , uint8_t* entero){
+void deserializar_un_char_y_un_int (void* stream, char** cadena , uint8_t* entero){
     //string
     size_t size_cadena;
     memcpy(&size_cadena, stream, sizeof(size_t)); // guardo el tamanio de la cadena
@@ -25,13 +25,14 @@ static void deserializar_un_char_y_un_int (void* stream, char** cadena , uint8_t
     //int
     memcpy(entero, stream+sizeof(size_t)+size_cadena ,sizeof(uint8_t));
 }
-static void deserializar_dos_ints(void* stream, uint8_t* int1, uint8_t* int2) {
+
+void deserializar_dos_ints(void* stream, uint8_t* int1, uint8_t* int2) {
     memcpy(int1, stream, sizeof(uint8_t));
     memcpy(int2, stream+sizeof(uint8_t), sizeof(uint8_t));
 }
 
 // ***** funciones para serializar***
-static void* serializar_un_char_y_un_int(size_t* size, char* cadena, uint16_t entero) {
+void* serializar_un_char_y_un_int(size_t* size, char* cadena, uint16_t entero) {
     size_t size_cadena = strlen(cadena) + 1;
     *size =
           sizeof(op_code)   // cop
@@ -54,7 +55,7 @@ static void* serializar_un_char_y_un_int(size_t* size, char* cadena, uint16_t en
 }
 
 //* probamos con 2 ints
-static void* serializar_dos_ints(uint8_t int1, uint8_t int2) {
+void* serializar_dos_ints(uint8_t int1, uint8_t int2) {
     void* stream = malloc(sizeof(op_code) + sizeof(uint8_t) * 2);
 
     op_code cop = PEDIR_INSTRUCCION_OP;

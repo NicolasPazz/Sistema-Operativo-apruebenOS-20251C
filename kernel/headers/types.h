@@ -37,14 +37,12 @@ typedef enum {
     CPU_INTERRUPT
 } tipo_conexion_cpu;
 
-typedef struct {
+typedef struct CPU {
     int fd;
     int id;
     int pid;
     tipo_conexion_cpu tipo_conexion;
-    // syscall -> la proceso -> termino: borro
-    // pid = get_pid_from_cpu(syscall IO) -> antes del return del pid -> cpu -> syscall = null;
-    // cpu -> instruccion -> kernel where instruccion : IO
+    op_code instruccion_actual;
 } cpu;
 
     ///// IO
