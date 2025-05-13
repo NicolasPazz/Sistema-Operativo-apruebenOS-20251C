@@ -69,9 +69,19 @@ void DUMP_MEMORY(){
     
 }
 
+// Declaraciones de funciones auxiliares
+static bool io_por_nombre_matcher(void* elemento, char* nombre);
+static bool pcb_io_matcher(void* elemento, io* disp, uint16_t pid);
+static bool esperando_mismo_io_matcher(void* elemento, io* disp);
+
+// Variables externas
+extern t_list* lista_ios;
+extern pthread_mutex_t mutex_ios;
+extern t_list* pcbs_bloqueados_por_io;
 
 //////////////////////////////////////////////////////////// IO ////////////////////////////////////////////////////////////
 
+<<<<<<< HEAD
 io* get_io(char* nombre_io){
     bool _name_is(void* ptr) {
         io* io_element = (io*)ptr;
@@ -118,10 +128,177 @@ void IO(char* nombre_io, uint16_t tiempo_a_usar, t_pcb* pcb_a_io){
         }
         else {
             log_error(kernel_log, "No se pudo enviar el nombre_io y tiempo_a_usar a la IO <%s>", io_a_usar->nombre);
+=======
+// Busca un dispositivo IO por su nombre
+io* get_io(char* nombre_io) {
+    pthread_mutex_lock(&mutex_ios);
+    io* dispositivo = NULL;
+    
+    // Buscar manualmente
+    for (int i = 0; i < list_size(lista_ios); i++) {
+        io* io_actual = list_get(lista_ios, i);
+        if (strcmp(io_actual->nombre, nombre_io) == 0) {
+            dispositivo = io_actual;
+            break;
+>>>>>>> b1f878b7fcd43952b9a081935d83829ccfc219cc
         }
+    }
+    
+    pthread_mutex_unlock(&mutex_ios);
+    return dispositivo;
+}
+
+// Verifica si un dispositivo IO está disponible
+bool esta_libre_io(io* dispositivo) {
+    return dispositivo->estado == IO_DISPONIBLE;
+}
+
+// Agrega un PCB a la lista de bloqueados por un dispositivo IO
+void bloquear_pcb_por_io(io* dispositivo, t_pcb* pcb, uint16_t tiempo_a_usar) {
+    // Crear un registro de PCB bloqueado por IO
+    t_pcb_io* pcb_io = malloc(sizeof(t_pcb_io));
+    if (!pcb_io) {
+        log_error(kernel_log, "Error al reservar memoria para PCB_IO");
+        terminar_kernel();
+        exit(EXIT_FAILURE);
+    }
+    
+    pcb_io->pcb = pcb;
+    pcb_io->io = dispositivo;
+    pcb_io->tiempo_a_usar = tiempo_a_usar;  // Guardar el tiempo de ejecución
+    
+    // Agregar a la lista de PCBs bloqueados
+    list_add(pcbs_bloqueados_por_io, pcb_io);
+    
+    log_info(kernel_log, "## (%d) - Bloqueado por IO: %s (tiempo: %d ms)", 
+             pcb->PID, dispositivo->nombre, tiempo_a_usar);
+}
+
+// Envía un proceso a un dispositivo IO
+void enviar_io(io* dispositivo, t_pcb* pcb, uint16_t tiempo_a_usar) {
+    // Marcar el dispositivo como ocupado
+    dispositivo->estado = IO_OCUPADO;
+    
+    // Enviar PID y tiempo a usar a la IO
+    op_code cod_op = IO_OP;
+    if (send(dispositivo->fd, &cod_op, sizeof(op_code), 0) <= 0) {
+        log_error(kernel_log, "Error al enviar IO_OP a IO '%s'", dispositivo->nombre);
+        dispositivo->estado = IO_DISPONIBLE;
+        cambiar_estado_pcb(pcb, EXIT_ESTADO);
+        return;
+    }
+    
+    // Enviar PID y tiempo
+    t_paquete* paquete = crear_paquete();
+    paquete->codigo_operacion = IO_OP;
+    
+    // Agregar PID y tiempo al paquete
+    agregar_a_paquete(paquete, &pcb->PID, sizeof(uint16_t));
+    agregar_a_paquete(paquete, &tiempo_a_usar, sizeof(uint16_t));
+    
+    // Enviar paquete
+    enviar_paquete(paquete, dispositivo->fd);
+    eliminar_paquete(paquete);
+    
+    log_info(kernel_log, "Enviado PID=%d a IO '%s' por %d ms", pcb->PID, dispositivo->nombre, tiempo_a_usar);
+}
+
+// Procesa una solicitud de entrada/salida
+void IO(char* nombre_io, uint16_t tiempo_a_usar, t_pcb* pcb_a_io) {
+    if (!pcb_a_io) {
+        log_error(kernel_log, "IO: PCB nulo");
+        return;
+    }
+    
+    log_info(kernel_log, "## (%d) - Solicitó syscall: IO", pcb_a_io->PID);
+    
+    // Obtener el dispositivo IO
+    io* dispositivo = get_io(nombre_io);
+    
+    // Validar que la IO solicitada existe en el sistema
+    if (dispositivo == NULL) {
+        log_error(kernel_log, "IO: No existe el dispositivo '%s'", nombre_io);
+        cambiar_estado_pcb(pcb_a_io, EXIT_ESTADO);
+        return;
+    }
+    
+    // Cambiar estado del proceso a BLOCKED
+    cambiar_estado_pcb(pcb_a_io, BLOCKED);
+    
+    // Bloquear el proceso por la IO
+    bloquear_pcb_por_io(dispositivo, pcb_a_io, tiempo_a_usar);
+    
+    // Si la IO está libre, enviar el proceso
+    if (esta_libre_io(dispositivo)) {
+        enviar_io(dispositivo, pcb_a_io, tiempo_a_usar);
+    } else {
+        log_info(kernel_log, "IO '%s' ocupada, proceso PID=%d en espera", nombre_io, pcb_a_io->PID);
     }
 }
 
+// Procesa la finalización de una operación IO
+void fin_io(io* dispositivo, uint16_t pid_finalizado) {
+    t_pcb_io* pcb_io = NULL;
+    
+    // Buscar manualmente el PCB bloqueado por esta IO con este PID
+    for (int i = 0; i < list_size(pcbs_bloqueados_por_io); i++) {
+        t_pcb_io* pcb_io_actual = list_get(pcbs_bloqueados_por_io, i);
+        if (pcb_io_actual->io == dispositivo && pcb_io_actual->pcb->PID == pid_finalizado) {
+            pcb_io = list_remove(pcbs_bloqueados_por_io, i);
+            break;
+        }
+    }
+    
+    if (!pcb_io) {
+        log_error(kernel_log, "fin_io: No se encontró PCB para PID=%d en IO '%s'", 
+                 pid_finalizado, dispositivo->nombre);
+        return;
+    }
+    
+    t_pcb* pcb = pcb_io->pcb;
+    free(pcb_io);
+    
+    // Cambiar estado del proceso a READY
+    cambiar_estado_pcb(pcb, READY);
+    log_info(kernel_log, "## (%d) finalizó IO y pasa a READY", pcb->PID);
+    
+    // Marcar la IO como disponible
+    dispositivo->estado = IO_DISPONIBLE;
+    
+    // Buscar el siguiente proceso que espera esta IO
+    t_pcb_io* siguiente_pcb_io = NULL;
+    for (int i = 0; i < list_size(pcbs_bloqueados_por_io); i++) {
+        t_pcb_io* pcb_io_actual = list_get(pcbs_bloqueados_por_io, i);
+        if (pcb_io_actual->io == dispositivo) {
+            siguiente_pcb_io = pcb_io_actual;
+            break;
+        }
+    }
+    
+    // Si hay un proceso esperando, enviarlo a la IO
+    if (siguiente_pcb_io) {
+        // Usar el tiempo guardado en la estructura
+        log_info(kernel_log, "Enviando siguiente proceso PID=%d a IO '%s' por %d ms", 
+                siguiente_pcb_io->pcb->PID, dispositivo->nombre, siguiente_pcb_io->tiempo_a_usar);
+        enviar_io(dispositivo, siguiente_pcb_io->pcb, siguiente_pcb_io->tiempo_a_usar);
+    }
+}
+
+// Implementaciones de funciones auxiliares
+static bool io_por_nombre_matcher(void* elemento, char* nombre) {
+    io* dispositivo = (io*) elemento;
+    return strcmp(dispositivo->nombre, nombre) == 0;
+}
+
+static bool pcb_io_matcher(void* elemento, io* disp, uint16_t pid) {
+    t_pcb_io* pcb_io = (t_pcb_io*) elemento;
+    return pcb_io->io == disp && pcb_io->pcb->PID == pid;
+}
+
+static bool esperando_mismo_io_matcher(void* elemento, io* disp) {
+    t_pcb_io* pcb_io = (t_pcb_io*) elemento;
+    return pcb_io->io == disp;
+}
 
 //////////////////////////////////////////////////////////// EXIT ////////////////////////////////////////////////////////////
 void EXIT(t_pcb* pcb_a_finalizar) {
