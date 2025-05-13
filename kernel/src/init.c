@@ -384,49 +384,11 @@ void* hilo_servidor_io(void* _){
     return NULL;
 }
 
-<<<<<<< HEAD
-bool cpu_por_fd(void* ptr) {
-    cpu* c = (cpu*) ptr;
-    return c->fd == fd_cpu_dispatch;
-}
-
-/*
-bool cpu_por_fd(void* ptr, int fd) {
-    cpu* c = (cpu*) ptr;
-    return c->fd == fd;
-}*/
-=======
 // Funciones auxiliares para buscar CPU por file descriptor
 bool cpu_por_fd_simple(void* ptr, int fd) {
     cpu* c = (cpu*) ptr;
     return c->fd == fd;
 }
-
-// Encuentra la CPU por su fd y devuelve el PID del proceso que está ejecutando
-uint16_t get_pid_from_cpu(int fd, op_code instruccion) {
-    pthread_mutex_lock(&mutex_lista_cpus);
-
-    // Buscar por fd e instrucción
-    cpu* cpu_asociada = NULL;
-    for (int i = 0; i < list_size(lista_cpus); i++) {
-        cpu* c = list_get(lista_cpus, i);
-        if (c->fd == fd && c->instruccion_actual == instruccion) {
-            cpu_asociada = c;
-            break;
-        }
-    }
-
-    pthread_mutex_unlock(&mutex_lista_cpus);
-
-    if (!cpu_asociada) {
-        log_error(kernel_log, "No se encontró CPU asociada a fd=%d con instrucción=%d", fd, instruccion);
-        terminar_kernel();
-        exit(EXIT_FAILURE);
-    }
-
-    return cpu_asociada->pid;
-}
->>>>>>> b1f878b7fcd43952b9a081935d83829ccfc219cc
 
 void* atender_cpu_dispatch(void* arg) {
     int fd_cpu_dispatch = *(int*)arg;
@@ -498,7 +460,6 @@ void* atender_cpu_dispatch(void* arg) {
                     log_error(kernel_log, "Error al recibir la IO desde CPU");
                 }
 
-<<<<<<< HEAD
                 uint16_t pid_en_cpu = get_pid_from_cpu(fd_cpu_dispatch, IO_OP);
                 log_debug(kernel_log, "IO_OP asociado a PID=%d", pid_en_cpu);
 
@@ -506,8 +467,6 @@ void* atender_cpu_dispatch(void* arg) {
                 t_pcb* pcb_a_io = list_get(cola_procesos, pid_en_cpu);
                 procesar_IO_from_CPU(nombre_IO, cant_tiempo, pcb_a_io);
 
-=======
->>>>>>> b1f878b7fcd43952b9a081935d83829ccfc219cc
                 break;
 
             case EXIT_OP:
@@ -564,8 +523,6 @@ void* atender_cpu_dispatch(void* arg) {
     }
 
     log_warning(kernel_log, "CPU Dispatch desconectada (fd=%d)", fd_cpu_dispatch);
-<<<<<<< HEAD
-=======
     
     // Eliminar esta CPU de la lista de CPUs
     pthread_mutex_lock(&mutex_lista_cpus);
@@ -578,8 +535,7 @@ void* atender_cpu_dispatch(void* arg) {
         }
     }
     pthread_mutex_unlock(&mutex_lista_cpus);
-    
->>>>>>> b1f878b7fcd43952b9a081935d83829ccfc219cc
+
     close(fd_cpu_dispatch);
     return NULL;
 }

@@ -52,19 +52,13 @@ extern t_list* pcbs_bloqueados_por_io;
 
 // Listas y semaforos de CPUs y IOs conectadas
 extern t_list* lista_cpus;
-<<<<<<< HEAD
 extern t_list* lista_ios;
-extern pthread_mutex_t mutex_lista_cpus;
-extern pthread_mutex_t mutex_ios;
 
 // Conexiones
-=======
 extern pthread_mutex_t mutex_lista_cpus;
-extern t_list* lista_ios;
 extern pthread_mutex_t mutex_ios;
 
 // Conexiones minimas
->>>>>>> b1f878b7fcd43952b9a081935d83829ccfc219cc
 extern bool conectado_cpu;
 extern bool conectado_io;
 extern pthread_mutex_t mutex_conexiones;

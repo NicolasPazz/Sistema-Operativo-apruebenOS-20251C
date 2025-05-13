@@ -29,9 +29,6 @@ bool recv_IO_from_CPU(int fd, char** nombre_IO, uint16_t* cant_tiempo) {
         free(stream);
         return false;
     }
-<<<<<<< HEAD
-    deserializar_un_char_y_un_int(stream, nombre_IO, cant_tiempo);
-=======
 
     // Deserializar los datos
     size_t nombre_len;
@@ -41,7 +38,6 @@ bool recv_IO_from_CPU(int fd, char** nombre_IO, uint16_t* cant_tiempo) {
     memcpy(*nombre_IO, stream + sizeof(size_t), nombre_len);
     
     memcpy(cant_tiempo, stream + sizeof(size_t) + nombre_len, sizeof(uint16_t));
->>>>>>> b1f878b7fcd43952b9a081935d83829ccfc219cc
 
     log_debug(kernel_log, "Recibido IO: nombre='%s', tiempo=%d", *nombre_IO, *cant_tiempo);
     

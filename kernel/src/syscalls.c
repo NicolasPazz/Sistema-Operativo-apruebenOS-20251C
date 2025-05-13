@@ -81,54 +81,10 @@ extern t_list* pcbs_bloqueados_por_io;
 
 //////////////////////////////////////////////////////////// IO ////////////////////////////////////////////////////////////
 
-<<<<<<< HEAD
-io* get_io(char* nombre_io){
-    bool _name_is(void* ptr) {
-        io* io_element = (io*)ptr;
-        return strcmp(io_element->nombre, nombre_io) == 0;
-    }
-    return list_find(lista_ios, _name_is);
-}
-
-bool esta_libre_io(io* io){
-    switch (io->estado)
-    {
-    case IO_OCUPADO:
-        return false;
-        break;
-    case IO_DISPONIBLE:
-        return true;
-        break;
-    default:
-        log_debug(kernel_log, "esta_libre_io: No se reconoce el estado de la IO <%s>", io->nombre);
-        return false;
-        break;
-    }
-}
-
 void bloquear_pbc_por_io(io* io_a_usar, t_pcb* pcb){
     list_add(pcbs_bloqueados_por_io, pcb);
 }
 
-void IO(char* nombre_io, uint16_t tiempo_a_usar, t_pcb* pcb_a_io){
-    // Obtener la IO a usar
-    io* io_a_usar  = get_io(nombre_io);
-
-        //1. validar que la IO solicitada existe en el sistema
-    if(io_a_usar == NULL){
-        log_error(kernel_log, "No existe la IO solicitada"); 
-        cambiar_estado_pcb(pcb_a_io, EXIT_ESTADO); // si no existe ninguna IO con ese nombre => enviar proceso a EXIT
-    }
-    cambiar_estado_pcb(pcb_a_io, BLOCKED); // si hace match con una IO (aunque este OCUPADA)
-    bloquear_pbc_por_io(io_a_usar, pcb_a_io);  // => marcar estado del proceso como BLOCKED y Agregar a cola de bloqueados por IO solicitado
-
-    if(esta_libre_io(io_a_usar)){
-        if(send_un_char_y_un_int(io_a_usar->fd, nombre_io, tiempo_a_usar)){
-            log_info(kernel_log, "Enviado PCB <PID: %d> a ejecutar IO <%s>", pcb_a_io->PID, io_a_usar->nombre);
-        }
-        else {
-            log_error(kernel_log, "No se pudo enviar el nombre_io y tiempo_a_usar a la IO <%s>", io_a_usar->nombre);
-=======
 // Busca un dispositivo IO por su nombre
 io* get_io(char* nombre_io) {
     pthread_mutex_lock(&mutex_ios);
@@ -140,10 +96,8 @@ io* get_io(char* nombre_io) {
         if (strcmp(io_actual->nombre, nombre_io) == 0) {
             dispositivo = io_actual;
             break;
->>>>>>> b1f878b7fcd43952b9a081935d83829ccfc219cc
         }
     }
-    
     pthread_mutex_unlock(&mutex_ios);
     return dispositivo;
 }
@@ -285,17 +239,17 @@ void fin_io(io* dispositivo, uint16_t pid_finalizado) {
 }
 
 // Implementaciones de funciones auxiliares
-static bool io_por_nombre_matcher(void* elemento, char* nombre) {
+bool io_por_nombre_matcher(void* elemento, char* nombre) {
     io* dispositivo = (io*) elemento;
     return strcmp(dispositivo->nombre, nombre) == 0;
 }
 
-static bool pcb_io_matcher(void* elemento, io* disp, uint16_t pid) {
+bool pcb_io_matcher(void* elemento, io* disp, uint16_t pid) {
     t_pcb_io* pcb_io = (t_pcb_io*) elemento;
     return pcb_io->io == disp && pcb_io->pcb->PID == pid;
 }
 
-static bool esperando_mismo_io_matcher(void* elemento, io* disp) {
+bool esperando_mismo_io_matcher(void* elemento, io* disp) {
     t_pcb_io* pcb_io = (t_pcb_io*) elemento;
     return pcb_io->io == disp;
 }

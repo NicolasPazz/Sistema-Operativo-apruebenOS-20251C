@@ -45,12 +45,6 @@ typedef struct CPU {
     int pid;
     tipo_conexion_cpu tipo_conexion;
     op_code instruccion_actual;
-<<<<<<< HEAD
-=======
-    // syscall -> la proceso -> termino: borro
-    // pid = get_pid_from_cpu(syscall IO) -> antes del return del pid -> cpu -> syscall = null;
-    // cpu -> instruccion -> kernel where instruccion : IO
->>>>>>> b1f878b7fcd43952b9a081935d83829ccfc219cc
 } cpu;
 
     ///// IO
