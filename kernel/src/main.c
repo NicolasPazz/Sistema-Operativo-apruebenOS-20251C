@@ -18,6 +18,7 @@ int main(int argc, char* argv[]) {
     iniciar_logger_kernel();
     iniciar_estados_kernel();
     iniciar_diccionario_tiempos();
+    iniciar_diccionario_archivos_por_pcb();
     
     //////////////////////////// Conexiones del Kernel ////////////////////////////
 
@@ -111,6 +112,7 @@ int main(int argc, char* argv[]) {
     INIT_PROC("Test2", 11);
     INIT_PROC("Test2", 12);
 
+    /*
     mostrar_colas_estados(); // 3 Procesos en new
 
     mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 0));
@@ -138,7 +140,7 @@ int main(int argc, char* argv[]) {
     fin_io(pid2);
     fin_io(pid1);
     fin_io(pid0);
-    
+    */
     //////////////////////////// Planificacion de corto plazo ////////////////////////////
     iniciar_planificador_corto_plazo(ALGORITMO_CORTO_PLAZO);
 

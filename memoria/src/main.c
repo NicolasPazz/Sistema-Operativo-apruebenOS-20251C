@@ -1,7 +1,7 @@
 #include "../headers/main.h"
 
 extern t_config_memoria* cfg;
-extern t_log* memoria_log;
+extern t_log* logger;
 extern t_list* segmentos_libres;
 
 extern void* memoria_principal;
@@ -15,28 +15,33 @@ int main(int argc, char* argv[]) {
     iniciar_logger_memoria();
 
     if (!cargar_configuracion("memoria.config")) {
-        log_error(memoria_log, "Error al cargar la configuracion de memoria.");
+        log_error(logger, "Error al cargar la configuracion de memoria.");
         cerrar_programa();
         return EXIT_FAILURE;
     }
 
+    // Inicializar las estructuras de memoria y las listas para instrucciones
+    log_debug(logger, "Inicializando estructuras de memoria...");
+    inicializar_memoria();
+    inicializar_swap();
+    instructions_init();
+    memory_init();
+    iniciar_mutex();
+
+    log_debug(logger, "Memoria principal y estructuras inicializadas correctamente.");
+
     char* puerto = string_itoa(cfg->PUERTO_ESCUCHA);
-    //int memoria_server = iniciar_servidor(puerto, memoria_log, "Servidor de memoria");
-    //log_debug(memoria_log, "Antes de iniciar conexiones de memoria");
-    int memoria_server = iniciar_conexiones_memoria(puerto, memoria_log);
-    //log_debug(memoria_log, "Despues de iniciar conexiones de memoria");
+    int memoria_server = iniciar_conexiones_memoria(puerto, logger);
     free(puerto);
 
-    /* if (memoria_server == -1) {
-        log_error(memoria_log, "No se pudo iniciar el servidor de memoria.");
-        cerrar_programa();
-        return EXIT_FAILURE;
-    } */
-
-    log_debug(memoria_log, "Servidor de memoria iniciado correctamente. Esperando conexiones...");
+    log_debug(logger, "Servidor de memoria iniciado correctamente. Esperando conexiones...");
 
     while (server_escuchar("Memoria", memoria_server));
 
+    // Liberar recursos antes de salir
+    instructions_destroy();
+    memory_destroy();
+    
     liberar_conexion(memoria_server);
     cerrar_programa();
 
@@ -44,6 +49,6 @@ int main(int argc, char* argv[]) {
 }
 
 void iterator(char* value) {
-    log_debug(memoria_log, "%s", value);
+    log_debug(logger, "%s", value);
 }
 

@@ -1,4 +1,5 @@
 # Vscode files
+.cursor/
 .vscode/
 **/.vscode/
 
@@ -14,6 +15,10 @@
 # CLion files
 .idea/
 **/.idea/
+
+# Cursor files
+.cursor/
+**/.cursor/
 
 # Prerequisites
 *.d

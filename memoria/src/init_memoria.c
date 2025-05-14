@@ -1,7 +1,7 @@
 #include "../headers/init_memoria.h"
 
 // varios
-t_log* memoria_log;
+t_log* logger;
 t_config_memoria* cfg;
 //bool seg;
 
@@ -27,11 +27,11 @@ void* memoria_principal;
 
 
 void iniciar_logger_memoria() {
-    memoria_log = iniciar_logger("memoria.log", MODULENAME, 1, LOG_LEVEL_TRACE);  // Log level deberia venir del config, no hardcodeado
-    if (memoria_log == NULL) {
+    logger = iniciar_logger("memoria.log", MODULENAME, 1, LOG_LEVEL_TRACE);  // Log level deberia venir del config, no hardcodeado
+    if (logger == NULL) {
         printf("Error al iniciar memoria logs\n");
     } else {
-        log_debug(memoria_log, "Memoria logs iniciados correctamente!");
+        log_debug(logger, "Memoria logs iniciados correctamente!");
     }
 }
 
@@ -39,7 +39,7 @@ uint8_t cargar_configuracion(char* path) {
     t_config* cfg_file = config_create(path);
 
     if (cfg_file == NULL) {
-        log_error(memoria_log, "No se encontro el archivo de configuracion: %s", path);
+        log_error(logger, "No se encontro el archivo de configuracion: %s", path);
         return 0;
     }
 
@@ -58,14 +58,14 @@ uint8_t cargar_configuracion(char* path) {
     };
 
     if (!config_has_all_properties(cfg_file, properties)) {
-        log_error(memoria_log, "Propiedades faltantes en el archivo de configuracion");
+        log_error(logger, "Propiedades faltantes en el archivo de configuracion");
         config_destroy(cfg_file);
         return 0;
     }
 
     cfg = malloc(sizeof(t_config_memoria));
     if (cfg == NULL) {
-        log_error(memoria_log, "Error al asignar memoria para la configuracion");
+        log_error(logger, "Error al asignar memoria para la configuracion");
         config_destroy(cfg_file);
         return 0;
     }
@@ -81,7 +81,7 @@ uint8_t cargar_configuracion(char* path) {
     cfg->LOG_LEVEL = strdup(config_get_string_value(cfg_file, "LOG_LEVEL"));
     cfg->DUMP_PATH = strdup(config_get_string_value(cfg_file, "DUMP_PATH"));
 
-    log_debug(memoria_log, "Archivo de configuracion cargado correctamente");
+    log_debug(logger, "Archivo de configuracion cargado correctamente");
     config_destroy(cfg_file);
 
     return 1;
@@ -90,16 +90,45 @@ uint8_t cargar_configuracion(char* path) {
 
 
 void cerrar_programa() {
-    log_debug(memoria_log, "Finalizando programa...");
+    log_debug(logger, "Finalizando programa...");
+
+    // Liberar mutex y semáforos
+    finalizar_mutex();
+    
+    // Liberar memoria principal
+    if (memoria_principal != NULL) {
+        free(memoria_principal);
+        memoria_principal = NULL;
+        log_debug(logger, "Memoria principal liberada correctamente");
+    }
+    
+    // Desasignar área de swap
+    if (area_swap != NULL && area_swap != MAP_FAILED) {
+        // Obtener el tamaño de swap
+        int swap_size = cfg ? cfg->TAM_MEMORIA * 2 : 0;
+        if (swap_size > 0) {
+            munmap(area_swap, swap_size);
+            log_debug(logger, "Área de swap liberada correctamente");
+        }
+        area_swap = NULL;
+    }
+    
+    // Borrar archivo swap si existe
+    if (cfg && cfg->PATH_SWAPFILE) {
+        unlink(cfg->PATH_SWAPFILE);
+        log_debug(logger, "Archivo SWAP eliminado correctamente");
+    }
 
     if (cfg != NULL) {
         if (cfg->PATH_SWAPFILE) free(cfg->PATH_SWAPFILE);
         if (cfg->LOG_LEVEL) free(cfg->LOG_LEVEL);
         if (cfg->DUMP_PATH) free(cfg->DUMP_PATH);
         free(cfg);
+        cfg = NULL;
     }
 
-    if (memoria_log != NULL) {
-        log_destroy(memoria_log);
+    if (logger != NULL) {
+        log_destroy(logger);
+        logger = NULL;
     }
 }

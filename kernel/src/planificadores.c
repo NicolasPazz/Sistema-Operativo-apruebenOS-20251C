@@ -89,13 +89,6 @@ double get_time() {
     return tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
 
-void fin_io(t_pcb* pcb){
-
-    // Cambiar a estado READY
-    cambiar_estado_pcb(pcb, READY);
-    log_info(kernel_log, "## (<%d>) finalizó IO y pasa a READY", pcb->PID);
-}
-
 //////////////////////////// Planificacion de Largo Plazo ////////////////////////////
 
 void iniciar_planificador_largo_plazo() {

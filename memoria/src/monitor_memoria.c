@@ -1,6 +1,6 @@
 #include "../headers/monitor_memoria.h"
 
-extern t_log* memoria_log; // por funciones de debug
+extern t_log* logger; // por funciones de debug
 extern t_config_memoria* cfg;
 extern t_list* segmentos_libres;
 extern t_list* segmentos_usados;
@@ -44,4 +44,24 @@ void iniciar_mutex() {
     sem_init(&SEM_INICIAR_SELF_EN_PATOTA, 0, 0);
     sem_init(&SEM_COMPACTACION_START, 0, 0);
     sem_init(&SEM_COMPACTACION_DONE, 0, 0);
+    
+    log_debug(logger, "Mutex y semáforos inicializados correctamente");
+}
+
+void finalizar_mutex() {
+    pthread_mutex_destroy(&MUTEX_SEGMENTOS_LIBRES);
+    pthread_mutex_destroy(&MUTEX_SEGMENTOS_USADOS);
+    pthread_mutex_destroy(&MUTEX_FRAMO);
+    pthread_mutex_destroy(&MUTEX_MP);
+    pthread_mutex_destroy(&MUTEX_TS_PATOTAS);
+    pthread_mutex_destroy(&MUTEX_TS_TRIPULANTES);
+    pthread_mutex_destroy(&MUTEX_TP_PATOTAS);
+    pthread_mutex_destroy(&MUTEX_TID_PID_LOOKUP);
+    pthread_mutex_destroy(&MUTEX_MP_BUSY);
+
+    sem_destroy(&SEM_INICIAR_SELF_EN_PATOTA);
+    sem_destroy(&SEM_COMPACTACION_START);
+    sem_destroy(&SEM_COMPACTACION_DONE);
+    
+    log_debug(logger, "Mutex y semáforos liberados correctamente");
 }
