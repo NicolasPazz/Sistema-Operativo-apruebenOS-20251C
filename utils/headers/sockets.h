@@ -106,6 +106,12 @@ typedef enum {
   HANDSHAKE_IO_KERNEL
 } handshake_code;
 
+// Dentro de utils_sockets.h o io.h
+typedef struct {
+    int pid;
+    long tiempo_io;
+} t_pedido_io;
+
 /////////////////////////////// Prototipos ///////////////////////////////
 /////////////// Logs y Config///////////////
 t_log* iniciar_logger(char *file, char *process_name, bool is_active_console, t_log_level level);

@@ -1,5 +1,4 @@
 #include "../headers/io.h"
-
 /////////////////////////////// Inicializacion de variables globales ///////////////////////////////
 t_log* io_log;
 t_config* io_config;
