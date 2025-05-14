@@ -6,7 +6,8 @@
 #include "procesos.h"
 #include "syscalls.h"
 #include "planificadores.h"
-
+#include "IOKernel.h"
+#include "CPUKernel.h"
 /////////////////////////////// Declaracion de variables globales ///////////////////////////////
 // Logger
 extern t_log* kernel_log;
