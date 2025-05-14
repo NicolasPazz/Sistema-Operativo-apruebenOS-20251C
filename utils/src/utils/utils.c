@@ -90,6 +90,29 @@ bool send_dos_ints(int fd, uint8_t int1, uint8_t int2) {
     return true;
 }
 
+// Serializar y enviar un string
+bool send_string(int fd, char* string) {
+    // Calcular tamaño del mensaje: tamaño del string + 1 para el null terminator
+    size_t string_length = strlen(string) + 1;
+    
+    // Enviar el tamaño del string primero
+    if (send(fd, &string_length, sizeof(size_t), 0) != sizeof(size_t)) {
+        return false;
+    }
+    
+    // Enviar el contenido del string
+    if (send(fd, string, string_length, 0) != string_length) {
+        return false;
+    }
+    
+    return true;
+}
+
+// Enviar datos genéricos
+bool send_data(int fd, void* data, size_t size) {
+    return send(fd, data, size, 0) == size;
+}
+
 
 //** ej funciones de RECV -> Deserializan */
 bool recv_un_char_y_un_int(int fd, char** cadena, uint8_t* entero) {
@@ -123,6 +146,36 @@ bool recv_dos_ints(int fd, uint8_t* int1, uint8_t* int2) {
     free(stream);
     return true;
 }
+
+// Recibir un string 
+bool recv_string(int fd, char** string) {
+    // Recibir el tamaño del string
+    size_t string_length;
+    if (recv(fd, &string_length, sizeof(size_t), 0) != sizeof(size_t)) {
+        return false;
+    }
+    
+    // Reservar memoria para el string
+    *string = malloc(string_length);
+    if (*string == NULL) {
+        return false;
+    }
+    
+    // Recibir el contenido del string
+    if (recv(fd, *string, string_length, 0) != string_length) {
+        free(*string);
+        *string = NULL;
+        return false;
+    }
+    
+    return true;
+}
+
+// Recibir datos genéricos
+bool recv_data(int fd, void* buffer, size_t size) {
+    return recv(fd, buffer, size, 0) == size;
+}
+
 // DEBUG
 bool send_debug(int fd) {
     op_code cop = DEBUGGER;
