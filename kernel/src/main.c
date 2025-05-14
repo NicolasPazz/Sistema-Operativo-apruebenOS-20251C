@@ -108,9 +108,9 @@ int main(int argc, char* argv[]) {
     iniciar_planificador_largo_plazo();
 
     //////////////////////////// Test ////////////////////////////
-    log_debug(kernel_log, "Creando 2 procesos mas... \n");
+   /*log_debug(kernel_log, "Creando 2 procesos mas... \n");
     INIT_PROC("Test2", 11);
-    INIT_PROC("Test2", 12);
+    INIT_PROC("Test2", 12);*/
 
     /*
     mostrar_colas_estados(); // 3 Procesos en new
@@ -142,13 +142,13 @@ int main(int argc, char* argv[]) {
     fin_io(pid0);
     */
     //////////////////////////// Planificacion de corto plazo ////////////////////////////
-    iniciar_planificador_corto_plazo(ALGORITMO_CORTO_PLAZO);
+    /*iniciar_planificador_corto_plazo(ALGORITMO_CORTO_PLAZO);
 
     mostrar_colas_estados(); // PID 0 en EXEC
 
     mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 0));
     mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 1));
-    mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 2));
+    mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 2));*/
     
 
     //////////////////////////// Terminar ////////////////////////////  

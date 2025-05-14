@@ -185,11 +185,11 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         case INIT_PROC_OP: {
             log_debug(logger, "INIT_PROC_OP recibido");
             // Recibir parámetros (PID, tamaño, ruta de instrucciones)
-            uint32_t pid, tamanio;
+            uint16_t pid, tamanio;
             char* instrucciones_path;
             
-            recv_data(cliente_socket, &pid, sizeof(uint32_t));
-            recv_data(cliente_socket, &tamanio, sizeof(uint32_t));
+            recv_data(cliente_socket, &pid, sizeof(pid));
+            recv_data(cliente_socket, &tamanio, sizeof(tamanio));
             recv_string(cliente_socket, &instrucciones_path);
             
             log_debug(logger, "Inicialización de proceso solicitada - PID: %d, Tamaño: %d, Archivo: %s",
@@ -221,13 +221,9 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             free(instrucciones_path);
             
             // Enviar respuesta
-            if (resultado == 0) {
-                char* respuesta = "OK";
-                send_string(cliente_socket, respuesta);
-            } else {
-                char* respuesta = "ERROR";
-                send_string(cliente_socket, respuesta);
-            }
+            t_respuesta_memoria respuesta_enum = (resultado == 0) ? OK : ERROR;
+            send(cliente_socket, &respuesta_enum, sizeof(t_respuesta_memoria), 0);
+
             break;
         }
 
