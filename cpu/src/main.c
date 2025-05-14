@@ -25,14 +25,14 @@ int main(int argc, char* argv[]) {
     conectar_cpu_memoria();
 
     pthread_t atiende_respuestas_kernel_dispatch;
-    pthread_create(&atiende_respuestas_kernel_dispatch, NULL, (void *)recibir_kernel_dispatch, fd_kernel_dispatch);
+    pthread_create(&atiende_respuestas_kernel_dispatch, NULL, recibir_kernel_dispatch, fd_kernel_dispatch);
     pthread_detach(atiende_respuestas_kernel_dispatch);
 
     pthread_t atiende_respuestas_kernel_interrupt;
-    pthread_create(&atiende_respuestas_kernel_interrupt, NULL, (void *)recibir_kernel_interrupt, fd_kernel_interrupt);
+    pthread_create(&atiende_respuestas_kernel_interrupt, NULL, recibir_kernel_interrupt, fd_kernel_interrupt);
     pthread_detach(atiende_respuestas_kernel_interrupt);
 
-    //ejecutar_ciclo_instruccion();
+    ejecutar_ciclo_instruccion();
     
     //provisorio para que no finalice
     while (1) {
@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
 //                 break;
 //         }
 //     }
-// }
+// }    
 
 int recibir_kernel_dispatch() {
     int noFinalizar = 0;
@@ -85,11 +85,17 @@ int recibir_kernel_dispatch() {
                 ejecutar_ciclo_instruccion();
                 break;
             case -1:
+<<<<<<< HEAD
                 log_warning(cpu_log, "Se desconectó el Kernel (Dispatch). Finalizando CPU...");
                 terminar_programa();
                 exit(EXIT_SUCCESS);
+=======
+                log_error(cpu_log, "Desconexion de Kernel (Dispatch)");
+                close(fd_kernel_dispatch);
+>>>>>>> fixes_cpu
             default:
             log_error(cpu_log, "Operacion desconocida de Dispatch: %d", cod_op);
+            EXIT_FAILURE;
         }
     }
 }

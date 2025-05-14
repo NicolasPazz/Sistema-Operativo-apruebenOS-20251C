@@ -8,7 +8,7 @@
 extern t_log* io_log;
 extern t_config* io_config;
 
-extern int fd_kernel;
+extern int fd_kernel_io;
 
 extern char* IP_KERNEL;
 extern char* PUERTO_KERNEL;
