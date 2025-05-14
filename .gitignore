@@ -1,4 +1,5 @@
 # Vscode files
+.cursor/
 .vscode/
 **/.vscode/
 

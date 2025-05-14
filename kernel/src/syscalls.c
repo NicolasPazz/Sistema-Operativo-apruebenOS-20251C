@@ -1,6 +1,5 @@
 #include "../headers/syscalls.h"
 #include "../headers/planificadores.h"
-#define ESTIMACION_INICIAL 1
 
 t_temporal* tiempo_estado_actual;
 
@@ -82,6 +81,10 @@ extern t_list* pcbs_bloqueados_por_io;
 
 //////////////////////////////////////////////////////////// IO ////////////////////////////////////////////////////////////
 
+void bloquear_pbc_por_io(io* io_a_usar, t_pcb* pcb){
+    list_add(pcbs_bloqueados_por_io, pcb);
+}
+
 // Busca un dispositivo IO por su nombre
 io* get_io(char* nombre_io) {
     pthread_mutex_lock(&mutex_ios);
@@ -95,7 +98,6 @@ io* get_io(char* nombre_io) {
             break;
         }
     }
-    
     pthread_mutex_unlock(&mutex_ios);
     return dispositivo;
 }
@@ -237,17 +239,17 @@ void fin_io(io* dispositivo, uint16_t pid_finalizado) {
 }
 
 // Implementaciones de funciones auxiliares
-static bool io_por_nombre_matcher(void* elemento, char* nombre) {
+bool io_por_nombre_matcher(void* elemento, char* nombre) {
     io* dispositivo = (io*) elemento;
     return strcmp(dispositivo->nombre, nombre) == 0;
 }
 
-static bool pcb_io_matcher(void* elemento, io* disp, uint16_t pid) {
+bool pcb_io_matcher(void* elemento, io* disp, uint16_t pid) {
     t_pcb_io* pcb_io = (t_pcb_io*) elemento;
     return pcb_io->io == disp && pcb_io->pcb->PID == pid;
 }
 
-static bool esperando_mismo_io_matcher(void* elemento, io* disp) {
+bool esperando_mismo_io_matcher(void* elemento, io* disp) {
     t_pcb_io* pcb_io = (t_pcb_io*) elemento;
     return pcb_io->io == disp;
 }
