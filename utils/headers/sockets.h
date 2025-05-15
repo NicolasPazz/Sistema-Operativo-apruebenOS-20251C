@@ -154,5 +154,6 @@ char* leer_string(char* buffer, int* desplazamiento);
 int leer_entero(char *buffer, int * desplazamiento);
 t_list* recibir_4_enteros(int socket);
 int recibir_entero(int socket);
+t_list* recibir_2_enteros(int socket);
 
 #endif /* UTILS_SOCKETS_H_ */

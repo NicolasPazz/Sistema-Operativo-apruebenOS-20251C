@@ -2,7 +2,11 @@
 #include "../headers/init.h"
 #include "../headers/mmu.h"
 #include "../headers/funciones.h"
-
+int seguir_ejecutando;
+int pid_ejecutando;
+int pid_interrupt;
+int hay_interrupcion;
+int pc;
 void ejecutar_ciclo_instruccion() {
     seguir_ejecutando = 1;     
     while(seguir_ejecutando == 1){         
