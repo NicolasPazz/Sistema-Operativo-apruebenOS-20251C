@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
     pthread_t atiende_respuestas_kernel_interrupt;
     pthread_create(&atiende_respuestas_kernel_interrupt, NULL, recibir_kernel_interrupt, fd_kernel_interrupt);
     pthread_detach(atiende_respuestas_kernel_interrupt);
-
+//
     ejecutar_ciclo_instruccion();
     
     while(1){
