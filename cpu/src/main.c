@@ -34,10 +34,11 @@ int main(int argc, char* argv[]) {
 //
     ejecutar_ciclo_instruccion();
     
-    while(1){
-        sleep(100);
-    };
-
+    //provisorio para que no finalice
+    while (1) {
+        sleep(1);
+    }
+    
     terminar_programa();
     return EXIT_SUCCESS;  
 }
@@ -84,8 +85,14 @@ int recibir_kernel_dispatch() {
                 ejecutar_ciclo_instruccion();
                 break;
             case -1:
+<<<<<<< HEAD
+                log_warning(cpu_log, "Se desconectó el Kernel (Dispatch). Finalizando CPU...");
+                terminar_programa();
+                exit(EXIT_SUCCESS);
+=======
                 log_error(cpu_log, "Desconexion de Kernel (Dispatch)");
                 close(fd_kernel_dispatch);
+>>>>>>> fixes_cpu
             default:
             log_error(cpu_log, "Operacion desconocida de Dispatch: %d", cod_op);
             EXIT_FAILURE;
@@ -98,9 +105,9 @@ int recibir_kernel_interrupt() {
         int cod_op = recibir_operacion(fd_kernel_interrupt);
         switch (cod_op) {
             case -1:
-                log_error(cpu_log, "Desconexion de Kernel (Interrupt)");
-                close(fd_kernel_interrupt);
-                return NULL;    // warning: returning ‘void *’ from a function with return type ‘int’
+                log_warning(cpu_log, "Se desconectó el Kernel (Dispatch). Finalizando CPU...");
+                terminar_programa();
+                exit(EXIT_SUCCESS);
             default:
                 log_error(cpu_log, "Operacion desconocida de Interrupt: %d", cod_op);
         }

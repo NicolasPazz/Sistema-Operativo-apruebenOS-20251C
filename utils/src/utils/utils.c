@@ -13,7 +13,7 @@ bool config_has_all_properties(t_config* cfg, char** properties) {
 // ***** funciones para deserializar***
 
 //definimos x protocolo q primero la cadena y desp el entero
-static void deserializar_un_char_y_un_int (void* stream, char** cadena , uint8_t* entero){
+void deserializar_un_char_y_un_int (void* stream, char** cadena , uint8_t* entero){
     //string
     size_t size_cadena;
     memcpy(&size_cadena, stream, sizeof(size_t)); // guardo el tamanio de la cadena
@@ -25,20 +25,21 @@ static void deserializar_un_char_y_un_int (void* stream, char** cadena , uint8_t
     //int
     memcpy(entero, stream+sizeof(size_t)+size_cadena ,sizeof(uint8_t));
 }
-static void deserializar_dos_ints(void* stream, uint8_t* int1, uint8_t* int2) {
+
+void deserializar_dos_ints(void* stream, uint8_t* int1, uint8_t* int2) {
     memcpy(int1, stream, sizeof(uint8_t));
     memcpy(int2, stream+sizeof(uint8_t), sizeof(uint8_t));
 }
 
 // ***** funciones para serializar***
-static void* serializar_un_char_y_un_int(size_t* size, char* cadena, uint8_t entero) {
+void* serializar_un_char_y_un_int(size_t* size, char* cadena, uint16_t entero) {
     size_t size_cadena = strlen(cadena) + 1;
     *size =
           sizeof(op_code)   // cop
         + sizeof(size_t)    // total
         + sizeof(size_t)    // size de char* cadena
         + size_cadena         // char* cadena
-        + sizeof(uint8_t);  // entero
+        + sizeof(uint16_t);  // entero
     size_t size_payload = *size - sizeof(op_code) - sizeof(size_t);
 
     void* stream = malloc(*size);
@@ -54,7 +55,7 @@ static void* serializar_un_char_y_un_int(size_t* size, char* cadena, uint8_t ent
 }
 
 //* probamos con 2 ints
-static void* serializar_dos_ints(uint8_t int1, uint8_t int2) {
+void* serializar_dos_ints(uint8_t int1, uint8_t int2) {
     void* stream = malloc(sizeof(op_code) + sizeof(uint8_t) * 2);
 
     op_code cop = PEDIR_INSTRUCCION_OP;
@@ -67,7 +68,7 @@ static void* serializar_dos_ints(uint8_t int1, uint8_t int2) {
 
 //** ej de funciones de SEND -> serializan */
 
-bool send_un_char_y_un_int(int fd, char* cadena, uint8_t entero) {
+bool send_un_char_y_un_int(int fd, char* cadena, uint16_t entero) {
     size_t size;
     void* stream = serializar_un_char_y_un_int(&size, cadena, entero);
     if (send(fd, stream, size, 0) != size) {
@@ -87,6 +88,29 @@ bool send_dos_ints(int fd, uint8_t int1, uint8_t int2) {
     }
     free(stream);
     return true;
+}
+
+// Serializar y enviar un string
+bool send_string(int fd, char* string) {
+    // Calcular tamaño del mensaje: tamaño del string + 1 para el null terminator
+    size_t string_length = strlen(string) + 1;
+    
+    // Enviar el tamaño del string primero
+    if (send(fd, &string_length, sizeof(size_t), 0) != sizeof(size_t)) {
+        return false;
+    }
+    
+    // Enviar el contenido del string
+    if (send(fd, string, string_length, 0) != string_length) {
+        return false;
+    }
+    
+    return true;
+}
+
+// Enviar datos genéricos
+bool send_data(int fd, void* data, size_t size) {
+    return send(fd, data, size, 0) == size;
 }
 
 
@@ -122,6 +146,36 @@ bool recv_dos_ints(int fd, uint8_t* int1, uint8_t* int2) {
     free(stream);
     return true;
 }
+
+// Recibir un string 
+bool recv_string(int fd, char** string) {
+    // Recibir el tamaño del string
+    size_t string_length;
+    if (recv(fd, &string_length, sizeof(size_t), 0) != sizeof(size_t)) {
+        return false;
+    }
+    
+    // Reservar memoria para el string
+    *string = malloc(string_length);
+    if (*string == NULL) {
+        return false;
+    }
+    
+    // Recibir el contenido del string
+    if (recv(fd, *string, string_length, 0) != string_length) {
+        free(*string);
+        *string = NULL;
+        return false;
+    }
+    
+    return true;
+}
+
+// Recibir datos genéricos
+bool recv_data(int fd, void* buffer, size_t size) {
+    return recv(fd, buffer, size, 0) == size;
+}
+
 // DEBUG
 bool send_debug(int fd) {
     op_code cop = DEBUGGER;

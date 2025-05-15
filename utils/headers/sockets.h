@@ -82,6 +82,7 @@ typedef struct{
     char* parametros2;
     char* parametros3;
 }t_instruccion;
+
 // typedef struct {
 //     int entradas[NIVELES_PAGINACION]; 
 //     int desplazamiento;
@@ -106,6 +107,11 @@ typedef enum {
   HANDSHAKE_IO_KERNEL
 } handshake_code;
 
+// Estructura extendida de t_instruccion para incluir el tipo de operación
+typedef struct {
+    t_instruccion instruccion_base;  // Mantiene compatibilidad con la estructura existente
+    op_code tipo;                   // Almacena el tipo de operación (NOOP_OP, WRITE_OP, etc.)
+} t_extended_instruccion;
 // Dentro de utils_sockets.h o io.h
 typedef struct {
     int pid;

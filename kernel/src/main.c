@@ -4,7 +4,7 @@ int main(int argc, char* argv[]) {
   
     //////////////////////////// Primer Proceso ////////////////////////////
     if (argc < 3) {
-        fprintf(stderr, "Uso: %s [archivo_pseudocodigo] [tamanio_proceso]\nEJ: ./bin/kernel kernel/script/proceso_inicial.pseudo 128\n", argv[0]);
+        fprintf(stderr, "Uso: %s [archivo_pseudocodigo] [tamanio_proceso]\nEJ: ./bin/kernel scripts/PROCESO_INICIAL 128\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
@@ -12,13 +12,14 @@ int main(int argc, char* argv[]) {
     int tamanio_proceso = atoi(argv[2]);
   
     //////////////////////////// Config, log e inicializaciones ////////////////////////////
+    iniciar_sincronizacion_kernel();
     iniciar_logger_kernel_debug();
     iniciar_config_kernel();
     iniciar_logger_kernel();
     iniciar_estados_kernel();
     iniciar_diccionario_tiempos();
-    iniciar_sincronizacion_kernel();
-
+    iniciar_diccionario_archivos_por_pcb();
+    
     //////////////////////////// Conexiones del Kernel ////////////////////////////
 
     // Servidor de CPU (Dispatch)
@@ -29,7 +30,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
     pthread_detach(hilo_dispatch);
-    log_debug(kernel_log, "Hilo de servidor Dispatch creado correctamente");
+    //log_debug(kernel_log, "Hilo de servidor Dispatch creado correctamente");
 
     // Servidor de CPU (Interrupt)
     pthread_t hilo_interrupt;
@@ -39,7 +40,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
     pthread_detach(hilo_interrupt);
-    log_debug(kernel_log, "Hilo de servidor Interrupt creado correctamente");
+    //log_debug(kernel_log, "Hilo de servidor Interrupt creado correctamente");
 
     // Cliente de Memoria
     pthread_t hilo_memoria;
@@ -49,7 +50,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
     pthread_detach(hilo_memoria);
-    log_debug(kernel_log, "Hilo cliente de Memoria creado correctamente");
+    //log_debug(kernel_log, "Hilo cliente de Memoria creado correctamente");
 
     // Servidor de IO
     pthread_t hilo_io;
@@ -59,7 +60,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
     pthread_detach(hilo_io);
-    log_debug(kernel_log, "Hilo de servidor IO creado correctamente");
+    //log_debug(kernel_log, "Hilo de servidor IO creado correctamente");
 
 
     //////////////////////////// Esperar conexiones minimas ////////////////////////////
@@ -76,16 +77,20 @@ int main(int argc, char* argv[]) {
   
     //////////////////////////// Esperar enter ////////////////////////////
 
-    printf("\nPresione ENTER para iniciar planificacion...\n");
-    
-    int c = getchar();
-    while (c != '\n') {
-        fprintf(stderr, "Error: Debe presionar solo ENTER para continuar.\n");
-
-        while ((c = getchar()) != '\n' && c != EOF);
-
+    if (argv[3] == NULL) {
         printf("\nPresione ENTER para iniciar planificacion...\n");
-        c = getchar();
+    
+        int c = getchar();
+        while (c != '\n') {
+            fprintf(stderr, "Error: Debe presionar solo ENTER para continuar.\n");
+            while ((c = getchar()) != '\n' && c != EOF);
+            printf("\nPresione ENTER para iniciar planificacion...\n");
+            c = getchar();
+        }
+    } else if (strcmp(argv[3], "--action") != 0) {
+        log_error(kernel_log, "Parametro desconocido: %s", argv[3]);
+        terminar_kernel();
+        exit(EXIT_FAILURE);
     }
     
     //////////////////////////// Primer proceso ////////////////////////////  
@@ -103,10 +108,11 @@ int main(int argc, char* argv[]) {
     iniciar_planificador_largo_plazo();
 
     //////////////////////////// Test ////////////////////////////
-    log_debug(kernel_log, "Creando 2 procesos mas... \n");
+   /*log_debug(kernel_log, "Creando 2 procesos mas... \n");
     INIT_PROC("Test2", 11);
-    INIT_PROC("Test2", 12);
+    INIT_PROC("Test2", 12);*/
 
+    /*
     mostrar_colas_estados(); // 3 Procesos en new
 
     mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 0));
@@ -134,23 +140,20 @@ int main(int argc, char* argv[]) {
     fin_io(pid2);
     fin_io(pid1);
     fin_io(pid0);
-    
+    */
     //////////////////////////// Planificacion de corto plazo ////////////////////////////
-    iniciar_planificador_corto_plazo(ALGORITMO_CORTO_PLAZO);
+    /*iniciar_planificador_corto_plazo(ALGORITMO_CORTO_PLAZO);
 
     mostrar_colas_estados(); // PID 0 en EXEC
 
     mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 0));
     mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 1));
-    mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 2));
+    mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 2));*/
     
 
     //////////////////////////// Terminar ////////////////////////////  
     terminar_kernel();
-    
-    while(1){
-      sleep(100);
-    };
+
     return EXIT_SUCCESS;
   
 }

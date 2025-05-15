@@ -1,6 +1,8 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#include "../../utils/headers/sockets.h"
+
 /////////////////////////////// TADs ///////////////////////////////
 
     ///// PCB
@@ -37,11 +39,12 @@ typedef enum {
     CPU_INTERRUPT
 } tipo_conexion_cpu;
 
-typedef struct {
+typedef struct CPU {
     int fd;
     int id;
     int pid;
     tipo_conexion_cpu tipo_conexion;
+    op_code instruccion_actual;
 } cpu;
 
     ///// IO
@@ -55,5 +58,12 @@ typedef struct {
     char* nombre;
     estado_io estado;
 } io;
+
+    ///// PCBs IO
+typedef struct PCB_IO{
+    t_pcb* pcb;
+    io* io;
+    uint16_t tiempo_a_usar;  // Tiempo en ms que se va a usar el dispositivo IO
+} t_pcb_io;
 
 #endif /* TYPES_H */

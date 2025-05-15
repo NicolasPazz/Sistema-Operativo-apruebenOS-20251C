@@ -92,14 +92,43 @@ uint8_t cargar_configuracion(char* path) {
 void cerrar_programa() {
     log_debug(logger, "Finalizando programa...");
 
+    // Liberar mutex y semáforos
+    finalizar_mutex();
+    
+    // Liberar memoria principal
+    if (memoria_principal != NULL) {
+        free(memoria_principal);
+        memoria_principal = NULL;
+        log_debug(logger, "Memoria principal liberada correctamente");
+    }
+    
+    // Desasignar área de swap
+    if (area_swap != NULL && area_swap != MAP_FAILED) {
+        // Obtener el tamaño de swap
+        int swap_size = cfg ? cfg->TAM_MEMORIA * 2 : 0;
+        if (swap_size > 0) {
+            munmap(area_swap, swap_size);
+            log_debug(logger, "Área de swap liberada correctamente");
+        }
+        area_swap = NULL;
+    }
+    
+    // Borrar archivo swap si existe
+    if (cfg && cfg->PATH_SWAPFILE) {
+        unlink(cfg->PATH_SWAPFILE);
+        log_debug(logger, "Archivo SWAP eliminado correctamente");
+    }
+
     if (cfg != NULL) {
         if (cfg->PATH_SWAPFILE) free(cfg->PATH_SWAPFILE);
         if (cfg->LOG_LEVEL) free(cfg->LOG_LEVEL);
         if (cfg->DUMP_PATH) free(cfg->DUMP_PATH);
         free(cfg);
+        cfg = NULL;
     }
 
     if (logger != NULL) {
         log_destroy(logger);
+        logger = NULL;
     }
 }
