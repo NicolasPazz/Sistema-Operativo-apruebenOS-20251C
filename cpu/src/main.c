@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
     pthread_t atiende_respuestas_kernel_interrupt;
     pthread_create(&atiende_respuestas_kernel_interrupt, NULL, recibir_kernel_interrupt, fd_kernel_interrupt);
     pthread_detach(atiende_respuestas_kernel_interrupt);
-
+//
     ejecutar_ciclo_instruccion();
     
     //provisorio para que no finalice
@@ -79,20 +79,14 @@ int recibir_kernel_dispatch() {
 			    break;
             case EXEC_OP:
                 // Ejecutar la instrucción
-                //t_list* lista = recibir_2_enteros(fd_kernel_dispatch);    recibir_2_enteros no existe
-                //pc = (int)(intptr_t) list_get(lista, 0);      lista no esta definido
-                //pid_ejecutando = (int)(intptr_t) list_get(lista, 1);      lista no esta definido
+                t_list* lista = recibir_2_enteros(fd_kernel_dispatch);
+                pc = (int)(intptr_t) list_get(lista, 0);
+                pid_ejecutando = (int)(intptr_t) list_get(lista, 1);
                 ejecutar_ciclo_instruccion();
                 break;
             case -1:
-<<<<<<< HEAD
-                log_warning(cpu_log, "Se desconectó el Kernel (Dispatch). Finalizando CPU...");
-                terminar_programa();
-                exit(EXIT_SUCCESS);
-=======
                 log_error(cpu_log, "Desconexion de Kernel (Dispatch)");
                 close(fd_kernel_dispatch);
->>>>>>> fixes_cpu
             default:
             log_error(cpu_log, "Operacion desconocida de Dispatch: %d", cod_op);
             EXIT_FAILURE;

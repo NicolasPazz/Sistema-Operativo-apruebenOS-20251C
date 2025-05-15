@@ -153,5 +153,6 @@ void agregar_entero_a_paquete(t_paquete *paquete, int numero);
 char* leer_string(char* buffer, int* desplazamiento);
 int leer_entero(char *buffer, int * desplazamiento);
 t_list* recibir_4_enteros(int socket);
+int recibir_entero(int socket);
 
 #endif /* UTILS_SOCKETS_H_ */

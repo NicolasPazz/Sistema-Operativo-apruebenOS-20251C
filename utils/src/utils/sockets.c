@@ -407,3 +407,17 @@ t_list* recibir_4_enteros(int socket){
 	free(buffer);
 	return lista;
 }
+
+int recibir_entero(int socket)
+{
+
+    int size = 0;
+    char *buffer;
+    int desp = 0;
+
+    buffer = recibir_buffer(&size, socket);
+    int entero = leer_entero(buffer, &desp);
+    
+    free(buffer);
+    return entero;
+}
