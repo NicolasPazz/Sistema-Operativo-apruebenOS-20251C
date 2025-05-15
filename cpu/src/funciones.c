@@ -10,7 +10,8 @@ void func_noop() {
 void func_write(char* direccion_logica_str, char* datos) {
     uint32_t desplazamiento = 0;
     uint32_t direccion_logica = atoi(direccion_logica_str);
-    uint32_t frame = traducir_direccion(direccion_logica, &desplazamiento, datos);
+    uint32_t frame = traducir_direccion(direccion_logica, &desplazamiento);
+    log_info(cpu_log, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %s", pid_ejecutando, frame, datos); // en el valor de direccion fisica habia otra cosa en el log
     t_cache_paginas* cache = inicializar_cache();
     if (cache_habilitada(cache) && (buscar_pagina_en_cache(cache,frame) != -1)){
         cache_modificar(frame, datos);
@@ -21,13 +22,13 @@ void func_write(char* direccion_logica_str, char* datos) {
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
 
-        uint32_t pagina = recibir_entero(fd_memoria);     
+        uint32_t pagina = recibir_entero(fd_memoria);     // falta recibir_entero
         cache_escribir(pagina, datos);      
     } else {
         t_paquete* paquete = crear_paquete_op(WRITE_OP);
         agregar_entero_a_paquete(paquete, frame);
         agregar_entero_a_paquete(paquete, desplazamiento);
-        agregar_string_a_paquete(paquete, datos, strlen(datos)+1);
+        agregar_a_paquete(paquete, datos, strlen(datos)+1); //cambie agregar_string_a_paquete por agregar_a_paquete
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
 
@@ -41,8 +42,12 @@ void func_read(int direccion, int tamanio) {
     uint32_t desplazamiento = 0;
     uint32_t direccion_logica = atoi(direccion);
     uint32_t frame = traducir_direccion(direccion_logica, &desplazamiento);
-    // envio el frame a memoria y que devuelva algo?
-    // o deberia fijarme en la cache, tlb y despues memoria??
+    log_info(cpu_log,"Pid: %d - Acción: Leer - Dirección Física: %d - Valor: FALTANTE", pid_ejecutando, frame); // FALTA LOS DATOS PARA EL LOG
+    t_paquete *paquete = crear_paquete_op(READ_OP); 
+    agregar_entero_a_paquete(paquete,frame);
+    agregar_entero_a_paquete(paquete,pid_ejecutando);
+    enviar_paquete(paquete,fd_memoria);
+    eliminar_paquete(paquete);
 
     
 }
@@ -71,7 +76,7 @@ void func_init_proc(t_instruccion* instruccion) {
     int size = atoi(size_str);
 
     t_paquete* paquete = crear_paquete_op(INIT_PROC_OP);
-    agregar_string_a_paquete(paquete, path, strlen(path)+1); // tenemos que agregar la funcion agregar_string_a_paquete(a,b,c)
+    agregar_a_paquete(paquete, path, strlen(path)+1); // cambie agregar_string_a_paquete por agregar_a_paquete
     agregar_entero_a_paquete(paquete, size);
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);

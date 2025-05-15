@@ -106,7 +106,7 @@ void execute(op_code tipo_instruccion, t_instruccion* instruccion) { //meto las 
 // check interrupt
 void check_interrupt() {
     hay_interrupcion = 0;
-     //if (pid_ejecutando == pid_interrupt) {        no compila
+     //if (pid_ejecutando == pid_interrupt) {        q hacemos con esto
       seguir_ejecutando = 0;   
         t_paquete* paquete_kernel = crear_paquete_op(INTERRUPCION_OP);
         //agregar_entero_a_paquete(paquete_kernel, pid_ejecutando);      
