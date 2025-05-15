@@ -2,6 +2,7 @@
 #include "../../utils/headers/sockets.h"
 #include "../headers/init.h"
 #include "../headers/cache.h"
+#include "../headers/cicloDeInstruccion.h"
 
 t_cache_paginas* cache = NULL;
 t_list* tlb = NULL;
@@ -12,14 +13,6 @@ void inicializar_mmu() {
     // Inicializar cache de paginas (Fijarse en funciones.c como hacer para solo inicializar una vez la cache...)
     cache = inicializar_cache();    // warning: assignment to ‘t_list *’ from incompatible pointer type ‘t_cache_paginas *’
 }
-
-// t_direccion_fisica transformar_a_fisica(int direccion_logica, int nro_pagina, int tamanio_pagina, int cantidad_entradas){
-//     t_direccion_fisica direccion_fisica;
-//     direccion_fisica.nro_pagina = floor(direccion_logica / tamanio_pagina);
-//     direccion_fisica.entrada_nivel_x = floor(nro_pagina /cantidad_entradas); // esto deberia ser un array creo yo??
-//     direccion_fisica.desplazamiento = direccion_logica % tamanio_pagina;
-//     return direccion_fisica;
-// }
 
 uint32_t traducir_direccion(uint32_t direccion_logica, uint32_t* desplazamiento, char* datos) {
     t_paquete* paquete = crear_paquete_op(PEDIR_CONFIG_CPU_OP); // VER TEMA CASE EN MEMORIA PARA QUE ME MANDEN LAS 4 CONFIG
@@ -38,7 +31,6 @@ uint32_t traducir_direccion(uint32_t direccion_logica, uint32_t* desplazamiento,
     *desplazamiento = direccion_logica % tam_pagina;
 
     uint32_t frame = 0;
-    int pid_ejecutando; // VER TEMA PID
     if (tlb_habilitada() && tlb_buscar(nro_pagina, &frame)) {
         log_info(cpu_log, "PID: %d - TLB HIT - Página: %d", pid_ejecutando, nro_pagina);    // warning: ‘pid_ejecutando’ may be used uninitialized
     } else {
