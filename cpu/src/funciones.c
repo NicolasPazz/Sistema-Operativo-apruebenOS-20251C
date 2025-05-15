@@ -31,10 +31,8 @@ void func_write(char* direccion_logica_str, char* datos) {
         agregar_a_paquete(paquete, datos, strlen(datos)+1); //cambie agregar_string_a_paquete por agregar_a_paquete
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
-
     }
 
-    
 }
 
 
@@ -61,7 +59,7 @@ void func_goto(char* valor) {
 
 void func_io(char* nombre_dispositivo, u_int32_t tiempo) {
     t_paquete* paquete = crear_paquete_op(IO_OP);
-    agregar_entero_a_paquete(paquete, pid_ejecutando); // el proceso es el pid???? debemos enviar el proceso
+    agregar_entero_a_paquete(paquete, pid_ejecutando);
     agregar_entero_a_paquete(paquete, tiempo);
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
@@ -76,7 +74,7 @@ void func_init_proc(t_instruccion* instruccion) {
     int size = atoi(size_str);
 
     t_paquete* paquete = crear_paquete_op(INIT_PROC_OP);
-    agregar_a_paquete(paquete, path, strlen(path)+1); // cambie agregar_string_a_paquete por agregar_a_paquete
+    agregar_a_paquete(paquete, path, strlen(path)+1);
     agregar_entero_a_paquete(paquete, size);
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
@@ -87,7 +85,7 @@ void func_init_proc(t_instruccion* instruccion) {
 
 void func_dump_memory() {
     t_paquete* paquete = crear_paquete_op(DUMP_MEMORY_OP);
-    agregar_entero_a_paquete(paquete,pid_ejecutando); //agregue el pid, ver en kernel como dice el enunciado de syscalls.
+    agregar_entero_a_paquete(paquete,pid_ejecutando);
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 }
@@ -95,7 +93,6 @@ void func_dump_memory() {
 
 void func_exit() {
     t_paquete* paquete = crear_paquete_op(EXIT_OP);
-    agregar_entero_a_paquete(paquete, pid_ejecutando);
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 
