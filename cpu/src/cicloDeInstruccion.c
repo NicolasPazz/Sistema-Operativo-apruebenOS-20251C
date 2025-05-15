@@ -23,7 +23,7 @@ t_instruccion* fetch(){
 
     t_paquete* paquete = crear_paquete_op(PEDIR_INSTRUCCION_OP);
     agregar_entero_a_paquete(paquete, pc);
-    // agregar_entero_a_paquete(paquete, pid_ejecutando);         
+    agregar_entero_a_paquete(paquete, pid_ejecutando);         
     enviar_paquete(paquete, fd_memoria);
     eliminar_paquete(paquete);
 

@@ -4,7 +4,7 @@
 #include "../headers/cache.h"
 
 void func_noop() {
-    sleep(1000);
+    sleep(1000); // de donde sacamos el tiempo de ciclo de instruccion
 }
 
 void func_write(char* direccion_logica_str, char* datos) {
@@ -38,20 +38,25 @@ void func_write(char* direccion_logica_str, char* datos) {
 
 
 void func_read(int direccion, int tamanio) {
-    //t_direccion_fisica direccion_fisica = transformar_a_fisica(direccion_logica, 0,10,10); // chequear las ultimas 3 parametros, voy a revisar maniana como hago lo d las entradas
-    //hacer el read
+    uint32_t desplazamiento = 0;
+    uint32_t direccion_logica = atoi(direccion);
+    uint32_t frame = traducir_direccion(direccion_logica, &desplazamiento);
+    // envio el frame a memoria y que devuelva algo?
+    // o deberia fijarme en la cache, tlb y despues memoria??
+
+    
 }
 
 
 void func_goto(char* valor) {
-    //nuevamente... ver el tema del pc, pid
     pc = atoi(valor);
+    // deberiamos crear un paquete y mandarselo a kernel con este nuevo valor o no es necesario?
 }
 
 
 void func_io(char* nombre_dispositivo, u_int32_t tiempo) {
     t_paquete* paquete = crear_paquete_op(IO_OP);
-    agregar_entero_a_paquete(paquete, pid_ejecutando);
+    agregar_entero_a_paquete(paquete, pid_ejecutando); // el proceso es el pid???? debemos enviar el proceso
     agregar_entero_a_paquete(paquete, tiempo);
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
@@ -66,18 +71,18 @@ void func_init_proc(t_instruccion* instruccion) {
     int size = atoi(size_str);
 
     t_paquete* paquete = crear_paquete_op(INIT_PROC_OP);
-    agregar_string_a_paquete(paquete, path, strlen(path)+1);
+    agregar_string_a_paquete(paquete, path, strlen(path)+1); // tenemos que agregar la funcion agregar_string_a_paquete(a,b,c)
     agregar_entero_a_paquete(paquete, size);
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
-
     log_info(cpu_log, "PID: %i - INIT_PROC - Archivo: %s - Tamaño: %i", pid_ejecutando, path, size);
     seguir_ejecutando = 0;
-}
+} //bien
 
 
 void func_dump_memory() {
     t_paquete* paquete = crear_paquete_op(DUMP_MEMORY_OP);
+    agregar_entero_a_paquete(paquete,pid_ejecutando); //agregue el pid, ver en kernel como dice el enunciado de syscalls.
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 }
