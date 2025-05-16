@@ -2,6 +2,7 @@
 #include "../../utils/headers/sockets.h"
 #include "../headers/init.h"
 #include "../headers/cache.h"
+#include "../headers/cicloDeInstruccion.h"
 
 t_cache_paginas* cache = NULL;
 t_list* tlb = NULL;
@@ -13,15 +14,7 @@ void inicializar_mmu() {
     cache = inicializar_cache();    // warning: assignment to ‘t_list *’ from incompatible pointer type ‘t_cache_paginas *’
 }
 
-// t_direccion_fisica transformar_a_fisica(int direccion_logica, int nro_pagina, int tamanio_pagina, int cantidad_entradas){
-//     t_direccion_fisica direccion_fisica;
-//     direccion_fisica.nro_pagina = floor(direccion_logica / tamanio_pagina);
-//     direccion_fisica.entrada_nivel_x = floor(nro_pagina /cantidad_entradas); // esto deberia ser un array creo yo??
-//     direccion_fisica.desplazamiento = direccion_logica % tamanio_pagina;
-//     return direccion_fisica;
-// }
-
-uint32_t traducir_direccion(uint32_t direccion_logica, uint32_t* desplazamiento, char* datos) {
+uint32_t traducir_direccion(uint32_t direccion_logica, uint32_t* desplazamiento) {
     t_paquete* paquete = crear_paquete_op(PEDIR_CONFIG_CPU_OP); // VER TEMA CASE EN MEMORIA PARA QUE ME MANDEN LAS 4 CONFIG
     enviar_paquete(paquete, fd_memoria);
     eliminar_paquete(paquete);
@@ -35,28 +28,23 @@ uint32_t traducir_direccion(uint32_t direccion_logica, uint32_t* desplazamiento,
     uint32_t cantidad_niveles = (uint32_t)(uintptr_t)list_get(config_memoria, 3);
 
     uint32_t nro_pagina = direccion_logica / tam_pagina;
+    // falta lo de entrada nivel x
     *desplazamiento = direccion_logica % tam_pagina;
 
     uint32_t frame = 0;
-    int pid_ejecutando; // VER TEMA PID
     if (tlb_habilitada() && tlb_buscar(nro_pagina, &frame)) {
-        log_info(cpu_log, "PID: %d - TLB HIT - Página: %d", pid_ejecutando, nro_pagina);    // warning: ‘pid_ejecutando’ may be used uninitialized
+        log_info(cpu_log, "PID: %d - TLB HIT - Página: %d", pid_ejecutando, nro_pagina);    
     } else {
         log_info(cpu_log, "PID: %d - TLB MISS - Página: %d", pid_ejecutando, nro_pagina);
 
-        frame =5;
+        frame =5; // ??
         //solicitar_frame_memoria(nro_pagina);  VER PEDIR POR PAQUETE PEDIR FRAM MEMORIA COMO OP CODE Y AGREGAR AL PAQUETE EL FRAME QUE NECESITO
         if (tlb_habilitada()) {
             tlb_insertar(nro_pagina, frame);
         }
     }
-
-    log_info(cpu_log, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %s", pid_ejecutando, frame * tam_pagina + desplazamiento, datos); // warning: format ‘%d’ expects argument of type ‘int’, but argument 4 has type ‘uint32_t *’ {aka ‘unsigned int *’}
     return frame;
-
-
 }
-
 bool tlb_buscar(uint32_t pagina, uint32_t* frame_out) {
     for (int i = 0; i < list_size(tlb); i++) {
         entrada_tlb_t* entrada = list_get(tlb, i);

@@ -407,3 +407,38 @@ t_list* recibir_4_enteros(int socket){
 	free(buffer);
 	return lista;
 }
+
+int recibir_entero(int socket)
+{
+
+    int size = 0;
+    char *buffer;
+    int desp = 0;
+
+    buffer = recibir_buffer(&size, socket);
+    int entero = leer_entero(buffer, &desp);
+    
+    free(buffer);
+    return entero;
+}
+t_list* recibir_2_enteros(int socket){
+	uint32_t entero1;
+	int entero2;
+	
+
+	int size = 0;
+    char *buffer;
+    int desp = 0;
+	t_list* lista = list_create();
+
+    buffer = recibir_buffer(&size, socket);
+
+	entero1 = leer_entero(buffer,&desp);
+	entero2 = leer_entero(buffer,&desp);
+
+	list_add(lista, (void *)(uintptr_t)entero1);
+	list_add(lista, (void *)(uintptr_t)entero2);	
+
+	free(buffer);
+	return lista;
+}

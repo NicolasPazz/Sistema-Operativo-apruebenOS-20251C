@@ -4,13 +4,14 @@
 #include "../headers/cache.h"
 
 void func_noop() {
-    sleep(1000);
+    sleep(1000); // de donde sacamos el tiempo de ciclo de instruccion
 }
 
 void func_write(char* direccion_logica_str, char* datos) {
     uint32_t desplazamiento = 0;
     uint32_t direccion_logica = atoi(direccion_logica_str);
-    uint32_t frame = traducir_direccion(direccion_logica, &desplazamiento, datos);
+    uint32_t frame = traducir_direccion(direccion_logica, &desplazamiento);
+    log_info(cpu_log, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %s", pid_ejecutando, frame, datos); // en el valor de direccion fisica habia otra cosa en el log
     t_cache_paginas* cache = inicializar_cache();
     if (cache_habilitada(cache) && (buscar_pagina_en_cache(cache,frame) != -1)){
         cache_modificar(frame, datos);
@@ -21,42 +22,49 @@ void func_write(char* direccion_logica_str, char* datos) {
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
 
-        //uint32_t pagina = recibir_entero(fd_memoria);     recibir_entero no existe
-        //cache_escribir(pagina, datos);        pagina no esta definida
+        uint32_t pagina = recibir_entero(fd_memoria);     // falta recibir_entero
+        cache_escribir(pagina, datos);      
     } else {
         t_paquete* paquete = crear_paquete_op(WRITE_OP);
         agregar_entero_a_paquete(paquete, frame);
         agregar_entero_a_paquete(paquete, desplazamiento);
-        //agregar_string_a_paquete(paquete, datos);     agregar_string_a_paquete no existe
+        agregar_a_paquete(paquete, datos, strlen(datos)+1); //cambie agregar_string_a_paquete por agregar_a_paquete
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
-
     }
+
+}
+
+
+void func_read(int direccion, int tamanio) {
+    uint32_t desplazamiento = 0;
+    uint32_t direccion_logica = atoi(direccion);
+    uint32_t frame = traducir_direccion(direccion_logica, &desplazamiento);
+    log_info(cpu_log,"Pid: %d - Acción: Leer - Dirección Física: %d - Valor: FALTANTE", pid_ejecutando, frame); // FALTA LOS DATOS PARA EL LOG
+    t_paquete *paquete = crear_paquete_op(READ_OP); 
+    agregar_entero_a_paquete(paquete,frame);
+    agregar_entero_a_paquete(paquete,pid_ejecutando);
+    enviar_paquete(paquete,fd_memoria);
+    eliminar_paquete(paquete);
 
     
 }
 
 
-void func_read(int direccion, int tamanio) {
-    //t_direccion_fisica direccion_fisica = transformar_a_fisica(direccion_logica, 0,10,10); // chequear las ultimas 3 parametros, voy a revisar maniana como hago lo d las entradas
-    //hacer el read
-}
-
-
 void func_goto(char* valor) {
-    //nuevamente... ver el tema del pc, pid
     pc = atoi(valor);
+    // deberiamos crear un paquete y mandarselo a kernel con este nuevo valor o no es necesario?
 }
 
 
 void func_io(char* nombre_dispositivo, u_int32_t tiempo) {
     t_paquete* paquete = crear_paquete_op(IO_OP);
-    //agregar_entero_a_paquete(paquete, pid_ejecutando); no compila
+    agregar_entero_a_paquete(paquete, pid_ejecutando);
     agregar_entero_a_paquete(paquete, tiempo);
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 
-    //seguir_ejecutando = 0;  // aca se bloquea el ciclo, seguir ejec es global //       no compila
+    seguir_ejecutando = 0;  // aca se bloquea el ciclo, seguir ejec es global 
 }
 
 
@@ -66,18 +74,18 @@ void func_init_proc(t_instruccion* instruccion) {
     int size = atoi(size_str);
 
     t_paquete* paquete = crear_paquete_op(INIT_PROC_OP);
-    //agregar_string_a_paquete(paquete, path);
-    //agregar_entero_a_paquete(paquete, size);
+    agregar_a_paquete(paquete, path, strlen(path)+1);
+    agregar_entero_a_paquete(paquete, size);
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
-
-    //log_info(cpu_log, "PID: %i - INIT_PROC - Archivo: %s - Tamaño: %i", pid_ejecutando, path, size);       no compila
-    //seguir_ejecutando = 0;     no compila
-}
+    log_info(cpu_log, "PID: %i - INIT_PROC - Archivo: %s - Tamaño: %i", pid_ejecutando, path, size);
+    seguir_ejecutando = 0;
+} //bien
 
 
 void func_dump_memory() {
     t_paquete* paquete = crear_paquete_op(DUMP_MEMORY_OP);
+    agregar_entero_a_paquete(paquete,pid_ejecutando);
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 }
@@ -85,11 +93,10 @@ void func_dump_memory() {
 
 void func_exit() {
     t_paquete* paquete = crear_paquete_op(EXIT_OP);
-    //agregar_entero_a_paquete(paquete, pid_ejecutando);         no compila
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 
-    //seguir_ejecutando = 0; // Proceso termino     no compila
+    seguir_ejecutando = 0;
 }
 
 t_instruccion* recibir_instruccion(int conexion) {

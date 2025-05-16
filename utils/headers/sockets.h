@@ -112,6 +112,11 @@ typedef struct {
     t_instruccion instruccion_base;  // Mantiene compatibilidad con la estructura existente
     op_code tipo;                   // Almacena el tipo de operación (NOOP_OP, WRITE_OP, etc.)
 } t_extended_instruccion;
+// Dentro de utils_sockets.h o io.h
+typedef struct {
+    int pid;
+    long tiempo_io;
+} t_pedido_io;
 
 /////////////////////////////// Prototipos ///////////////////////////////
 /////////////// Logs y Config///////////////
@@ -148,5 +153,7 @@ void agregar_entero_a_paquete(t_paquete *paquete, int numero);
 char* leer_string(char* buffer, int* desplazamiento);
 int leer_entero(char *buffer, int * desplazamiento);
 t_list* recibir_4_enteros(int socket);
+int recibir_entero(int socket);
+t_list* recibir_2_enteros(int socket);
 
 #endif /* UTILS_SOCKETS_H_ */
