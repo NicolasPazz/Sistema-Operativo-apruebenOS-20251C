@@ -9,14 +9,11 @@ t_config_memoria* cfg;
 t_list* segmentos_libres;
 t_list* segmentos_usados;
 uint32_t memoria_disponible;
-t_list* ts_patotas;
-t_list* ts_tripulantes;
 //segmento_t* (*proximo_hueco)(uint32_t);
 
 // paginacion
 //frame_t* tabla_frames;
 //frame_swap_t* tabla_frames_swap;
-t_list* tp_patotas;
 t_list* tid_pid_lookup;
 uint32_t espacio_disponible_swap;
 uint32_t global_TUR; // evil

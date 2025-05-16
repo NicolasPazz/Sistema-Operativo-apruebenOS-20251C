@@ -3,15 +3,6 @@
 extern t_log* logger;
 extern t_config_memoria* cfg;
 
-extern pthread_mutex_t MUTEX_TS_PATOTAS;
-extern pthread_mutex_t MUTEX_TS_TRIPULANTES;
-extern pthread_mutex_t MUTEX_TP_PATOTAS;
-extern pthread_mutex_t MUTEX_TID_PID_LOOKUP;
-
-extern t_list* ts_patotas;
-extern t_list* ts_tripulantes;
-
-extern t_list* tp_patotas;
 extern t_list* tid_pid_lookup;
 //extern frame_swap_t* tabla_frames_swap;
 extern uint32_t global_TUR;
