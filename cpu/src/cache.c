@@ -33,10 +33,10 @@ t_cache_paginas* inicializar_cache(){
     cache->puntero_clock = 0;
     return cache;
 }
-bool cache_habilitada(t_cache_paginas* cache){
+bool cache_habilitada(){
     return cache->cantidad_entradas > 0;
 }
-int buscar_pagina_en_cache (t_cache_paginas* cache, int numero_pagina){
+int buscar_pagina_en_cache ( int numero_pagina){
     if (!cache_habilitada(cache))
         return -1;
     for(int i = 0; i < cache->cantidad_entradas; i++){
@@ -51,7 +51,7 @@ int buscar_pagina_en_cache (t_cache_paginas* cache, int numero_pagina){
 }
 
 // funcion para seleccionar "victima" de reemplazo (clock)
-int seleccionar_victima_clock(t_cache_paginas* cache){
+int seleccionar_victima_clock(){
     while (1){
         if(cache->entradas[cache->puntero_clock].bit_referencia == 0){
             return cache->puntero_clock;
@@ -61,7 +61,7 @@ int seleccionar_victima_clock(t_cache_paginas* cache){
     }
 }
 
-int seleccionar_victima_clock_m (t_cache_paginas* cache){
+int seleccionar_victima_clock_m (){
     // busco los no modificados (Bit referencia = 0 & bit_modificado = 0)
     int comienzo = cache->puntero_clock;
     do {
@@ -81,20 +81,20 @@ int seleccionar_victima_clock_m (t_cache_paginas* cache){
     return cache->puntero_clock;
 }
 
-char* acceder_a_pagina_en_cache(t_cache_paginas* cache, int numero_pagina){
+char* acceder_a_pagina_en_cache(int numero_pagina){
     if(cache == NULL)
         return NULL;
     if (!cache_habilitada(cache)){
         log_trace(cpu_log, "La cache esta deshabilitada.");
         return NULL;
     }
-    int nro_pagina_en_cache = buscar_pagina_en_cache(cache,numero_pagina);
+    int nro_pagina_en_cache = buscar_pagina_en_cache(numero_pagina);
     if (nro_pagina_en_cache <= -1)
         return NULL;
     return cache->entradas[nro_pagina_en_cache].contenido;
 }
 
-void desalojar_proceso_cache(t_cache_paginas* cache){ 
+void desalojar_proceso_cache(){ 
     if (!cache_habilitada(cache)){
         log_error(cpu_log, "Cache deshabilitada");
         EXIT_FAILURE;
@@ -115,7 +115,7 @@ void desalojar_proceso_cache(t_cache_paginas* cache){
     cache->puntero_clock = 0; // reseteo el puntero del reloj
 }
 
-void liberar_cache(t_cache_paginas* cache){
+void liberar_cache(){
     if (cache == NULL){
         log_trace(cpu_log,"la cache ya estaba liberada.");
         EXIT_SUCCESS;
@@ -147,7 +147,7 @@ void cache_modificar(uint32_t frame, char* datos){
         log_debug(cpu_log, "La cache esta deshabilitada.");
         return;
     }
-    int nro_pagina_en_cache = buscar_pagina_en_cache(cache, frame);
+    int nro_pagina_en_cache = buscar_pagina_en_cache(frame);
     if (nro_pagina_en_cache <= -1){
         log_debug(cpu_log, "No se encontro la pagina %d en la cache", frame);
         return;

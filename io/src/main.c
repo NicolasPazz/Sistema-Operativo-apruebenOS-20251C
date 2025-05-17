@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
                 pedido.tiempo_io = tiempo_io;
     
                 log_info(io_log, "## PID: %d - Inicio de IO - Tiempo: %ld", pedido.pid, pedido.tiempo_io);
-                usleep(pedido.tiempo_io * 1000); // milisegundos a microsegundos
+                sleep(pedido.tiempo_io); // milisegundos a microsegundos
                 log_info(io_log, "## PID: %d - Fin de IO", pedido.pid);
     
                 op_code finalizado = IO_FINALIZADA_OP;

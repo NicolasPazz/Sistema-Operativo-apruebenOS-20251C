@@ -6,8 +6,8 @@ t_log* log_cpu;
 
 //void atender_cliente(void*);
 void iterator(char* value);
-int recibir_kernel_dispatch();    
-int recibir_kernel_interrupt();
+void* recibir_kernel_dispatch(void* arg);    
+void* recibir_kernel_interrupt(void* arg);
 void terminar_programa(void);
 
 #endif
