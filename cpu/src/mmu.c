@@ -10,8 +10,7 @@ uint32_t orden_fifo = 0;
 
 void inicializar_mmu() {
     tlb = list_create();
-    // Inicializar cache de paginas (Fijarse en funciones.c como hacer para solo inicializar una vez la cache...)
-    cache = inicializar_cache();    // warning: assignment to ‘t_list *’ from incompatible pointer type ‘t_cache_paginas *’
+    cache = inicializar_cache();    
 }
 
 uint32_t traducir_direccion(uint32_t direccion_logica, uint32_t* desplazamiento) {

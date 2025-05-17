@@ -3,7 +3,7 @@
 #include "sockets.h"
 void func_noop(void);
 void func_write(char* direccion, char* datos);
-void func_read(int direccion, int tamanio);
+void func_read(char* direccion, char* tamanio);
 void func_goto(char* valor);
 void func_io(char* nombre_dispositivo, char* tiempo_str);
 void func_init_proc(t_instruccion* instruccion);

@@ -22,13 +22,13 @@ typedef struct {
 extern t_cache_paginas* cache;
 
 t_cache_paginas* inicializar_cache(void);
-int buscar_pagina_en_cache (t_cache_paginas* cache, int numero_pagina);
-int seleccionar_victima_clock(t_cache_paginas* cache);
-int seleccionar_victima_clock_m (t_cache_paginas* cache);
-char* acceder_a_pagina_en_cache(t_cache_paginas* cache, int numero_pagina);
-void desalojar_proceso_cache(t_cache_paginas* cache);
-void liberar_cache(t_cache_paginas* cache);
-bool cache_habilitada(t_cache_paginas* cache);
+int buscar_pagina_en_cache (int numero_pagina);
+int seleccionar_victima_clock();
+int seleccionar_victima_clock_m ();
+char* acceder_a_pagina_en_cache(int numero_pagina);
+void desalojar_proceso_cache();
+void liberar_cache();
+bool cache_habilitada();
 void cache_modificar(uint32_t frame, char* datos);
 void cache_escribir(uint32_t frame, char* datos);
 
