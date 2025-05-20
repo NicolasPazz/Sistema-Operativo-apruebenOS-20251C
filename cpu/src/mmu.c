@@ -1,5 +1,4 @@
 #include "../headers/mmu.h"
-#include "../../utils/headers/sockets.h"
 #include "../headers/init.h"
 #include "../headers/cache.h"
 #include "../headers/cicloDeInstruccion.h"
@@ -18,10 +17,9 @@ uint32_t traducir_direccion(uint32_t direccion_logica, uint32_t* desplazamiento)
     enviar_paquete(paquete, fd_memoria);
     eliminar_paquete(paquete);
 
-    int cod_op = recibir_operacion(fd_memoria);
+    //int cod_op = recibir_operacion(fd_memoria); NO SE USA NUNCA VER QUE ONDA ESTO
 
-    t_list* config_memoria = recibir_4_enteros(fd_memoria);
-    uint32_t tam_memoria = (uint32_t)(uintptr_t)list_get(config_memoria, 0);
+    t_list* config_memoria = recibir_4_enteros(fd_memoria); //cambiar para que sean 3 no 4
     uint32_t tam_pagina = (uint32_t)(uintptr_t)list_get(config_memoria, 1);
     uint32_t entradas_por_tabla = (uint32_t)(uintptr_t)list_get(config_memoria, 2);
     uint32_t cantidad_niveles = (uint32_t)(uintptr_t)list_get(config_memoria, 3);
@@ -30,20 +28,39 @@ uint32_t traducir_direccion(uint32_t direccion_logica, uint32_t* desplazamiento)
     // falta lo de entrada nivel x
     *desplazamiento = direccion_logica % tam_pagina;
 
+    uint32_t entradas[cantidad_niveles];
+    for (int nivel = 0; nivel < cantidad_niveles; nivel++) {
+        uint32_t divisor = pow(entradas_por_tabla, cantidad_niveles - (nivel + 1));
+        entradas[nivel] = (nro_pagina / divisor) % entradas_por_tabla;
+    }
+
     uint32_t frame = 0;
     if (tlb_habilitada() && tlb_buscar(nro_pagina, &frame)) {
         log_info(cpu_log, "PID: %d - TLB HIT - Página: %d", pid_ejecutando, nro_pagina);    
     } else {
         log_info(cpu_log, "PID: %d - TLB MISS - Página: %d", pid_ejecutando, nro_pagina);
 
-        frame =5; // ??
-        //solicitar_frame_memoria(nro_pagina);  VER PEDIR POR PAQUETE PEDIR FRAM MEMORIA COMO OP CODE Y AGREGAR AL PAQUETE EL FRAME QUE NECESITO
+        // Enviar entradas de página a Memoria
+        paquete = crear_paquete_op(SOLICITAR_FRAME_PARA_ENTRADAS);
+        agregar_a_paquete(paquete, &pid_ejecutando, sizeof(uint32_t));
+        agregar_a_paquete(paquete, &cantidad_niveles, sizeof(uint32_t));
+        for (int i = 0; i < cantidad_niveles; i++) {
+            agregar_a_paquete(paquete, &entradas[i], sizeof(uint32_t));
+        }
+        enviar_paquete(paquete, fd_memoria);
+        eliminar_paquete(paquete);
+
+        // Recibir frame
+        recv(fd_memoria, &frame, sizeof(uint32_t), MSG_WAITALL);
+
         if (tlb_habilitada()) {
             tlb_insertar(nro_pagina, frame);
         }
     }
+
     return frame;
 }
+
 bool tlb_buscar(uint32_t pagina, uint32_t* frame_out) {
     for (int i = 0; i < list_size(tlb); i++) {
         entrada_tlb_t* entrada = list_get(tlb, i);
@@ -57,7 +74,7 @@ bool tlb_buscar(uint32_t pagina, uint32_t* frame_out) {
 }
 
 bool tlb_habilitada() {
-    return ENTRADAS_TLB > 0;
+    return atoi(ENTRADAS_TLB) > 0;
 }
 
 void tlb_insertar(uint32_t pagina, uint32_t frame) {
@@ -68,10 +85,9 @@ void tlb_insertar(uint32_t pagina, uint32_t frame) {
     nueva_entrada->tiempo_uso = timestamp_actual(); // Para LRU
     nueva_entrada->orden_fifo = orden_fifo++;        // Para FIFO
 
-    if (list_size(tlb) < ENTRADAS_TLB) {    // warning: comparison between pointer and integer
+    if (list_size(tlb) < atoi(ENTRADAS_TLB)) {
         list_add(tlb, nueva_entrada);
     } else {
-        // TLB llena
         int victima = seleccionar_victima_tlb();
         entrada_tlb_t* entrada_reemplazo = list_get(tlb, victima);
         free(entrada_reemplazo);
