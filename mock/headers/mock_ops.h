@@ -16,7 +16,7 @@ void DUMP_MEMORY_OP_mock(void);
 void EXIT_OP_mock(void);
 void EXEC_OP_mock(void);
 void INTERRUPCION_OP_mock(void);
-void PEDIR_INSTRUCCION_OP_mock(void);
+void PEDIR_INSTRUCCION_OP_mock(int cliente_socket);
 void PEDIR_CONFIG_CPU_OP_mock(void);
 void IO_FINALIZADA_OP_mock(void);
 void FINALIZAR_PROC_OP_mock(void);

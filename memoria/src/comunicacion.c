@@ -269,6 +269,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
 
         case PEDIR_INSTRUCCION_OP: {
             log_debug(logger, "PEDIR_INSTRUCCION_OP recibido");
+
             // Recibir PID y PC
             int pid, pc;
             recv_data(cliente_socket, &pid, sizeof(int));
@@ -296,39 +297,63 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 
                 log_debug(logger, "Tipo de instrucción encontrado: %d", tipo_op);
                 
-                // Ahora obtenemos la instrucción base para enviar al CPU
+                // Instrucción base para enviar al CPU
                 instruccion = get_instruction(pid, pc);
             }
             
             if (instruccion != NULL) {
                 log_debug(logger, "Instrucción encontrada - Tipo: %d, Params: '%s', '%s', '%s'", 
-                          tipo_op, 
-                          instruccion->parametros1, 
-                          instruccion->parametros2, 
-                          instruccion->parametros3);
-                
+                        tipo_op, 
+                        instruccion->parametros1, 
+                        instruccion->parametros2, 
+                        instruccion->parametros3);
+
                 // Crear paquete con la instrucción
                 t_paquete* paquete = crear_paquete_op(tipo_op);
-                
+
                 // Agregar los parámetros al paquete
-                if (instruccion->parametros1 && strlen(instruccion->parametros1) > 0)
-                    agregar_a_paquete(paquete, instruccion->parametros1, strlen(instruccion->parametros1) + 1);
+                char* p1 = instruccion->parametros1 ? instruccion->parametros1 : "";
+                char* p2 = instruccion->parametros2 ? instruccion->parametros2 : "";
+                char* p3 = instruccion->parametros3 ? instruccion->parametros3 : "";
                 
-                if (instruccion->parametros2 && strlen(instruccion->parametros2) > 0)
-                    agregar_a_paquete(paquete, instruccion->parametros2, strlen(instruccion->parametros2) + 1);
-                
-                if (instruccion->parametros3 && strlen(instruccion->parametros3) > 0)
-                    agregar_a_paquete(paquete, instruccion->parametros3, strlen(instruccion->parametros3) + 1);
-                
+                /*
+                log_info(logger, "Agregando al paquete: [%s] con tamaño %d", p1, strlen(p1) + 1);
+                agregar_a_paquete(paquete, p1, strlen(p1) + 1);
+                log_info(logger, "Agregando al paquete: [%s] con tamaño %d", p2, strlen(p2) + 1);
+                agregar_a_paquete(paquete, p2, strlen(p2) + 1);
+                log_info(logger, "Agregando al paquete: [%s] con tamaño %d", p3, strlen(p3) + 1);
+                agregar_a_paquete(paquete, p3, strlen(p3) + 1);
+                */
+
+                // Enviar p1
+                int size_p1 = strlen(p1) + 1;
+                send(cliente_socket, &size_p1, sizeof(int), 0);
+                send(cliente_socket, p1, size_p1, 0);
+
+                // Enviar p2
+                int size_p2 = strlen(p2) + 1;
+                send(cliente_socket, &size_p2, sizeof(int), 0);
+                send(cliente_socket, p2, size_p2, 0);
+
+                // Enviar p3
+                int size_p3 = strlen(p3) + 1;
+                send(cliente_socket, &size_p3, sizeof(int), 0);
+                send(cliente_socket, p3, size_p3, 0);
+
+                // Log informativo del paquete que se va a enviar
+                log_info(logger, "[ENVÍO] Tipo de instrucción: %d | Param 1: '%s' | Param 2: '%s' | Param 3: '%s'", 
+                        tipo_op, p1, p2, p3);
+
                 // Enviar la instrucción
                 enviar_paquete(paquete, cliente_socket);
                 eliminar_paquete(paquete);
-                
+
                 // Liberar la instrucción (es una copia creada por get_instruction)
+                /*
                 free(instruccion->parametros1);
                 free(instruccion->parametros2);
                 free(instruccion->parametros3);
-                free(instruccion);
+                free(instruccion);*/
             } else {
                 // Si no se encontró la instrucción, enviamos una instrucción NOOP
                 log_warning(logger, "No se encontró instrucción para PID: %d, PC: %d - Enviando NOOP", pid, pc);

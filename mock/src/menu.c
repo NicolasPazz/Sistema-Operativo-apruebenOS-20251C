@@ -31,7 +31,7 @@ void ejecutar_submenu(op_code cod, int fd_a_testear) {
                     case INTERRUPCION_OP:
                         INTERRUPCION_OP_mock(); break;
                     case PEDIR_INSTRUCCION_OP:
-                        PEDIR_INSTRUCCION_OP_mock(); break;
+                        PEDIR_INSTRUCCION_OP_mock(fd_a_testear); break;
                     case PEDIR_CONFIG_CPU_OP:
                         PEDIR_CONFIG_CPU_OP_mock(); break;
                     case IO_FINALIZADA_OP:

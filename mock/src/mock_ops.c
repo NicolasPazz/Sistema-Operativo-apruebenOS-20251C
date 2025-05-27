@@ -3,6 +3,8 @@
 #include "../../utils/headers/sockets.h"
 
 /////////////////////////////// Funcionalidades ///////////////////////////////
+
+/////////////////////////////// Kernel -> Memoria
 bool INIT_PROC_OP_mock(int cliente_socket) {
     int pid;
     int tamanio;
@@ -42,7 +44,65 @@ bool DUMP_MEMORY_OP_mock() { return true; }
 bool EXIT_OP_mock() { return true; }
 bool EXEC_OP_mock() { return true; }
 bool INTERRUPCION_OP_mock() { return true; }
-bool PEDIR_INSTRUCCION_OP_mock() { return true; }
+
+
+/////////////////////////////// CPU -> Memoria
+bool PEDIR_INSTRUCCION_OP_mock(int cliente_socket) { 
+    int pid;
+    int pc;
+
+    printf("PID del proceso: ");
+    scanf("%d", &pid);
+    if (!send_data(cliente_socket, &pid, sizeof(pid))) return false;
+
+    printf("PC del proceso: ");
+    scanf("%d", &pc);
+    if (!send_data(cliente_socket, &pc, sizeof(pc))) return false;
+
+    // Recibo la instrucción desde Memoria
+    // Recibir p1
+    int size_p1;
+    recv(cliente_socket, &size_p1, sizeof(int), 0);
+    char* p1 = malloc(size_p1);
+    recv(cliente_socket, p1, size_p1, 0);
+    log_info(mock_log, "Param 1 recibido: [%s]", p1);
+
+    // Recibir p2
+    int size_p2;
+    recv(cliente_socket, &size_p2, sizeof(int), 0);
+    char* p2 = malloc(size_p2);
+    recv(cliente_socket, p2, size_p2, 0);
+    log_info(mock_log, "Param 2 recibido: [%s]", p2);
+
+    // Recibir p3
+    int size_p3;
+    recv(cliente_socket, &size_p3, sizeof(int), 0);
+    char* p3 = malloc(size_p3);
+    recv(cliente_socket, p3, size_p3, 0);
+    log_info(mock_log, "Param 3 recibido: [%s]", p3);
+
+    /*
+    t_list* valores = recibir_paquete(cliente_socket);
+
+    // Debug general:
+    log_info(mock_log, "Tamaño lista de valores recibidos: %d", list_size(valores));
+
+    for (int i = 0; i < list_size(valores); i++) {
+        char* param = list_get(valores, i);
+        if (param == NULL) {
+            log_error(mock_log, "El parámetro %d es NULL", i);
+            continue;
+        }
+        log_info(mock_log, "Param %d: [%s]", i, param);
+    }*/
+
+    //list_destroy_and_destroy_elements(valores, free);
+
+    return true; 
+}
+
+
+
 bool PEDIR_CONFIG_CPU_OP_mock() { return true; }
 bool IO_FINALIZADA_OP_mock() { return true; }
 bool FINALIZAR_PROC_OP_mock() { return true; }

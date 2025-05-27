@@ -216,13 +216,14 @@ void liberar_cliente_data(cliente_data_t *data) {
 }
 
 void* recibir_buffer(int* size, int socket_cliente) {
-	void * buffer;
+    void * buffer;
 
-	recv(socket_cliente, size, sizeof(int), MSG_WAITALL);
-	buffer = malloc(*size);
-	recv(socket_cliente, buffer, *size, MSG_WAITALL);
+    // Leer el tamaño del buffer (2do int en el paquete)
+    recv(socket_cliente, size, sizeof(int), MSG_WAITALL);
+    buffer = malloc(*size);
+    recv(socket_cliente, buffer, *size, MSG_WAITALL);
 
-	return buffer;
+    return buffer;
 }
 
 void recibir_mensaje(int socket_cliente,t_log* logger) {
@@ -240,8 +241,7 @@ t_list* recibir_paquete(int socket_cliente) {
 	int tamanio;
 
 	buffer = recibir_buffer(&size, socket_cliente);
-	while(desplazamiento < size)
-	{
+	while(desplazamiento < size){
 		memcpy(&tamanio, buffer + desplazamiento, sizeof(int));
 		desplazamiento+=sizeof(int);
 		char* valor = malloc(tamanio);
