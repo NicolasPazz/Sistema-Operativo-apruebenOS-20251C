@@ -3,23 +3,23 @@
 #include "sockets.h"
 
 typedef struct {
-    uint32_t pagina; //pagina y frame no eran lo mismo?
-    uint32_t frame;
-    uint64_t tiempo_uso;
-    uint32_t orden_fifo;
+    int pagina; //pagina y frame no eran lo mismo?
+    int frame;
+    int tiempo_uso;
+    int orden_fifo;
     bool valido;
 } entrada_tlb_t;
 
 //extern t_cache_paginas* cache;
 extern t_list* tlb;
-extern uint32_t orden_fifo;
+extern int orden_fifo;
 
 void inicializar_mmu(void);
-uint32_t traducir_direccion(uint32_t direccion_logica, uint32_t* desplazamiento);
-bool tlb_buscar(uint32_t pagina, uint32_t* frame);
-void tlb_insertar(uint32_t pagina, uint32_t frame);
+int traducir_direccion(int direccion_logica, int* desplazamiento);
+bool tlb_buscar(int pagina, int* frame);
+void tlb_insertar(int pagina, int frame);
 bool tlb_habilitada(void);
-uint64_t timestamp_actual(void);
+int timestamp_actual(void);
 int seleccionar_victima_tlb(void);
 
 

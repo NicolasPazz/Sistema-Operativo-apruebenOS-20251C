@@ -2,15 +2,16 @@
 #include "../headers/init.h"
 #include "../headers/mmu.h"
 #include "../headers/cache.h"
+#include "../../utils/headers/sockets.h"
 
 void func_noop() {
     sleep(1000); // de donde sacamos el tiempo de ciclo de instruccion
 }
 
 void func_write(char* direccion_logica_str, char* datos) {
-    uint32_t desplazamiento = 0;
-    uint32_t direccion_logica = atoi(direccion_logica_str);
-    uint32_t frame = traducir_direccion(direccion_logica, &desplazamiento);
+    int desplazamiento = 0;
+    int direccion_logica = atoi(direccion_logica_str);
+    int frame = traducir_direccion(direccion_logica, &desplazamiento);
     log_info(cpu_log, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %s", pid_ejecutando, frame, datos); // en el valor de direccion fisica habia otra cosa en el log
     if (cache_habilitada() && (buscar_pagina_en_cache(frame) != -1)){
         cache_modificar(frame, datos);
@@ -21,7 +22,9 @@ void func_write(char* direccion_logica_str, char* datos) {
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
 
-        uint32_t pagina = recibir_entero(fd_memoria);     // falta recibir_entero
+        int pagina;
+        recibir_entero(fd_memoria, &pagina);     // falta recibir_entero
+
         cache_escribir(pagina, datos);      
     } else {
         t_paquete* paquete = crear_paquete_op(WRITE_OP);
@@ -36,9 +39,9 @@ void func_write(char* direccion_logica_str, char* datos) {
 
 
 void func_read(char* direccion, char* tamanio) { // ver que deberia hacer tamaño
-    uint32_t desplazamiento = 0;
-    uint32_t direccion_logica = atoi(direccion);
-    uint32_t frame = traducir_direccion(direccion_logica, &desplazamiento);
+    int desplazamiento = 0;
+    int direccion_logica = atoi(direccion);
+    int frame = traducir_direccion(direccion_logica, &desplazamiento);
     log_info(cpu_log,"Pid: %d - Acción: Leer - Dirección Física: %d - Valor: FALTANTE", pid_ejecutando, frame); // FALTA LOS DATOS PARA EL LOG
     t_paquete *paquete = crear_paquete_op(READ_OP); 
     agregar_entero_a_paquete(paquete,frame);

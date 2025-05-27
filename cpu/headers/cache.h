@@ -29,7 +29,7 @@ char* acceder_a_pagina_en_cache(int numero_pagina);
 void desalojar_proceso_cache();
 void liberar_cache();
 bool cache_habilitada();
-void cache_modificar(uint32_t frame, char* datos);
-void cache_escribir(uint32_t frame, char* datos);
+void cache_modificar(int frame, char* datos);
+void cache_escribir(int frame, char* datos);
 
 #endif

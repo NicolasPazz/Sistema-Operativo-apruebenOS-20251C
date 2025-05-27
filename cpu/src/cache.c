@@ -138,7 +138,7 @@ void liberar_cache(){
     }
 }
 
-void cache_modificar(uint32_t frame, char* datos){
+void cache_modificar(int frame, char* datos){
     if (cache == NULL){
         log_debug(cpu_log,"la cache ya estaba liberada.");
         return;
@@ -156,7 +156,7 @@ void cache_modificar(uint32_t frame, char* datos){
     cache->entradas[nro_pagina_en_cache].modificado = true;
 }
 
-void cache_escribir(uint32_t frame, char* datos){
+void cache_escribir(int frame, char* datos){
     if (cache == NULL){
         log_debug(cpu_log,"la cache ya estaba liberada.");
         

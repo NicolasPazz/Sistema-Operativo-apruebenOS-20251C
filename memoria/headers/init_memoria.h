@@ -22,14 +22,14 @@
 #include "../../utils/headers/utils.h"
 
 typedef struct {
-    uint32_t PUERTO_ESCUCHA;
-    uint32_t TAM_MEMORIA;
-    uint32_t TAM_PAGINA;
-    uint32_t ENTRADAS_POR_TABLA;
-    uint32_t CANTIDAD_NIVELES;
-    uint32_t RETARDO_MEMORIA;
+    int PUERTO_ESCUCHA;
+    int TAM_MEMORIA;
+    int TAM_PAGINA;
+    int ENTRADAS_POR_TABLA;
+    int CANTIDAD_NIVELES;
+    int RETARDO_MEMORIA;
     char* PATH_SWAPFILE;
-    uint32_t RETARDO_SWAP;
+    int RETARDO_SWAP;
     char* LOG_LEVEL;
     char* DUMP_PATH;
     //bool FIFO; !ojo x ahi nos sirve para identificar el alg de reemplazo
@@ -38,9 +38,9 @@ typedef struct {
 
 #define MODULENAME "MEMORIA"
 
-uint8_t init(void);                 // inicializa loger, cfg, y semaforos
-uint8_t cargar_configuracion(char* path); // carga cfg en strut cfg
-//uint8_t cargar_memoria(void);       // Init de segmentos_libres -- por ahora no necesito nada similar
+int init(void);                 // inicializa loger, cfg, y semaforos
+int cargar_configuracion(char* path); // carga cfg en strut cfg
+//int cargar_memoria(void);       // Init de segmentos_libres -- por ahora no necesito nada similar
 
 void iniciar_logger_memoria(void);
 void cerrar_programa(void);

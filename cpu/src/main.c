@@ -2,6 +2,7 @@
 #include "../headers/init.h"
 #include "../headers/cicloDeInstruccion.h"
 #include "../headers/mmu.h"
+
 pthread_t hilo_dispatch, hilo_interrupt, hilo_memoria;
 
 int main(int argc, char* argv[]) {
@@ -9,8 +10,8 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "[CPU] Uso: %s <ID_CPU>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
+    int numero_cpu = atoi(argv[1]);
 
-    uint32_t numero_cpu = atoi(argv[1]);
     leer_config_cpu();
     iniciar_logger_cpu();
     inicializar_mmu();
@@ -18,10 +19,10 @@ int main(int argc, char* argv[]) {
     log_debug(cpu_log, "[CPU %i] Iniciando proceso CPU", numero_cpu);
 
     conectar_kernel_dispatch();
-    send(fd_kernel_dispatch, &numero_cpu, sizeof(uint32_t), 0);
+    send(fd_kernel_dispatch, &numero_cpu, sizeof(int), 0);
 
     conectar_kernel_interrupt();
-    send(fd_kernel_interrupt, &numero_cpu, sizeof(uint32_t), 0);
+    send(fd_kernel_interrupt, &numero_cpu, sizeof(int), 0);
 
     conectar_cpu_memoria();
 
@@ -32,7 +33,7 @@ int main(int argc, char* argv[]) {
     pthread_t atiende_respuestas_kernel_interrupt;
     pthread_create(&atiende_respuestas_kernel_interrupt, NULL, (void *) recibir_kernel_interrupt, (void*)& fd_kernel_interrupt);
     pthread_detach(atiende_respuestas_kernel_interrupt);
-//
+
     ejecutar_ciclo_instruccion();
     
     //provisorio para que no finalice
@@ -42,54 +43,27 @@ int main(int argc, char* argv[]) {
     
     terminar_programa();
     return EXIT_SUCCESS;  
-}
-
-// NO UTIL POR EL MOMENTOS
-// void atender_cliente(void* arg) { 
-//     cliente_data_t *data = (cliente_data_t *)arg;
-//     int control_key = 1;
-//     while (control_key) {
-//         int cod_op = recibir_operacion(data->fd);
-//         switch (cod_op) {
-//             case MENSAJE:
-//                 recibir_mensaje(data->fd, data->logger);
-//                 break;
-//             case PAQUETE:
-//                 t_list* lista = recibir_paquete(data->fd);
-//                 list_iterate(lista, (void*)iterator);
-//                 list_destroy(lista);
-//                 break;
-//             case -1:
-//                 log_error(data->logger, "El cliente (%s) se desconecto. Terminando servidor.", data->cliente);
-//                 control_key = 0;
-//                 break;
-//             default:
-//                 log_error(data->logger, "Operacion desconocida de %s", data->cliente);
-//                 break;
-//         }
-//     }
-// }    
+}  
 
 void* recibir_kernel_dispatch(void* arg) {
-    int noFinalizar = 0;
-    while (noFinalizar != -1) {
-        int cod_op = recibir_operacion(fd_kernel_dispatch);
+    while (1) {
+        op_code cod_op = recibir_operacion(fd_kernel_dispatch);
         switch (cod_op) {
             case MENSAJE_OP:
-			    recibir_mensaje(fd_kernel_dispatch, cpu_log);
+			        recibir_mensaje(fd_kernel_dispatch, cpu_log);
 			    break;
             case EXEC_OP:
-                // Ejecutar la instrucción
-                t_list* lista = recibir_2_enteros(fd_kernel_dispatch);
-                pc = (int)(intptr_t) list_get(lista, 0);
-                pid_ejecutando = (int)(intptr_t) list_get(lista, 1);
-                ejecutar_ciclo_instruccion();
+                // Recibir PC y PID
+                    int pc, pid_ejecutando;
+                    recibir_2_enteros(fd_kernel_dispatch, &pc, &pid_ejecutando);
+
+                    ejecutar_ciclo_instruccion();
                 break;
             case -1:
                 log_error(cpu_log, "Desconexion de Kernel (Dispatch)");
                 close(fd_kernel_dispatch);
             default:
-            log_error(cpu_log, "Operacion desconocida de Dispatch: %d", cod_op);
+                log_error(cpu_log, "Operacion desconocida de Dispatch: %d", cod_op);
         }
     }
     return NULL;

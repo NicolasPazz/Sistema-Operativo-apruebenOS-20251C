@@ -12,7 +12,7 @@
  * @param tam_memoria: Tamanio del proceso en memoria
  * 
  */
-void INIT_PROC(char* nombre_archivo, uint16_t tam_memoria);
+void INIT_PROC(char* nombre_archivo, int tam_memoria);
 
 
 /**
@@ -34,7 +34,7 @@ void DUMP_MEMORY(void);
  * Si existia el IO el proceso va a BLOCKED y se lo agrega a la cola de bloqueados por la IO solicitada
  * Si el IO esta libre se lo usa durante el tiempo_a_usar y se le envia el PID que lo esta usando
  */
-void IO(char* nombre_io, uint16_t tiempo_a_usar, t_pcb* pcb_a_io);
+void IO(char* nombre_io, int tiempo_a_usar, t_pcb* pcb_a_io);
 
 /**
  * @brief Bloquea un PCB por un dispositivo IO y lo agrega a la cola de bloqueados
@@ -42,14 +42,14 @@ void IO(char* nombre_io, uint16_t tiempo_a_usar, t_pcb* pcb_a_io);
  * @param pcb: PCB del proceso a bloquear
  * @param tiempo_a_usar: Tiempo en ms que se usará el dispositivo
  */
-void bloquear_pcb_por_io(io* dispositivo, t_pcb* pcb, uint16_t tiempo_a_usar);
+void bloquear_pcb_por_io(io* dispositivo, t_pcb* pcb, int tiempo_a_usar);
 
 /**
  * @brief Procesa la finalización de una operación IO
  * @param dispositivo: Dispositivo IO que terminó su operación
  * @param pid_finalizado: PID del proceso que finalizó la operación IO
  */
-void fin_io(io* dispositivo, uint16_t pid_finalizado);
+void fin_io(io* dispositivo, int pid_finalizado);
 
 /**
  * @brief Finaliza un proceso y libera sus recursos

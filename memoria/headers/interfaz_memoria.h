@@ -19,10 +19,10 @@ void instructions_init();
 void instructions_destroy();
 
 // Carga las instrucciones de un proceso desde un archivo
-t_process_instructions* load_process_instructions(uint32_t pid, char* instructions_file);
+t_process_instructions* load_process_instructions(int pid, char* instructions_file);
 
 // Obtiene una instrucción específica de un proceso
-t_instruccion* get_instruction(uint32_t pid, uint32_t pc);
+t_instruccion* get_instruction(int pid, int pc);
 
 // Convierte una instrucción a string para mostrarla en los logs
 // El parámetro pc se mantiene para fines de logging, pero ya no se usa para determinar el tipo
@@ -33,15 +33,15 @@ void memory_init();
 void memory_destroy();
 
 // Para el checkpoint 2: Devuelve un valor fijo de espacio libre (mock)
-uint32_t get_available_memory();
+int get_available_memory();
 
 // Inicializa un proceso en memoria (mock para checkpoint 2)
-int initialize_process(uint32_t pid, uint32_t size);
+int initialize_process(int pid, int size);
 
 // Finaliza un proceso y libera sus recursos
-void finalize_process(uint32_t pid);
+void finalize_process(int pid);
 
 // Obtiene la información de un proceso
-t_process_info* get_process_info(uint32_t pid);
+t_process_info* get_process_info(int pid);
 
 #endif

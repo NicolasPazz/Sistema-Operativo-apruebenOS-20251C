@@ -13,8 +13,7 @@ extern void* area_swap;
 int main(int argc, char* argv[]) {
 
     iniciar_logger_memoria();
-
-    if (!cargar_configuracion("memoria.config")) {
+    if (!cargar_configuracion("memoria/memoria.config")) {
         log_error(logger, "Error al cargar la configuracion de memoria.");
         cerrar_programa();
         return EXIT_FAILURE;

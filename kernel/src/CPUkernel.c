@@ -1,7 +1,7 @@
 #include "../headers/CPUKernel.h"
 
 // Encuentra la CPU por su fd y devuelve el PID del proceso que está ejecutando
-uint16_t get_pid_from_cpu(int fd, op_code instruccion) {
+int get_pid_from_cpu(int fd, op_code instruccion) {
     pthread_mutex_lock(&mutex_lista_cpus);
 
     // Buscar por fd e instrucción

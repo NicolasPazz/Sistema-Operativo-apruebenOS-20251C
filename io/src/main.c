@@ -24,15 +24,15 @@ int main(int argc, char* argv[]) {
         switch (cop) {
             case IO_OP: {
                 // Recibir y deserializar el PID y tiempo_io
-                uint16_t pid;
-                uint16_t tiempo_io;
+                int pid;
+                int tiempo_io;
     
-                if (recv(fd_kernel_io, &pid, sizeof(uint16_t), 0) <= 0) {
+                if (recv(fd_kernel_io, &pid, sizeof(int), 0) <= 0) {
                     log_error(io_log, "Error al recibir PID desde el Kernel: %s", strerror(errno));
                     break;
                 }
     
-                if (recv(fd_kernel_io, &tiempo_io, sizeof(uint16_t), 0) <= 0) {
+                if (recv(fd_kernel_io, &tiempo_io, sizeof(int), 0) <= 0) {
                     log_error(io_log, "Error al recibir tiempo de IO desde el Kernel: %s", strerror(errno));
                     break;
                 }
@@ -51,8 +51,8 @@ int main(int argc, char* argv[]) {
                     break;
                 }
     
-                uint16_t pid_finalizado = (uint16_t) pedido.pid;
-                if (send(fd_kernel_io, &pid_finalizado, sizeof(uint16_t), 0) <= 0) {
+                int pid_finalizado = (int) pedido.pid;
+                if (send(fd_kernel_io, &pid_finalizado, sizeof(int), 0) <= 0) {
                     log_error(io_log, "Error al enviar PID finalizado al Kernel: %s", strerror(errno));
                     break;
                 }
@@ -66,31 +66,6 @@ int main(int argc, char* argv[]) {
     }
     return EXIT_SUCCESS;
 }
-
-// void atender_cliente(void* arg) {
-//     cliente_data_t *data = (cliente_data_t *)arg;
-//     int control_key = 1;
-//     while (control_key) {
-//         int cod_op = recibir_operacion(data->fd);
-//         switch (cod_op) {
-//             case MENSAJE_OP:
-//                 recibir_mensaje(data->fd, data->logger);
-//                 break;
-//             case PAQUETE_OP:
-//                 t_list* lista = recibir_paquete(data->fd);
-//                 list_iterate(lista, (void*)iterator);
-//                 list_destroy(lista);
-//                 break;
-//             case -1:
-//                 log_error(data->logger, "El cliente (%s) se desconecto. Terminando servidor.", data->cliente);
-//                 control_key = 0;
-//                 break;
-//             default:
-//                 log_error(data->logger, "Operacion desconocida de %s", data->cliente);
-//                 break;
-//         }
-//     }
-// }
 
 void iterator(char* value) {
     log_debug(io_log, "%s", value);

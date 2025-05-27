@@ -34,7 +34,7 @@ void instructions_destroy() {
 }
 
 // Para el checkpoint 2, cargamos instrucciones desde un archivo
-t_process_instructions* load_process_instructions(uint32_t pid, char* instructions_file) {
+t_process_instructions* load_process_instructions(int pid, char* instructions_file) {
     t_process_instructions* process_inst = malloc(sizeof(t_process_instructions));
     process_inst->pid = pid;
     process_inst->instructions = list_create();
@@ -195,7 +195,7 @@ t_process_instructions* load_process_instructions(uint32_t pid, char* instructio
 }
 
 // Obtiene una instrucción específica para un proceso
-t_instruccion* get_instruction(uint32_t pid, uint32_t pc) {
+t_instruccion* get_instruction(int pid, int pc) {
     if (process_instructions_list == NULL) {
         log_error(logger, "Lista de instrucciones no inicializada");
         return NULL;
@@ -310,11 +310,11 @@ void memory_destroy() {
 }
 
 // Para el checkpoint 2: Devuelve un valor fijo de memoria disponible (mock)
-uint32_t get_available_memory() {
+int get_available_memory() {
     // Requisito para Checkpoint 2: Devuelve un valor fijo de espacio libre (mock)
     // En una implementación real, calcularíamos la memoria disponible basada en las asignaciones actuales
     // Para simplificar, asumimos que la mitad de la memoria siempre está disponible
-    uint32_t memoria_disponible = cfg->TAM_MEMORIA / 2;
+    int memoria_disponible = cfg->TAM_MEMORIA / 2;
     
     log_debug(logger, "Espacio disponible en memoria (mock): %d bytes", memoria_disponible);
     
@@ -322,7 +322,7 @@ uint32_t get_available_memory() {
 }
 
 // Inicializa un proceso en memoria (mock para checkpoint 2)
-int initialize_process(uint32_t pid, uint32_t size) {
+int initialize_process(int pid, int size) {
     // Verificar si el proceso ya existe
     for (int i = 0; i < list_size(processes_in_memory); i++) {
         t_process_info* process = list_get(processes_in_memory, i);
@@ -359,7 +359,7 @@ int initialize_process(uint32_t pid, uint32_t size) {
 }
 
 // Finaliza un proceso y libera sus recursos
-void finalize_process(uint32_t pid) {
+void finalize_process(int pid) {
     if (processes_in_memory == NULL) {
         log_error(logger, "Lista de procesos no inicializada");
         return;
@@ -407,7 +407,7 @@ void finalize_process(uint32_t pid) {
 }
 
 // Obtiene la información de un proceso
-t_process_info* get_process_info(uint32_t pid) {
+t_process_info* get_process_info(int pid) {
     if (processes_in_memory == NULL) {
         return NULL;
     }
