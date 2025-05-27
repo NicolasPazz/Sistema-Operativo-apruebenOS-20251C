@@ -1,5 +1,6 @@
 #include "../headers/mock.h"
 #include "../../utils/headers/utils.h"
+#include "../../utils/headers/sockets.h"
 
 /////////////////////////////// Funcionalidades ///////////////////////////////
 bool INIT_PROC_OP_mock(int cliente_socket) {
@@ -18,6 +19,18 @@ bool INIT_PROC_OP_mock(int cliente_socket) {
     printf("Ruta de instrucciones: ");
     scanf(" %[^\n]", instrucciones_path);  // Lee línea completa con espacios
     if (!send_string(cliente_socket, instrucciones_path)) return false;
+
+    t_respuesta_memoria respuesta;
+    if (recv(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0) <= 0) {
+        log_error(mock_log, "No se pudo recibir la respuesta del módulo.");
+        return false;
+    }
+
+    if (respuesta == OK) {
+        log_info(mock_log, "Proceso inicializado correctamente.");
+    } else {
+        log_warning(mock_log, "Error al inicializar el proceso.");
+    }
 
     return true;
 }
