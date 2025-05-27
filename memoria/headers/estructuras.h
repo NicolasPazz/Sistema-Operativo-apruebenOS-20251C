@@ -9,22 +9,22 @@
 
 // Estructura para almacenar el conjunto de instrucciones de un proceso
 typedef struct {
-    uint32_t pid;
+    int pid;
     t_list* instructions;  // Lista de t_extended_instruccion*
 } t_process_instructions;
 
 // Estructura para representar la información de un proceso en memoria
 typedef struct {
-    uint32_t pid;
-    uint32_t size;
+    int pid;
+    int size;
     bool is_active;
     // Métricas por proceso
-    uint32_t page_table_accesses;
-    uint32_t instructions_requested;
-    uint32_t swap_writes;
-    uint32_t memory_loads;
-    uint32_t memory_reads;
-    uint32_t memory_writes;
+    int page_table_accesses;
+    int instructions_requested;
+    int swap_writes;
+    int memory_loads;
+    int memory_reads;
+    int memory_writes;
 } t_process_info;
 
 #endif

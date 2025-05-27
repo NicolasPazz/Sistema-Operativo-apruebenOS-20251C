@@ -13,7 +13,7 @@
  * @param cant_tiempo Tiempo en ms que se usará el dispositivo
  * @param pcb_a_io PCB del proceso que solicita la IO
  */
-void procesar_IO_from_CPU(char* nombre_IO, uint16_t cant_tiempo, t_pcb* pcb_a_io);
+void procesar_IO_from_CPU(char* nombre_IO, int cant_tiempo, t_pcb* pcb_a_io);
 
 /**
  * @brief Recibe los datos de una solicitud IO desde una CPU
@@ -24,6 +24,6 @@ void procesar_IO_from_CPU(char* nombre_IO, uint16_t cant_tiempo, t_pcb* pcb_a_io
  * @return true Si se recibieron los datos correctamente
  * @return false Si hubo un error al recibir los datos
  */
-bool recv_IO_from_CPU(int fd, char** nombre_IO, uint16_t* cant_tiempo);
+bool recv_IO_from_CPU(int fd, char** nombre_IO, int* cant_tiempo);
 
 #endif /* IOKERNEL_H_ */

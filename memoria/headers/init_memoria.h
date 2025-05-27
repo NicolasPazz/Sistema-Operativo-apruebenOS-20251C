@@ -22,14 +22,14 @@
 #include "../../utils/headers/utils.h"
 
 typedef struct {
-    uint32_t PUERTO_ESCUCHA;
-    uint32_t TAM_MEMORIA;
-    uint32_t TAM_PAGINA;
-    uint32_t ENTRADAS_POR_TABLA;
-    uint32_t CANTIDAD_NIVELES;
-    uint32_t RETARDO_MEMORIA;
+    int PUERTO_ESCUCHA;
+    int TAM_MEMORIA;
+    int TAM_PAGINA;
+    int ENTRADAS_POR_TABLA;
+    int CANTIDAD_NIVELES;
+    int RETARDO_MEMORIA;
     char* PATH_SWAPFILE;
-    uint32_t RETARDO_SWAP;
+    int RETARDO_SWAP;
     char* LOG_LEVEL;
     char* DUMP_PATH;
     //bool FIFO; !ojo x ahi nos sirve para identificar el alg de reemplazo

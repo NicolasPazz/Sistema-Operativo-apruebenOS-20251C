@@ -10,7 +10,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    uint32_t numero_cpu = atoi(argv[1]);
+    int numero_cpu = atoi(argv[1]);
     leer_config_cpu();
     iniciar_logger_cpu();
     inicializar_mmu();
@@ -18,10 +18,10 @@ int main(int argc, char* argv[]) {
     log_debug(cpu_log, "[CPU %i] Iniciando proceso CPU", numero_cpu);
 
     conectar_kernel_dispatch();
-    send(fd_kernel_dispatch, &numero_cpu, sizeof(uint32_t), 0);
+    send(fd_kernel_dispatch, &numero_cpu, sizeof(int), 0);
 
     conectar_kernel_interrupt();
-    send(fd_kernel_interrupt, &numero_cpu, sizeof(uint32_t), 0);
+    send(fd_kernel_interrupt, &numero_cpu, sizeof(int), 0);
 
     conectar_cpu_memoria();
 

@@ -5,13 +5,13 @@ extern t_config_memoria* cfg;
 
 extern t_list* tid_pid_lookup;
 //extern frame_swap_t* tabla_frames_swap;
-extern uint32_t global_TUR;
+extern int global_TUR;
 
-static uint32_t static_pid;
-static uint32_t static_tid;
-static uint32_t static_inicio;
-static uint32_t static_nro_pag;
-static uint32_t static_nro_frame;
+static int static_pid;
+static int static_tid;
+static int static_inicio;
+static int static_nro_pag;
+static int static_nro_frame;
 
 extern void* memoria_principal; // solo por un print
 extern void* area_swap;         // solo por un print

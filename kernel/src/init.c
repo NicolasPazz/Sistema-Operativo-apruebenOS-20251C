@@ -256,8 +256,8 @@ void* hilo_servidor_dispatch(void* _) {
             continue;
         }
 
-        uint32_t id_cpu;
-        if (recv(fd_cpu_dispatch, &id_cpu, sizeof(uint32_t), 0) <= 0) {
+        int id_cpu;
+        if (recv(fd_cpu_dispatch, &id_cpu, sizeof(int), 0) <= 0) {
             log_error(kernel_log, "Error al recibir ID de CPU desde Dispatch");
             close(fd_cpu_dispatch);
             continue;
@@ -304,8 +304,8 @@ void* hilo_servidor_interrupt(void* _){
             continue;
         }
 
-        uint32_t id_cpu;
-        if (recv(fd_cpu_interrupt, &id_cpu, sizeof(uint32_t), 0) <= 0) {
+        int id_cpu;
+        if (recv(fd_cpu_interrupt, &id_cpu, sizeof(int), 0) <= 0) {
             log_error(kernel_log, "Error al recibir ID de CPU desde Interrupt");
             close(fd_cpu_interrupt);
             continue;
@@ -426,14 +426,14 @@ void* atender_cpu_dispatch(void* arg) {
 
                 // Recibir el nombre_io y cant_tiempo desde CPU
                 char* nombre_IO = NULL;
-                uint16_t cant_tiempo;
+                int cant_tiempo;
                 if (recv_IO_from_CPU(fd_cpu_dispatch, &nombre_IO, &cant_tiempo)) {
                     log_info(kernel_log, "Se recibió correctamente la IO '%s' desde CPU, tiempo=%d", 
                              nombre_IO, cant_tiempo);
                     
                     // Obtener PID del proceso que está ejecutando esta CPU
                     pthread_mutex_lock(&mutex_lista_cpus);
-                    uint16_t pid = cpu_actual->pid;
+                    int pid = cpu_actual->pid;
                     pthread_mutex_unlock(&mutex_lista_cpus);
                     
                     log_debug(kernel_log, "IO_OP asociado a PID=%d", pid);
@@ -460,7 +460,7 @@ void* atender_cpu_dispatch(void* arg) {
                     log_error(kernel_log, "Error al recibir la IO desde CPU");
                 }
 
-                uint16_t pid_en_cpu = get_pid_from_cpu(fd_cpu_dispatch, IO_OP);
+                int pid_en_cpu = get_pid_from_cpu(fd_cpu_dispatch, IO_OP);
                 log_debug(kernel_log, "IO_OP asociado a PID=%d", pid_en_cpu);
 
                 // Exec Syscall: IO
@@ -474,7 +474,7 @@ void* atender_cpu_dispatch(void* arg) {
 
                 // Obtener PID del proceso que está ejecutando esta CPU
                 pthread_mutex_lock(&mutex_lista_cpus);
-                uint16_t pid = cpu_actual->pid;
+                int pid = cpu_actual->pid;
                 pthread_mutex_unlock(&mutex_lista_cpus);
                 
                 log_debug(kernel_log, "EXIT_OP asociado a PID=%d", pid);
@@ -595,8 +595,8 @@ void* atender_io(void* arg) {
                 log_debug(kernel_log, "IO_FINALIZADA_OP recibido de '%s' (fd=%d)", dispositivo_io->nombre, fd_io);
                 
                 // Recibir el PID del proceso que finalizó
-                uint16_t pid_finalizado;
-                if (recv(fd_io, &pid_finalizado, sizeof(uint16_t), 0) <= 0) {
+                int pid_finalizado;
+                if (recv(fd_io, &pid_finalizado, sizeof(int), 0) <= 0) {
                     log_error(kernel_log, "Error al recibir PID finalizado de IO '%s'", dispositivo_io->nombre);
                     continue;
                 }

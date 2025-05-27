@@ -380,7 +380,7 @@ int leer_entero(char *buffer, int * desplazamiento){
 }
 
 t_list* recibir_4_enteros(int socket){
-	uint32_t entero1;
+	int entero1;
 	int entero2;
 	int entero3;
 	int entero4;
@@ -422,7 +422,7 @@ int recibir_entero(int socket)
     return entero;
 }
 t_list* recibir_2_enteros(int socket){
-	uint32_t entero1;
+	int entero1;
 	int entero2;
 	
 

@@ -18,22 +18,22 @@ void inicializar_memoria();
 void inicializar_swap();
 
 // Mock para el checkpoint 2: siempre devuelve suficiente memoria
-bool hay_espacio_disponible(uint32_t tamanio);
+bool hay_espacio_disponible(int tamanio);
 
 // Mock para reservar memoria para un proceso
-void* reservar_memoria(uint32_t pid, uint32_t tamanio);
+void* reservar_memoria(int pid, int tamanio);
 
 // Libera la memoria asignada a un proceso
-void liberar_memoria(uint32_t pid);
+void liberar_memoria(int pid);
 
 // Actualiza las métricas de un proceso
-void actualizar_metricas(uint32_t pid, char* tipo_metrica);
+void actualizar_metricas(int pid, char* tipo_metrica);
 
 // Lee una página de memoria
-void* leer_pagina(uint32_t dir_fisica);
+void* leer_pagina(int dir_fisica);
 
 // Escribe una página en memoria
-void escribir_pagina(uint32_t dir_fisica, void* datos);
+void escribir_pagina(int dir_fisica, void* datos);
 
 // Funciones para manejo de instrucciones de procesos
 t_list* crear_lista_instrucciones();

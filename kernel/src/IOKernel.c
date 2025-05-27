@@ -1,7 +1,7 @@
 #include "../headers/IOKernel.h"
 
 // Procesa la petición de IO recibida de la CPU
-void procesar_IO_from_CPU(char* nombre_IO, uint16_t cant_tiempo, t_pcb* pcb_a_io) {
+void procesar_IO_from_CPU(char* nombre_IO, int cant_tiempo, t_pcb* pcb_a_io) {
     log_debug(kernel_log, "Procesando solicitud de IO '%s' por %d ms para PID=%d", 
               nombre_IO, cant_tiempo, pcb_a_io->PID);
     
@@ -10,7 +10,7 @@ void procesar_IO_from_CPU(char* nombre_IO, uint16_t cant_tiempo, t_pcb* pcb_a_io
 }
 
 // Recibe una solicitud de IO desde una CPU
-bool recv_IO_from_CPU(int fd, char** nombre_IO, uint16_t* cant_tiempo) {
+bool recv_IO_from_CPU(int fd, char** nombre_IO, int* cant_tiempo) {
     op_code cop;
     if (recv(fd, &cop, sizeof(op_code), 0) <= 0 || cop != IO_OP) {
         log_error(kernel_log, "Error al recibir código de operación IO o código incorrecto");
@@ -37,7 +37,7 @@ bool recv_IO_from_CPU(int fd, char** nombre_IO, uint16_t* cant_tiempo) {
     *nombre_IO = malloc(nombre_len);
     memcpy(*nombre_IO, stream + sizeof(size_t), nombre_len);
     
-    memcpy(cant_tiempo, stream + sizeof(size_t) + nombre_len, sizeof(uint16_t));
+    memcpy(cant_tiempo, stream + sizeof(size_t) + nombre_len, sizeof(int));
 
     log_debug(kernel_log, "Recibido IO: nombre='%s', tiempo=%d", *nombre_IO, *cant_tiempo);
     

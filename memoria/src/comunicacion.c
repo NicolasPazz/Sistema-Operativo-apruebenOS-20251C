@@ -127,20 +127,20 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         case WRITE_OP: {
             log_debug(logger, "WRITE_OP recibido");
             // Recibir parámetros (PID, dirección y valor)
-            uint32_t pid, direccion, valor;
-            recv_data(cliente_socket, &pid, sizeof(uint32_t));
-            recv_data(cliente_socket, &direccion, sizeof(uint32_t));
-            recv_data(cliente_socket, &valor, sizeof(uint32_t));
+            int pid, direccion, valor;
+            recv_data(cliente_socket, &pid, sizeof(int));
+            recv_data(cliente_socket, &direccion, sizeof(int));
+            recv_data(cliente_socket, &valor, sizeof(int));
             
             // Para el checkpoint 2, simplemente simulamos la escritura
             log_info(logger, "## PID: %d - Escritura - Dir. Física: %d - Tamaño: %ld", 
-                    pid, direccion, sizeof(uint32_t));
+                    pid, direccion, sizeof(int));
             
             // Actualizar métrica
             actualizar_metricas(pid, "MEMORY_WRITE");
             
             // Simular escritura en memoria
-            *((uint32_t*)leer_pagina(direccion)) = valor;
+            *((int*)leer_pagina(direccion)) = valor;
             
             // Enviar respuesta de éxito
             char* respuesta = "OK";
@@ -151,22 +151,22 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         case READ_OP: {
             log_debug(logger, "READ_OP recibido");
             // Recibir parámetros (PID y dirección)
-            uint32_t pid, direccion;
-            recv_data(cliente_socket, &pid, sizeof(uint32_t));
-            recv_data(cliente_socket, &direccion, sizeof(uint32_t));
+            int pid, direccion;
+            recv_data(cliente_socket, &pid, sizeof(int));
+            recv_data(cliente_socket, &direccion, sizeof(int));
             
             // Para el checkpoint 2, simplemente simulamos la lectura
             log_info(logger, "## PID: %d - Lectura - Dir. Física: %d - Tamaño: %ld", 
-                    pid, direccion, sizeof(uint32_t));
+                    pid, direccion, sizeof(int));
             
             // Actualizar métrica
             actualizar_metricas(pid, "MEMORY_READ");
             
             // Simular lectura de memoria
-            uint32_t valor = *((uint32_t*)leer_pagina(direccion));
+            int valor = *((int*)leer_pagina(direccion));
             
             // Enviar el valor leído
-            send_data(cliente_socket, &valor, sizeof(uint32_t));
+            send_data(cliente_socket, &valor, sizeof(int));
             break;
         }
 
@@ -183,44 +183,44 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         case INIT_PROC_OP: {
             log_debug(logger, "INIT_PROC_OP recibido");
             // Recibir parámetros (PID, tamaño, ruta de instrucciones)
-            uint16_t pid, tamanio;
-            char* instrucciones_path;
-            
-            recv_data(cliente_socket, &pid, sizeof(pid));
-            recv_data(cliente_socket, &tamanio, sizeof(tamanio));
-            recv_string(cliente_socket, &instrucciones_path);
-            
-            log_debug(logger, "Inicialización de proceso solicitada - PID: %d, Tamaño: %d, Archivo: %s",
-                      pid, tamanio, instrucciones_path);
+                int pid, tamanio;
+                char* instrucciones_path;
+                
+                recv_data(cliente_socket, &pid, sizeof(pid));
+                recv_data(cliente_socket, &tamanio, sizeof(tamanio));
+                recv_string(cliente_socket, &instrucciones_path);
+                
+                log_debug(logger, "Inicialización de proceso solicitada - PID: %d, Tamaño: %d, Archivo: %s",
+                        pid, tamanio, instrucciones_path);
             
             // Verificar espacio disponible en memoria
-            uint32_t memoria_disponible = get_available_memory();
-            log_debug(logger, "Memoria disponible: %d bytes", memoria_disponible);
-            
-            int resultado;
-            if (memoria_disponible >= tamanio) {
-                // Hay suficiente memoria disponible
-                log_debug(logger, "Hay suficiente memoria disponible para el proceso (necesita %d bytes, hay %d bytes)",
-                          tamanio, memoria_disponible);
-                // Para el checkpoint 2, siempre aceptamos la inicialización
-                resultado = initialize_process(pid, tamanio);
-            } else {
-                // No hay suficiente memoria disponible
-                log_error(logger, "No hay suficiente memoria para inicializar el proceso (necesita %d bytes, hay %d bytes)",
-                          tamanio, memoria_disponible);
-                resultado = -1;
-            }
+                int memoria_disponible = get_available_memory();
+                log_debug(logger, "Memoria disponible: %d bytes", memoria_disponible);
+                
+                int resultado;
+                if (memoria_disponible >= tamanio) {
+                    // Hay suficiente memoria disponible
+                    log_debug(logger, "Hay suficiente memoria disponible para el proceso (necesita %d bytes, hay %d bytes)",
+                            tamanio, memoria_disponible);
+                    // Para el checkpoint 2, siempre aceptamos la inicialización
+                    resultado = initialize_process(pid, tamanio);
+                } else {
+                    // No hay suficiente memoria disponible
+                    log_error(logger, "No hay suficiente memoria para inicializar el proceso (necesita %d bytes, hay %d bytes)",
+                            tamanio, memoria_disponible);
+                    resultado = -1;
+                }
             
             // Cargar las instrucciones del proceso si se pudo inicializar
-            if (resultado == 0) {
-                load_process_instructions(pid, instrucciones_path);
-            }
-            
-            free(instrucciones_path);
+                if (resultado == 0) {
+                    load_process_instructions(pid, instrucciones_path);
+                }
+                
+                free(instrucciones_path);
             
             // Enviar respuesta
-            t_respuesta_memoria respuesta_enum = (resultado == 0) ? OK : ERROR;
-            send(cliente_socket, &respuesta_enum, sizeof(t_respuesta_memoria), 0);
+                t_respuesta_memoria respuesta_enum = (resultado == 0) ? OK : ERROR;
+                send(cliente_socket, &respuesta_enum, sizeof(t_respuesta_memoria), 0);
 
             break;
         }
@@ -228,8 +228,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         case DUMP_MEMORY_OP: {
             log_debug(logger, "DUMP_MEMORY_OP recibido");
             // Recibir PID
-            uint32_t pid;
-            recv_data(cliente_socket, &pid, sizeof(uint32_t));
+            int pid;
+            recv_data(cliente_socket, &pid, sizeof(int));
             
             // Log obligatorio
             log_info(logger, "## PID: %d - Memory Dump solicitado", pid);
@@ -243,8 +243,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         case EXIT_OP: {
             log_debug(logger, "EXIT_OP recibido");
             // Recibir PID
-            uint32_t pid;
-            recv_data(cliente_socket, &pid, sizeof(uint32_t));
+            int pid;
+            recv_data(cliente_socket, &pid, sizeof(int));
             
             log_debug(logger, "Finalización de proceso solicitada - PID: %d", pid);
             
@@ -270,9 +270,9 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         case PEDIR_INSTRUCCION_OP: {
             log_debug(logger, "PEDIR_INSTRUCCION_OP recibido");
             // Recibir PID y PC
-            uint32_t pid, pc;
-            recv_data(cliente_socket, &pid, sizeof(uint32_t));
-            recv_data(cliente_socket, &pc, sizeof(uint32_t));
+            int pid, pc;
+            recv_data(cliente_socket, &pid, sizeof(int));
+            recv_data(cliente_socket, &pc, sizeof(int));
             
             log_debug(logger, "Instrucción solicitada - PID: %d, PC: %d", pid, pc);
             
@@ -342,14 +342,14 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         case PEDIR_CONFIG_CPU_OP: {
             log_debug(logger, "PEDIR_CONFIG_CPU_OP recibido");
             // Enviar la configuración necesaria para la CPU
-            uint32_t entradas_por_tabla = cfg->ENTRADAS_POR_TABLA;
-            uint32_t tam_pagina = cfg->TAM_PAGINA;
-            uint32_t cantidad_niveles = cfg->CANTIDAD_NIVELES;
+            int entradas_por_tabla = cfg->ENTRADAS_POR_TABLA;
+            int tam_pagina = cfg->TAM_PAGINA;
+            int cantidad_niveles = cfg->CANTIDAD_NIVELES;
             
             // Enviamos los valores
-            send_data(cliente_socket, &entradas_por_tabla, sizeof(uint32_t));
-            send_data(cliente_socket, &tam_pagina, sizeof(uint32_t));
-            send_data(cliente_socket, &cantidad_niveles, sizeof(uint32_t));
+            send_data(cliente_socket, &entradas_por_tabla, sizeof(int));
+            send_data(cliente_socket, &tam_pagina, sizeof(int));
+            send_data(cliente_socket, &cantidad_niveles, sizeof(int));
             
             log_debug(logger, "Configuración enviada a CPU: Entradas por tabla: %d, Tamaño página: %d, Niveles: %d",
                       entradas_por_tabla, tam_pagina, cantidad_niveles);

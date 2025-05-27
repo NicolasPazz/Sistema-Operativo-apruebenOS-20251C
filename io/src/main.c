@@ -24,15 +24,15 @@ int main(int argc, char* argv[]) {
         switch (cop) {
             case IO_OP: {
                 // Recibir y deserializar el PID y tiempo_io
-                uint16_t pid;
-                uint16_t tiempo_io;
+                int pid;
+                int tiempo_io;
     
-                if (recv(fd_kernel_io, &pid, sizeof(uint16_t), 0) <= 0) {
+                if (recv(fd_kernel_io, &pid, sizeof(int), 0) <= 0) {
                     log_error(io_log, "Error al recibir PID desde el Kernel: %s", strerror(errno));
                     break;
                 }
     
-                if (recv(fd_kernel_io, &tiempo_io, sizeof(uint16_t), 0) <= 0) {
+                if (recv(fd_kernel_io, &tiempo_io, sizeof(int), 0) <= 0) {
                     log_error(io_log, "Error al recibir tiempo de IO desde el Kernel: %s", strerror(errno));
                     break;
                 }
@@ -51,8 +51,8 @@ int main(int argc, char* argv[]) {
                     break;
                 }
     
-                uint16_t pid_finalizado = (uint16_t) pedido.pid;
-                if (send(fd_kernel_io, &pid_finalizado, sizeof(uint16_t), 0) <= 0) {
+                int pid_finalizado = (int) pedido.pid;
+                if (send(fd_kernel_io, &pid_finalizado, sizeof(int), 0) <= 0) {
                     log_error(io_log, "Error al enviar PID finalizado al Kernel: %s", strerror(errno));
                     break;
                 }

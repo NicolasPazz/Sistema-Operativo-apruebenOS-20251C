@@ -77,7 +77,7 @@ void iniciar_estados_kernel(void);
 void iniciar_sincronizacion_kernel(void);
 void terminar_kernel(void);
 bool cpu_por_fd_simple(void* ptr, int fd);
-uint16_t get_pid_from_cpu(int fd, op_code instruccion);
+int get_pid_from_cpu(int fd, op_code instruccion);
 void* atender_cpu_dispatch(void* arg);
 void* atender_cpu_interrupt(void* arg);
 void* atender_io(void* arg);

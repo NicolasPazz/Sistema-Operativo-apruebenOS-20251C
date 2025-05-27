@@ -4,7 +4,7 @@
 t_temporal* tiempo_estado_actual;
 
 //////////////////////////////////////////////////////////// INIT PROC ////////////////////////////////////////////////////////////
-void INIT_PROC(char* nombre_archivo, uint16_t tam_memoria) {
+void INIT_PROC(char* nombre_archivo, int tam_memoria) {
     t_pcb* nuevo_pcb = malloc(sizeof(t_pcb));
     if (nuevo_pcb == NULL) {
         log_error(kernel_log, "INIT_PROC: Error al reservar memoria para nuevo PCB");
@@ -71,7 +71,7 @@ void DUMP_MEMORY(){
 
 // Declaraciones de funciones auxiliares
 static bool io_por_nombre_matcher(void* elemento, char* nombre);
-static bool pcb_io_matcher(void* elemento, io* disp, uint16_t pid);
+static bool pcb_io_matcher(void* elemento, io* disp, int pid);
 static bool esperando_mismo_io_matcher(void* elemento, io* disp);
 
 // Variables externas
@@ -108,7 +108,7 @@ bool esta_libre_io(io* dispositivo) {
 }
 
 // Agrega un PCB a la lista de bloqueados por un dispositivo IO
-void bloquear_pcb_por_io(io* dispositivo, t_pcb* pcb, uint16_t tiempo_a_usar) {
+void bloquear_pcb_por_io(io* dispositivo, t_pcb* pcb, int tiempo_a_usar) {
     // Crear un registro de PCB bloqueado por IO
     t_pcb_io* pcb_io = malloc(sizeof(t_pcb_io));
     if (!pcb_io) {
@@ -129,7 +129,7 @@ void bloquear_pcb_por_io(io* dispositivo, t_pcb* pcb, uint16_t tiempo_a_usar) {
 }
 
 // Envía un proceso a un dispositivo IO
-void enviar_io(io* dispositivo, t_pcb* pcb, uint16_t tiempo_a_usar) {
+void enviar_io(io* dispositivo, t_pcb* pcb, int tiempo_a_usar) {
     // Marcar el dispositivo como ocupado
     dispositivo->estado = IO_OCUPADO;
     
@@ -147,8 +147,8 @@ void enviar_io(io* dispositivo, t_pcb* pcb, uint16_t tiempo_a_usar) {
     paquete->codigo_operacion = IO_OP;
     
     // Agregar PID y tiempo al paquete
-    agregar_a_paquete(paquete, &pcb->PID, sizeof(uint16_t));
-    agregar_a_paquete(paquete, &tiempo_a_usar, sizeof(uint16_t));
+    agregar_a_paquete(paquete, &pcb->PID, sizeof(int));
+    agregar_a_paquete(paquete, &tiempo_a_usar, sizeof(int));
     
     // Enviar paquete
     enviar_paquete(paquete, dispositivo->fd);
@@ -158,7 +158,7 @@ void enviar_io(io* dispositivo, t_pcb* pcb, uint16_t tiempo_a_usar) {
 }
 
 // Procesa una solicitud de entrada/salida
-void IO(char* nombre_io, uint16_t tiempo_a_usar, t_pcb* pcb_a_io) {
+void IO(char* nombre_io, int tiempo_a_usar, t_pcb* pcb_a_io) {
     if (!pcb_a_io) {
         log_error(kernel_log, "IO: PCB nulo");
         return;
@@ -191,7 +191,7 @@ void IO(char* nombre_io, uint16_t tiempo_a_usar, t_pcb* pcb_a_io) {
 }
 
 // Procesa la finalización de una operación IO
-void fin_io(io* dispositivo, uint16_t pid_finalizado) {
+void fin_io(io* dispositivo, int pid_finalizado) {
     t_pcb_io* pcb_io = NULL;
     
     // Buscar manualmente el PCB bloqueado por esta IO con este PID
@@ -244,7 +244,7 @@ bool io_por_nombre_matcher(void* elemento, char* nombre) {
     return strcmp(dispositivo->nombre, nombre) == 0;
 }
 
-bool pcb_io_matcher(void* elemento, io* disp, uint16_t pid) {
+bool pcb_io_matcher(void* elemento, io* disp, int pid) {
     t_pcb_io* pcb_io = (t_pcb_io*) elemento;
     return pcb_io->io == disp && pcb_io->pcb->PID == pid;
 }
@@ -265,7 +265,7 @@ void EXIT(t_pcb* pcb_a_finalizar) {
     // Notificar a Memoria
     int cod_op = FINALIZAR_PROC_OP;
     if (send(fd_memoria, &cod_op, sizeof(int), 0) <= 0 ||
-        send(fd_memoria, &pcb_a_finalizar->PID, sizeof(uint16_t), 0) <= 0) {
+        send(fd_memoria, &pcb_a_finalizar->PID, sizeof(int), 0) <= 0) {
         log_error(kernel_log, "EXIT: Error al enviar FINALIZAR_PROC_OP a Memoria para PID %d", pcb_a_finalizar->PID);
         terminar_kernel();
         exit(EXIT_FAILURE);

@@ -65,14 +65,14 @@ void inicializar_swap() {
 }
 
 // Mock para el checkpoint 2: siempre devuelve suficiente memoria disponible
-bool hay_espacio_disponible(uint32_t tamanio) {
+bool hay_espacio_disponible(int tamanio) {
     // Para el checkpoint 2, siempre devolvemos true
     log_debug(logger, "Verificando espacio disponible (MOCK): %d bytes solicitados", tamanio);
     return true;
 }
 
 // Mock para reservar memoria para un proceso
-void* reservar_memoria(uint32_t pid, uint32_t tamanio) {
+void* reservar_memoria(int pid, int tamanio) {
     // Para el checkpoint 2, no hacemos ninguna asignación real, solo devolvemos
     // la dirección base de la memoria principal como si la hubiéramos asignado
     log_debug(logger, "Reservando memoria para PID %d: %d bytes (MOCK)", pid, tamanio);
@@ -80,13 +80,13 @@ void* reservar_memoria(uint32_t pid, uint32_t tamanio) {
 }
 
 // Libera la memoria asignada a un proceso
-void liberar_memoria(uint32_t pid) {
+void liberar_memoria(int pid) {
     // Para el checkpoint 2, no hacemos nada realmente
     log_debug(logger, "Liberando memoria del PID %d (MOCK)", pid);
 }
 
 // Actualiza las métricas de un proceso
-void actualizar_metricas(uint32_t pid, char* tipo_metrica) {
+void actualizar_metricas(int pid, char* tipo_metrica) {
     t_process_info* process = NULL;
     
     // Buscar el proceso en la lista de procesos activos
@@ -122,7 +122,7 @@ void actualizar_metricas(uint32_t pid, char* tipo_metrica) {
 }
 
 // Lee una página de memoria (mock para el checkpoint 2)
-void* leer_pagina(uint32_t dir_fisica) {
+void* leer_pagina(int dir_fisica) {
     // Para el checkpoint 2, simplemente devolvemos la dirección en memoria principal
     log_debug(logger, "Leyendo página desde dirección física %d (MOCK)", dir_fisica);
     
@@ -130,19 +130,19 @@ void* leer_pagina(uint32_t dir_fisica) {
     usleep(cfg->RETARDO_MEMORIA * 1000); // Convertir a microsegundos
     
     // Calcular la dirección real dentro de la memoria principal
-    uint32_t offset = dir_fisica % cfg->TAM_MEMORIA;
+    int offset = dir_fisica % cfg->TAM_MEMORIA;
     return memoria_principal + offset;
 }
 
 // Escribe una página en memoria (mock para el checkpoint 2)
-void escribir_pagina(uint32_t dir_fisica, void* datos) {
+void escribir_pagina(int dir_fisica, void* datos) {
     log_debug(logger, "Escribiendo página en dirección física %d (MOCK)", dir_fisica);
     
     // Simular retardo de memoria
     usleep(cfg->RETARDO_MEMORIA * 1000); // Convertir a microsegundos
     
     // Calcular la dirección real dentro de la memoria principal
-    uint32_t offset = dir_fisica % cfg->TAM_MEMORIA;
+    int offset = dir_fisica % cfg->TAM_MEMORIA;
     
     // Copiar los datos a la memoria principal (asumimos que el tamaño es una página)
     memcpy(memoria_principal + offset, datos, cfg->TAM_PAGINA);

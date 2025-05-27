@@ -8,15 +8,15 @@ t_config_memoria* cfg;
 // segmentacion
 t_list* segmentos_libres;
 t_list* segmentos_usados;
-uint32_t memoria_disponible;
-//segmento_t* (*proximo_hueco)(uint32_t);
+int memoria_disponible;
+//segmento_t* (*proximo_hueco)(int);
 
 // paginacion
 //frame_t* tabla_frames;
 //frame_swap_t* tabla_frames_swap;
 t_list* tid_pid_lookup;
-uint32_t espacio_disponible_swap;
-uint32_t global_TUR; // evil
+int espacio_disponible_swap;
+int global_TUR; // evil
 
 void* area_swap;
 

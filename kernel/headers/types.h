@@ -7,15 +7,15 @@
 
     ///// PCB
 typedef struct PCB {
-    uint16_t PID;
-    uint16_t PC;
-    uint16_t ME[7];
-    uint16_t MT[7];
-    uint16_t Estado;
+    int PID;
+    int PC;
+    int ME[7];
+    int MT[7];
+    int Estado;
     double tiempo_inicio_exec;
     double estimacion_rafaga;
     char* path;
-    uint16_t tamanio_memoria;
+    int tamanio_memoria;
 } t_pcb;
 
 typedef enum Estados {
@@ -63,7 +63,7 @@ typedef struct {
 typedef struct PCB_IO{
     t_pcb* pcb;
     io* io;
-    uint16_t tiempo_a_usar;  // Tiempo en ms que se va a usar el dispositivo IO
+    int tiempo_a_usar;  // Tiempo en ms que se va a usar el dispositivo IO
 } t_pcb_io;
 
 #endif /* TYPES_H */
