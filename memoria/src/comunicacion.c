@@ -75,7 +75,7 @@ void procesar_conexion(void* void_args) {
             break;
 
         case HANDSHAKE_MEMORIA_CPU:
-            log_debug(logger, "HANDSHAKE_MEMORIA_CPU: Se conecto una CPU (fd=%d)", cliente_socket);
+            log_debug(logger, "## CPU Conectado - FD del socket: %d", cliente_socket);
             fd_cpu = cliente_socket;
             break;
 
@@ -107,11 +107,13 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
     switch (cop) {
         case MENSAJE_OP:
             log_debug(logger, "MENSAJE_OP recibido");
-            // Simple mensaje de prueba
-            char* mensaje;
-            recv_string(cliente_socket, &mensaje);
-            log_debug(logger, "Mensaje recibido: %s", mensaje);
-            free(mensaje);
+
+            // Recibir un Mensaje char* y loguearlo
+                char* mensaje;
+                recv_string(cliente_socket, &mensaje);
+                log_debug(logger, "Mensaje recibido: %s", mensaje);
+
+                free(mensaje);
             break;
 
         case PAQUETE_OP:
@@ -126,47 +128,47 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
 
         case WRITE_OP: {
             log_debug(logger, "WRITE_OP recibido");
+
             // Recibir parámetros (PID, dirección y valor)
-            int pid, direccion, valor;
-            recv_data(cliente_socket, &pid, sizeof(int));
-            recv_data(cliente_socket, &direccion, sizeof(int));
-            recv_data(cliente_socket, &valor, sizeof(int));
+                int pid, direccion, valor;
+                recv_data(cliente_socket, &pid, sizeof(int));
+                recv_data(cliente_socket, &direccion, sizeof(int));
+                recv_data(cliente_socket, &valor, sizeof(int));
             
-            // Para el checkpoint 2, simplemente simulamos la escritura
-            log_info(logger, "## PID: %d - Escritura - Dir. Física: %d - Tamaño: %ld", 
-                    pid, direccion, sizeof(int));
+            // Para el Check 2, simulamos la escritura
+                log_info(logger, "## PID: %d - Escritura - Dir. Física: %d - Tamaño: %ld", pid, direccion, sizeof(int));
             
             // Actualizar métrica
-            actualizar_metricas(pid, "MEMORY_WRITE");
+                actualizar_metricas(pid, "MEMORY_WRITE");
             
             // Simular escritura en memoria
-            *((int*)leer_pagina(direccion)) = valor;
+                *((int*)leer_pagina(direccion)) = valor;
             
             // Enviar respuesta de éxito
-            char* respuesta = "OK";
-            send_string(cliente_socket, respuesta);
+                char* respuesta = "OK";
+                send_string(cliente_socket, respuesta);
             break;
         }
 
         case READ_OP: {
             log_debug(logger, "READ_OP recibido");
+
             // Recibir parámetros (PID y dirección)
-            int pid, direccion;
-            recv_data(cliente_socket, &pid, sizeof(int));
-            recv_data(cliente_socket, &direccion, sizeof(int));
+                int pid, direccion;
+                recv_data(cliente_socket, &pid, sizeof(int));
+                recv_data(cliente_socket, &direccion, sizeof(int));
             
-            // Para el checkpoint 2, simplemente simulamos la lectura
-            log_info(logger, "## PID: %d - Lectura - Dir. Física: %d - Tamaño: %ld", 
-                    pid, direccion, sizeof(int));
+            // Para el checkpoint 2, simulamos la lectura
+                log_info(logger, "## PID: %d - Lectura - Dir. Física: %d - Tamaño: %ld", pid, direccion, sizeof(int));
             
             // Actualizar métrica
-            actualizar_metricas(pid, "MEMORY_READ");
+                actualizar_metricas(pid, "MEMORY_READ");
             
             // Simular lectura de memoria
-            int valor = *((int*)leer_pagina(direccion));
+                int valor = *((int*)leer_pagina(direccion));
             
             // Enviar el valor leído
-            send_data(cliente_socket, &valor, sizeof(int));
+                send_data(cliente_socket, &valor, sizeof(int));
             break;
         }
 
@@ -182,6 +184,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
 
         case INIT_PROC_OP: {
             log_debug(logger, "INIT_PROC_OP recibido");
+
             // Recibir parámetros (PID, tamaño, ruta de instrucciones)
                 int pid, tamanio;
                 char* instrucciones_path;
@@ -190,8 +193,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 recv_data(cliente_socket, &tamanio, sizeof(tamanio));
                 recv_string(cliente_socket, &instrucciones_path);
                 
-                log_debug(logger, "Inicialización de proceso solicitada - PID: %d, Tamaño: %d, Archivo: %s",
-                        pid, tamanio, instrucciones_path);
+                log_debug(logger, "Inicialización de proceso solicitada - PID: %d, Tamaño: %d, Archivo: %s", pid, tamanio, instrucciones_path);
             
             // Verificar espacio disponible en memoria
                 int memoria_disponible = get_available_memory();
@@ -215,45 +217,45 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 if (resultado == 0) {
                     load_process_instructions(pid, instrucciones_path);
                 }
-                
                 free(instrucciones_path);
             
             // Enviar respuesta
                 t_respuesta_memoria respuesta_enum = (resultado == 0) ? OK : ERROR;
                 send(cliente_socket, &respuesta_enum, sizeof(t_respuesta_memoria), 0);
-
             break;
         }
 
         case DUMP_MEMORY_OP: {
             log_debug(logger, "DUMP_MEMORY_OP recibido");
+
             // Recibir PID
-            int pid;
-            recv_data(cliente_socket, &pid, sizeof(int));
+                int pid;
+                recv_data(cliente_socket, &pid, sizeof(int));
             
             // Log obligatorio
-            log_info(logger, "## PID: %d - Memory Dump solicitado", pid);
+                log_info(logger, "## PID: %d - Memory Dump solicitado", pid);
             
-            // Para el checkpoint 2, simplemente enviamos una respuesta OK
-            char* respuesta = "OK";
-            send_string(cliente_socket, respuesta);
+            // Para el checkpoint 2, enviamos una respuesta OK
+                char* respuesta = "OK";
+                send_string(cliente_socket, respuesta);
             break;
         }
 
         case EXIT_OP: {
             log_debug(logger, "EXIT_OP recibido");
+
             // Recibir PID
-            int pid;
-            recv_data(cliente_socket, &pid, sizeof(int));
+                int pid;
+                recv_data(cliente_socket, &pid, sizeof(int));
             
-            log_debug(logger, "Finalización de proceso solicitada - PID: %d", pid);
+                log_debug(logger, "Finalización de proceso solicitada - PID: %d", pid);
             
             // Finalizar el proceso
-            finalize_process(pid);
+                finalize_process(pid);
             
             // Enviar respuesta
-            char* respuesta = "OK";
-            send_string(cliente_socket, respuesta);
+                char* respuesta = "OK";
+                send_string(cliente_socket, respuesta);
             break;
         }
 
@@ -271,51 +273,51 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             log_debug(logger, "PEDIR_INSTRUCCION_OP recibido");
 
             // Recibir PID y PC
-            int pid, pc;
-            recv_data(cliente_socket, &pid, sizeof(int));
-            recv_data(cliente_socket, &pc, sizeof(int));
-            
-            log_debug(logger, "Instrucción solicitada - PID: %d, PC: %d", pid, pc);
+                int pid, pc;
+                recv_data(cliente_socket, &pid, sizeof(int));
+                recv_data(cliente_socket, &pc, sizeof(int));
+                
+                log_debug(logger, "Instrucción solicitada - PID: %d, PC: %d", pid, pc);
             
             // Obtener la instrucción
-            t_instruccion* instruccion = NULL;
-            op_code tipo_op = NOOP_OP;
+                t_instruccion* instruccion = NULL;
+                op_code tipo_op = NOOP_OP;
             
-            // Primero necesitamos obtener el tipo de la instrucción extendida
-            t_process_instructions* process_inst = NULL;
-            for (int i = 0; i < list_size(process_instructions_list); i++) {
-                t_process_instructions* p = list_get(process_instructions_list, i);
-                if (p->pid == pid) {
-                    process_inst = p;
-                    break;
+            // Obtener el tipo de la instrucción extendida
+                t_process_instructions* process_inst = NULL;
+                for (int i = 0; i < list_size(process_instructions_list); i++) {
+                    t_process_instructions* p = list_get(process_instructions_list, i);
+                    if (p->pid == pid) {
+                        process_inst = p;
+                        break;
+                    }
                 }
-            }
-            
-            if (process_inst != NULL && pc < list_size(process_inst->instructions)) {
-                t_extended_instruccion* extended_instr = list_get(process_inst->instructions, pc);
-                tipo_op = extended_instr->tipo;
                 
-                log_debug(logger, "Tipo de instrucción encontrado: %d", tipo_op);
+                if (process_inst != NULL && pc < list_size(process_inst->instructions)) {
+                    t_extended_instruccion* extended_instr = list_get(process_inst->instructions, pc);
+                    tipo_op = extended_instr->tipo;
+                    
+                    log_debug(logger, "Tipo de instrucción encontrado: %d", tipo_op);
+                    
+                    // Instrucción base para enviar al CPU
+                    instruccion = get_instruction(pid, pc);
+                }
                 
-                // Instrucción base para enviar al CPU
-                instruccion = get_instruction(pid, pc);
-            }
-            
-            if (instruccion != NULL) {
-                log_debug(logger, "Instrucción encontrada - Tipo: %d, Params: '%s', '%s', '%s'", 
-                        tipo_op, 
-                        instruccion->parametros1, 
-                        instruccion->parametros2, 
-                        instruccion->parametros3);
+                if (instruccion != NULL) {
+                    log_debug(logger, "Instrucción encontrada - Tipo: %d, Params: '%s', '%s', '%s'", 
+                            tipo_op, 
+                            instruccion->parametros1, 
+                            instruccion->parametros2, 
+                            instruccion->parametros3);
 
-                // Crear paquete con la instrucción
+            // Crear paquete con la instrucción
                 t_paquete* paquete = crear_paquete_op(tipo_op);
 
-                // Agregar los parámetros al paquete
+            // Agregar los parámetros al paquete
                 char* p1 = instruccion->parametros1 ? instruccion->parametros1 : "";
                 char* p2 = instruccion->parametros2 ? instruccion->parametros2 : "";
                 char* p3 = instruccion->parametros3 ? instruccion->parametros3 : "";
-                
+            
                 /*
                 log_info(logger, "Agregando al paquete: [%s] con tamaño %d", p1, strlen(p1) + 1);
                 agregar_a_paquete(paquete, p1, strlen(p1) + 1);
@@ -344,40 +346,41 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 log_info(logger, "[ENVÍO] Tipo de instrucción: %d | Param 1: '%s' | Param 2: '%s' | Param 3: '%s'", 
                         tipo_op, p1, p2, p3);
 
-                // Enviar la instrucción
+            // Enviar la instrucción
                 enviar_paquete(paquete, cliente_socket);
                 eliminar_paquete(paquete);
 
-                // Liberar la instrucción (es una copia creada por get_instruction)
+            // Liberar la instrucción (es una copia creada por get_instruction)
                 /*
                 free(instruccion->parametros1);
                 free(instruccion->parametros2);
                 free(instruccion->parametros3);
                 free(instruccion);*/
-            } else {
-                // Si no se encontró la instrucción, enviamos una instrucción NOOP
+         } else {
+            // Si no se encontró la instrucción, enviamos una instrucción NOOP
                 log_warning(logger, "No se encontró instrucción para PID: %d, PC: %d - Enviando NOOP", pid, pc);
                 t_paquete* paquete = crear_paquete_op(NOOP_OP);
                 enviar_paquete(paquete, cliente_socket);
                 eliminar_paquete(paquete);
-            }
+        }
             break;
         }
 
         case PEDIR_CONFIG_CPU_OP: {
             log_debug(logger, "PEDIR_CONFIG_CPU_OP recibido");
+
             // Enviar la configuración necesaria para la CPU
-            int entradas_por_tabla = cfg->ENTRADAS_POR_TABLA;
-            int tam_pagina = cfg->TAM_PAGINA;
-            int cantidad_niveles = cfg->CANTIDAD_NIVELES;
+                int entradas_por_tabla = cfg->ENTRADAS_POR_TABLA;
+                int tam_pagina = cfg->TAM_PAGINA;
+                int cantidad_niveles = cfg->CANTIDAD_NIVELES;
             
             // Enviamos los valores
-            send_data(cliente_socket, &entradas_por_tabla, sizeof(int));
-            send_data(cliente_socket, &tam_pagina, sizeof(int));
-            send_data(cliente_socket, &cantidad_niveles, sizeof(int));
-            
-            log_debug(logger, "Configuración enviada a CPU: Entradas por tabla: %d, Tamaño página: %d, Niveles: %d",
-                      entradas_por_tabla, tam_pagina, cantidad_niveles);
+                send_data(cliente_socket, &entradas_por_tabla, sizeof(int));
+                send_data(cliente_socket, &tam_pagina, sizeof(int));
+                send_data(cliente_socket, &cantidad_niveles, sizeof(int));
+                
+                log_debug(logger, "Configuración enviada a CPU: Entradas por tabla: %d, Tamaño página: %d, Niveles: %d",
+                        entradas_por_tabla, tam_pagina, cantidad_niveles);
             break;
         }
 
