@@ -57,7 +57,8 @@ typedef enum {
 	WRITE_OP, 
 	READ_OP, 
 	GOTO_OP,
-	PEDIR_PAGINA_OP
+	PEDIR_PAGINA_OP,
+	SOLICITAR_FRAME_PARA_ENTRADAS
 } op_code;
 
 typedef struct {
