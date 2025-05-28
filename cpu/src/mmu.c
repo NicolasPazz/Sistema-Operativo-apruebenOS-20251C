@@ -13,19 +13,18 @@ void inicializar_mmu() {
 }
 
 int traducir_direccion(int direccion_logica, int* desplazamiento) {
-    t_paquete* paquete = crear_paquete_op(PEDIR_CONFIG_CPU_OP); // VER TEMA CASE EN MEMORIA PARA QUE ME MANDEN LAS 4 CONFIG
+    // Pedir configuración a memoria cuando sea necesario
+    t_paquete* paquete = crear_paquete_op(PEDIR_CONFIG_CPU_OP);
     enviar_paquete(paquete, fd_memoria);
     eliminar_paquete(paquete);
 
-    //int cod_op = recibir_operacion(fd_memoria); NO SE USA NUNCA VER QUE ONDA ESTO
-
-    t_list* config_memoria = recibir_4_enteros(fd_memoria); //cambiar para que sean 3 no 4
+    // Recibir configuración de memoria
+    t_list* config_memoria = recibir_4_enteros(fd_memoria);
     int tam_pagina = (int)(uintptr_t)list_get(config_memoria, 1);
     int entradas_por_tabla = (int)(uintptr_t)list_get(config_memoria, 2);
     int cantidad_niveles = (int)(uintptr_t)list_get(config_memoria, 3);
 
     int nro_pagina = direccion_logica / tam_pagina;
-    // falta lo de entrada nivel x
     *desplazamiento = direccion_logica % tam_pagina;
 
     int entradas[cantidad_niveles];
@@ -41,7 +40,7 @@ int traducir_direccion(int direccion_logica, int* desplazamiento) {
         log_info(cpu_log, "PID: %d - TLB MISS - Página: %d", pid_ejecutando, nro_pagina);
 
         // Enviar entradas de página a Memoria
-        paquete = crear_paquete_op(SOLICITAR_FRAME_PARA_ENTRADAS);
+        paquete = crear_paquete_op(PEDIR_PAGINA_OP);
         agregar_a_paquete(paquete, &pid_ejecutando, sizeof(int));
         agregar_a_paquete(paquete, &cantidad_niveles, sizeof(int));
         for (int i = 0; i < cantidad_niveles; i++) {
@@ -58,6 +57,9 @@ int traducir_direccion(int direccion_logica, int* desplazamiento) {
         }
     }
 
+    // Liberar la lista de configuración
+    list_destroy(config_memoria);
+    
     return frame;
 }
 
@@ -119,7 +121,7 @@ int seleccionar_victima_tlb() {
     return victima;
 }
 
-uint64_t timestamp_actual() { // ACA CHATGPTIEE VER DE NUEVO ESTO...
+uint64_t timestamp_actual() {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000); // en milisegundos

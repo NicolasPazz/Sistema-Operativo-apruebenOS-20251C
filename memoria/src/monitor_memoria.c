@@ -9,46 +9,15 @@ extern t_list* segmentos_usados;
 
 extern void* memoria_principal;
 
-/// mutex y semaforos
-
-pthread_mutex_t MUTEX_SEGMENTOS_LIBRES;
-pthread_mutex_t MUTEX_SEGMENTOS_USADOS;
-pthread_mutex_t MUTEX_FRAMO;
-
-pthread_mutex_t MUTEX_MP;
-
-pthread_mutex_t MUTEX_TID_PID_LOOKUP;
-
-pthread_mutex_t MUTEX_MP_BUSY;
-
-sem_t SEM_COMPACTACION_START;
-sem_t SEM_COMPACTACION_DONE;
-
+/// Funciones vacías para compatibilidad - los mutex/semáforos fueron removidos
+/// ya que no se utilizan en el código actual
 
 void iniciar_mutex() {
-    pthread_mutex_init(&MUTEX_SEGMENTOS_LIBRES, NULL);
-    pthread_mutex_init(&MUTEX_SEGMENTOS_USADOS, NULL);
-    pthread_mutex_init(&MUTEX_FRAMO, NULL);
-    pthread_mutex_init(&MUTEX_MP, NULL);
-    pthread_mutex_init(&MUTEX_TID_PID_LOOKUP, NULL);
-    pthread_mutex_init(&MUTEX_MP_BUSY, NULL);
-
-    sem_init(&SEM_COMPACTACION_START, 0, 0);
-    sem_init(&SEM_COMPACTACION_DONE, 0, 0);
-    
-    log_debug(logger, "Mutex y semáforos inicializados correctamente");
+    // Función vacía - no hay mutex ni semáforos que inicializar
+    log_debug(logger, "Monitor de memoria inicializado (sin sincronización por ahora)");
 }
 
 void finalizar_mutex() {
-    pthread_mutex_destroy(&MUTEX_SEGMENTOS_LIBRES);
-    pthread_mutex_destroy(&MUTEX_SEGMENTOS_USADOS);
-    pthread_mutex_destroy(&MUTEX_FRAMO);
-    pthread_mutex_destroy(&MUTEX_MP);
-    pthread_mutex_destroy(&MUTEX_TID_PID_LOOKUP);
-    pthread_mutex_destroy(&MUTEX_MP_BUSY);
-
-    sem_destroy(&SEM_COMPACTACION_START);
-    sem_destroy(&SEM_COMPACTACION_DONE);
-    
-    log_debug(logger, "Mutex y semáforos liberados correctamente");
+    // Función vacía - no hay mutex ni semáforos que liberar  
+    log_debug(logger, "Monitor de memoria finalizado");
 }

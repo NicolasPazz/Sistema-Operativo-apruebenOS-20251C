@@ -1,0 +1,7 @@
+INIT_PROC scripts/test/script_io_basico_1 128
+INIT_PROC scripts/test/script_io_basico_2 128
+INIT_PROC scripts/test/script_io_basico_3 128
+INIT_PROC scripts/test/script_solo_cpu_1 128
+INIT_PROC scripts/test/script_solo_cpu_2 128
+INIT_PROC scripts/test/script_solo_cpu_3 128
+INIT_PROC scripts/test/script_solo_cpu_4 128
