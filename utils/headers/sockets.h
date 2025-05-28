@@ -139,6 +139,7 @@ void liberar_cliente_data(cliente_data_t *data);
 void* recibir_buffer(int* size, int socket_cliente);
 void recibir_mensaje(int socket_cliente, t_log* logger);
 t_list* recibir_paquete(int socket_cliente);
+t_list* recibir_contenido_paquete(int socket_cliente);
 void enviar_mensaje(char* mensaje, int socket_cliente);
 void crear_buffer(t_paquete* paquete);
 t_paquete* crear_paquete(void);
@@ -156,5 +157,6 @@ int leer_entero(char *buffer, int * desplazamiento);
 t_list* recibir_4_enteros(int socket);
 int recibir_entero(int socket);
 t_list* recibir_2_enteros(int socket);
+t_list* recibir_2_enteros_sin_op(int socket);
 
 #endif /* UTILS_SOCKETS_H_ */
