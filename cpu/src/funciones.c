@@ -72,12 +72,17 @@ void func_init_proc(t_instruccion* instruccion) {
     char* size_str = instruccion->parametros3;
     int size = atoi(size_str);
 
+    log_info(cpu_log, "[SYSCALL] ▶ Ejecutando INIT_PROC - Archivo: '%s', Tamaño: %d", path, size);
+    log_debug(cpu_log, "[SYSCALL] Enviando INIT_PROC_OP a Kernel...");
+
     t_paquete* paquete = crear_paquete_op(INIT_PROC_OP);
     agregar_a_paquete(paquete, path, strlen(path)+1);
     agregar_entero_a_paquete(paquete, size);
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
-    log_info(cpu_log, "PID: %i - INIT_PROC - Archivo: %s - Tamaño: %i", pid_ejecutando, path, size);
+    
+    log_info(cpu_log, "## (<PID>) - Solicitó syscall: INIT_PROC");
+    log_info(cpu_log, "[SYSCALL] ✓ INIT_PROC enviado a Kernel - Finalizando ejecución del proceso actual");
 
     seguir_ejecutando = 0;
 }
@@ -102,6 +107,8 @@ void func_exit() {
 }
 
 t_instruccion* recibir_instruccion(int conexion) {
+    log_debug(cpu_log, "[MEMORIA->CPU] Iniciando recepción de instrucción desde memoria...");
+    
     t_instruccion* instruccion_nueva = malloc(sizeof(t_instruccion));
     int size = 0;
     char* buffer;
@@ -111,10 +118,12 @@ t_instruccion* recibir_instruccion(int conexion) {
     buffer = recibir_buffer(&size, conexion);
     
     if (buffer == NULL || size <= 0) {
-        log_error(cpu_log, "Error al recibir buffer de instrucción");
+        log_error(cpu_log, "[MEMORIA->CPU] Error al recibir buffer de instrucción - Buffer: %p, Size: %d", buffer, size);
         free(instruccion_nueva);
         return NULL;
     }
+    
+    log_debug(cpu_log, "[MEMORIA->CPU] Buffer recibido exitosamente - Tamaño: %d bytes", size);
 
     // Leer los 3 parámetros en orden (siempre están presentes)
     instruccion_nueva->parametros1 = leer_string(buffer, &desp);
@@ -123,16 +132,17 @@ t_instruccion* recibir_instruccion(int conexion) {
 
     // Verificar que la lectura fue exitosa
     if (instruccion_nueva->parametros1 == NULL) {
-        log_error(cpu_log, "Error al leer parámetros de instrucción");
+        log_error(cpu_log, "[MEMORIA->CPU] Error al leer parámetros de instrucción");
         free(instruccion_nueva);
         free(buffer);
         return NULL;
     }
 
-    log_debug(cpu_log, "[RECIBIDO] Instrucción: '%s' | Param2: '%s' | Param3: '%s'", 
+    // Log detallado de la instrucción recibida
+    log_info(cpu_log, "[MEMORIA->CPU] ✓ INSTRUCCIÓN RECIBIDA: '%s' | Param2: '%s' | Param3: '%s'", 
               instruccion_nueva->parametros1, 
-              instruccion_nueva->parametros2 ? instruccion_nueva->parametros2 : "",
-              instruccion_nueva->parametros3 ? instruccion_nueva->parametros3 : "");
+              instruccion_nueva->parametros2 ? instruccion_nueva->parametros2 : "(vacío)",
+              instruccion_nueva->parametros3 ? instruccion_nueva->parametros3 : "(vacío)");
 
     free(buffer);
     return instruccion_nueva;
