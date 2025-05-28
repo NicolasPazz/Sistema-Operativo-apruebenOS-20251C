@@ -63,7 +63,7 @@ void func_io(char* nombre_dispositivo, u_int32_t tiempo) {
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 
-    seguir_ejecutando = 0;  // aca se bloquea el ciclo, seguir ejec es global 
+    seguir_ejecutando = 0;
 }
 
 
@@ -78,8 +78,9 @@ void func_init_proc(t_instruccion* instruccion) {
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
     log_info(cpu_log, "PID: %i - INIT_PROC - Archivo: %s - Tamaño: %i", pid_ejecutando, path, size);
+
     seguir_ejecutando = 0;
-} //bien
+}
 
 
 void func_dump_memory() {
@@ -87,6 +88,8 @@ void func_dump_memory() {
     agregar_entero_a_paquete(paquete,pid_ejecutando);
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
+
+    seguir_ejecutando = 0;
 }
 
 

@@ -102,6 +102,13 @@ void* recibir_kernel_interrupt(void* arg) {
             case -1:
                 log_warning(cpu_log, "Se desconectó el Kernel (Dispatch). Finalizando CPU...");
                 terminar_programa();
+            case INTERRUPCION_OP:
+                // Recibir PID de la interrupción
+                recv(fd_kernel_interrupt, &pid_interrupt, sizeof(int), MSG_WAITALL);
+                log_info(cpu_log, "Recibida interrupción para PID: %d", pid_interrupt);
+                
+                hay_interrupcion = 1;
+                break;
             default:
                 log_error(cpu_log, "Operacion desconocida de Interrupt: %d", cod_op);
         }
