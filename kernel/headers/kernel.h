@@ -8,6 +8,8 @@
 #include "planificadores.h"
 #include "IOKernel.h"
 #include "CPUKernel.h"
+#include <signal.h>
+#include <unistd.h>
 /////////////////////////////// Declaracion de variables globales ///////////////////////////////
 // Logger
 extern t_log* kernel_log;
@@ -69,6 +71,7 @@ void iniciar_config_kernel(void);
 void iniciar_logger_kernel(void);
 void iniciar_logger_kernel_debug(void);
 void iniciar_diccionario_tiempos(void);
+void iniciar_diccionario_archivos_por_pcb(void);
 void* hilo_cliente_memoria(void* _);
 void* hilo_servidor_dispatch(void* _);
 void* hilo_servidor_interrupt(void* _);
