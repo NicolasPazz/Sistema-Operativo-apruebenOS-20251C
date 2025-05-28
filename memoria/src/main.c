@@ -7,9 +7,6 @@ extern t_list* segmentos_libres;
 extern void* memoria_principal;
 extern void* area_swap;
 
-//extern sem_t SEM_COMPACTACION_DONE;
-//extern sem_t SEM_COMPACTACION_START;
-
 int main(int argc, char* argv[]) {
 
     iniciar_logger_memoria();

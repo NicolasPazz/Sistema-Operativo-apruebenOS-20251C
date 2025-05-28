@@ -2,7 +2,7 @@
 #include "../headers/init.h"
 #include "../headers/cache.h"
 #include "../headers/cicloDeInstruccion.h"
-#include <../../memoria/headers/init_memoria.h>
+#include "../../memoria/headers/init_memoria.h"
 
 t_cache_paginas* cache = NULL;
 t_list* tlb = NULL;
@@ -106,7 +106,8 @@ int traducir_direccion(int direccion_logica, int* desplazamiento) {
             tlb_insertar(nro_pagina, frame);
         }
     }
-
+    
+    
     return frame;
 }
 
@@ -168,7 +169,7 @@ int seleccionar_victima_tlb() {
     return victima;
 }
 
-uint64_t timestamp_actual() { // ACA CHATGPTIEE VER DE NUEVO ESTO...
+uint64_t timestamp_actual() {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000); // en milisegundos

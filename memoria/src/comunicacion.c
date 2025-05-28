@@ -1,4 +1,5 @@
 #include "../headers/comunicacion.h"
+#include <commons/string.h>
 
 /////////////////////////////// Inicializacion de variables globales ///////////////////////////////
 int fd_memoria;
@@ -185,15 +186,19 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         case INIT_PROC_OP: {
             log_debug(logger, "INIT_PROC_OP recibido");
 
-            // Recibir parámetros (PID, tamaño, ruta de instrucciones)
+            // Recibir parámetros (PID, tamaño, nombre del proceso)
                 int pid, tamanio;
-                char* instrucciones_path;
+                char* nombre_proceso;
                 
                 recv_data(cliente_socket, &pid, sizeof(pid));
                 recv_data(cliente_socket, &tamanio, sizeof(tamanio));
-                recv_string(cliente_socket, &instrucciones_path);
+                recv_string(cliente_socket, &nombre_proceso);
                 
-                log_debug(logger, "Inicialización de proceso solicitada - PID: %d, Tamaño: %d, Archivo: %s", pid, tamanio, instrucciones_path);
+                log_debug(logger, "Inicialización de proceso solicitada - PID: %d, Tamaño: %d, Nombre: %s", pid, tamanio, nombre_proceso);
+            
+            // Construir el path relativo concatenando "scripts/" con el nombre del proceso
+                char* path_completo = string_from_format("scripts/%s", nombre_proceso);
+                log_debug(logger, "Path construido: %s", path_completo);
             
             // Verificar espacio disponible en memoria
                 int memoria_disponible = get_available_memory();
@@ -215,9 +220,12 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             
             // Cargar las instrucciones del proceso si se pudo inicializar
                 if (resultado == 0) {
-                    load_process_instructions(pid, instrucciones_path);
+                    load_process_instructions(pid, path_completo);
                 }
-                free(instrucciones_path);
+                
+                // Liberar memoria de los strings
+                free(nombre_proceso);
+                free(path_completo);
             
             // Enviar respuesta
                 t_respuesta_memoria respuesta_enum = (resultado == 0) ? OK : ERROR;
@@ -273,96 +281,45 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             log_debug(logger, "PEDIR_INSTRUCCION_OP recibido");
 
             // Recibir PID y PC
-                int pid, pc;
-                recv_data(cliente_socket, &pid, sizeof(int));
-                recv_data(cliente_socket, &pc, sizeof(int));
-                
-                log_debug(logger, "Instrucción solicitada - PID: %d, PC: %d", pid, pc);
+            int pid, pc;
+            recv_data(cliente_socket, &pid, sizeof(int));
+            recv_data(cliente_socket, &pc, sizeof(int));
             
+            log_debug(logger, "Instrucción solicitada - PID: %d, PC: %d", pid, pc);
+        
             // Obtener la instrucción
-                t_instruccion* instruccion = NULL;
-                op_code tipo_op = NOOP_OP;
+            t_instruccion* instruccion = get_instruction(pid, pc);
             
-            // Obtener el tipo de la instrucción extendida
-                t_process_instructions* process_inst = NULL;
-                for (int i = 0; i < list_size(process_instructions_list); i++) {
-                    t_process_instructions* p = list_get(process_instructions_list, i);
-                    if (p->pid == pid) {
-                        process_inst = p;
-                        break;
+            if (instruccion != NULL) {
+                // Log obligatorio con formato correcto
+                char* args_log = string_new();
+                if (instruccion->parametros2 && strlen(instruccion->parametros2) > 0) {
+                    string_append_with_format(&args_log, " %s", instruccion->parametros2);
+                    if (instruccion->parametros3 && strlen(instruccion->parametros3) > 0) {
+                        string_append_with_format(&args_log, " %s", instruccion->parametros3);
                     }
                 }
-                
-                if (process_inst != NULL && pc < list_size(process_inst->instructions)) {
-                    t_extended_instruccion* extended_instr = list_get(process_inst->instructions, pc);
-                    tipo_op = extended_instr->tipo;
-                    
-                    log_debug(logger, "Tipo de instrucción encontrado: %d", tipo_op);
-                    
-                    // Instrucción base para enviar al CPU
-                    instruccion = get_instruction(pid, pc);
-                }
-                
-                if (instruccion != NULL) {
-                    log_debug(logger, "Instrucción encontrada - Tipo: %d, Params: '%s', '%s', '%s'", 
-                            tipo_op, 
-                            instruccion->parametros1, 
-                            instruccion->parametros2, 
-                            instruccion->parametros3);
+                log_info(logger, "## PID: %d - Obtener instrucción: %d - Instrucción: %s%s", 
+                         pid, pc, instruccion->parametros1, args_log);
+                free(args_log);
 
-            // Crear paquete con la instrucción
-                t_paquete* paquete = crear_paquete_op(tipo_op);
+                // usamos la instruccion
+                t_paquete* paquete = crear_paquete_op(PEDIR_INSTRUCCION_OP);
 
-            // Agregar los parámetros al paquete
+                // siempre 3 params
                 char* p1 = instruccion->parametros1 ? instruccion->parametros1 : "";
                 char* p2 = instruccion->parametros2 ? instruccion->parametros2 : "";
                 char* p3 = instruccion->parametros3 ? instruccion->parametros3 : "";
-            
-                /*
-                log_info(logger, "Agregando al paquete: [%s] con tamaño %d", p1, strlen(p1) + 1);
+                
+                // orden fijo
                 agregar_a_paquete(paquete, p1, strlen(p1) + 1);
-                log_info(logger, "Agregando al paquete: [%s] con tamaño %d", p2, strlen(p2) + 1);
                 agregar_a_paquete(paquete, p2, strlen(p2) + 1);
-                log_info(logger, "Agregando al paquete: [%s] con tamaño %d", p3, strlen(p3) + 1);
                 agregar_a_paquete(paquete, p3, strlen(p3) + 1);
-                */
 
-                // Enviar p1
-                int size_p1 = strlen(p1) + 1;
-                send(cliente_socket, &size_p1, sizeof(int), 0);
-                send(cliente_socket, p1, size_p1, 0);
-
-                // Enviar p2
-                int size_p2 = strlen(p2) + 1;
-                send(cliente_socket, &size_p2, sizeof(int), 0);
-                send(cliente_socket, p2, size_p2, 0);
-
-                // Enviar p3
-                int size_p3 = strlen(p3) + 1;
-                send(cliente_socket, &size_p3, sizeof(int), 0);
-                send(cliente_socket, p3, size_p3, 0);
-
-                // Log informativo del paquete que se va a enviar
-                log_info(logger, "[ENVÍO] Tipo de instrucción: %d | Param 1: '%s' | Param 2: '%s' | Param 3: '%s'", 
-                        tipo_op, p1, p2, p3);
-
-            // Enviar la instrucción
+                // estandarizamos protocolo
                 enviar_paquete(paquete, cliente_socket);
                 eliminar_paquete(paquete);
-
-            // Liberar la instrucción (es una copia creada por get_instruction)
-                /*
-                free(instruccion->parametros1);
-                free(instruccion->parametros2);
-                free(instruccion->parametros3);
-                free(instruccion);*/
-         } else {
-            // Si no se encontró la instrucción, enviamos una instrucción NOOP
-                log_warning(logger, "No se encontró instrucción para PID: %d, PC: %d - Enviando NOOP", pid, pc);
-                t_paquete* paquete = crear_paquete_op(NOOP_OP);
-                enviar_paquete(paquete, cliente_socket);
-                eliminar_paquete(paquete);
-        }
+            }
             break;
         }
 

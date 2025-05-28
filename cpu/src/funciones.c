@@ -107,27 +107,32 @@ t_instruccion* recibir_instruccion(int conexion) {
     char* buffer;
     int desp = 0;
 
+    // Recibir el buffer del paquete
     buffer = recibir_buffer(&size, conexion);
+    
+    if (buffer == NULL || size <= 0) {
+        log_error(cpu_log, "Error al recibir buffer de instrucción");
+        free(instruccion_nueva);
+        return NULL;
+    }
 
+    // Leer los 3 parámetros en orden (siempre están presentes)
     instruccion_nueva->parametros1 = leer_string(buffer, &desp);
+    instruccion_nueva->parametros2 = leer_string(buffer, &desp);  
+    instruccion_nueva->parametros3 = leer_string(buffer, &desp);
 
-    if (strcmp(instruccion_nueva->parametros1, "NOOP") == 0 ||                      //INSTRUCCIONES CON NINGUN PARAMETRO = INSTRUCCION - -
-        strcmp(instruccion_nueva->parametros1, "DUMP_MEMORY") == 0 ||
-        strcmp(instruccion_nueva->parametros1, "EXIT") == 0) {
+    // Verificar que la lectura fue exitosa
+    if (instruccion_nueva->parametros1 == NULL) {
+        log_error(cpu_log, "Error al leer parámetros de instrucción");
+        free(instruccion_nueva);
+        free(buffer);
+        return NULL;
     }
-    else if (strcmp(instruccion_nueva->parametros1, "GOTO") == 0 ||                 //INSTRUCCIONES CON 1 PARAMETRO = INSTRUCCION - PARAMETRO
-             strcmp(instruccion_nueva->parametros1, "IO") == 0) {
-        instruccion_nueva->parametros2 = leer_string(buffer, &desp);
-    }
-    else if (strcmp(instruccion_nueva->parametros1, "WRITE") == 0 ||                //INSTRUCCIONES CON 2 PARAMETROS = INSTRUCCION - PARAMETRO - PARAMETRO
-             strcmp(instruccion_nueva->parametros1, "READ") == 0 ||
-             strcmp(instruccion_nueva->parametros1, "INIT_PROC") == 0) {
-        instruccion_nueva->parametros2 = leer_string(buffer, &desp);
-        instruccion_nueva->parametros3 = leer_string(buffer, &desp);
-    }
-    else {
-        log_error(cpu_log, "Instruccion desconocida recibida: %s", instruccion_nueva->parametros1);
-    }
+
+    log_debug(cpu_log, "[RECIBIDO] Instrucción: '%s' | Param2: '%s' | Param3: '%s'", 
+              instruccion_nueva->parametros1, 
+              instruccion_nueva->parametros2 ? instruccion_nueva->parametros2 : "",
+              instruccion_nueva->parametros3 ? instruccion_nueva->parametros3 : "");
 
     free(buffer);
     return instruccion_nueva;

@@ -118,24 +118,24 @@ void desalojar_proceso_cache(){
 void liberar_cache(){
     if (cache == NULL){
         log_trace(cpu_log,"la cache ya estaba liberada.");
-        EXIT_SUCCESS;
+        return;
     }
     if(!cache_habilitada(cache)){
         log_trace(cpu_log, "No hay entradas en la cache.");
-        EXIT_SUCCESS;
-    }
-    for (int i = 0; i<cache->cantidad_entradas; i++){
-        if (cache->entradas != NULL){
-            for (int i = 0; i < cache->cantidad_entradas; i++)
-            {
-                free(cache->entradas[i].contenido);
-            }
-            free(cache->entradas);
-        }
-        free(cache->algoritmo_reemplazo);
-        free(cache->puntero_clock); // warning: passing argument 1 of ‘free’ makes pointer from integer without a cast
         free(cache);
+        cache = NULL;
+        return;
     }
+    for (int i = 0; i < cache->cantidad_entradas; i++) {
+        if (cache->entradas[i].contenido != NULL) {
+            free(cache->entradas[i].contenido);
+        }
+    }
+    if (cache->entradas != NULL) {
+        free(cache->entradas);
+    }
+    free(cache);
+    cache = NULL;
 }
 
 void cache_modificar(int frame, char* datos){
@@ -159,18 +159,38 @@ void cache_modificar(int frame, char* datos){
 void cache_escribir(int frame, char* datos){
     if (cache == NULL){
         log_debug(cpu_log,"la cache ya estaba liberada.");
-        
+        return;
     }
     if (!cache_habilitada(cache)){
         log_debug(cpu_log, "La cache esta deshabilitada.");
-        
+        return;
     }
     
-    t_entrada_cache* entrada = malloc(sizeof(t_entrada_cache));
-    entrada->numero_pagina = frame;
-    entrada->contenido = datos;
-    entrada->modificado = false;
-    entrada->bit_referencia = 0;
-    list_add(cache->entradas, entrada);
+    // Buscar una entrada libre o seleccionar víctima
+    int entrada_index = -1;
+    for (int i = 0; i < cache->cantidad_entradas; i++) {
+        if (cache->entradas[i].numero_pagina == -1) { // entrada libre
+            entrada_index = i;
+            break;
+        }
+    }
     
+    if (entrada_index == -1) { // necesitamos reemplazar
+        if (strcmp(cache->algoritmo_reemplazo, "CLOCK-M") == 0) {
+            entrada_index = seleccionar_victima_clock_m();
+        } else {
+            entrada_index = seleccionar_victima_clock();
+        }
+    }
+    
+    // Limpiar entrada anterior si existe
+    if (cache->entradas[entrada_index].contenido != NULL) {
+        free(cache->entradas[entrada_index].contenido);
+    }
+    
+    // Asignar nueva entrada
+    cache->entradas[entrada_index].numero_pagina = frame;
+    cache->entradas[entrada_index].contenido = datos;
+    cache->entradas[entrada_index].modificado = false;
+    cache->entradas[entrada_index].bit_referencia = 1;
 }
