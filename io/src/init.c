@@ -30,12 +30,17 @@ void iniciar_logger_io() {
 }
 
 void iniciar_conexiones_io(char* nombre_io){
+    log_info(io_log, "Iniciando conexión con Kernel...");
+    log_debug(io_log, "Intentando conectar a Kernel en %s:%s", IP_KERNEL, PUERTO_KERNEL);
+    
     //////////////////////////// Conexion hacia Kernel ////////////////////////////
     fd_kernel_io = crear_conexion(IP_KERNEL, PUERTO_KERNEL, io_log);
     if (fd_kernel_io == -1) {
-        log_error(io_log, "Error al conectar IO a Kernel");
+        log_error(io_log, "Error crítico: No se pudo conectar IO a Kernel en %s:%s", IP_KERNEL, PUERTO_KERNEL);
         exit(EXIT_FAILURE);
     }
+
+    log_debug(io_log, "Socket creado exitosamente (fd=%d). Enviando handshake...", fd_kernel_io);
 
     int handshake = HANDSHAKE_IO_KERNEL;
     if (send(fd_kernel_io, &handshake, sizeof(int), 0) <= 0) {
@@ -44,13 +49,49 @@ void iniciar_conexiones_io(char* nombre_io){
         exit(EXIT_FAILURE);
     }
 
+    log_debug(io_log, "Handshake enviado. Enviando nombre del dispositivo: '%s'", nombre_io);
+
     if (send(fd_kernel_io, nombre_io, strlen(nombre_io) + 1, 0) <= 0) {
         log_error(io_log, "Error al enviar el nombre de IO a Kernel: %s", strerror(errno));
         close(fd_kernel_io);
         exit(EXIT_FAILURE);
     }
 
-    log_debug(io_log, "HANDSHAKE_IO_KERNEL: IO conectado exitosamente a Kernel (fd=%d)", fd_kernel_io);
+    log_info(io_log, "✓ Dispositivo IO '%s' conectado exitosamente a Kernel (fd=%d)", nombre_io, fd_kernel_io);
+    log_debug(io_log, "HANDSHAKE_IO_KERNEL completado correctamente");
+}
+
+void terminar_io() {
+    log_info(io_log, "=== Iniciando terminación limpia del dispositivo IO ===");
+    
+    // Cerrar conexión con Kernel
+    if (fd_kernel_io > 0) {
+        log_debug(io_log, "Cerrando conexión con Kernel (fd=%d)...", fd_kernel_io);
+        if (close(fd_kernel_io) == 0) {
+            log_debug(io_log, "✓ Conexión con Kernel cerrada correctamente");
+        } else {
+            log_warning(io_log, "⚠ Error al cerrar conexión con Kernel: %s", strerror(errno));
+        }
+        fd_kernel_io = -1;
+    } else {
+        log_debug(io_log, "No hay conexión activa con Kernel para cerrar");
+    }
+    
+    // Liberar recursos de configuración
+    if (io_config != NULL) {
+        config_destroy(io_config);
+        io_config = NULL;
+        log_debug(io_log, "✓ Configuración IO liberada correctamente");
+    }
+    
+    // Finalizar logging
+    if (io_log != NULL) {
+        log_info(io_log, "✓ Dispositivo IO terminado correctamente");
+        log_destroy(io_log);
+        io_log = NULL;
+    }
+    
+    printf("Dispositivo IO finalizado.\n");
 }
 
 // void atender_kernel() {
