@@ -186,50 +186,54 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         case INIT_PROC_OP: {
             log_debug(logger, "INIT_PROC_OP recibido");
 
-            // Recibir parámetros (PID, tamaño, nombre del proceso)
-                int pid, tamanio;
-                char* nombre_proceso;
-                
-                recv_data(cliente_socket, &pid, sizeof(pid));
-                recv_data(cliente_socket, &tamanio, sizeof(tamanio));
-                recv_string(cliente_socket, &nombre_proceso);
-                
-                log_debug(logger, "Inicialización de proceso solicitada - PID: %d, Tamaño: %d, Nombre: %s", pid, tamanio, nombre_proceso);
+            // CAMBIO: Recibir parámetros desde paquete (para coincidir con kernel)
+            t_list* lista = recibir_contenido_paquete(cliente_socket);
             
+            // Ahora todos los parámetros son strings
+            char* pid_str = (char*)list_get(lista, 0);
+            char* tamanio_str = (char*)list_get(lista, 1);
+            char* nombre_proceso = (char*)list_get(lista, 2);
+            
+            // Convertir strings a enteros
+            int pid = atoi(pid_str);
+            int tamanio = atoi(tamanio_str);
+            
+            log_debug(logger, "Inicialización de proceso solicitada - PID: %d, Tamaño: %d, Nombre: %s", pid, tamanio, nombre_proceso);
+        
             // Construir el path relativo concatenando "scripts/" con el nombre del proceso
-                char* path_completo = string_from_format("scripts/%s", nombre_proceso);
-                log_debug(logger, "Path construido: %s", path_completo);
-            
+            char* path_completo = string_from_format("scripts/%s", nombre_proceso);
+            log_debug(logger, "Path construido: %s", path_completo);
+        
             // Verificar espacio disponible en memoria
-                int memoria_disponible = get_available_memory();
-                log_debug(logger, "Memoria disponible: %d bytes", memoria_disponible);
-                
-                int resultado;
-                if (memoria_disponible >= tamanio) {
-                    // Hay suficiente memoria disponible
-                    log_debug(logger, "Hay suficiente memoria disponible para el proceso (necesita %d bytes, hay %d bytes)",
-                            tamanio, memoria_disponible);
-                    // Para el checkpoint 2, siempre aceptamos la inicialización
-                    resultado = initialize_process(pid, tamanio);
-                } else {
-                    // No hay suficiente memoria disponible
-                    log_error(logger, "No hay suficiente memoria para inicializar el proceso (necesita %d bytes, hay %d bytes)",
-                            tamanio, memoria_disponible);
-                    resultado = -1;
-                }
+            int memoria_disponible = get_available_memory();
+            log_debug(logger, "Memoria disponible: %d bytes", memoria_disponible);
             
+            int resultado;
+            if (memoria_disponible >= tamanio) {
+                // Hay suficiente memoria disponible
+                log_debug(logger, "Hay suficiente memoria disponible para el proceso (necesita %d bytes, hay %d bytes)",
+                        tamanio, memoria_disponible);
+                // Para el checkpoint 2, siempre aceptamos la inicialización
+                resultado = initialize_process(pid, tamanio);
+            } else {
+                // No hay suficiente memoria disponible
+                log_error(logger, "No hay suficiente memoria para inicializar el proceso (necesita %d bytes, hay %d bytes)",
+                        tamanio, memoria_disponible);
+                resultado = -1;
+            }
+        
             // Cargar las instrucciones del proceso si se pudo inicializar
-                if (resultado == 0) {
-                    load_process_instructions(pid, path_completo);
-                }
-                
-                // Liberar memoria de los strings
-                free(nombre_proceso);
-                free(path_completo);
+            if (resultado == 0) {
+                load_process_instructions(pid, path_completo);
+            }
             
+            // Liberar memoria de los strings y lista
+            free(path_completo);
+            list_destroy_and_destroy_elements(lista, free);
+        
             // Enviar respuesta
-                t_respuesta_memoria respuesta_enum = (resultado == 0) ? OK : ERROR;
-                send(cliente_socket, &respuesta_enum, sizeof(t_respuesta_memoria), 0);
+            t_respuesta_memoria respuesta_enum = (resultado == 0) ? OK : ERROR;
+            send(cliente_socket, &respuesta_enum, sizeof(t_respuesta_memoria), 0);
             break;
         }
 
@@ -280,10 +284,11 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         case PEDIR_INSTRUCCION_OP: {
             log_debug(logger, "PEDIR_INSTRUCCION_OP recibido");
 
-            // Recibir PID y PC
-            int pid, pc;
-            recv_data(cliente_socket, &pid, sizeof(int));
-            recv_data(cliente_socket, &pc, sizeof(int));
+            // CAMBIO: Recibir PID y PC desde paquete (para coincidir con CPU)
+            t_list* lista = recibir_2_enteros_sin_op(cliente_socket);
+            int pid = (int)(intptr_t)list_get(lista, 0);  // PID primero
+            int pc = (int)(intptr_t)list_get(lista, 1);   // PC segundo
+            list_destroy(lista);
             
             log_debug(logger, "Instrucción solicitada - PID: %d, PC: %d", pid, pc);
         
