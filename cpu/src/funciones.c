@@ -4,14 +4,15 @@
 #include "../headers/cache.h"
 
 void func_noop() {
-    sleep(1000); // de donde sacamos el tiempo de ciclo de instruccion
+    //no hace nada, solo se usa para el log
+    log_info(cpu_log, "PID: %d - Acción: NOOP", pid_ejecutando);
 }
 
 void func_write(char* direccion_logica_str, char* datos) {
     int desplazamiento = 0;
     int direccion_logica = atoi(direccion_logica_str);
     int frame = traducir_direccion(direccion_logica, &desplazamiento);
-    log_info(cpu_log, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %s", pid_ejecutando, frame, datos); // en el valor de direccion fisica habia otra cosa en el log
+    log_info(cpu_log, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %s", pid_ejecutando, frame, datos); 
     if (cache_habilitada() && (buscar_pagina_en_cache(frame) != -1)){
         cache_modificar(frame, datos);
     } else if (cache_habilitada()) {
@@ -35,19 +36,33 @@ void func_write(char* direccion_logica_str, char* datos) {
 }
 
 
-void func_read(char* direccion, char* tamanio) { // ver que deberia hacer tamaño
+void func_read(char* direccion, char* tamanio) {
     int desplazamiento = 0;
+    int size = atoi(tamanio);
     int direccion_logica = atoi(direccion);
+
     int frame = traducir_direccion(direccion_logica, &desplazamiento);
-    log_info(cpu_log,"Pid: %d - Acción: Leer - Dirección Física: %d - Valor: FALTANTE", pid_ejecutando, frame); // FALTA LOS DATOS PARA EL LOG
-    t_paquete *paquete = crear_paquete_op(READ_OP); 
-    agregar_entero_a_paquete(paquete,frame);
-    agregar_entero_a_paquete(paquete,pid_ejecutando);
-    enviar_paquete(paquete,fd_memoria);
+    int direccion_fisica = frame * cfg_memoria->TAM_PAGINA + desplazamiento;
+
+    t_paquete *paquete = crear_paquete_op(READ_OP);
+    agregar_entero_a_paquete(paquete, direccion_fisica);
+    agregar_entero_a_paquete(paquete, size);
+    agregar_entero_a_paquete(paquete, pid_ejecutando);
+    enviar_paquete(paquete, fd_memoria);
     eliminar_paquete(paquete);
 
-    
+    // Recibir el buffer
+    int respuesta_size = 0;
+    char* contenido = recibir_buffer(&respuesta_size, fd_memoria);
+
+    log_info(cpu_log, 
+        "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %s", 
+        pid_ejecutando, direccion_fisica, contenido);
+
+    printf("PID: %d - Contenido leído: %s\n", pid_ejecutando, contenido);
+    free(contenido);
 }
+
 
 
 void func_goto(char* valor) {
