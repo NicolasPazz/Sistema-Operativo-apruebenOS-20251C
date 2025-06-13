@@ -5,17 +5,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <pthread.h>
-#include <semaphore.h>
 
 #include <commons/temporal.h>
 
 #include "init_memoria.h"
 #include "estructuras.h"
 
-// init
+// Funciones de inicialización/finalización del monitor
 void iniciar_mutex(void);
 void finalizar_mutex(void);
-
 
 #endif

@@ -267,6 +267,8 @@ void* hilo_servidor_dispatch(void* _) {
         nueva_cpu->fd = fd_cpu_dispatch;
         nueva_cpu->id = id_cpu;
         nueva_cpu->tipo_conexion = CPU_DISPATCH;
+        nueva_cpu->pid = -1;
+        nueva_cpu->instruccion_actual = -1;
 
         pthread_mutex_lock(&mutex_lista_cpus);
         list_add(lista_cpus, nueva_cpu);
@@ -315,6 +317,8 @@ void* hilo_servidor_interrupt(void* _){
         nueva_cpu->fd = fd_cpu_interrupt;
         nueva_cpu->id = id_cpu;
         nueva_cpu->tipo_conexion = CPU_INTERRUPT;
+        nueva_cpu->pid = -1;
+        nueva_cpu->instruccion_actual = -1;
         
         pthread_mutex_lock(&mutex_lista_cpus);
         list_add(lista_cpus, nueva_cpu);
@@ -503,6 +507,16 @@ void* atender_cpu_dispatch(void* arg) {
                 pthread_mutex_lock(&mutex_lista_cpus);
                 cpu_actual->pid = -1; // Limpiar PID de la CPU
                 pthread_mutex_unlock(&mutex_lista_cpus);
+                
+                // Reactivar planificador si hay procesos en READY esperando
+                pthread_mutex_lock(&mutex_cola_ready);
+                bool hay_procesos_ready = !list_is_empty(cola_ready);
+                pthread_mutex_unlock(&mutex_cola_ready);
+                
+                if (hay_procesos_ready) {
+                    log_debug(kernel_log, "CPU liberada, reactivando planificador para procesos en READY");
+                    sem_post(&sem_proceso_a_ready);
+                }
                 
                 break;
 

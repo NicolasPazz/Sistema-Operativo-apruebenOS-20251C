@@ -2,29 +2,78 @@
 #include "../headers/init.h"
 #include "../headers/cache.h"
 #include "../headers/cicloDeInstruccion.h"
+#include "../../memoria/headers/init_memoria.h"
 
 t_cache_paginas* cache = NULL;
 t_list* tlb = NULL;
 int orden_fifo = 0;
+t_config_memoria* cfg_memoria = NULL;
 
 void inicializar_mmu() {
     tlb = list_create();
     cache = inicializar_cache();    
 }
 
-bool recibir_config_memoria(int* tam_pagina, int* entradas_por_tabla, int* cantidad_niveles) {
-    if (!enviar_operacion(fd_memoria, PEDIR_CONFIG_CPU_OP)) {
-        return false;
+uint8_t cargar_configuracion(char* path) {
+    t_config* cfg_file = config_create(path);
+
+    if (cfg_file == NULL) {
+        log_error(cpu_log, "No se encontro el archivo de configuracion: %s", path);
+        return 0;
     }
-    return recibir_3_enteros(fd_memoria, tam_pagina, entradas_por_tabla, cantidad_niveles);
+
+    char* properties[] = {
+        "PUERTO_ESCUCHA",
+        "TAM_MEMORIA",
+        "TAM_PAGINA",
+        "ENTRADAS_POR_TABLA",
+        "CANTIDAD_NIVELES",
+        "RETARDO_MEMORIA",
+        "PATH_SWAPFILE",
+        "RETARDO_SWAP",
+        "LOG_LEVEL",
+        "DUMP_PATH",
+        NULL
+    };
+
+    if (!config_has_all_properties(cfg_file, properties)) {
+        log_error(cpu_log, "Propiedades faltantes en el archivo de configuracion");
+        config_destroy(cfg_file);
+        return 0;
+    }
+
+    cfg_memoria = malloc(sizeof(t_config_memoria));
+    if (cfg_memoria == NULL) {
+        log_error(cpu_log, "Error al asignar memoria para la configuracion");
+        config_destroy(cfg_file);
+        return 0;
+    }
+
+    cfg_memoria->PUERTO_ESCUCHA = config_get_int_value(cfg_file, "PUERTO_ESCUCHA");
+    cfg_memoria->TAM_MEMORIA = config_get_int_value(cfg_file, "TAM_MEMORIA");
+    cfg_memoria->TAM_PAGINA = config_get_int_value(cfg_file, "TAM_PAGINA");
+    cfg_memoria->ENTRADAS_POR_TABLA = config_get_int_value(cfg_file, "ENTRADAS_POR_TABLA");
+    cfg_memoria->CANTIDAD_NIVELES = config_get_int_value(cfg_file, "CANTIDAD_NIVELES");
+    cfg_memoria->RETARDO_MEMORIA = config_get_int_value(cfg_file, "RETARDO_MEMORIA");
+    cfg_memoria->PATH_SWAPFILE = strdup(config_get_string_value(cfg_file, "PATH_SWAPFILE"));
+    cfg_memoria->RETARDO_SWAP = config_get_int_value(cfg_file, "RETARDO_SWAP");
+    cfg_memoria->LOG_LEVEL = strdup(config_get_string_value(cfg_file, "LOG_LEVEL"));
+    cfg_memoria->DUMP_PATH = strdup(config_get_string_value(cfg_file, "DUMP_PATH"));
+
+    log_debug(cpu_log, "Archivo de configuracion cargado correctamente");
+    config_destroy(cfg_file);
+
+    return 1;
 }
 
 int traducir_direccion(int direccion_logica, int* desplazamiento) {
-    int tam_pagina, entradas_por_tabla, cantidad_niveles;
-    recibir_config_memoria(&tam_pagina, &entradas_por_tabla, &cantidad_niveles);
 
+    int tam_pagina = cfg_memoria->TAM_PAGINA;
+    int entradas_por_tabla = cfg_memoria->ENTRADAS_POR_TABLA;
+    int cantidad_niveles = cfg_memoria->CANTIDAD_NIVELES;
+
+    
     int nro_pagina = direccion_logica / tam_pagina;
-    // falta lo de entrada nivel x
     *desplazamiento = direccion_logica % tam_pagina;
 
     int entradas[cantidad_niveles];
@@ -40,23 +89,24 @@ int traducir_direccion(int direccion_logica, int* desplazamiento) {
         log_info(cpu_log, "PID: %d - TLB MISS - Página: %d", pid_ejecutando, nro_pagina);
 
         // Enviar entradas de página a Memoria
-            t_paquete* paquete = crear_paquete_op(SOLICITAR_FRAME_PARA_ENTRADAS);
-            agregar_a_paquete(paquete, &pid_ejecutando, sizeof(int));
-            agregar_a_paquete(paquete, &cantidad_niveles, sizeof(int));
-            for (int i = 0; i < cantidad_niveles; i++) {
-                agregar_a_paquete(paquete, &entradas[i], sizeof(int));
-            }
-            enviar_paquete(paquete, fd_memoria);
-            eliminar_paquete(paquete);
+        t_paquete* paquete = crear_paquete_op(SOLICITAR_FRAME_PARA_ENTRADAS);
+        agregar_a_paquete(paquete, &pid_ejecutando, sizeof(int));
+        agregar_a_paquete(paquete, &cantidad_niveles, sizeof(int));
+        for (int i = 0; i < cantidad_niveles; i++) {
+            agregar_a_paquete(paquete, &entradas[i], sizeof(int));
+        }
+        enviar_paquete(paquete, fd_memoria);
+        eliminar_paquete(paquete);
 
         // Recibir frame
-            recv(fd_memoria, &frame, sizeof(int), MSG_WAITALL);
+        recv(fd_memoria, &frame, sizeof(int), MSG_WAITALL);
 
         if (tlb_habilitada()) {
             tlb_insertar(nro_pagina, frame);
         }
     }
-
+    
+    
     return frame;
 }
 
@@ -118,7 +168,7 @@ int seleccionar_victima_tlb() {
     return victima;
 }
 
-int timestamp_actual() { // ACA CHATGPTIEE VER DE NUEVO ESTO...
+int timestamp_actual() {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (int)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000); // en milisegundos

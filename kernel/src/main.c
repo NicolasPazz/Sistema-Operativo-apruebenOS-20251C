@@ -1,10 +1,22 @@
 #include "../headers/kernel.h"
 
+// Manejador de señales para terminación limpia
+void signal_handler(int sig) {
+    if (sig == SIGINT) {
+        printf("\n\nRecibida señal de terminación. Cerrando kernel...\n");
+        terminar_kernel();
+        exit(EXIT_SUCCESS);
+    }
+}
+
 int main(int argc, char* argv[]) {
+    
+    
+    signal(SIGINT, signal_handler);
   
     //////////////////////////// Primer Proceso ////////////////////////////
     if (argc < 3) {
-        fprintf(stderr, "Uso: %s [archivo_pseudocodigo] [tamanio_proceso]\nEJ: ./bin/kernel scripts/PROCESO_INICIAL 128\n", argv[0]);
+        fprintf(stderr, "Uso: %s [archivo_pseudocodigo] [tamanio_proceso]\nEJ: ./bin/kernel PROCESO_INICIAL 128\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
@@ -104,52 +116,17 @@ int main(int argc, char* argv[]) {
     mostrar_colas_estados();
 
     //////////////////////////// Planificacion ////////////////////////////
-
     iniciar_planificador_largo_plazo();
 
-    //////////////////////////// Test ////////////////////////////
-   /*log_debug(kernel_log, "Creando 2 procesos mas... \n");
-    INIT_PROC("Test2", 11);
-    INIT_PROC("Test2", 12);*/
-
-    /*
-    mostrar_colas_estados(); // 3 Procesos en new
-
-    mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 0));
-    mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 1));
-    mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 2));
+    //////////////////////////// Mantener el kernel ejecutandose ////////////////////////////
+    log_info(kernel_log, "Kernel iniciado correctamente. Planificadores en ejecucion...");
+    printf("Kernel ejecutandose. Presione Ctrl+C para terminar.\n");
     
-    cambiar_estado_pcb((t_pcb*)list_get(cola_procesos, 0), READY);
-    cambiar_estado_pcb((t_pcb*)list_get(cola_procesos, 1), READY);
-    cambiar_estado_pcb((t_pcb*)list_get(cola_procesos, 2), READY);
-    mostrar_colas_estados(); // 3 Procesos en READY
-
-    cambiar_estado_pcb((t_pcb*)list_get(cola_procesos, 0), EXEC);
-    sleep(3);
-
-    cambiar_estado_pcb((t_pcb*)list_get(cola_procesos, 1), EXEC);
-    sleep(1);
-
-    cambiar_estado_pcb((t_pcb*)list_get(cola_procesos, 2), EXEC);
-    sleep(4);
-
-    t_pcb* pid0 = (t_pcb*)list_get(cola_procesos, 0);
-    t_pcb* pid1 = (t_pcb*)list_get(cola_procesos, 1);
-    t_pcb* pid2 = (t_pcb*)list_get(cola_procesos, 2);
-
-    fin_io(pid2);
-    fin_io(pid1);
-    fin_io(pid0);
-    */
-    //////////////////////////// Planificacion de corto plazo ////////////////////////////
-    /*iniciar_planificador_corto_plazo(ALGORITMO_CORTO_PLAZO);
-
-    mostrar_colas_estados(); // PID 0 en EXEC
-
-    mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 0));
-    mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 1));
-    mostrar_pcb(*(t_pcb*)list_get(cola_procesos, 2));*/
-    
+    // Mantener el programa principal ejecutándose
+    while (1) {
+        sleep(10); // Dormir para no consumir CPU innecesariamente
+        // Aquí podrías agregar chequeos periódicos si fuera necesario
+    }
 
     //////////////////////////// Terminar ////////////////////////////  
     terminar_kernel();

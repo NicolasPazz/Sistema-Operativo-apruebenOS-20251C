@@ -1,7 +1,7 @@
 #ifndef MMU_H
 #define MMU_H
 #include "sockets.h"
-
+#include "../../memoria/headers/init_memoria.h"
 typedef struct {
     int pagina; //pagina y frame no eran lo mismo?
     int frame;
@@ -13,6 +13,7 @@ typedef struct {
 //extern t_cache_paginas* cache;
 extern t_list* tlb;
 extern int orden_fifo;
+extern t_config_memoria* cfg_memoria;
 
 void inicializar_mmu(void);
 int traducir_direccion(int direccion_logica, int* desplazamiento);
@@ -21,6 +22,7 @@ void tlb_insertar(int pagina, int frame);
 bool tlb_habilitada(void);
 int timestamp_actual(void);
 int seleccionar_victima_tlb(void);
+uint8_t cargar_configuracion(char* path);
 
 
 #endif // MMU_H

@@ -1,4 +1,5 @@
 #include "../headers/comunicacion.h"
+#include <commons/string.h>
 
 /////////////////////////////// Inicializacion de variables globales ///////////////////////////////
 int fd_memoria;
@@ -105,8 +106,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
     switch (cop) {
         case MENSAJE_OP:
             log_debug(logger, "MENSAJE_OP recibido");
-
-            // Recibir un String
+        
+            // Recibir un Mensaje char* y loguearlo
                 char* mensaje;
                 recv_string(cliente_socket, &mensaje);
                 log_debug(logger, "Mensaje recibido: %s", mensaje);
@@ -128,9 +129,11 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
 
             // Recibir parámetros (PID, dirección y valor)
                 int pid, direccion, valor;
-                recibir_3_enteros(cliente_socket, &pid, &direccion, &valor);
+                recv_data(cliente_socket, &pid, sizeof(int));
+                recv_data(cliente_socket, &direccion, sizeof(int));
+                recv_data(cliente_socket, &valor, sizeof(int));
             
-            // Para el checkpoint 2, simplemente simulamos la escritura
+            // Para el Check 2, simulamos la escritura
                 log_info(logger, "## PID: %d - Escritura - Dir. Física: %d - Tamaño: %ld", pid, direccion, sizeof(int));
             
             // Actualizar métrica
@@ -150,9 +153,10 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
 
             // Recibir parámetros (PID y dirección)
                 int pid, direccion;
-                recibir_2_enteros(cliente_socket, &pid, &direccion);
+                recv_data(cliente_socket, &pid, sizeof(int));
+                recv_data(cliente_socket, &direccion, sizeof(int));
             
-            // Para el checkpoint 2, simplemente simulamos la lectura
+            // Para el checkpoint 2, simulamos la lectura
                 log_info(logger, "## PID: %d - Lectura - Dir. Física: %d - Tamaño: %ld", pid, direccion, sizeof(int));
             
             // Actualizar métrica
@@ -181,42 +185,54 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         case INIT_PROC_OP: {
             log_debug(logger, "INIT_PROC_OP recibido");
 
-            // Recibir parámetros (PID, tamaño, ruta de instrucciones)
-                int pid, tamanio;
-                char* instrucciones_path;
-                recibir_2_enteros(cliente_socket, &pid, &tamanio);
-                recibir_string(cliente_socket, &instrucciones_path);
+            // CAMBIO: Recibir parámetros desde paquete (para coincidir con kernel)
+            t_list* lista = recibir_contenido_paquete(cliente_socket);
             
-                log_debug(logger, "## PID: <%d> - Proceso Creado - Tamaño: <%d> - PATH: <%s>", pid, tamanio, instrucciones_path);
+            // Ahora todos los parámetros son strings
+            char* pid_str = (char*)list_get(lista, 0);
+            char* tamanio_str = (char*)list_get(lista, 1);
+            char* nombre_proceso = (char*)list_get(lista, 2);
             
+            // Convertir strings a enteros
+            int pid = atoi(pid_str);
+            int tamanio = atoi(tamanio_str);
+            
+            log_debug(logger, "Inicialización de proceso solicitada - PID: %d, Tamaño: %d, Nombre: %s", pid, tamanio, nombre_proceso);
+        
+            // Construir el path relativo concatenando "scripts/" con el nombre del proceso
+            char* path_completo = string_from_format("scripts/%s", nombre_proceso);
+            log_debug(logger, "Path construido: %s", path_completo);
+        
             // Verificar espacio disponible en memoria
-                int memoria_disponible = get_available_memory();
-                log_debug(logger, "Memoria disponible: %d bytes", memoria_disponible);
+            int memoria_disponible = get_available_memory();
+            log_debug(logger, "Memoria disponible: %d bytes", memoria_disponible);
             
-                int resultado;
-                if (memoria_disponible >= tamanio) {
-                    // Hay suficiente memoria disponible
-                    log_debug(logger, "Hay suficiente memoria disponible para el proceso (necesita %d bytes, hay %d bytes)", tamanio, memoria_disponible);
-                    // Para el checkpoint 2, siempre aceptamos la inicialización
-                    resultado = initialize_process(pid, tamanio);
-                } else {
-                    // No hay suficiente memoria disponible
-                    log_error(logger, "No hay suficiente memoria para inicializar el proceso (necesita %d bytes, hay %d bytes)",
-                            tamanio, memoria_disponible);
-                    resultado = -1;
-                }
-                
-                // Cargar las instrucciones del proceso si se pudo inicializar
-                if (resultado == 0) {
-                    load_process_instructions(pid, instrucciones_path);
-                }
-                
-                free(instrucciones_path);
+            int resultado;
+            if (memoria_disponible >= tamanio) {
+                // Hay suficiente memoria disponible
+                log_debug(logger, "Hay suficiente memoria disponible para el proceso (necesita %d bytes, hay %d bytes)",
+                        tamanio, memoria_disponible);
+                // Para el checkpoint 2, siempre aceptamos la inicialización
+                resultado = initialize_process(pid, tamanio);
+            } else {
+                // No hay suficiente memoria disponible
+                log_error(logger, "No hay suficiente memoria para inicializar el proceso (necesita %d bytes, hay %d bytes)",
+                        tamanio, memoria_disponible);
+                resultado = -1;
+            }
+        
+            // Cargar las instrucciones del proceso si se pudo inicializar
+            if (resultado == 0) {
+                load_process_instructions(pid, path_completo);
+            }
             
+            // Liberar memoria de los strings y lista
+            free(path_completo);
+            list_destroy_and_destroy_elements(lista, free);
+        
             // Enviar respuesta
-                t_respuesta_memoria respuesta_enum = (resultado == 0) ? OK : ERROR;
-                send(cliente_socket, &respuesta_enum, sizeof(t_respuesta_memoria), 0);
-
+            t_respuesta_memoria respuesta_enum = (resultado == 0) ? OK : ERROR;
+            send(cliente_socket, &respuesta_enum, sizeof(t_respuesta_memoria), 0);
             break;
         }
 
@@ -225,11 +241,12 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
 
             // Recibir PID
                 int pid;
-                recibir_entero(cliente_socket, &pid);
+                recv_data(cliente_socket, &pid, sizeof(int));
             
+            // Log obligatorio
                 log_info(logger, "## PID: %d - Memory Dump solicitado", pid);
             
-            // Para el checkpoint 2, simplemente enviamos una respuesta OK
+            // Para el checkpoint 2, enviamos una respuesta OK
                 char* respuesta = "OK";
                 send_string(cliente_socket, respuesta);
             break;
@@ -240,7 +257,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
 
             // Recibir PID
                 int pid;
-                recibir_entero(cliente_socket, &pid);
+                recv_data(cliente_socket, &pid, sizeof(int));
             
                 log_debug(logger, "Finalización de proceso solicitada - PID: %d", pid);
             
@@ -268,71 +285,46 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         case PEDIR_INSTRUCCION_OP: {
             log_debug(logger, "PEDIR_INSTRUCCION_OP recibido");
 
-            // Recibir PID y PC
-            int pid, pc;
-                recibir_2_enteros(cliente_socket, &pid, &pc);
+            // CAMBIO: Recibir PID y PC desde paquete (para coincidir con CPU)
+            t_list* lista = recibir_2_enteros_sin_op(cliente_socket);
+            int pid = (int)(intptr_t)list_get(lista, 0);  // PID primero
+            int pc = (int)(intptr_t)list_get(lista, 1);   // PC segundo
+            list_destroy(lista);
             
-                log_debug(logger, "CPU solicita una instrucción - PID: %d, PC: %d", pid, pc);
-            
+            log_debug(logger, "Instrucción solicitada - PID: %d, PC: %d", pid, pc);
+        
             // Obtener la instrucción
-                t_instruccion* instruccion = NULL;
-                op_code tipo_op = NOOP_OP;
+            t_instruccion* instruccion = get_instruction(pid, pc);
             
-            // Obtener el tipo de la instrucción extendida
-                t_process_instructions* process_inst = NULL;
-                for (int i = 0; i < list_size(process_instructions_list); i++) {
-                    t_process_instructions* p = list_get(process_instructions_list, i);
-                    if (p->pid == pid) {
-                        process_inst = p;
-                        break;
+            if (instruccion != NULL) {
+                // Log obligatorio con formato correcto
+                char* args_log = string_new();
+                if (instruccion->parametros2 && strlen(instruccion->parametros2) > 0) {
+                    string_append_with_format(&args_log, " %s", instruccion->parametros2);
+                    if (instruccion->parametros3 && strlen(instruccion->parametros3) > 0) {
+                        string_append_with_format(&args_log, " %s", instruccion->parametros3);
                     }
                 }
-            
-                if (process_inst != NULL && pc < list_size(process_inst->instructions)) {
-                    t_extended_instruccion* extended_instr = list_get(process_inst->instructions, pc);
-                    tipo_op = extended_instr->tipo;
-                    
-                    log_debug(logger, "Tipo de instrucción encontrado: %d", tipo_op);
-                    
-                    // Ahora obtenemos la instrucción base para enviar al CPU
-                    instruccion = get_instruction(pid, pc);
-                }
-            
-                if (instruccion != NULL) {
-                    log_debug(logger, "Instrucción encontrada - Tipo: %d, Params: '%s', '%s', '%s'", 
-                            tipo_op, 
-                            instruccion->parametros1, 
-                            instruccion->parametros2, 
-                            instruccion->parametros3);
+                log_info(logger, "## PID: %d - Obtener instrucción: %d - Instrucción: %s%s", 
+                         pid, pc, instruccion->parametros1, args_log);
+                free(args_log);
+
+                // usamos la instruccion
+                t_paquete* paquete = crear_paquete_op(PEDIR_INSTRUCCION_OP);
+
+                // siempre 3 params
+                char* p1 = instruccion->parametros1 ? instruccion->parametros1 : "";
+                char* p2 = instruccion->parametros2 ? instruccion->parametros2 : "";
+                char* p3 = instruccion->parametros3 ? instruccion->parametros3 : "";
                 
-            // Crear paquete con la instrucción
-                t_paquete* paquete = crear_paquete_op(tipo_op);
-                
-                // Agregar los parámetros al paquete
-                    if (instruccion->parametros1 && strlen(instruccion->parametros1) > 0)
-                        agregar_a_paquete(paquete, instruccion->parametros1, strlen(instruccion->parametros1) + 1);
-                    
-                    if (instruccion->parametros2 && strlen(instruccion->parametros2) > 0)
-                        agregar_a_paquete(paquete, instruccion->parametros2, strlen(instruccion->parametros2) + 1);
-                    
-                    if (instruccion->parametros3 && strlen(instruccion->parametros3) > 0)
-                        agregar_a_paquete(paquete, instruccion->parametros3, strlen(instruccion->parametros3) + 1);
-                
-                // Enviar la instrucción
-                    enviar_paquete(paquete, cliente_socket);
-                    eliminar_paquete(paquete);
-                
-            // Liberar la instrucción (es una copia creada por get_instruction)
-                free(instruccion->parametros1);
-                free(instruccion->parametros2);
-                free(instruccion->parametros3);
-                free(instruccion);
-            } else {
-                // Si no se encontró la instrucción, enviamos una instrucción NOOP
-                    log_warning(logger, "No se encontró instrucción para PID: %d, PC: %d - Enviando NOOP", pid, pc);
-                    t_paquete* paquete = crear_paquete_op(NOOP_OP);
-                    enviar_paquete(paquete, cliente_socket);
-                    eliminar_paquete(paquete);
+                // orden fijo
+                agregar_a_paquete(paquete, p1, strlen(p1) + 1);
+                agregar_a_paquete(paquete, p2, strlen(p2) + 1);
+                agregar_a_paquete(paquete, p3, strlen(p3) + 1);
+
+                // estandarizamos protocolo
+                enviar_paquete(paquete, cliente_socket);
+                eliminar_paquete(paquete);
             }
             break;
         }
@@ -349,8 +341,9 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 send_data(cliente_socket, &entradas_por_tabla, sizeof(int));
                 send_data(cliente_socket, &tam_pagina, sizeof(int));
                 send_data(cliente_socket, &cantidad_niveles, sizeof(int));
-            
-                log_debug(logger, "Configuración enviada a CPU: Entradas por tabla: %d, Tamaño página: %d, Niveles: %d", entradas_por_tabla, tam_pagina, cantidad_niveles);
+                
+                log_debug(logger, "Configuración enviada a CPU: Entradas por tabla: %d, Tamaño página: %d, Niveles: %d",
+                        entradas_por_tabla, tam_pagina, cantidad_niveles);
             break;
         }
 

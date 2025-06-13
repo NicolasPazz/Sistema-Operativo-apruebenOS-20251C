@@ -86,82 +86,103 @@ t_process_instructions* load_process_instructions(int pid, char* instructions_fi
         if (strcmp(token, "NOOP") == 0) {
             // NOOP has no parameters
             instruction->tipo = NOOP_OP;
+            free(instruction->instruccion_base.parametros1);
+            instruction->instruccion_base.parametros1 = strdup("NOOP");
         } 
         else if (strcmp(token, "WRITE") == 0) {
             // WRITE <dir> <valor>
             instruction->tipo = WRITE_OP;
+            free(instruction->instruccion_base.parametros1);
+            instruction->instruccion_base.parametros1 = strdup("WRITE");
+            
             char* param1 = strtok(NULL, " ");
             char* param2 = strtok(NULL, " ");
             
             if (param1) {
-                free(instruction->instruccion_base.parametros1);
-                instruction->instruccion_base.parametros1 = strdup(param1);
+                free(instruction->instruccion_base.parametros2);
+                instruction->instruccion_base.parametros2 = strdup(param1);
             }
             
             if (param2) {
-                free(instruction->instruccion_base.parametros2);
-                instruction->instruccion_base.parametros2 = strdup(param2);
+                free(instruction->instruccion_base.parametros3);
+                instruction->instruccion_base.parametros3 = strdup(param2);
             }
         } 
         else if (strcmp(token, "READ") == 0) {
             // READ <dir>
             instruction->tipo = READ_OP;
+            free(instruction->instruccion_base.parametros1);
+            instruction->instruccion_base.parametros1 = strdup("READ");
+            
             char* param1 = strtok(NULL, " ");
             
             if (param1) {
-                free(instruction->instruccion_base.parametros1);
-                instruction->instruccion_base.parametros1 = strdup(param1);
+                free(instruction->instruccion_base.parametros2);
+                instruction->instruccion_base.parametros2 = strdup(param1);
             }
         } 
         else if (strcmp(token, "GOTO") == 0) {
             // GOTO <dir>
             instruction->tipo = GOTO_OP;
+            free(instruction->instruccion_base.parametros1);
+            instruction->instruccion_base.parametros1 = strdup("GOTO");
+            
             char* param1 = strtok(NULL, " ");
             
             if (param1) {
-                free(instruction->instruccion_base.parametros1);
-                instruction->instruccion_base.parametros1 = strdup(param1);
+                free(instruction->instruccion_base.parametros2);
+                instruction->instruccion_base.parametros2 = strdup(param1);
             }
         } 
         else if (strcmp(token, "IO") == 0) {
             // IO <dispositivo> <tiempo>
             instruction->tipo = IO_OP;
+            free(instruction->instruccion_base.parametros1);
+            instruction->instruccion_base.parametros1 = strdup("IO");
+            
             char* param1 = strtok(NULL, " ");
             char* param2 = strtok(NULL, " ");
             
             if (param1) {
-                free(instruction->instruccion_base.parametros1);
-                instruction->instruccion_base.parametros1 = strdup(param1);
+                free(instruction->instruccion_base.parametros2);
+                instruction->instruccion_base.parametros2 = strdup(param1);
             }
             
             if (param2) {
-                free(instruction->instruccion_base.parametros2);
-                instruction->instruccion_base.parametros2 = strdup(param2);
+                free(instruction->instruccion_base.parametros3);
+                instruction->instruccion_base.parametros3 = strdup(param2);
             }
         } 
         else if (strcmp(token, "INIT_PROC") == 0) {
             // INIT_PROC <nombre_proceso> <tamaño>
             instruction->tipo = INIT_PROC_OP;
+            free(instruction->instruccion_base.parametros1);
+            instruction->instruccion_base.parametros1 = strdup("INIT_PROC");
+            
             char* param1 = strtok(NULL, " ");
             char* param2 = strtok(NULL, " ");
             
             if (param1) {
-                free(instruction->instruccion_base.parametros1);
-                instruction->instruccion_base.parametros1 = strdup(param1);
+                free(instruction->instruccion_base.parametros2);
+                instruction->instruccion_base.parametros2 = strdup(param1);
             }
             
             if (param2) {
-                free(instruction->instruccion_base.parametros2);
-                instruction->instruccion_base.parametros2 = strdup(param2);
+                free(instruction->instruccion_base.parametros3);
+                instruction->instruccion_base.parametros3 = strdup(param2);
             }
         } 
         else if (strcmp(token, "DUMP_MEMORY") == 0) {
             // DUMP_MEMORY has no parameters
             instruction->tipo = DUMP_MEMORY_OP;
+            free(instruction->instruccion_base.parametros1);
+            instruction->instruccion_base.parametros1 = strdup("DUMP_MEMORY");
         } 
         else if (strcmp(token, "EXIT") == 0) {
             // EXIT has no parameters
             instruction->tipo = EXIT_OP;
+            free(instruction->instruccion_base.parametros1);
+            instruction->instruccion_base.parametros1 = strdup("EXIT");
         } 
         else {
             // Unknown instruction, skip it
@@ -249,43 +270,17 @@ t_instruccion* get_instruction(int pid, int pc) {
 char* instruction_to_string(t_extended_instruccion* instruction, int pc) {
     char* result = string_new();
     
-    // Usar el tipo de instrucción
-    switch (instruction->tipo) {
-        case NOOP_OP:
-            string_append(&result, "NOOP");
-            break;
-        case WRITE_OP:
-            string_append_with_format(&result, "WRITE %s %s", 
-                                     instruction->instruccion_base.parametros1, 
-                                     instruction->instruccion_base.parametros2);
-            break;
-        case READ_OP:
-            string_append_with_format(&result, "READ %s", 
-                                     instruction->instruccion_base.parametros1);
-            break;
-        case GOTO_OP:
-            string_append_with_format(&result, "GOTO %s", 
-                                     instruction->instruccion_base.parametros1);
-            break;
-        case IO_OP:
-            string_append_with_format(&result, "IO %s %s", 
-                                     instruction->instruccion_base.parametros1, 
-                                     instruction->instruccion_base.parametros2);
-            break;
-        case INIT_PROC_OP:
-            string_append_with_format(&result, "INIT_PROC %s %s", 
-                                     instruction->instruccion_base.parametros1, 
-                                     instruction->instruccion_base.parametros2);
-            break;
-        case DUMP_MEMORY_OP:
-            string_append(&result, "DUMP_MEMORY");
-            break;
-        case EXIT_OP:
-            string_append(&result, "EXIT");
-            break;
-        default:
-            string_append_with_format(&result, "UNKNOWN (tipo=%d)", instruction->tipo);
-            break;
+    // Usar el parametros1 que ahora contiene el nombre de la instrucción
+    string_append(&result, instruction->instruccion_base.parametros1);
+    
+    // Agregar parametros2 si no está vacío
+    if (instruction->instruccion_base.parametros2 && strlen(instruction->instruccion_base.parametros2) > 0) {
+        string_append_with_format(&result, " %s", instruction->instruccion_base.parametros2);
+    }
+    
+    // Agregar parametros3 si no está vacío  
+    if (instruction->instruccion_base.parametros3 && strlen(instruction->instruccion_base.parametros3) > 0) {
+        string_append_with_format(&result, " %s", instruction->instruccion_base.parametros3);
     }
     
     return result;
