@@ -32,7 +32,7 @@ void iniciar_logger_memoria() {
     }
 }
 
-uint8_t cargar_configuracion(char* path) {
+int cargar_configuracion(char* path) {
     t_config* cfg_file = config_create(path);
 
     if (cfg_file == NULL) {

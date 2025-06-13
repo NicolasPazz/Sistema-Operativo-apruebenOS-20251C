@@ -89,7 +89,6 @@ int traducir_direccion(int direccion_logica, int* desplazamiento) {
         log_info(cpu_log, "PID: %d - TLB MISS - Página: %d", pid_ejecutando, nro_pagina);
 
         // Enviar entradas de página a Memoria
-        
         t_paquete* paquete = crear_paquete_op(SOLICITAR_FRAME_PARA_ENTRADAS);
         agregar_a_paquete(paquete, &pid_ejecutando, sizeof(int));
         agregar_a_paquete(paquete, &cantidad_niveles, sizeof(int));
@@ -148,7 +147,7 @@ void tlb_insertar(int pagina, int frame) {
 int seleccionar_victima_tlb() {
     int victima = 0;
     if (strcmp(REEMPLAZO_TLB, "LRU") == 0) {
-        uint64_t min_uso = UINT64_MAX;
+        int min_uso = UINT64_MAX;
         for (int i = 0; i < list_size(tlb); i++) {
             entrada_tlb_t* entrada = list_get(tlb, i);
             if (entrada->tiempo_uso < min_uso) {
@@ -169,8 +168,8 @@ int seleccionar_victima_tlb() {
     return victima;
 }
 
-uint64_t timestamp_actual() {
+int timestamp_actual() {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000); // en milisegundos
+    return (int)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000); // en milisegundos
 }

@@ -63,7 +63,6 @@ void procesar_conexion(void* void_args) {
     free(args);
 
     int handshake = -1;
-
     if (recv(cliente_socket, &handshake, sizeof(int), 0) <= 0) {
         log_error(logger, "Error al recibir handshake del cliente (fd=%d): %s", cliente_socket, strerror(errno));
         close(cliente_socket);
@@ -85,9 +84,8 @@ void procesar_conexion(void* void_args) {
             close(cliente_socket);
             return;
     }
-
     log_debug(logger, "Conexion procesada exitosamente para %s (fd=%d)", server_name, cliente_socket);
-    // manejo aca los codops
+
     op_code cop;
     while (recv(cliente_socket, &cop, sizeof(op_code), 0) > 0) {
         procesar_cod_ops(cop, cliente_socket);
@@ -108,12 +106,11 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
     switch (cop) {
         case MENSAJE_OP:
             log_debug(logger, "MENSAJE_OP recibido");
-
+        
             // Recibir un Mensaje char* y loguearlo
                 char* mensaje;
                 recv_string(cliente_socket, &mensaje);
                 log_debug(logger, "Mensaje recibido: %s", mensaje);
-
                 free(mensaje);
             break;
 
@@ -175,11 +172,13 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
 
         case GOTO_OP:
             log_debug(logger, "GOTO_OP recibido");
+
             // No implementado para el checkpoint 2
             break;
 
         case IO_OP:
             log_debug(logger, "IO_OP recibido");
+
             // No implementado para el checkpoint 2
             break;
 
@@ -273,11 +272,13 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
 
         case EXEC_OP:
             log_debug(logger, "EXEC_OP recibido");
+
             // No implementado para el checkpoint 2
             break;
 
         case INTERRUPCION_OP:
             log_debug(logger, "INTERRUPCION_OP recibido");
+
             // No implementado para el checkpoint 2
             break;
 

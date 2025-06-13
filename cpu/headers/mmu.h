@@ -5,7 +5,7 @@
 typedef struct {
     int pagina; //pagina y frame no eran lo mismo?
     int frame;
-    uint64_t tiempo_uso;
+    int tiempo_uso;
     int orden_fifo;
     bool valido;
 } entrada_tlb_t;
@@ -20,7 +20,7 @@ int traducir_direccion(int direccion_logica, int* desplazamiento);
 bool tlb_buscar(int pagina, int* frame);
 void tlb_insertar(int pagina, int frame);
 bool tlb_habilitada(void);
-uint64_t timestamp_actual(void);
+int timestamp_actual(void);
 int seleccionar_victima_tlb(void);
 uint8_t cargar_configuracion(char* path);
 

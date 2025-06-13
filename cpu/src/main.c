@@ -24,6 +24,7 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "[CPU] Uso: %s <ID_CPU>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
+    int numero_cpu = atoi(argv[1]);
 
     int numero_cpu = atoi(argv[1]);
     leer_config_cpu();
@@ -58,33 +59,7 @@ int main(int argc, char* argv[]) {
     
     terminar_programa();
     return EXIT_SUCCESS;  
-}
-
-// NO UTIL POR EL MOMENTOS
-// void atender_cliente(void* arg) { 
-//     cliente_data_t *data = (cliente_data_t *)arg;
-//     int control_key = 1;
-//     while (control_key) {
-//         int cod_op = recibir_operacion(data->fd);
-//         switch (cod_op) {
-//             case MENSAJE:
-//                 recibir_mensaje(data->fd, data->logger);
-//                 break;
-//             case PAQUETE:
-//                 t_list* lista = recibir_paquete(data->fd);
-//                 list_iterate(lista, (void*)iterator);
-//                 list_destroy(lista);
-//                 break;
-//             case -1:
-//                 log_error(data->logger, "El cliente (%s) se desconecto. Terminando servidor.", data->cliente);
-//                 control_key = 0;
-//                 break;
-//             default:
-//                 log_error(data->logger, "Operacion desconocida de %s", data->cliente);
-//                 break;
-//         }
-//     }
-// }    
+}  
 
 void* recibir_kernel_dispatch(void* arg) {
     log_info(cpu_log, "[DISPATCH] Hilo de recepción de Kernel Dispatch iniciado");

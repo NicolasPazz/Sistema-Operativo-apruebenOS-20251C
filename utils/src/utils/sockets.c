@@ -1,6 +1,5 @@
 #include "../headers/sockets.h"
 
-
 /////////////////////////////// Log y Config ///////////////////////////////
 t_log* iniciar_logger(char *file, char *process_name, bool is_active_console, t_log_level level) {
 	t_log* nuevo_logger = log_create(file, process_name,is_active_console,level);
@@ -132,7 +131,6 @@ int esperar_cliente(int socket_servidor, t_log* logger) {
     return socket_cliente;
 }
 
-
 void atender_cliente(void* arg) {
     cliente_data_t *data = (cliente_data_t *)arg;
     int control_key = 1;
@@ -195,12 +193,11 @@ cliente_data_t *crear_cliente_data(int fd_cliente, t_log* logger, char* cliente)
     return data;
 }
 
-int recibir_operacion(int socket_cliente) {
-	int cod_op;
+op_code recibir_operacion(int socket_cliente) {
+	op_code cod_op;
 	if(recv(socket_cliente, &cod_op, sizeof(int), MSG_WAITALL) > 0)
 		return cod_op;
-	else
-	{
+	else {
 		close(socket_cliente);
 		return -1;
 	}
@@ -365,7 +362,6 @@ void eliminar_paquete(t_paquete* paquete) {
 }
 
 void paquete(int conexion) {
-	
 	char* leido;
 	t_paquete* paquete = crear_paquete();
 
@@ -397,22 +393,27 @@ void* serializar_paquete(t_paquete* paquete, int bytes) {
 	return magic;
 }
 
-t_paquete* crear_paquete_op(op_code codop)
-{
+t_paquete* crear_paquete_op(op_code codop){
     t_paquete* paquete = malloc(sizeof(t_paquete));
     paquete->codigo_operacion = codop;
     crear_buffer(paquete);
     return paquete;
 }
 
-void agregar_entero_a_paquete(t_paquete *paquete, int numero)
-{
-
+void agregar_entero_a_paquete(t_paquete *paquete, int numero){
     paquete->buffer->stream = realloc(paquete->buffer->stream, paquete->buffer->size + sizeof(int));
     memcpy(paquete->buffer->stream + paquete->buffer->size, &numero, sizeof(int));
     paquete->buffer->size += sizeof(int);
 }
 
+bool enviar_operacion(int socket, op_code operacion) {
+    int op = operacion;
+    int bytes_enviados = send(socket, &op, sizeof(op), 0);
+    return bytes_enviados == sizeof(op);
+}
+
+
+/*
 char* leer_string(char* buffer, int* desplazamiento) {
     int tamanio = leer_entero(buffer, desplazamiento);
 
@@ -433,6 +434,16 @@ int leer_entero(char *buffer, int * desplazamiento){
     (*desplazamiento) += sizeof(int);
     return entero;
 }
+
+
+
+
+
+
+
+
+
+
 
 t_list* recibir_4_enteros(int socket){
 	int entero1;
@@ -527,3 +538,5 @@ t_list* recibir_2_enteros(int socket){
 	free(buffer);
 	return lista;
 }
+
+*/

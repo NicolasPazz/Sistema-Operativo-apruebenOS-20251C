@@ -2,6 +2,7 @@
 #include "../headers/init.h"
 #include "../headers/mmu.h"
 #include "../headers/cache.h"
+#include "../../utils/headers/sockets.h"
 
 void func_noop() {
     //no hace nada, solo se usa para el log
@@ -34,7 +35,6 @@ void func_write(char* direccion_logica_str, char* datos) {
     }
 
 }
-
 
 void func_read(char* direccion, char* tamanio) {
     int desplazamiento = 0;

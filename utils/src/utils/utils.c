@@ -2,7 +2,7 @@
 #include "../headers/sockets.h"
 
 bool config_has_all_properties(t_config* cfg, char** properties) {
-    for(uint8_t i = 0; properties[i] != NULL; i++) {
+    for(int i = 0; properties[i] != NULL; i++) {
         if(!config_has_property(cfg, properties[i]))
             return false;
     }
@@ -10,10 +10,8 @@ bool config_has_all_properties(t_config* cfg, char** properties) {
     return true;
 }
 
-// ***** funciones para deserializar***
-
-//definimos x protocolo q primero la cadena y desp el entero
-void deserializar_un_char_y_un_int (void* stream, char** cadena , uint8_t* entero){
+// Deserialización
+void deserializar_un_char_y_un_int (void* stream, char** cadena , int* entero){
     //string
     size_t size_cadena;
     memcpy(&size_cadena, stream, sizeof(size_t)); // guardo el tamanio de la cadena
@@ -23,12 +21,12 @@ void deserializar_un_char_y_un_int (void* stream, char** cadena , uint8_t* enter
     *cadena = r_cadena;
     
     //int
-    memcpy(entero, stream+sizeof(size_t)+size_cadena ,sizeof(uint8_t));
+    memcpy(entero, stream+sizeof(size_t)+size_cadena ,sizeof(int));
 }
 
-void deserializar_dos_ints(void* stream, uint8_t* int1, uint8_t* int2) {
-    memcpy(int1, stream, sizeof(uint8_t));
-    memcpy(int2, stream+sizeof(uint8_t), sizeof(uint8_t));
+void deserializar_dos_ints(void* stream, int* int1, int* int2) {
+    memcpy(int1, stream, sizeof(int));
+    memcpy(int2, stream+sizeof(int), sizeof(int));
 }
 
 // ***** funciones para serializar***
@@ -49,19 +47,19 @@ void* serializar_un_char_y_un_int(size_t* size, char* cadena, int entero) {
     memcpy(stream+sizeof(op_code), &size_payload, sizeof(size_t));
     memcpy(stream+sizeof(op_code)+sizeof(size_t), &size_cadena, sizeof(size_t));
     memcpy(stream+sizeof(op_code)+sizeof(size_t)*2, cadena, size_cadena);
-    memcpy(stream+sizeof(op_code)+sizeof(size_t)*2+size_cadena, &entero, sizeof(uint8_t));
+    memcpy(stream+sizeof(op_code)+sizeof(size_t)*2+size_cadena, &entero, sizeof(int));
 
     return stream;
 }
 
 //* probamos con 2 ints
-void* serializar_dos_ints(uint8_t int1, uint8_t int2) {
-    void* stream = malloc(sizeof(op_code) + sizeof(uint8_t) * 2);
+void* serializar_dos_ints(int int1, int int2) {
+    void* stream = malloc(sizeof(op_code) + sizeof(int) * 2);
 
     op_code cop = PEDIR_INSTRUCCION_OP;
     memcpy(stream, &cop, sizeof(op_code));
-    memcpy(stream+sizeof(op_code), &int1, sizeof(uint8_t));
-    memcpy(stream+sizeof(op_code)+sizeof(uint8_t), &int2, sizeof(uint8_t));
+    memcpy(stream+sizeof(op_code), &int1, sizeof(int));
+    memcpy(stream+sizeof(op_code)+sizeof(int), &int2, sizeof(int));
     return stream;
 }
 
@@ -79,8 +77,8 @@ bool send_un_char_y_un_int(int fd, char* cadena, int entero) {
     return true;
 }
 
-bool send_dos_ints(int fd, uint8_t int1, uint8_t int2) {
-    size_t size = sizeof(op_code) + sizeof(uint8_t) * 2;
+bool send_dos_ints(int fd, int int1, int int2) {
+    size_t size = sizeof(op_code) + sizeof(int) * 2;
     void* stream = serializar_dos_ints(int1, int2);
     if (send(fd, stream, size, 0) != size) {
         free(stream);
@@ -115,7 +113,7 @@ bool send_data(int fd, void* data, size_t size) {
 
 
 //** ej funciones de RECV -> Deserializan */
-bool recv_un_char_y_un_int(int fd, char** cadena, uint8_t* entero) {
+bool recv_un_char_y_un_int(int fd, char** cadena, int* entero) {
     size_t size_payload;
     if (recv(fd, &size_payload, sizeof(size_t), 0) != sizeof(size_t))
         return false;
@@ -132,8 +130,8 @@ bool recv_un_char_y_un_int(int fd, char** cadena, uint8_t* entero) {
     return true;
 }
 
-bool recv_dos_ints(int fd, uint8_t* int1, uint8_t* int2) {
-    size_t size = sizeof(uint8_t) * 2;
+bool recv_dos_ints(int fd, int* int1, int* int2) {
+    size_t size = sizeof(int) * 2;
     void* stream = malloc(size);
 
     if (recv(fd, stream, size, 0) != size) {
