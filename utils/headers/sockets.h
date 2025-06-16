@@ -58,7 +58,8 @@ typedef enum {
 	ACCESO_TABLA_PAGINAS_OP,      // Acceso a tabla de páginas - devuelve número de marco
 	ACCESO_ESPACIO_USUARIO_OP,    // Acceso a espacio de usuario - lectura/escritura
 	LEER_PAGINA_COMPLETA_OP,      // Leer página completa desde dirección física
-	ACTUALIZAR_PAGINA_COMPLETA_OP // Actualizar página completa en dirección física
+	ACTUALIZAR_PAGINA_COMPLETA_OP, // Actualizar página completa en dirección física
+	CHECK_MEMORY_SPACE_OP         // Consultar si hay espacio suficiente en memoria
 } op_code;
 
 typedef struct {

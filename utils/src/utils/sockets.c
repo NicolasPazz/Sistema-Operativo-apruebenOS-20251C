@@ -254,7 +254,7 @@ t_list* recibir_contenido_paquete(int socket_cliente) {
         memcpy(&param_size, buffer + offset, sizeof(int));
         offset += sizeof(int);
 
-        char* param = malloc(param_size);
+        void* param = malloc(param_size);
         memcpy(param, buffer + offset, param_size);
         offset += param_size;
 
@@ -294,7 +294,7 @@ t_list* recibir_paquete(int socket_cliente) {
         memcpy(&param_size, buffer + offset, sizeof(int));
         offset += sizeof(int);
 
-        char* param = malloc(param_size);
+        void* param = malloc(param_size);
         memcpy(param, buffer + offset, param_size);
         offset += param_size;
 
@@ -338,12 +338,12 @@ t_paquete* crear_paquete(void) {
 }
 
 void agregar_a_paquete(t_paquete* paquete, void* valor, int tamanio) {
-	paquete->buffer->stream = realloc(paquete->buffer->stream, paquete->buffer->size + tamanio + sizeof(int));
+    paquete->buffer->stream = realloc(paquete->buffer->stream, paquete->buffer->size + tamanio + sizeof(int));
 
-	memcpy(paquete->buffer->stream + paquete->buffer->size, &tamanio, sizeof(int));
-	memcpy(paquete->buffer->stream + paquete->buffer->size + sizeof(int), valor, tamanio);
+    memcpy(paquete->buffer->stream + paquete->buffer->size, &tamanio, sizeof(int));
+    memcpy(paquete->buffer->stream + paquete->buffer->size + sizeof(int), valor, tamanio);
 
-	paquete->buffer->size += tamanio + sizeof(int);
+    paquete->buffer->size += tamanio + sizeof(int);
 }
 
 void enviar_paquete(t_paquete* paquete, int socket_cliente) {
