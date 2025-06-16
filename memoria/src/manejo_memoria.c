@@ -1,6 +1,8 @@
 #include "../headers/manejo_memoria.h"
 #include "../headers/estructuras.h"
 #include "../headers/init_memoria.h"
+#include "../headers/metricas.h"
+#include "../headers/manejo_swap.h"
 #include <commons/log.h>
 #include <commons/string.h>
 #include <string.h>
@@ -12,123 +14,85 @@ extern t_sistema_memoria* sistema_memoria;
 extern t_log* logger;
 extern t_config_memoria* cfg;
 
+// Declaraciones de funciones internas
+static void liberar_marcos_proceso(int pid);
+static t_resultado_memoria configurar_entrada_pagina(t_estructura_paginas* estructura, int numero_pagina, int numero_frame);
+static void calcular_indices_multinivel(int numero_pagina, int cantidad_niveles, int entradas_por_tabla, int* indices);
+
 // ============================================================================
 // FUNCIONES DE GESTIÓN DE PROCESOS EN MEMORIA
 // ============================================================================
 
-t_resultado_memoria crear_proceso_en_memoria(int pid, int tamanio) {
-    log_info(logger, "## PID: %d - Proceso Creado - Tamaño: %d", pid, tamanio);
-    
-    if (!sistema_memoria) {
-        log_error(logger, "Sistema de memoria no inicializado");
-        return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
+t_resultado_memoria crear_proceso_en_memoria(int pid, int tamanio, char* nombre_archivo) {
+    if (pid < 0 || tamanio <= 0) {
+        log_error(logger, "PID: %d - Error al crear proceso: Parámetros inválidos", pid);
+        return MEMORIA_ERROR_DIRECCION_INVALIDA;
     }
-    
-    // Verificar si el proceso ya existe
-    char pid_str[16];
-    sprintf(pid_str, "%d", pid);
-    
-    pthread_mutex_lock(&sistema_memoria->mutex_procesos);
-    
-    if (dictionary_has_key(sistema_memoria->procesos, pid_str)) {
-        log_error(logger, "PID: %d - Proceso ya existe", pid);
-        pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
-        return MEMORIA_ERROR_PROCESO_EXISTENTE;
+
+    if (obtener_proceso(pid)) {
+        log_error(logger, "PID: %d - Error al crear proceso: Ya existe", pid);
+        return MEMORIA_ERROR_DIRECCION_INVALIDA;
     }
-    
-    // Calcular páginas necesarias
-    int paginas_necesarias = (tamanio + cfg->TAM_PAGINA - 1) / cfg->TAM_PAGINA;
-    
-    // Verificar si hay suficientes marcos libres
-    if (obtener_marcos_libres() < paginas_necesarias) {
-        log_error(logger, "PID: %d - Memoria insuficiente para crear proceso. Necesarias: %d, Disponibles: %d", 
-                  pid, paginas_necesarias, obtener_marcos_libres());
-        pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
-        return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
-    }
-    
-    // Crear proceso en memoria
+
     t_proceso_memoria* proceso = malloc(sizeof(t_proceso_memoria));
     if (!proceso) {
-        log_error(logger, "PID: %d - Error al asignar memoria para proceso", pid);
-        pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
+        log_error(logger, "PID: %d - Error al crear proceso: No hay memoria", pid);
         return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
     }
-    
-    // Inicializar proceso
+
     proceso->pid = pid;
     proceso->tamanio = tamanio;
-    proceso->activo = true;
-    proceso->suspendido = false;
-    proceso->timestamp_creacion = time(NULL);
-    
-    // Crear estructura de paginación multinivel
+    proceso->nombre_archivo = strdup(nombre_archivo);
     proceso->estructura_paginas = crear_estructura_paginas(pid, tamanio);
-    if (!proceso->estructura_paginas) {
-        log_error(logger, "PID: %d - Error al crear estructura de paginación", pid);
-        free(proceso);
-        pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
-        return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
-    }
-    
-    // Crear métricas del proceso
     proceso->metricas = crear_metricas_proceso(pid);
-    if (!proceso->metricas) {
-        log_error(logger, "PID: %d - Error al crear métricas", pid);
-        destruir_estructura_paginas(proceso->estructura_paginas);
-        free(proceso);
-        pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
+
+    if (!proceso->estructura_paginas || !proceso->metricas) {
+        log_error(logger, "PID: %d - Error al crear proceso: Falló la inicialización", pid);
+        destruir_proceso(proceso);
         return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
     }
-    
-    // Crear lista de instrucciones
-    proceso->instrucciones = list_create();
-    if (!proceso->instrucciones) {
-        log_error(logger, "PID: %d - Error al crear lista de instrucciones", pid);
-        destruir_metricas_proceso(proceso->metricas);
-        destruir_estructura_paginas(proceso->estructura_paginas);
-        free(proceso);
-        pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
-        return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
-    }
-    
-    // Asignar marcos físicos para las páginas del proceso
-    for (int i = 0; i < paginas_necesarias; i++) {
-        int numero_frame = asignar_marco_libre(pid, i);
-        if (numero_frame == -1) {
-            log_error(logger, "PID: %d - Error al asignar marco para página %d", pid, i);
-            // Liberar marcos ya asignados
-            for (int j = 0; j < i; j++) {
-                // Buscar y liberar marcos del proceso
-                liberar_marcos_proceso(pid);
-            }
-            list_destroy(proceso->instrucciones);
-            destruir_metricas_proceso(proceso->metricas);
-            destruir_estructura_paginas(proceso->estructura_paginas);
-            free(proceso);
-            pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
-            return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
-        }
-        
-        // Configurar entrada en la tabla de páginas
-        configurar_entrada_pagina(proceso->estructura_paginas, i, numero_frame);
-    }
-    
-    // Agregar proceso al diccionario
+
+    char pid_str[16];
+    sprintf(pid_str, "%d", pid);
     dictionary_put(sistema_memoria->procesos, pid_str, proceso);
-    dictionary_put(sistema_memoria->estructuras_paginas, pid_str, proceso->estructura_paginas);
-    dictionary_put(sistema_memoria->metricas_procesos, pid_str, proceso->metricas);
-    dictionary_put(sistema_memoria->process_instructions, pid_str, proceso->instrucciones);
-    
-    // Actualizar estadísticas del sistema
-    sistema_memoria->procesos_activos++;
-    sistema_memoria->memoria_utilizada += tamanio;
-    sistema_memoria->total_asignaciones_memoria++;
-    
-    pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
-    
-    log_info(logger, "## PID: %d - Proceso creado exitosamente - %d páginas asignadas", pid, paginas_necesarias);
+    log_info(logger, "PID: %d - Proceso creado exitosamente", pid);
     return MEMORIA_OK;
+}
+
+void liberar_proceso_memoria(t_proceso_memoria* proceso) {
+    if (!proceso || !proceso->estructura_paginas) {
+        return;
+    }
+
+    // Liberar frames asociados al proceso
+    liberar_marcos_proceso(proceso->pid);
+
+    // Eliminar proceso del diccionario
+    char pid_str[16];
+    sprintf(pid_str, "%d", proceso->pid);
+    dictionary_remove(sistema_memoria->procesos, pid_str);
+    destruir_proceso(proceso);
+
+    log_info(logger, "PID: %d - Proceso eliminado exitosamente", proceso->pid);
+}
+
+void destruir_proceso(t_proceso_memoria* proceso) {
+    if (!proceso) return;
+
+    if (proceso->estructura_paginas) {
+        destruir_tabla_paginas_recursiva(proceso->estructura_paginas->tabla_raiz);
+        free(proceso->estructura_paginas);
+    }
+
+    if (proceso->metricas) {
+        destruir_metricas_proceso(proceso->metricas);
+    }
+
+    if (proceso->nombre_archivo) {
+        free(proceso->nombre_archivo);
+    }
+
+    free(proceso);
 }
 
 t_resultado_memoria finalizar_proceso_en_memoria(int pid) {
@@ -151,7 +115,7 @@ t_resultado_memoria finalizar_proceso_en_memoria(int pid) {
     }
     
     // Imprimir métricas antes de finalizar
-    imprimir_metricas_proceso(proceso->metricas);
+    imprimir_metricas_proceso(pid);
     
     // Liberar todos los marcos físicos del proceso
     liberar_marcos_proceso(pid);
@@ -213,7 +177,7 @@ t_resultado_memoria suspender_proceso_en_memoria(int pid) {
     }
     
     // Escribir páginas del proceso a SWAP
-    t_resultado_memoria resultado = escribir_proceso_a_swap(pid);
+    t_resultado_memoria resultado = suspender_proceso_completo(pid);
     if (resultado != MEMORIA_OK) {
         log_error(logger, "PID: %d - Error al escribir proceso a SWAP", pid);
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
@@ -276,7 +240,7 @@ t_resultado_memoria reanudar_proceso_en_memoria(int pid) {
     }
     
     // Leer proceso desde SWAP
-    t_resultado_memoria resultado = leer_proceso_desde_swap(pid);
+    t_resultado_memoria resultado = reanudar_proceso_suspendido(pid);
     if (resultado != MEMORIA_OK) {
         log_error(logger, "PID: %d - Error al leer proceso desde SWAP", pid);
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
@@ -355,130 +319,23 @@ t_estructura_paginas* crear_estructura_paginas(int pid, int tamanio) {
     return estructura;
 }
 
-void destruir_estructura_paginas(t_estructura_paginas* estructura) {
-    if (!estructura) return;
-    
-    if (estructura->tabla_raiz) {
-        destruir_tabla_paginas_recursiva(estructura->tabla_raiz);
-    }
-    
-    pthread_mutex_destroy(&estructura->mutex_estructura);
-    free(estructura);
-}
-
-t_tabla_paginas* crear_tabla_paginas(int nivel) {
-    t_tabla_paginas* tabla = malloc(sizeof(t_tabla_paginas));
-    if (!tabla) {
-        log_error(logger, "Error al asignar memoria para tabla de páginas nivel %d", nivel);
-        return NULL;
-    }
-    
-    tabla->nivel = nivel;
-    tabla->inicializada = true;
-    
-    // Asignar array de entradas
-    tabla->entradas = malloc(sizeof(t_entrada_tabla) * cfg->ENTRADAS_POR_TABLA);
-    if (!tabla->entradas) {
-        log_error(logger, "Error al asignar entradas para tabla nivel %d", nivel);
-        free(tabla);
-        return NULL;
-    }
-    
-    // Inicializar todas las entradas
-    for (int i = 0; i < cfg->ENTRADAS_POR_TABLA; i++) {
-        tabla->entradas[i].presente = false;
-        tabla->entradas[i].modificado = false;
-        tabla->entradas[i].numero_frame = 0;
-        tabla->entradas[i].tabla_siguiente = NULL;
-    }
-    
-    return tabla;
-}
-
-void destruir_tabla_paginas_recursiva(t_tabla_paginas* tabla) {
-    if (!tabla) return;
-    
-    // Si no es nivel hoja, destruir tablas hijas recursivamente
-    if (tabla->nivel > 0 && tabla->entradas) {
-        for (int i = 0; i < cfg->ENTRADAS_POR_TABLA; i++) {
-            if (tabla->entradas[i].tabla_siguiente) {
-                destruir_tabla_paginas_recursiva((t_tabla_paginas*)tabla->entradas[i].tabla_siguiente);
-            }
-        }
-    }
-    
-    if (tabla->entradas) {
-        free(tabla->entradas);
-    }
-    
-    free(tabla);
-}
-
 t_resultado_memoria configurar_entrada_pagina(t_estructura_paginas* estructura, int numero_pagina, int numero_frame) {
-    if (!estructura || !estructura->tabla_raiz) {
+    if (!estructura) {
         return MEMORIA_ERROR_DIRECCION_INVALIDA;
     }
-    
-    pthread_mutex_lock(&estructura->mutex_estructura);
-    
-    // Calcular índices para cada nivel
-    int indices[estructura->cantidad_niveles];
-    int pagina_temp = numero_pagina;
-    
-    for (int nivel = 0; nivel < estructura->cantidad_niveles; nivel++) {
-        indices[nivel] = pagina_temp % estructura->entradas_por_tabla;
-        pagina_temp /= estructura->entradas_por_tabla;
+
+    t_entrada_tabla* entrada = crear_entrada_tabla_si_no_existe(estructura, numero_pagina);
+    if (!entrada) {
+        log_error(logger, "PID: %d - Error al crear entrada para página %d", estructura->pid, numero_pagina);
+        return MEMORIA_ERROR_DIRECCION_INVALIDA;
     }
-    
-    // Navegar hasta el nivel hoja creando tablas intermedias si es necesario
-    t_tabla_paginas* tabla_actual = estructura->tabla_raiz;
-    
-    for (int nivel = estructura->cantidad_niveles - 1; nivel > 0; nivel--) {
-        int indice = indices[nivel];
-        
-        if (!tabla_actual->entradas[indice].presente) {
-            // Crear nueva tabla para el siguiente nivel
-            tabla_actual->entradas[indice].tabla_siguiente = crear_tabla_paginas(nivel - 1);
-            if (!tabla_actual->entradas[indice].tabla_siguiente) {
-                pthread_mutex_unlock(&estructura->mutex_estructura);
-                return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
-            }
-            tabla_actual->entradas[indice].presente = true;
-        }
-        
-        // Verificar si la entrada está presente y tiene tabla siguiente
-        if (tabla_actual->entradas[indices[nivel]].tabla_siguiente == NULL ||
-            !tabla_actual->entradas[indices[nivel]].presente) {
-            log_error(logger, "PID: %d - Página %d no presente en nivel %d", pid, numero_pagina, nivel);
-            return -1;
-        }
-        
-        tabla_actual = (t_tabla_paginas*)tabla_actual->entradas[indices[nivel]].tabla_siguiente;
-        if (tabla_actual == NULL && nivel < estructura->cantidad_niveles - 2) {
-            log_error(logger, "PID: %d - Tabla siguiente es NULL en nivel %d", pid, nivel);
-            return -1;
-        }
-    }
-    
-    // Acceder a la entrada final (nivel hoja)
-    int indice_final = indices[estructura->cantidad_niveles - 1];
-    
-    log_trace(logger, "PID: %d - Accediendo a entrada final en nivel %d, índice %d", 
-              pid, estructura->cantidad_niveles - 1, indice_final);
-    
-    // Verificar si la página está presente
-    if (tabla_actual->entradas[indice_final].tabla_siguiente == NULL ||
-        !tabla_actual->entradas[indice_final].presente) {
-        log_error(logger, "PID: %d - Página %d no presente en nivel hoja", pid, numero_pagina);
-        return -1;
-    }
-    
-    int numero_marco = tabla_actual->entradas[indice_final].numero_frame;
-    
-    pthread_mutex_unlock(&estructura->mutex_estructura);
-    
-    log_trace(logger, "PID: %d - Marco obtenido: %d para página %d", pid, numero_marco, numero_pagina);
-    return numero_marco;
+
+    entrada->presente = true;
+    entrada->numero_frame = numero_frame;
+    entrada->modificado = false;
+    entrada->referenciado = true;
+
+    return MEMORIA_OK;
 }
 
 // ============================================================================
@@ -549,51 +406,37 @@ int obtener_marco_pagina(int pid, int numero_pagina) {
 // FUNCIONES DE ACCESO A MEMORIA FÍSICA
 // ============================================================================
 
-t_resultado_memoria leer_memoria_fisica(int pid, int direccion_fisica, int tamanio, void* buffer) {
+t_resultado_memoria leer_memoria_fisica(uint32_t direccion_fisica, int tamanio, void* buffer) {
     if (!sistema_memoria || !buffer) {
         return MEMORIA_ERROR_DIRECCION_INVALIDA;
     }
-    
-    // Verificar que la dirección esté dentro de los límites
-    if (direccion_fisica < 0 || direccion_fisica + tamanio > cfg->TAM_MEMORIA) {
-        log_error(logger, "PID: %d - Dirección física fuera de rango: %d", pid, direccion_fisica);
+
+    // Validar que la dirección física está dentro del rango de memoria
+    if (direccion_fisica + tamanio > cfg->TAM_MEMORIA) {
+        log_error(logger, "Dirección física fuera de rango: %u", direccion_fisica);
         return MEMORIA_ERROR_DIRECCION_INVALIDA;
     }
-    
-    // Aplicar retardo de memoria
-    aplicar_retardo_memoria();
-    
-    // Leer desde memoria principal
+
+    // Copiar datos desde la memoria física al buffer
     memcpy(buffer, (char*)sistema_memoria->memoria_principal + direccion_fisica, tamanio);
     
-    // Incrementar métrica de lectura
-    incrementar_lecturas_memoria(pid);
-    
-    log_trace(logger, "## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d", pid, direccion_fisica, tamanio);
     return MEMORIA_OK;
 }
 
-t_resultado_memoria escribir_memoria_fisica(int pid, int direccion_fisica, int tamanio, void* datos) {
+t_resultado_memoria escribir_memoria_fisica(uint32_t direccion_fisica, void* datos, int tamanio) {
     if (!sistema_memoria || !datos) {
         return MEMORIA_ERROR_DIRECCION_INVALIDA;
     }
-    
-    // Verificar que la dirección esté dentro de los límites
-    if (direccion_fisica < 0 || direccion_fisica + tamanio > cfg->TAM_MEMORIA) {
-        log_error(logger, "PID: %d - Dirección física fuera de rango: %d", pid, direccion_fisica);
+
+    // Validar que la dirección física está dentro del rango de memoria
+    if (direccion_fisica + tamanio > cfg->TAM_MEMORIA) {
+        log_error(logger, "Dirección física fuera de rango: %u", direccion_fisica);
         return MEMORIA_ERROR_DIRECCION_INVALIDA;
     }
-    
-    // Aplicar retardo de memoria
-    aplicar_retardo_memoria();
-    
-    // Escribir en memoria principal
+
+    // Copiar datos desde el buffer a la memoria física
     memcpy((char*)sistema_memoria->memoria_principal + direccion_fisica, datos, tamanio);
     
-    // Incrementar métrica de escritura
-    incrementar_escrituras_memoria(pid);
-    
-    log_trace(logger, "## PID: %d - Escritura - Dir. Física: %d - Tamaño: %d", pid, direccion_fisica, tamanio);
     return MEMORIA_OK;
 }
 
@@ -601,25 +444,21 @@ t_resultado_memoria escribir_memoria_fisica(int pid, int direccion_fisica, int t
 // FUNCIONES DE UTILIDAD
 // ============================================================================
 
-void liberar_marcos_proceso(int pid) {
-    if (!sistema_memoria || !sistema_memoria->admin_marcos) {
+static void liberar_marcos_proceso(int pid) {
+    t_proceso_memoria* proceso = obtener_proceso(pid);
+    if (!proceso || !proceso->estructura_paginas) {
         return;
     }
-    
-    t_administrador_marcos* admin = sistema_memoria->admin_marcos;
-    
-    pthread_mutex_lock(&admin->mutex_frames);
-    
-    // Buscar y liberar todos los marcos del proceso
-    for (int i = 0; i < admin->cantidad_total_frames; i++) {
-        if (admin->frames[i].ocupado && admin->frames[i].pid_propietario == pid) {
-            liberar_marco(i);
+
+    t_estructura_paginas* estructura = proceso->estructura_paginas;
+    for (int i = 0; i < estructura->paginas_totales; i++) {
+        t_entrada_tabla* entrada = buscar_entrada_tabla(estructura, i);
+        if (entrada && entrada->presente) {
+            liberar_frame(entrada->numero_frame);
+            entrada->presente = false;
+            entrada->numero_frame = 0;
         }
     }
-    
-    pthread_mutex_unlock(&admin->mutex_frames);
-    
-    log_debug(logger, "PID: %d - Todos los marcos del proceso liberados", pid);
 }
 
 void aplicar_retardo_memoria(void) {
@@ -657,88 +496,19 @@ bool proceso_existe(int pid) {
  * de métricas y retardo de acceso) por cada nivel de tabla de páginas accedido.
  */
 int acceso_tabla_paginas(int pid, int numero_pagina) {
-    log_trace(logger, "PID: %d - Acceso a tabla de páginas - Página: %d", pid, numero_pagina);
-    
-    // Validar que el proceso existe
-    if (!proceso_existe(pid)) {
-        log_error(logger, "PID: %d - Proceso no existe para acceso a tabla de páginas", pid);
+    t_proceso_memoria* proceso = obtener_proceso(pid);
+    if (!proceso || !proceso->estructura_paginas) {
         return -1;
     }
+
+    t_estructura_paginas* estructura = proceso->estructura_paginas;
+    t_entrada_tabla* entrada = buscar_entrada_tabla(estructura, numero_pagina);
     
-    // Obtener estructura de páginas del proceso
-    char* pid_key = string_itoa(pid);
-    t_estructura_paginas* estructura = dictionary_get(sistema_memoria->estructuras_paginas, pid_key);
-    t_metricas_proceso* metricas = dictionary_get(sistema_memoria->metricas_procesos, pid_key);
-    free(pid_key);
-    
-    if (estructura == NULL || metricas == NULL) {
-        log_error(logger, "PID: %d - No se encontraron estructuras para acceso a tabla de páginas", pid);
+    if (!entrada || !entrada->presente) {
         return -1;
     }
-    
-    // Navegar por la jerarquía multinivel
-    t_tabla_paginas* tabla_actual = estructura->tabla_raiz;
-    int indices[estructura->cantidad_niveles];
-    
-    // Calcular índices para cada nivel
-    calcular_indices_multinivel(numero_pagina, estructura->cantidad_niveles, 
-                               cfg->ENTRADAS_POR_TABLA, indices);
-    
-    // Navegar por cada nivel (excepto el último)
-    for (int nivel = 0; nivel < estructura->cantidad_niveles - 1; nivel++) {
-        // Incrementar métrica de acceso a tabla de páginas
-        pthread_mutex_lock(&metricas->mutex_metricas);
-        metricas->accesos_tabla_paginas++;
-        pthread_mutex_unlock(&metricas->mutex_metricas);
-        
-        // Aplicar retardo de acceso a memoria
-        usleep(cfg->RETARDO_MEMORIA * 1000);
-        
-        log_trace(logger, "PID: %d - Accediendo nivel %d, índice %d", pid, nivel, indices[nivel]);
-        
-        // Verificar que la entrada existe y está presente
-        if (indices[nivel] >= cfg->ENTRADAS_POR_TABLA || 
-            tabla_actual->entradas[indices[nivel]] == NULL ||
-            !tabla_actual->entradas[indices[nivel]]->presente) {
-            log_error(logger, "PID: %d - Entrada no presente en nivel %d, índice %d", 
-                     pid, nivel, indices[nivel]);
-            return -1;
-        }
-        
-        // Avanzar al siguiente nivel
-        tabla_actual = tabla_actual->entradas[indices[nivel]]->tabla_siguiente;
-        if (tabla_actual == NULL && nivel < estructura->cantidad_niveles - 2) {
-            log_error(logger, "PID: %d - Tabla siguiente es NULL en nivel %d", pid, nivel);
-            return -1;
-        }
-    }
-    
-    // Acceso final al último nivel para obtener el marco
-    int indice_final = indices[estructura->cantidad_niveles - 1];
-    
-    // Incrementar métrica de acceso a tabla de páginas (último nivel)
-    pthread_mutex_lock(&metricas->mutex_metricas);
-    metricas->accesos_tabla_paginas++;
-    pthread_mutex_unlock(&metricas->mutex_metricas);
-    
-    // Aplicar retardo de acceso a memoria
-    usleep(cfg->RETARDO_MEMORIA * 1000);
-    
-    log_trace(logger, "PID: %d - Accediendo nivel final %d, índice %d", 
-             pid, estructura->cantidad_niveles - 1, indice_final);
-    
-    // Verificar entrada final
-    if (indice_final >= cfg->ENTRADAS_POR_TABLA || 
-        tabla_actual->entradas[indice_final] == NULL ||
-        !tabla_actual->entradas[indice_final]->presente) {
-        log_error(logger, "PID: %d - Entrada final no presente, índice %d", pid, indice_final);
-        return -1;
-    }
-    
-    int numero_marco = tabla_actual->entradas[indice_final]->numero_frame;
-    log_trace(logger, "PID: %d - Marco obtenido: %d para página %d", pid, numero_marco, numero_pagina);
-    
-    return numero_marco;
+
+    return entrada->numero_frame;
 }
 
 /**
@@ -968,64 +738,244 @@ bool actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido_p
 // FUNCIONES AUXILIARES DE ACCESO A MEMORIA FÍSICA
 // ============================================================================
 
-void* leer_pagina_memoria(int numero_frame) {
-    if (!sistema_memoria || !sistema_memoria->memoria_principal) {
-        log_error(logger, "Sistema de memoria no inicializado");
-        return NULL;
+t_resultado_memoria leer_pagina_memoria(int numero_frame, void* buffer) {
+    if (!sistema_memoria || !buffer) {
+        return MEMORIA_ERROR_DIRECCION_INVALIDA;
     }
-    
-    if (numero_frame < 0 || numero_frame >= sistema_memoria->admin_marcos->cantidad_total_frames) {
-        log_error(logger, "Número de frame inválido: %d", numero_frame);
-        return NULL;
-    }
-    
-    // Asignar memoria para el contenido de la página
-    void* contenido = malloc(cfg->TAM_PAGINA);
-    if (!contenido) {
-        log_error(logger, "Error al asignar memoria para leer página del frame %d", numero_frame);
-        return NULL;
-    }
-    
+
     // Calcular dirección física del frame
     uint32_t direccion_fisica = numero_frame * cfg->TAM_PAGINA;
-    
-    // Copiar contenido desde memoria principal
-    memcpy(contenido, sistema_memoria->memoria_principal + direccion_fisica, cfg->TAM_PAGINA);
-    
-    // Aplicar retardo de memoria
-    aplicar_retardo_memoria();
-    
-    log_trace(logger, "Página leída desde frame %d (dirección física %d)", numero_frame, direccion_fisica);
-    
-    return contenido;
+
+    // Leer la página completa
+    return leer_memoria_fisica(direccion_fisica, cfg->TAM_PAGINA, buffer);
 }
 
-int escribir_pagina_memoria(int numero_frame, void* contenido) {
-    if (!sistema_memoria || !sistema_memoria->memoria_principal) {
-        log_error(logger, "Sistema de memoria no inicializado");
-        return 0;
+t_resultado_memoria escribir_pagina_memoria(int numero_frame, void* contenido) {
+    if (!sistema_memoria || !contenido) {
+        return MEMORIA_ERROR_DIRECCION_INVALIDA;
     }
-    
-    if (numero_frame < 0 || numero_frame >= sistema_memoria->admin_marcos->cantidad_total_frames) {
-        log_error(logger, "Número de frame inválido: %d", numero_frame);
-        return 0;
-    }
-    
-    if (!contenido) {
-        log_error(logger, "Contenido nulo para escribir en frame %d", numero_frame);
-        return 0;
-    }
-    
+
     // Calcular dirección física del frame
     uint32_t direccion_fisica = numero_frame * cfg->TAM_PAGINA;
+
+    // Escribir la página completa
+    return escribir_memoria_fisica(direccion_fisica, contenido, cfg->TAM_PAGINA);
+}
+
+t_entrada_tabla* buscar_entrada_tabla(t_estructura_paginas* estructura, int numero_pagina) {
+    if (!estructura || !estructura->tabla_raiz) {
+        return NULL;
+    }
+
+    int indices[estructura->cantidad_niveles];
+    calcular_indices_multinivel(numero_pagina, estructura->entradas_por_tabla, 
+                             estructura->cantidad_niveles, indices);
+
+    t_tabla_paginas* tabla_actual = estructura->tabla_raiz;
+    t_entrada_tabla* entrada = NULL;
+
+    for (int nivel = 0; nivel < estructura->cantidad_niveles; nivel++) {
+        if (!tabla_actual || indices[nivel] >= estructura->entradas_por_tabla) {
+            return NULL;
+        }
+
+        entrada = &tabla_actual->entradas[indices[nivel]];
+        
+        if (nivel < estructura->cantidad_niveles - 1) {
+            if (!entrada->presente) {
+                return NULL;
+            }
+            tabla_actual = entrada->tabla_siguiente;
+        }
+    }
+
+    return entrada;
+}
+
+t_entrada_tabla* crear_entrada_tabla_si_no_existe(t_estructura_paginas* estructura, int numero_pagina) {
+    if (!estructura || !estructura->tabla_raiz) {
+        return NULL;
+    }
+
+    int indices[estructura->cantidad_niveles];
+    calcular_indices_multinivel(numero_pagina, estructura->entradas_por_tabla, 
+                             estructura->cantidad_niveles, indices);
+
+    t_tabla_paginas* tabla_actual = estructura->tabla_raiz;
+    t_entrada_tabla* entrada = NULL;
+
+    for (int nivel = 0; nivel < estructura->cantidad_niveles; nivel++) {
+        if (!tabla_actual || indices[nivel] >= estructura->entradas_por_tabla) {
+            return NULL;
+        }
+
+        entrada = &tabla_actual->entradas[indices[nivel]];
+        
+        if (nivel < estructura->cantidad_niveles - 1) {
+            if (!entrada->presente) {
+                t_tabla_paginas* nueva_tabla = crear_tabla_paginas(nivel + 1);
+                if (!nueva_tabla) {
+                    return NULL;
+                }
+                entrada->presente = true;
+                entrada->tabla_siguiente = nueva_tabla;
+            }
+            tabla_actual = entrada->tabla_siguiente;
+        }
+    }
+
+    return entrada;
+}
+
+int asignar_frame_libre(int pid, int numero_pagina) {
+    if (!sistema_memoria || !sistema_memoria->admin_marcos) {
+        return -1;
+    }
+
+    pthread_mutex_lock(&sistema_memoria->admin_marcos->mutex_frames);
+
+    if (sistema_memoria->admin_marcos->frames_libres == 0) {
+        pthread_mutex_unlock(&sistema_memoria->admin_marcos->mutex_frames);
+        return -1;
+    }
+
+    // Obtener el primer frame libre de la lista
+    int numero_frame = *(int*)list_remove(sistema_memoria->admin_marcos->lista_frames_libres, 0);
+    t_frame* frame = &sistema_memoria->admin_marcos->frames[numero_frame];
+
+    // Actualizar el frame
+    frame->ocupado = true;
+    frame->pid_propietario = pid;
+    frame->numero_pagina = numero_pagina;
+    frame->timestamp_asignacion = time(NULL);
+
+    // Actualizar contadores
+    sistema_memoria->admin_marcos->frames_libres--;
+    sistema_memoria->admin_marcos->frames_ocupados++;
+    sistema_memoria->admin_marcos->total_asignaciones++;
+
+    // Actualizar bitmap
+    bitarray_set_bit(sistema_memoria->admin_marcos->bitmap_frames, numero_frame);
+
+    pthread_mutex_unlock(&sistema_memoria->admin_marcos->mutex_frames);
+
+    return numero_frame;
+}
+
+void liberar_frame(int numero_frame) {
+    if (!sistema_memoria || !sistema_memoria->admin_marcos || 
+        numero_frame < 0 || numero_frame >= sistema_memoria->admin_marcos->cantidad_total_frames) {
+        return;
+    }
+
+    pthread_mutex_lock(&sistema_memoria->admin_marcos->mutex_frames);
+
+    t_frame* frame = &sistema_memoria->admin_marcos->frames[numero_frame];
+    if (!frame->ocupado) {
+        pthread_mutex_unlock(&sistema_memoria->admin_marcos->mutex_frames);
+        return;
+    }
+
+    // Limpiar el frame
+    frame->ocupado = false;
+    frame->pid_propietario = -1;
+    frame->numero_pagina = -1;
+    frame->timestamp_asignacion = 0;
+
+    // Actualizar contadores
+    sistema_memoria->admin_marcos->frames_libres++;
+    sistema_memoria->admin_marcos->frames_ocupados--;
+    sistema_memoria->admin_marcos->total_liberaciones++;
+
+    // Actualizar bitmap
+    bitarray_clean_bit(sistema_memoria->admin_marcos->bitmap_frames, numero_frame);
+
+    // Agregar a la lista de frames libres
+    int* numero_frame_ptr = malloc(sizeof(int));
+    *numero_frame_ptr = numero_frame;
+    list_add(sistema_memoria->admin_marcos->lista_frames_libres, numero_frame_ptr);
+
+    pthread_mutex_unlock(&sistema_memoria->admin_marcos->mutex_frames);
+}
+
+t_proceso_memoria* obtener_proceso(int pid) {
+    if (!sistema_memoria || !sistema_memoria->procesos) {
+        return NULL;
+    }
+    char pid_str[16];
+    sprintf(pid_str, "%d", pid);
+    return dictionary_get(sistema_memoria->procesos, pid_str);
+}
+
+t_metricas_proceso* crear_metricas_proceso(int pid) {
+    t_metricas_proceso* metricas = malloc(sizeof(t_metricas_proceso));
+    if (!metricas) {
+        log_error(logger, "Error al crear métricas para proceso %d", pid);
+        return NULL;
+    }
+
+    metricas->pid = pid;
+    metricas->accesos_tabla_paginas = 0;
+    metricas->instrucciones_solicitadas = 0;
+    metricas->bajadas_swap = 0;
+    metricas->subidas_memoria_principal = 0;
+    metricas->lecturas_memoria = 0;
+    metricas->escrituras_memoria = 0;
+    metricas->timestamp_creacion = time(NULL);
+    metricas->timestamp_ultimo_acceso = time(NULL);
+
+    pthread_mutex_init(&metricas->mutex_metricas, NULL);
+
+    return metricas;
+}
+
+static void calcular_indices_multinivel(int numero_pagina, int cantidad_niveles, int entradas_por_tabla, int* indices) {
+    int pagina_temp = numero_pagina;
+    for (int nivel = 0; nivel < cantidad_niveles; nivel++) {
+        indices[nivel] = pagina_temp % entradas_por_tabla;
+        pagina_temp /= entradas_por_tabla;
+    }
+}
+
+t_tabla_paginas* crear_tabla_paginas(int nivel) {
+    t_tabla_paginas* tabla = malloc(sizeof(t_tabla_paginas));
+    if (!tabla) {
+        log_error(logger, "Error al crear tabla de páginas nivel %d", nivel);
+        return NULL;
+    }
     
-    // Copiar contenido a memoria principal
-    memcpy(sistema_memoria->memoria_principal + direccion_fisica, contenido, cfg->TAM_PAGINA);
+    tabla->nivel = nivel;
+    tabla->entradas = calloc(cfg->ENTRADAS_POR_TABLA, sizeof(t_entrada_tabla));
     
-    // Aplicar retardo de memoria
-    aplicar_retardo_memoria();
+    if (!tabla->entradas) {
+        log_error(logger, "Error al asignar memoria para entradas de tabla nivel %d", nivel);
+        free(tabla);
+        return NULL;
+    }
     
-    log_trace(logger, "Página escrita en frame %d (dirección física %d)", numero_frame, direccion_fisica);
+    return tabla;
+}
+
+void* leer_pagina(int dir_fisica) {
+    if (!sistema_memoria || !sistema_memoria->memoria_principal) {
+        return NULL;
+    }
     
-    return 1;
+    // Validar que la dirección esté dentro del rango de memoria
+    if (dir_fisica < 0 || dir_fisica + cfg->TAM_PAGINA > cfg->TAM_MEMORIA) {
+        log_error(logger, "Dirección física %d fuera de rango", dir_fisica);
+        return NULL;
+    }
+    
+    // Asignar memoria para la página
+    void* pagina = malloc(cfg->TAM_PAGINA);
+    if (!pagina) {
+        log_error(logger, "Error al asignar memoria para página en dirección %d", dir_fisica);
+        return NULL;
+    }
+    
+    // Copiar el contenido de la página
+    memcpy(pagina, sistema_memoria->memoria_principal + dir_fisica, cfg->TAM_PAGINA);
+    
+    return pagina;
 } 

@@ -58,9 +58,15 @@ int suspender_proceso_completo(int pid) {
         
         if (entrada != NULL && entrada->presente) {
             // Obtener contenido de la página desde memoria principal
-            void* contenido_pagina = leer_pagina_memoria(entrada->numero_frame);
+            void* contenido_pagina = malloc(cfg->TAM_PAGINA);
             if (contenido_pagina == NULL) {
+                log_error(logger, "Error al asignar memoria para página %d del proceso %d", i, pid);
+                continue;
+            }
+            
+            if (leer_pagina_memoria(entrada->numero_frame, contenido_pagina) != MEMORIA_OK) {
                 log_error(logger, "Error al leer página %d del proceso %d", i, pid);
+                free(contenido_pagina);
                 continue;
             }
             
@@ -168,7 +174,7 @@ int reanudar_proceso_suspendido(int pid) {
             }
             
             // Escribir contenido en memoria principal
-            if (escribir_pagina_memoria(nuevo_frame, contenido) != 1) {
+            if (escribir_pagina_memoria(nuevo_frame, contenido) != MEMORIA_OK) {
                 log_error(logger, "PID: %d - Error al escribir página %d en memoria", pid, i);
                 free(contenido);
                 continue;

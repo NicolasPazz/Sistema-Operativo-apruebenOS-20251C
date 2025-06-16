@@ -1,7 +1,13 @@
 #include "../headers/comunicacion.h"
-#include "../headers/metricas.h"
+#include "../headers/estructuras.h"
+#include "../headers/init_memoria.h"
 #include "../headers/manejo_memoria.h"
+#include "../headers/manejo_swap.h"
+#include "../headers/metricas.h"
+#include <commons/log.h>
 #include <commons/string.h>
+#include <string.h>
+#include <unistd.h>
 
 /////////////////////////////// Inicializacion de variables globales ///////////////////////////////
 int fd_memoria;
@@ -16,6 +22,8 @@ typedef struct {
     char* server_name;
 } t_procesar_conexion_args;
 
+// Declaración de funciones internas
+void* leer_pagina_completa(int pid, int direccion_fisica);
 
 int iniciar_conexiones_memoria(char* PUERTO_ESCUCHA, t_log* logger_param) {
     if (logger_param == NULL) {
@@ -146,8 +154,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 *((int*)leer_pagina(direccion)) = valor;
             
             // Enviar respuesta de éxito
-                char* respuesta = "OK";
-                send_string(cliente_socket, respuesta);
+                t_respuesta_memoria respuesta = OK;
+                send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
             break;
         }
 
@@ -191,18 +199,15 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             // Recibir parámetros desde paquete
             t_list* lista = recibir_contenido_paquete(cliente_socket);
             
-            char* pid_str = (char*)list_get(lista, 0);
-            char* tamanio_str = (char*)list_get(lista, 1);
-            char* nombre_proceso = (char*)list_get(lista, 2);
+            int pid = *(int*)list_get(lista, 0);
+            char* nombre_proceso = strdup((char*)list_get(lista, 1));  // Hacer una copia del string
+            int tamanio = *(int*)list_get(lista, 2);
             
-            int pid = atoi(pid_str);
-            int tamanio = atoi(tamanio_str);
-            
-            log_debug(logger, "Inicialización de proceso solicitada - PID: %d, Tamaño: %d, Nombre: %s", pid, tamanio, nombre_proceso);
+            log_debug(logger, "Inicialización de proceso solicitada - PID: %d, Tamaño: %d, Nombre: '%s'", pid, tamanio, nombre_proceso);
         
             // 1. Construir path completo para instrucciones
-            char* path_completo = string_from_format("%s/%s", cfg->PATH_INSTRUCCIONES, nombre_proceso);
-            log_debug(logger, "Path de instrucciones: %s", path_completo);
+            char* path_completo = string_from_format("%s%s", cfg->PATH_INSTRUCCIONES, nombre_proceso);
+            log_debug(logger, "Path de instrucciones: '%s'", path_completo);
             
             // 2. Verificar si el proceso ya existe
             char* pid_key = string_itoa(pid);
@@ -210,9 +215,11 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 log_error(logger, "PID: %d - El proceso ya existe en memoria", pid);
                 free(path_completo);
                 free(pid_key);
+                free(nombre_proceso);  // Liberar la copia del nombre
                 list_destroy_and_destroy_elements(lista, free);
                 
                 t_respuesta_memoria respuesta = ERROR;
+                log_info(logger, "Enviando respuesta ERROR a cliente (fd=%d) - Proceso ya existe", cliente_socket);
                 send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
                 break;
             }
@@ -229,9 +236,11 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 pthread_mutex_unlock(&sistema_memoria->admin_marcos->mutex_frames);
                 free(path_completo);
                 free(pid_key);
+                free(nombre_proceso);  // Liberar la copia del nombre
                 list_destroy_and_destroy_elements(lista, free);
                 
                 t_respuesta_memoria respuesta = ERROR;
+                log_info(logger, "Enviando respuesta ERROR a cliente (fd=%d) - No hay espacio suficiente", cliente_socket);
                 send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
                 break;
             }
@@ -243,9 +252,11 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 log_error(logger, "PID: %d - Error al crear proceso en memoria", pid);
                 free(path_completo);
                 free(pid_key);
+                free(nombre_proceso);  // Liberar la copia del nombre
                 list_destroy_and_destroy_elements(lista, free);
                 
                 t_respuesta_memoria respuesta = ERROR;
+                log_info(logger, "Enviando respuesta ERROR a cliente (fd=%d) - Error al crear proceso", cliente_socket);
                 send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
                 break;
             }
@@ -280,6 +291,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 liberar_proceso_memoria(proceso);
                 free(path_completo);
                 free(pid_key);
+                free(nombre_proceso);  // Liberar la copia del nombre
                 list_destroy_and_destroy_elements(lista, free);
                 
                 t_respuesta_memoria respuesta = ERROR;
@@ -308,10 +320,12 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             // 10. Liberar memoria temporal
             free(path_completo);
             free(pid_key);
+            free(nombre_proceso);  // Liberar la copia del nombre
             list_destroy_and_destroy_elements(lista, free);
         
             // 11. Enviar respuesta de éxito
             t_respuesta_memoria respuesta = OK;
+            log_info(logger, "Enviando respuesta OK a cliente (fd=%d)", cliente_socket);
             send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
             
             log_info(logger, "PID: %d - Proceso inicializado exitosamente con %d páginas", pid, paginas_necesarias);
@@ -329,8 +343,9 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 log_info(logger, "## PID: %d - Memory Dump solicitado", pid);
             
             // Para el checkpoint 2, enviamos una respuesta OK
-                char* respuesta = "OK";
-                send_string(cliente_socket, respuesta);
+                t_respuesta_memoria respuesta = OK;
+                log_info(logger, "Enviando respuesta OK a cliente (fd=%d)", cliente_socket);
+                send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
             break;
         }
 
@@ -347,8 +362,9 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 finalize_process(pid);
             
             // Enviar respuesta
-                char* respuesta = "OK";
-                send_string(cliente_socket, respuesta);
+                t_respuesta_memoria respuesta = OK;
+                log_info(logger, "Enviando respuesta OK a cliente (fd=%d)", cliente_socket);
+                send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
             break;
         }
 
@@ -567,8 +583,79 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             break;
         }
 
+        case CHECK_MEMORY_SPACE_OP: {
+            log_debug(logger, "CHECK_MEMORY_SPACE_OP recibido");
+
+            // Recibir tamaño solicitado
+            int tamanio;
+            recv_data(cliente_socket, &tamanio, sizeof(int));
+            
+            // Calcular páginas necesarias
+            int paginas_necesarias = (tamanio + cfg->TAM_PAGINA - 1) / cfg->TAM_PAGINA;
+            log_debug(logger, "Verificación de espacio - Tamaño: %d bytes, Páginas necesarias: %d", 
+                     tamanio, paginas_necesarias);
+            
+            // Verificar espacio disponible
+            pthread_mutex_lock(&sistema_memoria->admin_marcos->mutex_frames);
+            bool hay_espacio = sistema_memoria->admin_marcos->frames_libres >= paginas_necesarias;
+            pthread_mutex_unlock(&sistema_memoria->admin_marcos->mutex_frames);
+            
+            // Enviar respuesta
+            t_respuesta_memoria respuesta = hay_espacio ? OK : ERROR;
+            send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+            
+            log_debug(logger, "Respuesta de verificación de espacio: %s", 
+                     hay_espacio ? "OK" : "ERROR");
+            break;
+        }
+
         default:
             log_error(logger, "Codigo de operacion desconocido: %d", cop);
             break;
     }
+}
+
+t_proceso_memoria* crear_proceso_memoria(int pid, int tamanio) {
+    t_proceso_memoria* proceso = malloc(sizeof(t_proceso_memoria));
+    if (!proceso) {
+        log_error(logger, "Error al crear proceso %d", pid);
+        return NULL;
+    }
+
+    // Inicializar campos básicos
+    proceso->pid = pid;
+    proceso->tamanio = tamanio;
+    proceso->activo = true;
+    proceso->suspendido = false;
+    proceso->timestamp_creacion = time(NULL);
+    proceso->timestamp_ultimo_uso = time(NULL);
+
+    // Crear estructura de páginas
+    proceso->estructura_paginas = crear_estructura_paginas(pid, tamanio);
+    if (!proceso->estructura_paginas) {
+        log_error(logger, "Error al crear estructura de páginas para proceso %d", pid);
+        free(proceso);
+        return NULL;
+    }
+
+    // Crear métricas
+    proceso->metricas = crear_metricas_proceso(pid);
+    if (!proceso->metricas) {
+        log_error(logger, "Error al crear métricas para proceso %d", pid);
+        destruir_estructura_paginas(proceso->estructura_paginas);
+        free(proceso);
+        return NULL;
+    }
+
+    // Inicializar lista de instrucciones
+    proceso->instrucciones = list_create();
+    if (!proceso->instrucciones) {
+        log_error(logger, "Error al crear lista de instrucciones para proceso %d", pid);
+        destruir_metricas_proceso(proceso->metricas);
+        destruir_estructura_paginas(proceso->estructura_paginas);
+        free(proceso);
+        return NULL;
+    }
+
+    return proceso;
 }

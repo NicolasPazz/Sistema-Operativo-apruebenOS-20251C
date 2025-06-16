@@ -54,8 +54,8 @@ t_resultado_memoria inicializar_sistema_memoria(void);
 // Inicializa la memoria principal (espacio contiguo de usuario)
 int inicializar_memoria_principal(void);
 
-// Inicializa la tabla de frames
-int inicializar_tabla_frames(void);
+// Inicializa la tabla de marcos
+int inicializar_tabla_marcos(void);
 
 // Inicializa el sistema de SWAP
 int inicializar_sistema_swap(void);
@@ -102,8 +102,8 @@ void liberar_sistema_memoria(void);
 // FUNCIONES AUXILIARES DE INICIALIZACIÓN
 // ============================================================================
 
-// Calcula la cantidad de frames según la configuración
-int calcular_cantidad_frames(void);
+// Calcula la cantidad de marcos según la configuración
+int calcular_cantidad_marcos(void);
 
 // Calcula la cantidad de páginas de swap
 int calcular_cantidad_paginas_swap(void);

@@ -10,7 +10,6 @@
 #include <pthread.h>
 
 #include "estructuras.h"
-#include "init_memoria.h"
 
 // ============================================================================
 // FUNCIONES DEL ADMINISTRADOR CENTRALIZADO DE MARCOS FÍSICOS
@@ -228,7 +227,7 @@ t_resultado_memoria escribir_memoria_fisica(uint32_t direccion_fisica, void* dat
  * @param buffer Buffer donde almacenar el contenido (debe ser de TAM_PAGINA bytes)
  * @return MEMORIA_OK si se leyó correctamente, error en caso contrario
  */
-t_resultado_memoria leer_pagina_marco(int numero_frame, void* buffer);
+t_resultado_memoria leer_pagina_memoria(int numero_frame, void* buffer);
 
 /**
  * @brief Escribe una página completa en un marco específico
@@ -237,7 +236,7 @@ t_resultado_memoria leer_pagina_marco(int numero_frame, void* buffer);
  * @param contenido Contenido a escribir (debe ser de TAM_PAGINA bytes)
  * @return MEMORIA_OK si se escribió correctamente, error en caso contrario
  */
-t_resultado_memoria escribir_pagina_completa(int numero_frame, void* contenido);
+t_resultado_memoria escribir_pagina_memoria(int numero_frame, void* contenido);
 
 // ============================================================================
 // FUNCIONES DE SUSPENSIÓN Y REANUDACIÓN (SWAP)
@@ -268,8 +267,8 @@ int reanudar_proceso_suspendido(int pid);
 /**
  * @brief Verifica si un proceso está suspendido
  * 
- * @param pid PID del proceso
- * @return true si está suspendido, false en caso contrario
+ * @param pid PID del proceso a verificar
+ * @return true si el proceso está suspendido, false en caso contrario
  */
 bool proceso_esta_suspendido(int pid);
 
@@ -278,21 +277,25 @@ bool proceso_esta_suspendido(int pid);
 // ============================================================================
 
 /**
- * @brief Lee el contenido completo de una página desde un marco específico
+ * @brief Destruye un proceso y libera todos sus recursos
  * 
- * @param numero_frame Número del marco a leer
- * @return Puntero al contenido de la página o NULL si hay error
+ * @param proceso Puntero al proceso a destruir
  */
-void* leer_pagina_memoria(int numero_frame);
+void destruir_proceso(t_proceso_memoria* proceso);
 
 /**
- * @brief Escribe el contenido completo de una página en un marco específico
+ * @brief Destruye las métricas de un proceso
  * 
- * @param numero_frame Número del marco donde escribir
- * @param contenido Contenido a escribir (debe ser de TAM_PAGINA bytes)
- * @return 1 si se escribió correctamente, 0 en caso de error
+ * @param metricas Puntero a las métricas a destruir
  */
-int escribir_pagina_memoria(int numero_frame, void* contenido);
+void destruir_metricas_proceso(t_metricas_proceso* metricas);
+
+/**
+ * @brief Destruye recursivamente una tabla de páginas
+ * 
+ * @param tabla Puntero a la tabla a destruir
+ */
+void destruir_tabla_paginas_recursiva(t_tabla_paginas* tabla);
 
 // ============================================================================
 // FUNCIONES DE MÉTRICAS - Las 6 métricas EXACTAS de la consigna
@@ -380,9 +383,9 @@ t_instruccion* obtener_instruccion_proceso(int pid, int pc);
 /**
  * @brief Libera las instrucciones de un proceso
  * 
- * @param pid PID del proceso
+ * @param instrucciones Lista de instrucciones a liberar
  */
-void liberar_instrucciones_proceso(int pid);
+void liberar_instrucciones_proceso(t_list* instrucciones);
 
 // ============================================================================
 // FUNCIONES DE DUMP DE MEMORIA
@@ -501,5 +504,12 @@ bool actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido_p
 // ============================================================================
 // FUNCIONES DE NAVEGACIÓN Y UTILIDADES
 // ============================================================================
+
+/**
+ * @brief Libera la información de un proceso
+ *
+ * @param proceso Puntero al proceso a liberar
+ */
+void liberar_proceso_memoria(t_proceso_memoria* proceso);
 
 #endif

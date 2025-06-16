@@ -1,9 +1,21 @@
 #include "../headers/init_memoria.h"
+#include "../headers/estructuras.h"
+#include "../headers/manejo_memoria.h"
+#include "../headers/metricas.h"
+#include "../headers/manejo_swap.h"
+#include <commons/log.h>
+#include <commons/string.h>
+#include <string.h>
+#include <unistd.h>
 
 // Variables globales
 t_log* logger;
 t_config_memoria* cfg;
 t_sistema_memoria* sistema_memoria = NULL;
+
+// Declaraciones de funciones internas
+void liberar_instrucciones_dictionary(t_dictionary* dict);
+void destruir_tabla_paginas_recursiva(t_tabla_paginas* tabla);
 
 // ============================================================================
 // FUNCIONES DE INICIALIZACIÓN PRINCIPAL
@@ -535,57 +547,71 @@ t_resultado_memoria inicializar_sistema_memoria(void) {
 }
 
 void finalizar_sistema_memoria(void) {
-    if (!sistema_memoria) return;
-    
-    log_info(logger, "## Finalizando sistema de memoria");
-    
-    // Imprimir estadísticas finales
-    log_info(logger, "## Estadísticas finales del sistema:");
-    log_info(logger, "   - Procesos activos: %d", sistema_memoria->procesos_activos);
-    log_info(logger, "   - Procesos suspendidos: %d", sistema_memoria->procesos_suspendidos);
-    log_info(logger, "   - Memoria utilizada: %d bytes", sistema_memoria->memoria_utilizada);
-    log_info(logger, "   - SWAP utilizado: %d bytes", sistema_memoria->swap_utilizado);
-    log_info(logger, "   - Total asignaciones: %d", sistema_memoria->total_asignaciones_memoria);
-    log_info(logger, "   - Total liberaciones: %d", sistema_memoria->total_liberaciones_memoria);
-    
-    // Destruir administrador de marcos
-    if (sistema_memoria->admin_marcos) {
-        destruir_administrador_marcos(sistema_memoria->admin_marcos);
+    if (!sistema_memoria) {
+        return;
     }
-    
-    // Destruir administrador de SWAP
-    if (sistema_memoria->admin_swap) {
-        destruir_administrador_swap(sistema_memoria->admin_swap);
-    }
-    
-    // Destruir diccionarios
-    if (sistema_memoria->procesos) {
-        dictionary_destroy(sistema_memoria->procesos);
-    }
-    if (sistema_memoria->estructuras_paginas) {
-        dictionary_destroy(sistema_memoria->estructuras_paginas);
-    }
-    if (sistema_memoria->metricas_procesos) {
-        dictionary_destroy(sistema_memoria->metricas_procesos);
-    }
-    if (sistema_memoria->process_instructions) {
-        dictionary_destroy(sistema_memoria->process_instructions);
-    }
-    
-    // Destruir mutex
-    pthread_mutex_destroy(&sistema_memoria->mutex_sistema);
-    pthread_mutex_destroy(&sistema_memoria->mutex_procesos);
-    pthread_mutex_destroy(&sistema_memoria->mutex_estadisticas);
-    
+
     // Liberar memoria principal
     if (sistema_memoria->memoria_principal) {
         free(sistema_memoria->memoria_principal);
     }
-    
+
+    // Liberar administrador de marcos
+    if (sistema_memoria->admin_marcos) {
+        if (sistema_memoria->admin_marcos->frames) {
+            free(sistema_memoria->admin_marcos->frames);
+        }
+        if (sistema_memoria->admin_marcos->bitmap_frames) {
+            bitarray_destroy(sistema_memoria->admin_marcos->bitmap_frames);
+        }
+        if (sistema_memoria->admin_marcos->lista_frames_libres) {
+            list_destroy_and_destroy_elements(sistema_memoria->admin_marcos->lista_frames_libres, free);
+        }
+        pthread_mutex_destroy(&sistema_memoria->admin_marcos->mutex_frames);
+        free(sistema_memoria->admin_marcos);
+    }
+
+    // Liberar administrador de SWAP
+    if (sistema_memoria->admin_swap) {
+        if (sistema_memoria->admin_swap->path_archivo) {
+            free(sistema_memoria->admin_swap->path_archivo);
+        }
+        if (sistema_memoria->admin_swap->entradas) {
+            free(sistema_memoria->admin_swap->entradas);
+        }
+        if (sistema_memoria->admin_swap->posiciones_libres) {
+            list_destroy(sistema_memoria->admin_swap->posiciones_libres);
+        }
+        pthread_mutex_destroy(&sistema_memoria->admin_swap->mutex_swap);
+        free(sistema_memoria->admin_swap);
+    }
+
+    // Liberar diccionarios
+    if (sistema_memoria->procesos) {
+        dictionary_destroy_and_destroy_elements(sistema_memoria->procesos, (void*)destruir_proceso);
+    }
+    if (sistema_memoria->estructuras_paginas) {
+        dictionary_destroy_and_destroy_elements(sistema_memoria->estructuras_paginas, (void*)destruir_estructura_paginas);
+    }
+    if (sistema_memoria->metricas_procesos) {
+        dictionary_destroy_and_destroy_elements(sistema_memoria->metricas_procesos, (void*)destruir_metricas_proceso);
+    }
+    if (sistema_memoria->process_instructions) {
+        liberar_instrucciones_dictionary(sistema_memoria->process_instructions);
+    }
+
+    // Destruir mutexes
+    pthread_mutex_destroy(&sistema_memoria->mutex_sistema);
+    pthread_mutex_destroy(&sistema_memoria->mutex_procesos);
+    pthread_mutex_destroy(&sistema_memoria->mutex_estadisticas);
+
+    // Liberar estructura principal
     free(sistema_memoria);
     sistema_memoria = NULL;
-    
-    log_info(logger, "## Sistema de memoria finalizado");
+}
+
+void liberar_sistema_memoria(void) {
+    finalizar_sistema_memoria();
 }
 
 // ============================================================================
@@ -610,4 +636,54 @@ void cerrar_programa() {
     }
     
     log_info(logger, "## Programa de memoria finalizado correctamente");
+}
+
+// ============================================================================
+// FUNCIONES DE DESTRUCCIÓN DE ESTRUCTURAS
+// ============================================================================
+
+void destruir_estructura_paginas(t_estructura_paginas* estructura) {
+    if (!estructura) return;
+    
+    // Destruir tabla de páginas recursivamente
+    destruir_tabla_paginas_recursiva(estructura->tabla_raiz);
+    
+    // Liberar estructura
+    free(estructura);
+}
+
+void destruir_metricas_proceso(t_metricas_proceso* metricas) {
+    if (!metricas) return;
+    free(metricas);
+}
+
+void destruir_tabla_paginas_recursiva(t_tabla_paginas* tabla) {
+    if (!tabla) return;
+    
+    // Si no es el último nivel, destruir recursivamente las tablas hijas
+    if (tabla->nivel > 0) {
+        for (int i = 0; i < cfg->ENTRADAS_POR_TABLA; i++) {
+            if (tabla->entradas[i].presente && tabla->entradas[i].tabla_siguiente) {
+                destruir_tabla_paginas_recursiva(tabla->entradas[i].tabla_siguiente);
+            }
+        }
+    }
+    
+    // Liberar memoria de las entradas y la tabla
+    free(tabla->entradas);
+    free(tabla);
+}
+
+void liberar_instrucciones_dictionary(t_dictionary* dict) {
+    if (!dict) return;
+    
+    void _liberar_instrucciones(char* key, void* value) {
+        t_list* instrucciones = (t_list*)value;
+        if (instrucciones) {
+            list_destroy_and_destroy_elements(instrucciones, free);
+        }
+    }
+    
+    dictionary_iterator(dict, _liberar_instrucciones);
+    dictionary_destroy(dict);
 }
