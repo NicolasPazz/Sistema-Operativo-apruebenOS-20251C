@@ -29,7 +29,7 @@ void mostrar_pcb(t_pcb PCB) {
     log_debug(kernel_log, "-*-*-*-*-*-*-*-*-*-*-*-*-*-\n");
 }
 
-void mostrar_metrica(const char* nombre, uint16_t* metrica) {
+void mostrar_metrica(const char* nombre, int* metrica) {
     char buffer[256];
     int offset = snprintf(buffer, sizeof(buffer), "%s: [", nombre);
 
@@ -95,7 +95,7 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
         int64_t tiempo = temporal_gettime(cronometro); // 10 seg
 
         // Guardar el tiempo en el estado ANTERIOR
-        PCB->MT[PCB->Estado] += (uint16_t)tiempo;
+        PCB->MT[PCB->Estado] += (int)tiempo;
         log_trace(kernel_log, "Se actualizo el MT en el estado %s del PID %d con %ld", estado_to_string(PCB->Estado), PCB->PID, tiempo);
         temporal_destroy(cronometro);
 

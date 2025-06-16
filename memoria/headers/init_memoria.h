@@ -1,7 +1,6 @@
 #ifndef INIT_MEMORIA_H
 #define INIT_MEMORIA_H
 
-
 #include <stdint.h>
 #include <stdlib.h>
 #include <commons/log.h>
@@ -13,37 +12,111 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <time.h>
 
-#include "monitor_memoria.h"
-#include "monitor_tablas.h"
-#include "manejo_memoria.h"
 #include "estructuras.h"
 #include "../../utils/headers/sockets.h"
 #include "../../utils/headers/utils.h"
 
 typedef struct {
-    uint32_t PUERTO_ESCUCHA;
-    uint32_t TAM_MEMORIA;
-    uint32_t TAM_PAGINA;
-    uint32_t ENTRADAS_POR_TABLA;
-    uint32_t CANTIDAD_NIVELES;
-    uint32_t RETARDO_MEMORIA;
+    int PUERTO_ESCUCHA;
+    int TAM_MEMORIA;
+    int TAM_PAGINA;
+    int ENTRADAS_POR_TABLA;
+    int CANTIDAD_NIVELES;
+    int RETARDO_MEMORIA;
     char* PATH_SWAPFILE;
-    uint32_t RETARDO_SWAP;
+    int RETARDO_SWAP;
     char* LOG_LEVEL;
     char* DUMP_PATH;
-    //bool FIFO; !ojo x ahi nos sirve para identificar el alg de reemplazo
+    char* PATH_INSTRUCCIONES;
 } t_config_memoria;
-
 
 #define MODULENAME "MEMORIA"
 
-uint8_t init(void);                 // inicializa loger, cfg, y semaforos
-uint8_t cargar_configuracion(char* path); // carga cfg en strut cfg
-//uint8_t cargar_memoria(void);       // Init de segmentos_libres -- por ahora no necesito nada similar
+// ============================================================================
+// FUNCIONES DE INICIALIZACIÓN PRINCIPAL
+// ============================================================================
 
+int init(void);                 // inicializa loger, cfg, y semaforos
+int cargar_configuracion(char* path); // carga cfg en strut cfg
 void iniciar_logger_memoria(void);
 void cerrar_programa(void);
 int server_escuchar(char*, int);
+
+// ============================================================================
+// FUNCIONES DE INICIALIZACIÓN DEL SISTEMA DE MEMORIA
+// ============================================================================
+
+// Inicializa el sistema completo de memoria
+t_resultado_memoria inicializar_sistema_memoria(void);
+
+// Inicializa la memoria principal (espacio contiguo de usuario)
+int inicializar_memoria_principal(void);
+
+// Inicializa la tabla de frames
+int inicializar_tabla_frames(void);
+
+// Inicializa el sistema de SWAP
+int inicializar_sistema_swap(void);
+
+// Inicializa las estructuras de procesos
+int inicializar_estructuras_procesos(void);
+
+// ============================================================================
+// FUNCIONES DE CREACIÓN DE ESTRUCTURAS
+// ============================================================================
+
+// Crea una nueva estructura de paginación para un proceso
+t_estructura_paginas* crear_estructura_paginas(int pid, int tamanio_proceso);
+
+// Crea una tabla de páginas de un nivel específico
+t_tabla_paginas* crear_tabla_paginas(int nivel);
+
+// Crea las métricas para un proceso
+t_metricas_proceso* crear_metricas_proceso(int pid);
+
+// Crea la información completa de un proceso
+t_proceso_memoria* crear_proceso_memoria(int pid, int tamanio);
+
+// ============================================================================
+// FUNCIONES DE LIBERACIÓN DE MEMORIA
+// ============================================================================
+
+// Libera una estructura de paginación
+void liberar_estructura_paginas(t_estructura_paginas* estructura);
+
+// Libera una tabla de páginas
+void liberar_tabla_paginas(t_tabla_paginas* tabla);
+
+// Libera las métricas de un proceso
+void liberar_metricas_proceso(t_metricas_proceso* metricas);
+
+// Libera la información de un proceso
+void liberar_proceso_memoria(t_proceso_memoria* proceso);
+
+// Libera todo el sistema de memoria
+void liberar_sistema_memoria(void);
+
+// ============================================================================
+// FUNCIONES AUXILIARES DE INICIALIZACIÓN
+// ============================================================================
+
+// Calcula la cantidad de frames según la configuración
+int calcular_cantidad_frames(void);
+
+// Calcula la cantidad de páginas de swap
+int calcular_cantidad_paginas_swap(void);
+
+// Valida la configuración del sistema
+bool validar_configuracion_memoria(void);
+
+// Crea el archivo de swap si no existe
+int crear_archivo_swap(void);
+
+// Mapea el archivo de swap en memoria
+void* mapear_archivo_swap(void);
+
+void finalizar_mutex(void);
 
 #endif

@@ -8,7 +8,7 @@
 extern t_log* io_log;
 extern t_config* io_config;
 
-extern int fd_kernel;
+extern int fd_kernel_io;
 
 extern char* IP_KERNEL;
 extern char* PUERTO_KERNEL;
@@ -18,6 +18,7 @@ extern char* LOG_LEVEL;
 void iniciar_config_io(void);
 void iniciar_logger_io(void);
 void iniciar_conexiones_io(char* nombre_io);
-void atender_kernel(void);
+void terminar_io(void);
+// void atender_kernel(void);
 
 #endif /* IO_H */

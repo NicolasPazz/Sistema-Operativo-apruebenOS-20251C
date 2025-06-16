@@ -1,63 +1,116 @@
 #include "../headers/mmu.h"
-#include "../../utils/headers/sockets.h"
 #include "../headers/init.h"
 #include "../headers/cache.h"
+#include "../headers/cicloDeInstruccion.h"
+#include "../../memoria/headers/init_memoria.h"
 
 t_cache_paginas* cache = NULL;
 t_list* tlb = NULL;
-uint32_t orden_fifo = 0;
+int orden_fifo = 0;
+t_config_memoria* cfg_memoria = NULL;
 
 void inicializar_mmu() {
     tlb = list_create();
-    // Inicializar cache de paginas (Fijarse en funciones.c como hacer para solo inicializar una vez la cache...)
-    cache = inicializar_cache();    // warning: assignment to ‘t_list *’ from incompatible pointer type ‘t_cache_paginas *’
+    cache = inicializar_cache();    
 }
 
-// t_direccion_fisica transformar_a_fisica(int direccion_logica, int nro_pagina, int tamanio_pagina, int cantidad_entradas){
-//     t_direccion_fisica direccion_fisica;
-//     direccion_fisica.nro_pagina = floor(direccion_logica / tamanio_pagina);
-//     direccion_fisica.entrada_nivel_x = floor(nro_pagina /cantidad_entradas); // esto deberia ser un array creo yo??
-//     direccion_fisica.desplazamiento = direccion_logica % tamanio_pagina;
-//     return direccion_fisica;
-// }
+int cargar_configuracion(char* path) {
+    t_config* cfg_file = config_create(path);
 
-uint32_t traducir_direccion(uint32_t direccion_logica, uint32_t* desplazamiento, char* datos) {
-    t_paquete* paquete = crear_paquete_op(PEDIR_CONFIG_CPU_OP); // VER TEMA CASE EN MEMORIA PARA QUE ME MANDEN LAS 4 CONFIG
-    enviar_paquete(paquete, fd_memoria);
-    eliminar_paquete(paquete);
+    if (cfg_file == NULL) {
+        log_error(cpu_log, "No se encontro el archivo de configuracion: %s", path);
+        return 0;
+    }
 
-    int cod_op = recibir_operacion(fd_memoria);
+    char* properties[] = {
+        "PUERTO_ESCUCHA",
+        "TAM_MEMORIA",
+        "TAM_PAGINA",
+        "ENTRADAS_POR_TABLA",
+        "CANTIDAD_NIVELES",
+        "RETARDO_MEMORIA",
+        "PATH_SWAPFILE",
+        "RETARDO_SWAP",
+        "LOG_LEVEL",
+        "DUMP_PATH",
+        NULL
+    };
 
-    t_list* config_memoria = recibir_4_enteros(fd_memoria);
-    uint32_t tam_memoria = (uint32_t)(uintptr_t)list_get(config_memoria, 0);
-    uint32_t tam_pagina = (uint32_t)(uintptr_t)list_get(config_memoria, 1);
-    uint32_t entradas_por_tabla = (uint32_t)(uintptr_t)list_get(config_memoria, 2);
-    uint32_t cantidad_niveles = (uint32_t)(uintptr_t)list_get(config_memoria, 3);
+    if (!config_has_all_properties(cfg_file, properties)) {
+        log_error(cpu_log, "Propiedades faltantes en el archivo de configuracion");
+        config_destroy(cfg_file);
+        return 0;
+    }
 
-    uint32_t nro_pagina = direccion_logica / tam_pagina;
+    cfg_memoria = malloc(sizeof(t_config_memoria));
+    if (cfg_memoria == NULL) {
+        log_error(cpu_log, "Error al asignar memoria para la configuracion");
+        config_destroy(cfg_file);
+        return 0;
+    }
+
+    cfg_memoria->PUERTO_ESCUCHA = config_get_int_value(cfg_file, "PUERTO_ESCUCHA");
+    cfg_memoria->TAM_MEMORIA = config_get_int_value(cfg_file, "TAM_MEMORIA");
+    cfg_memoria->TAM_PAGINA = config_get_int_value(cfg_file, "TAM_PAGINA");
+    cfg_memoria->ENTRADAS_POR_TABLA = config_get_int_value(cfg_file, "ENTRADAS_POR_TABLA");
+    cfg_memoria->CANTIDAD_NIVELES = config_get_int_value(cfg_file, "CANTIDAD_NIVELES");
+    cfg_memoria->RETARDO_MEMORIA = config_get_int_value(cfg_file, "RETARDO_MEMORIA");
+    cfg_memoria->PATH_SWAPFILE = strdup(config_get_string_value(cfg_file, "PATH_SWAPFILE"));
+    cfg_memoria->RETARDO_SWAP = config_get_int_value(cfg_file, "RETARDO_SWAP");
+    cfg_memoria->LOG_LEVEL = strdup(config_get_string_value(cfg_file, "LOG_LEVEL"));
+    cfg_memoria->DUMP_PATH = strdup(config_get_string_value(cfg_file, "DUMP_PATH"));
+
+    log_debug(cpu_log, "Archivo de configuracion cargado correctamente");
+    config_destroy(cfg_file);
+
+    return 1;
+}
+
+int traducir_direccion(int direccion_logica, int* desplazamiento) {
+
+    int tam_pagina = cfg_memoria->TAM_PAGINA;
+    int entradas_por_tabla = cfg_memoria->ENTRADAS_POR_TABLA;
+    int cantidad_niveles = cfg_memoria->CANTIDAD_NIVELES;
+
+    
+    int nro_pagina = direccion_logica / tam_pagina;
     *desplazamiento = direccion_logica % tam_pagina;
 
-    uint32_t frame = 0;
-    int pid_ejecutando; // VER TEMA PID
+    int entradas[cantidad_niveles];
+    for (int nivel = 0; nivel < cantidad_niveles; nivel++) {
+        int divisor = pow(entradas_por_tabla, cantidad_niveles - (nivel + 1));
+        entradas[nivel] = (nro_pagina / divisor) % entradas_por_tabla;
+    }
+
+    int frame = 0;
     if (tlb_habilitada() && tlb_buscar(nro_pagina, &frame)) {
-        log_info(cpu_log, "PID: %d - TLB HIT - Página: %d", pid_ejecutando, nro_pagina);    // warning: ‘pid_ejecutando’ may be used uninitialized
+        log_info(cpu_log, "PID: %d - TLB HIT - Página: %d", pid_ejecutando, nro_pagina);    
     } else {
         log_info(cpu_log, "PID: %d - TLB MISS - Página: %d", pid_ejecutando, nro_pagina);
 
-        frame =5;
-        //solicitar_frame_memoria(nro_pagina);  VER PEDIR POR PAQUETE PEDIR FRAM MEMORIA COMO OP CODE Y AGREGAR AL PAQUETE EL FRAME QUE NECESITO
+        // Enviar entradas de página a Memoria
+        t_paquete* paquete = crear_paquete_op(SOLICITAR_FRAME_PARA_ENTRADAS);
+        agregar_a_paquete(paquete, &pid_ejecutando, sizeof(int));
+        agregar_a_paquete(paquete, &cantidad_niveles, sizeof(int));
+        for (int i = 0; i < cantidad_niveles; i++) {
+            agregar_a_paquete(paquete, &entradas[i], sizeof(int));
+        }
+        enviar_paquete(paquete, fd_memoria);
+        eliminar_paquete(paquete);
+
+        // Recibir frame
+        recv(fd_memoria, &frame, sizeof(int), MSG_WAITALL);
+
         if (tlb_habilitada()) {
             tlb_insertar(nro_pagina, frame);
         }
     }
-
-    log_info(cpu_log, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %s", pid_ejecutando, frame * tam_pagina + desplazamiento, datos); // warning: format ‘%d’ expects argument of type ‘int’, but argument 4 has type ‘uint32_t *’ {aka ‘unsigned int *’}
+    
+    
     return frame;
-
-
 }
 
-bool tlb_buscar(uint32_t pagina, uint32_t* frame_out) {
+bool tlb_buscar(int pagina, int* frame_out) {
     for (int i = 0; i < list_size(tlb); i++) {
         entrada_tlb_t* entrada = list_get(tlb, i);
         if (entrada->valido && entrada->pagina == pagina) {
@@ -70,10 +123,10 @@ bool tlb_buscar(uint32_t pagina, uint32_t* frame_out) {
 }
 
 bool tlb_habilitada() {
-    return ENTRADAS_TLB > 0;
+    return atoi(ENTRADAS_TLB) > 0;
 }
 
-void tlb_insertar(uint32_t pagina, uint32_t frame) {
+void tlb_insertar(int pagina, int frame) {
     entrada_tlb_t* nueva_entrada = malloc(sizeof(entrada_tlb_t));
     nueva_entrada->pagina = pagina;
     nueva_entrada->frame = frame;
@@ -81,10 +134,9 @@ void tlb_insertar(uint32_t pagina, uint32_t frame) {
     nueva_entrada->tiempo_uso = timestamp_actual(); // Para LRU
     nueva_entrada->orden_fifo = orden_fifo++;        // Para FIFO
 
-    if (list_size(tlb) < ENTRADAS_TLB) {    // warning: comparison between pointer and integer
+    if (list_size(tlb) < atoi(ENTRADAS_TLB)) {
         list_add(tlb, nueva_entrada);
     } else {
-        // TLB llena
         int victima = seleccionar_victima_tlb();
         entrada_tlb_t* entrada_reemplazo = list_get(tlb, victima);
         free(entrada_reemplazo);
@@ -95,7 +147,7 @@ void tlb_insertar(uint32_t pagina, uint32_t frame) {
 int seleccionar_victima_tlb() {
     int victima = 0;
     if (strcmp(REEMPLAZO_TLB, "LRU") == 0) {
-        uint64_t min_uso = UINT64_MAX;
+        int min_uso = INT_MAX;
         for (int i = 0; i < list_size(tlb); i++) {
             entrada_tlb_t* entrada = list_get(tlb, i);
             if (entrada->tiempo_uso < min_uso) {
@@ -104,7 +156,7 @@ int seleccionar_victima_tlb() {
             }
         }
     } else if (strcmp(REEMPLAZO_TLB, "FIFO") == 0) {
-        uint32_t min_orden = UINT32_MAX;
+        int min_orden = INT_MAX;
         for (int i = 0; i < list_size(tlb); i++) {
             entrada_tlb_t* entrada = list_get(tlb, i);
             if (entrada->orden_fifo < min_orden) {
@@ -116,8 +168,8 @@ int seleccionar_victima_tlb() {
     return victima;
 }
 
-uint64_t timestamp_actual() { // ACA CHATGPTIEE VER DE NUEVO ESTO...
+int timestamp_actual() {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000); // en milisegundos
+    return (int)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000); // en milisegundos
 }

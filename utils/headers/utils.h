@@ -13,15 +13,17 @@
 #include <commons/collections/list.h>
 #include <commons/string.h>
 
-
-
 bool config_has_all_properties(t_config*, char**);
 
-bool send_un_char_y_un_int(int fd, char* cadena, uint8_t entero);
-bool send_dos_ints(int fd, uint8_t int1, uint8_t int2);
+bool send_un_char_y_un_int(int fd, char* cadena, int entero);
+bool send_dos_ints(int fd, int int1, int int2);
+bool send_string(int fd, char* string);
+bool send_data(int fd, void* data, size_t size);
 
-bool recv_un_char_y_un_int(int fd, char** cadena, uint8_t* entero);
-bool recv_dos_ints(int fd, uint8_t* int1, uint8_t* int2);
+bool recv_un_char_y_un_int(int fd, char** cadena, int* entero);
+bool recv_dos_ints(int fd, int* int1, int* int2);
+bool recv_string(int fd, char** string);
+bool recv_data(int fd, void* buffer, size_t size);
 
 
-#endif
+#endif /* UTILS_H_ */

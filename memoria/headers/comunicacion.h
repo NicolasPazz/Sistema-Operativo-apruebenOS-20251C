@@ -14,7 +14,7 @@
 #include "interfaz_memoria.h"
 
 /////////////////////////////// Declaracion de variables globales ///////////////////////////////
-extern t_log* memoria_log;
+extern t_log* logger;
 extern t_config* memoria_config;
 
 extern int fd_memoria;

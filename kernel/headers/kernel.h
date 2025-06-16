@@ -6,7 +6,10 @@
 #include "procesos.h"
 #include "syscalls.h"
 #include "planificadores.h"
-
+#include "IOKernel.h"
+#include "CPUKernel.h"
+#include <signal.h>
+#include <unistd.h>
 /////////////////////////////// Declaracion de variables globales ///////////////////////////////
 // Logger
 extern t_log* kernel_log;
@@ -14,6 +17,11 @@ extern t_log* kernel_log;
 // Cronometro para MT en PCB
 extern t_temporal* tiempo_estado_actual;
 extern t_dictionary* tiempos_por_pid;
+
+// Cronometro para MT en PCB
+extern t_temporal* tiempo_estado_actual;
+extern t_dictionary* tiempos_por_pid;
+extern t_dictionary* archivo_por_pcb;
 
 // Sockets
 extern int fd_memoria;
@@ -43,8 +51,17 @@ extern t_list* cola_susp_ready;
 extern t_list* cola_susp_blocked;
 extern t_list* cola_exit;
 extern t_list* cola_procesos;
+extern t_list* pcbs_bloqueados_por_io;
+
+// Listas y semaforos de CPUs y IOs conectadas
+extern t_list* lista_cpus;
+extern t_list* lista_ios;
 
 // Conexiones
+extern pthread_mutex_t mutex_lista_cpus;
+extern pthread_mutex_t mutex_ios;
+
+// Conexiones minimas
 extern bool conectado_cpu;
 extern bool conectado_io;
 extern pthread_mutex_t mutex_conexiones;
@@ -54,6 +71,7 @@ void iniciar_config_kernel(void);
 void iniciar_logger_kernel(void);
 void iniciar_logger_kernel_debug(void);
 void iniciar_diccionario_tiempos(void);
+void iniciar_diccionario_archivos_por_pcb(void);
 void* hilo_cliente_memoria(void* _);
 void* hilo_servidor_dispatch(void* _);
 void* hilo_servidor_interrupt(void* _);
@@ -61,7 +79,8 @@ void* hilo_servidor_io(void* _);
 void iniciar_estados_kernel(void);
 void iniciar_sincronizacion_kernel(void);
 void terminar_kernel(void);
-bool cpu_por_fd(void* ptr);
+bool cpu_por_fd_simple(void* ptr, int fd);
+int get_pid_from_cpu(int fd, op_code instruccion);
 void* atender_cpu_dispatch(void* arg);
 void* atender_cpu_interrupt(void* arg);
 void* atender_io(void* arg);

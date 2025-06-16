@@ -1,6 +1,8 @@
 #ifndef PLANIFICADORES_H
 #define PLANIFICADORES_H
 
+#define _GNU_SOURCE  // Para usleep() y otras funciones POSIX
+
 /////////////////////////////// Includes ///////////////////////////////
 #include "kernel.h"
 #include "types.h"
@@ -33,12 +35,12 @@ void* menor_rafaga(void* a, void* b);
 t_pcb* elegir_por_sjf(void);
 t_pcb* elegir_por_srt(void);
 double get_time(void);
-void fin_io(t_pcb* pcb);
 void iniciar_planificador_largo_plazo(void);
 void* planificar_FIFO_lp(void* arg);
 void* planificar_PMCP_lp(void* arg);
 void* menor_tamanio(void* a, void* b);
 t_pcb* elegir_por_pmcp(void);
 void* gestionar_exit(void* arg);
+void* planificador_corto_plazo_reactivo(void* arg);
 
 #endif /* PLANIFICADORES_H */

@@ -1,6 +1,5 @@
 #include "../headers/sockets.h"
 
-
 /////////////////////////////// Log y Config ///////////////////////////////
 t_log* iniciar_logger(char *file, char *process_name, bool is_active_console, t_log_level level) {
 	t_log* nuevo_logger = log_create(file, process_name,is_active_console,level);
@@ -132,7 +131,6 @@ int esperar_cliente(int socket_servidor, t_log* logger) {
     return socket_cliente;
 }
 
-
 void atender_cliente(void* arg) {
     cliente_data_t *data = (cliente_data_t *)arg;
     int control_key = 1;
@@ -195,12 +193,11 @@ cliente_data_t *crear_cliente_data(int fd_cliente, t_log* logger, char* cliente)
     return data;
 }
 
-int recibir_operacion(int socket_cliente) {
-	int cod_op;
+op_code recibir_operacion(int socket_cliente) {
+	op_code cod_op;
 	if(recv(socket_cliente, &cod_op, sizeof(int), MSG_WAITALL) > 0)
 		return cod_op;
-	else
-	{
+	else {
 		close(socket_cliente);
 		return -1;
 	}
@@ -216,13 +213,14 @@ void liberar_cliente_data(cliente_data_t *data) {
 }
 
 void* recibir_buffer(int* size, int socket_cliente) {
-	void * buffer;
+    void * buffer;
 
-	recv(socket_cliente, size, sizeof(int), MSG_WAITALL);
-	buffer = malloc(*size);
-	recv(socket_cliente, buffer, *size, MSG_WAITALL);
+    // Leer el tamaño del buffer (2do int en el paquete)
+    recv(socket_cliente, size, sizeof(int), MSG_WAITALL);
+    buffer = malloc(*size);
+    recv(socket_cliente, buffer, *size, MSG_WAITALL);
 
-	return buffer;
+    return buffer;
 }
 
 void recibir_mensaje(int socket_cliente,t_log* logger) {
@@ -232,25 +230,79 @@ void recibir_mensaje(int socket_cliente,t_log* logger) {
 	free(buffer);
 }
 
-t_list* recibir_paquete(int socket_cliente) {
-	int size;
-	int desplazamiento = 0;
-	void * buffer;
-	t_list* valores = list_create();
-	int tamanio;
+t_list* recibir_contenido_paquete(int socket_cliente) {
+    int buffer_size;
 
-	buffer = recibir_buffer(&size, socket_cliente);
-	while(desplazamiento < size)
-	{
-		memcpy(&tamanio, buffer + desplazamiento, sizeof(int));
-		desplazamiento+=sizeof(int);
-		char* valor = malloc(tamanio);
-		memcpy(valor, buffer+desplazamiento, tamanio);
-		desplazamiento+=tamanio;
-		list_add(valores, valor);
-	}
-	free(buffer);
-	return valores;
+    // Recibo tamaño del buffer (ya se leyó el código de operación antes)
+    if (recv(socket_cliente, &buffer_size, sizeof(int), MSG_WAITALL) <= 0)
+        return NULL;
+
+    void* buffer = malloc(buffer_size);
+    if (!buffer) return NULL;
+
+    // Recibo el buffer completo
+    if (recv(socket_cliente, buffer, buffer_size, MSG_WAITALL) <= 0) {
+        free(buffer);
+        return NULL;
+    }
+
+    t_list* lista_parametros = list_create();
+
+    int offset = 0;
+    while (offset < buffer_size) {
+        int param_size;
+        memcpy(&param_size, buffer + offset, sizeof(int));
+        offset += sizeof(int);
+
+        char* param = malloc(param_size);
+        memcpy(param, buffer + offset, param_size);
+        offset += param_size;
+
+        list_add(lista_parametros, param);
+    }
+
+    free(buffer);
+    return lista_parametros;
+}
+
+t_list* recibir_paquete(int socket_cliente) {
+    int codigo_operacion;
+    int buffer_size;
+
+    // Recibo código operación
+    if (recv(socket_cliente, &codigo_operacion, sizeof(int), MSG_WAITALL) <= 0)
+        return NULL;
+
+    // Recibo tamaño del buffer
+    if (recv(socket_cliente, &buffer_size, sizeof(int), MSG_WAITALL) <= 0)
+        return NULL;
+
+    void* buffer = malloc(buffer_size);
+    if (!buffer) return NULL;
+
+    // Recibo el buffer completo
+    if (recv(socket_cliente, buffer, buffer_size, MSG_WAITALL) <= 0) {
+        free(buffer);
+        return NULL;
+    }
+
+    t_list* lista_parametros = list_create();
+
+    int offset = 0;
+    while (offset < buffer_size) {
+        int param_size;
+        memcpy(&param_size, buffer + offset, sizeof(int));
+        offset += sizeof(int);
+
+        char* param = malloc(param_size);
+        memcpy(param, buffer + offset, param_size);
+        offset += param_size;
+
+        list_add(lista_parametros, param);
+    }
+
+    free(buffer);
+    return lista_parametros;
 }
 
 void enviar_mensaje(char* mensaje, int socket_cliente) {
@@ -310,7 +362,6 @@ void eliminar_paquete(t_paquete* paquete) {
 }
 
 void paquete(int conexion) {
-	
 	char* leido;
 	t_paquete* paquete = crear_paquete();
 
@@ -342,20 +393,23 @@ void* serializar_paquete(t_paquete* paquete, int bytes) {
 	return magic;
 }
 
-t_paquete* crear_paquete_op(op_code codop)
-{
+t_paquete* crear_paquete_op(op_code codop){
     t_paquete* paquete = malloc(sizeof(t_paquete));
     paquete->codigo_operacion = codop;
     crear_buffer(paquete);
     return paquete;
 }
 
-void agregar_entero_a_paquete(t_paquete *paquete, int numero)
-{
-
+void agregar_entero_a_paquete(t_paquete *paquete, int numero){
     paquete->buffer->stream = realloc(paquete->buffer->stream, paquete->buffer->size + sizeof(int));
     memcpy(paquete->buffer->stream + paquete->buffer->size, &numero, sizeof(int));
     paquete->buffer->size += sizeof(int);
+}
+
+bool enviar_operacion(int socket, op_code operacion) {
+    int op = operacion;
+    int bytes_enviados = send(socket, &op, sizeof(op), 0);
+    return bytes_enviados == sizeof(op);
 }
 
 char* leer_string(char* buffer, int* desplazamiento) {
@@ -379,8 +433,38 @@ int leer_entero(char *buffer, int * desplazamiento){
     return entero;
 }
 
+t_list* recibir_2_enteros_sin_op(int socket){
+    int buffer_size;
+
+    // Recibo tamaño del buffer (ya se leyó el código de operación antes)  
+    if (recv(socket, &buffer_size, sizeof(int), MSG_WAITALL) <= 0)
+        return NULL;
+
+    void* buffer = malloc(buffer_size);
+    if (!buffer) return NULL;
+
+    // Recibo el buffer completo
+    if (recv(socket, buffer, buffer_size, MSG_WAITALL) <= 0) {
+        free(buffer);
+        return NULL;
+    }
+
+    t_list* lista = list_create();
+    int desp = 0;
+
+    int entero1 = leer_entero(buffer, &desp);
+    int entero2 = leer_entero(buffer, &desp);
+
+    list_add(lista, (void *)(uintptr_t)entero1);
+    list_add(lista, (void *)(uintptr_t)entero2);
+
+    free(buffer);
+    return lista;
+}
+
+/*
 t_list* recibir_4_enteros(int socket){
-	uint32_t entero1;
+	int entero1;
 	int entero2;
 	int entero3;
 	int entero4;
@@ -407,3 +491,41 @@ t_list* recibir_4_enteros(int socket){
 	free(buffer);
 	return lista;
 }
+
+int recibir_entero(int socket)
+{
+
+    int size = 0;
+    char *buffer;
+    int desp = 0;
+
+    buffer = recibir_buffer(&size, socket);
+    int entero = leer_entero(buffer, &desp);
+    
+    free(buffer);
+    return entero;
+}
+
+t_list* recibir_2_enteros(int socket){
+	int entero1;
+	int entero2;
+	
+
+	int size = 0;
+    char *buffer;
+    int desp = 0;
+	t_list* lista = list_create();
+
+    buffer = recibir_buffer(&size, socket);
+
+	entero1 = leer_entero(buffer,&desp);
+	entero2 = leer_entero(buffer,&desp);
+
+	list_add(lista, (void *)(uintptr_t)entero1);
+	list_add(lista, (void *)(uintptr_t)entero2);	
+
+	free(buffer);
+	return lista;
+}
+
+*/
