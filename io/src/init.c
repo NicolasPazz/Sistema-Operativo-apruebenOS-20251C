@@ -8,7 +8,7 @@ char* PUERTO_KERNEL;
 char* LOG_LEVEL;
 
 void iniciar_config_io() {
-    io_config = iniciar_config("io.config");
+    io_config = iniciar_config("io/io.config");
 
     IP_KERNEL = config_get_string_value(io_config, "IP_KERNEL");
     PUERTO_KERNEL= config_get_string_value(io_config, "PUERTO_KERNEL");
