@@ -50,7 +50,7 @@ t_pcb* elegir_por_srt(){
 }
 
 void dispatch(t_pcb* proceso_a_ejecutar){
-    log_info(kernel_log, "=== DISPATCH INICIADO PARA PID %d ===", proceso_a_ejecutar->PID);
+    log_trace(kernel_log, "=== DISPATCH INICIADO PARA PID %d ===", proceso_a_ejecutar->PID);
 
     // Una vez seleccionado el proceso a ejecutar, se lo transicionara al estado EXEC
     cambiar_estado_pcb(proceso_a_ejecutar, EXEC);
@@ -66,7 +66,7 @@ void dispatch(t_pcb* proceso_a_ejecutar){
     int cpus_dispatch = 0;
     int cpus_libres = 0;
     
-    log_info(kernel_log, "Dispatch: Total de CPUs conectadas: %d", total_cpus);
+    log_trace(kernel_log, "Dispatch: Total de CPUs conectadas: %d", total_cpus);
     
     for (int i = 0; i < list_size(lista_cpus); i++) {
         cpu* c = list_get(lista_cpus, i);
@@ -77,16 +77,16 @@ void dispatch(t_pcb* proceso_a_ejecutar){
                 cpus_libres++;
                 if (!cpu_disponible) {
                     cpu_disponible = c;
-                    log_info(kernel_log, "Dispatch: ✓ CPU %d seleccionada (fd=%d) - Es la primera CPU libre encontrada", c->id, c->fd);
+                    log_trace(kernel_log, "Dispatch: ✓ CPU %d seleccionada (fd=%d) - Es la primera CPU libre encontrada", c->id, c->fd);
                 }
             }
         }
-        log_debug(kernel_log, "Dispatch: CPU %d - tipo=%d, pid=%d, fd=%d, estado=%s", 
+        log_trace(kernel_log, "Dispatch: CPU %d - tipo=%d, pid=%d, fd=%d, estado=%s", 
                  c->id, c->tipo_conexion, c->pid, c->fd, 
                  c->tipo_conexion == CPU_DISPATCH ? (c->pid == -1 ? "LIBRE" : "OCUPADA") : "NO-DISPATCH");
     }
     
-    log_info(kernel_log, "Dispatch: CPUs de tipo DISPATCH: %d, CPUs libres: %d", cpus_dispatch, cpus_libres);
+    log_trace(kernel_log, "Dispatch: CPUs de tipo DISPATCH: %d, CPUs libres: %d", cpus_dispatch, cpus_libres);
     
     if (!cpu_disponible) {
         pthread_mutex_unlock(&mutex_lista_cpus);
@@ -106,7 +106,7 @@ void dispatch(t_pcb* proceso_a_ejecutar){
     enviar_paquete(paquete, cpu_disponible->fd);
     eliminar_paquete(paquete);
 
-    log_info(kernel_log, "Planificador CP reactivo: 🚀 Despachando proceso %d a CPU %d (PC: %d)", 
+    log_trace(kernel_log, "Planificador CP reactivo: 🚀 Despachando proceso %d a CPU %d (PC: %d)", 
         proceso_a_ejecutar->PID, cpu_disponible->id, proceso_a_ejecutar->PC);
 }
 
@@ -161,7 +161,7 @@ void activar_planificador_largo_plazo(void) {
     estado_planificador_lp = RUNNING;
     pthread_cond_signal(&cond_planificador_lp);
     pthread_mutex_unlock(&mutex_planificador_lp);
-    log_info(kernel_log, "Planificador de largo plazo activado");
+    log_trace(kernel_log, "Planificador de largo plazo activado");
 }
 
 void iniciar_planificador_largo_plazo(void) {
@@ -200,7 +200,7 @@ void* planificador_largo_plazo(void* arg) {
     while (1) {
         pthread_mutex_lock(&mutex_planificador_lp);
         while (estado_planificador_lp == STOP) {
-            log_info(kernel_log, "Planificador de largo plazo en STOP, esperando activación...");
+            log_trace(kernel_log, "Planificador de largo plazo en STOP, esperando activación...");
             pthread_cond_wait(&cond_planificador_lp, &mutex_planificador_lp);
         }
         pthread_mutex_unlock(&mutex_planificador_lp);
@@ -211,7 +211,7 @@ void* planificador_largo_plazo(void* arg) {
         pthread_mutex_unlock(&mutex_cola_new);
 
         if (hay_procesos_new) {
-            log_debug(kernel_log, "Planificador LP: Hay procesos en NEW, intentando mover a READY");
+            log_trace(kernel_log, "Planificador LP: Hay procesos en NEW, intentando mover a READY");
             
             // Esperar a que cola_susp_ready esté vacía
             sem_wait(&sem_susp_ready_vacia);
@@ -231,7 +231,6 @@ void* planificador_largo_plazo(void* arg) {
                 pthread_mutex_unlock(&mutex_cola_new);
                 
                 cambiar_estado_pcb(pcb, READY);
-                log_info(kernel_log, "## (%d) Pasa del estado NEW al estado READY", pcb->PID);
                 
                 // Notificar al planificador de corto plazo
                 sem_post(&sem_proceso_a_ready);
@@ -282,7 +281,7 @@ void* gestionar_exit(void* arg) {
             exit(EXIT_FAILURE);
         }
 
-        log_debug(kernel_log, "gestionar_exit: Ejecutando syscall EXIT para PID=%d", pcb->PID);
+        log_trace(kernel_log, "gestionar_exit: Ejecutando syscall EXIT para PID=%d", pcb->PID);
         EXIT(pcb);
     }
 
@@ -291,15 +290,15 @@ void* gestionar_exit(void* arg) {
 
 // NUEVO: Planificador de corto plazo reactivo
 void* planificador_corto_plazo_reactivo(void* arg) {
-    log_info(kernel_log, "=== PLANIFICADOR CP REACTIVO INICIADO ===");
+    log_trace(kernel_log, "=== PLANIFICADOR CP REACTIVO INICIADO ===");
     
     while (1) {
-        log_debug(kernel_log, "Planificador CP reactivo: Esperando semáforo sem_proceso_a_ready...");
+        log_trace(kernel_log, "Planificador CP reactivo: Esperando semáforo sem_proceso_a_ready...");
         
         // Esperar a que llegue un proceso a READY
         sem_wait(&sem_proceso_a_ready);
         
-        log_info(kernel_log, "Planificador CP reactivo: ✓ Proceso llegó a READY - Iniciando evaluación");
+        log_trace(kernel_log, "Planificador CP reactivo: ✓ Proceso llegó a READY - Iniciando evaluación");
         
         // Verificar si hay CPUs disponibles Y procesos en READY
         pthread_mutex_lock(&mutex_lista_cpus);
@@ -320,7 +319,7 @@ void* planificador_corto_plazo_reactivo(void* arg) {
         }
         pthread_mutex_unlock(&mutex_lista_cpus);
         
-        log_debug(kernel_log, "Planificador CP reactivo: CPUs totales=%d, CPUs dispatch=%d, CPUs libres=%d", 
+        log_trace(kernel_log, "Planificador CP reactivo: CPUs totales=%d, CPUs dispatch=%d, CPUs libres=%d", 
                  cpus_totales, cpus_dispatch, cpus_libres);
         
         // Solo planificar si hay CPU disponible Y cola READY no vacía
@@ -329,13 +328,13 @@ void* planificador_corto_plazo_reactivo(void* arg) {
         int procesos_en_ready = list_size(cola_ready);
         pthread_mutex_unlock(&mutex_cola_ready);
         
-        log_debug(kernel_log, "Planificador CP reactivo: Procesos en READY=%d, hay_cpu_disponible=%s", 
+        log_trace(kernel_log, "Planificador CP reactivo: Procesos en READY=%d, hay_cpu_disponible=%s", 
                  procesos_en_ready, hay_cpu_disponible ? "SÍ" : "NO");
         
         if (hay_cpu_disponible && hay_procesos_ready) {
-            log_info(kernel_log, "Planificador CP reactivo: ✓ Condiciones cumplidas - Iniciando planificación");
+            log_trace(kernel_log, "Planificador CP reactivo: ✓ Condiciones cumplidas - Iniciando planificación");
             iniciar_planificador_corto_plazo(ALGORITMO_CORTO_PLAZO);
-            log_info(kernel_log, "Planificador CP reactivo: ✓ Planificación completada");
+            log_trace(kernel_log, "Planificador CP reactivo: ✓ Planificación completada");
         } else {
             if (!hay_cpu_disponible) {
                 log_trace(kernel_log, "Planificador CP reactivo: ⚠ No hay CPUs disponibles");

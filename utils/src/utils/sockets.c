@@ -71,7 +71,7 @@ int iniciar_servidor(char *puerto, t_log* logger, char* msj_server) {
 	}
 
 	freeaddrinfo(servinfo);
-	log_debug(logger, "%s escuchando en puerto %s", msj_server, puerto);
+	log_trace(logger, "%s escuchando en puerto %s", msj_server, puerto);
 
 	return socket_servidor;
 }
@@ -127,7 +127,7 @@ int esperar_cliente(int socket_servidor, t_log* logger) {
         log_error(logger, "Error al aceptar cliente: %s", strerror(errno));
         return -1;
     }
-    log_debug(logger, "Se conecto un nuevo cliente (fd = %d)", socket_cliente);
+    log_trace(logger, "Se conecto un nuevo cliente (fd = %d)", socket_cliente);
     return socket_cliente;
 }
 
@@ -226,7 +226,7 @@ void* recibir_buffer(int* size, int socket_cliente) {
 void recibir_mensaje(int socket_cliente,t_log* logger) {
 	int size;
 	char* buffer = recibir_buffer(&size, socket_cliente);
-	log_debug(logger, "Me llego el mensaje: %s", buffer);
+	log_trace(logger, "Me llego el mensaje: %s", buffer);
 	free(buffer);
 }
 

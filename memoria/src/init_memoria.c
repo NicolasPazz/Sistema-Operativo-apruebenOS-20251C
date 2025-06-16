@@ -26,7 +26,7 @@ void iniciar_logger_memoria() {
     if (logger == NULL) {
         printf("Error al iniciar memoria logs\n");
     } else {
-        log_debug(logger, "Memoria logs iniciados correctamente!");
+        log_trace(logger, "Memoria logs iniciados correctamente!");
     }
 }
 
@@ -78,7 +78,7 @@ int cargar_configuracion(char* path) {
     cfg->DUMP_PATH = strdup(config_get_string_value(cfg_file, "DUMP_PATH"));
     cfg->PATH_INSTRUCCIONES = strdup(config_get_string_value(cfg_file, "PATH_INSTRUCCIONES"));
 
-    log_debug(logger, "Archivo de configuracion cargado correctamente");
+    log_trace(logger, "Archivo de configuracion cargado correctamente");
     config_destroy(cfg_file);
 
     return 1;
@@ -89,7 +89,7 @@ int cargar_configuracion(char* path) {
 // ============================================================================
 
 t_administrador_marcos* crear_administrador_marcos(int cantidad_frames, int tam_pagina) {
-    log_info(logger, "## Inicializando administrador centralizado de marcos - Total: %d marcos", cantidad_frames);
+    log_trace(logger, "## Inicializando administrador centralizado de marcos - Total: %d marcos", cantidad_frames);
     
     t_administrador_marcos* admin = malloc(sizeof(t_administrador_marcos));
     if (!admin) {
@@ -168,17 +168,17 @@ t_administrador_marcos* crear_administrador_marcos(int cantidad_frames, int tam_
         return NULL;
     }
     
-    log_info(logger, "## Administrador de marcos inicializado correctamente - %d frames disponibles", cantidad_frames);
+    log_trace(logger, "## Administrador de marcos inicializado correctamente - %d frames disponibles", cantidad_frames);
     return admin;
 }
 
 void destruir_administrador_marcos(t_administrador_marcos* admin) {
     if (!admin) return;
     
-    log_info(logger, "## Destruyendo administrador de marcos - Estadísticas finales:");
-    log_info(logger, "   - Total asignaciones: %d", admin->total_asignaciones);
-    log_info(logger, "   - Total liberaciones: %d", admin->total_liberaciones);
-    log_info(logger, "   - Frames libres al finalizar: %d", admin->frames_libres);
+    log_trace(logger, "## Destruyendo administrador de marcos - Estadísticas finales:");
+    log_trace(logger, "   - Total asignaciones: %d", admin->total_asignaciones);
+    log_trace(logger, "   - Total liberaciones: %d", admin->total_liberaciones);
+    log_trace(logger, "   - Frames libres al finalizar: %d", admin->frames_libres);
     
     // Destruir mutex
     pthread_mutex_destroy(&admin->mutex_frames);
@@ -344,7 +344,7 @@ void obtener_estadisticas_marcos(int* total_frames, int* frames_libres, int* fra
 // ============================================================================
 
 t_administrador_swap* crear_administrador_swap(void) {
-    log_info(logger, "## Inicializando administrador de SWAP");
+    log_trace(logger, "## Inicializando administrador de SWAP");
     
     t_administrador_swap* admin = malloc(sizeof(t_administrador_swap));
     if (!admin) {
@@ -418,17 +418,17 @@ t_administrador_swap* crear_administrador_swap(void) {
         return NULL;
     }
     
-    log_info(logger, "## Administrador de SWAP inicializado - %d páginas disponibles", admin->cantidad_paginas_swap);
+    log_trace(logger, "## Administrador de SWAP inicializado - %d páginas disponibles", admin->cantidad_paginas_swap);
     return admin;
 }
 
 void destruir_administrador_swap(t_administrador_swap* admin) {
     if (!admin) return;
     
-    log_info(logger, "## Destruyendo administrador de SWAP - Estadísticas finales:");
-    log_info(logger, "   - Total escrituras: %d", admin->total_escrituras_swap);
-    log_info(logger, "   - Total lecturas: %d", admin->total_lecturas_swap);
-    log_info(logger, "   - Páginas libres al finalizar: %d", admin->paginas_libres_swap);
+    log_trace(logger, "## Destruyendo administrador de SWAP - Estadísticas finales:");
+    log_trace(logger, "   - Total escrituras: %d", admin->total_escrituras_swap);
+    log_trace(logger, "   - Total lecturas: %d", admin->total_lecturas_swap);
+    log_trace(logger, "   - Páginas libres al finalizar: %d", admin->paginas_libres_swap);
     
     pthread_mutex_destroy(&admin->mutex_swap);
     
@@ -456,7 +456,7 @@ void destruir_administrador_swap(t_administrador_swap* admin) {
 // ============================================================================
 
 t_resultado_memoria inicializar_sistema_memoria(void) {
-    log_info(logger, "## Inicializando sistema completo de memoria");
+    log_trace(logger, "## Inicializando sistema completo de memoria");
     
     // Crear estructura principal del sistema
     sistema_memoria = malloc(sizeof(t_sistema_memoria));
@@ -493,7 +493,7 @@ t_resultado_memoria inicializar_sistema_memoria(void) {
     
     // Inicializar memoria con ceros
     memset(sistema_memoria->memoria_principal, 0, cfg->TAM_MEMORIA);
-    log_info(logger, "## Memoria principal inicializada - %d bytes", cfg->TAM_MEMORIA);
+    log_trace(logger, "## Memoria principal inicializada - %d bytes", cfg->TAM_MEMORIA);
     
     // Crear administrador centralizado de marcos
     int cantidad_frames = cfg->TAM_MEMORIA / cfg->TAM_PAGINA;
@@ -535,12 +535,12 @@ t_resultado_memoria inicializar_sistema_memoria(void) {
         return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
     }
     
-    log_info(logger, "## Sistema de memoria inicializado correctamente");
-    log_info(logger, "   - Memoria física: %d bytes (%d marcos de %d bytes)", 
+    log_trace(logger, "## Sistema de memoria inicializado correctamente");
+    log_trace(logger, "   - Memoria física: %d bytes (%d marcos de %d bytes)", 
              cfg->TAM_MEMORIA, cantidad_frames, cfg->TAM_PAGINA);
-    log_info(logger, "   - Paginación: %d niveles, %d entradas por tabla", 
+    log_trace(logger, "   - Paginación: %d niveles, %d entradas por tabla", 
              cfg->CANTIDAD_NIVELES, cfg->ENTRADAS_POR_TABLA);
-    log_info(logger, "   - Retardos: Memoria %dms, SWAP %dms", 
+    log_trace(logger, "   - Retardos: Memoria %dms, SWAP %dms", 
              cfg->RETARDO_MEMORIA, cfg->RETARDO_SWAP);
     
     return MEMORIA_OK;
@@ -619,7 +619,7 @@ void liberar_sistema_memoria(void) {
 // ============================================================================
 
 void cerrar_programa() {
-    log_info(logger, "## Cerrando programa de memoria");
+    log_trace(logger, "## Cerrando programa de memoria");
     
     finalizar_sistema_memoria();
     
@@ -635,7 +635,7 @@ void cerrar_programa() {
         log_destroy(logger);
     }
     
-    log_info(logger, "## Programa de memoria finalizado correctamente");
+    log_trace(logger, "## Programa de memoria finalizado correctamente");
 }
 
 // ============================================================================

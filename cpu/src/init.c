@@ -49,7 +49,7 @@ void iniciar_logger_cpu() {
     if (cpu_log == NULL) {
         printf("Error al iniciar cpu logs\n");
     } else {
-        log_debug(cpu_log, "CPU logs iniciados correctamente!");
+        log_trace(cpu_log, "CPU logs iniciados correctamente!");
     }
 }
 
@@ -67,7 +67,7 @@ void* conectar_cpu_memoria() {
         exit(EXIT_FAILURE);
     }
 
-    log_debug(cpu_log, "HANDSHAKE_MEMORIA_CPU: CPU conectado exitosamente a Memoria (fd=%d)", fd_memoria);
+    log_trace(cpu_log, "HANDSHAKE_MEMORIA_CPU: CPU conectado exitosamente a Memoria (fd=%d)", fd_memoria);
     return NULL;
 }
 
@@ -85,7 +85,7 @@ void* conectar_kernel_dispatch() {
         exit(EXIT_FAILURE);
     }
 
-    log_debug(cpu_log, "HANDSHAKE_CPU_KERNEL_DISPATCH: CPU conectado exitosamente a Kernel Dispatch (fd=%d)", fd_kernel_dispatch);
+    log_trace(cpu_log, "HANDSHAKE_CPU_KERNEL_DISPATCH: CPU conectado exitosamente a Kernel Dispatch (fd=%d)", fd_kernel_dispatch);
     return NULL;
 }
 
@@ -103,6 +103,6 @@ void* conectar_kernel_interrupt() {
         exit(EXIT_FAILURE);
     }
 
-    log_debug(cpu_log, "HANDSHAKE_CPU_KERNEL_INTERRUPT: CPU conectado exitosamente a Kernel Interrupt (fd=%d)", fd_kernel_interrupt);
+    log_trace(cpu_log, "HANDSHAKE_CPU_KERNEL_INTERRUPT: CPU conectado exitosamente a Kernel Interrupt (fd=%d)", fd_kernel_interrupt);
     return NULL;
 }

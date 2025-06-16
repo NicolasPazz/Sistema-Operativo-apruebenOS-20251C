@@ -2,7 +2,7 @@
 
 // Procesa la petición de IO recibida de la CPU
 void procesar_IO_from_CPU(char* nombre_IO, int cant_tiempo, t_pcb* pcb_a_io) {
-    log_debug(kernel_log, "Procesando solicitud de IO '%s' por %d ms para PID=%d", 
+    log_trace(kernel_log, "Procesando solicitud de IO '%s' por %d ms para PID=%d", 
               nombre_IO, cant_tiempo, pcb_a_io->PID);
     
     // Llamamos a la syscall IO con los parámetros correctos
@@ -39,7 +39,7 @@ bool recv_IO_from_CPU(int fd, char** nombre_IO, int* cant_tiempo) {
     
     memcpy(cant_tiempo, stream + sizeof(size_t) + nombre_len, sizeof(int));
 
-    log_debug(kernel_log, "Recibido IO: nombre='%s', tiempo=%d", *nombre_IO, *cant_tiempo);
+    log_trace(kernel_log, "Recibido IO: nombre='%s', tiempo=%d", *nombre_IO, *cant_tiempo);
     
     free(stream);
     return true;

@@ -64,5 +64,5 @@ int main(int argc, char* argv[]) {
 }
 
 void iterator(char* value) {
-    log_debug(mock_log, "%s", value);
+    log_trace(mock_log, "%s", value);
 }

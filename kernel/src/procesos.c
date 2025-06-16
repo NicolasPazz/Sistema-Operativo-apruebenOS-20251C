@@ -16,17 +16,17 @@ const char* estado_to_string(Estados estado) {
 }
 
 void mostrar_pcb(t_pcb PCB) {
-    log_debug(kernel_log, "-*-*-*-*-*- PCB -*-*-*-*-*-\n");
-    log_debug(kernel_log, "PID: %u\n", PCB.PID);
-    log_debug(kernel_log, "PC: %u\n", PCB.PC);
+    log_trace(kernel_log, "-*-*-*-*-*- PCB -*-*-*-*-*-\n");
+    log_trace(kernel_log, "PID: %u\n", PCB.PID);
+    log_trace(kernel_log, "PC: %u\n", PCB.PC);
     mostrar_metrica("ME", PCB.ME);
     mostrar_metrica("MT", PCB.MT);
-    log_debug(kernel_log, "Estado: %s\n", estado_to_string(PCB.Estado));
-    log_debug(kernel_log, "Tiempo inicio exec: %f\n", PCB.tiempo_inicio_exec);
-    log_debug(kernel_log, "Rafaga estimada: %.2f\n", PCB.estimacion_rafaga);
-    log_debug(kernel_log, "Path: %s\n", PCB.path);
-    log_debug(kernel_log, "Tamanio de memoria: %u\n", PCB.tamanio_memoria);
-    log_debug(kernel_log, "-*-*-*-*-*-*-*-*-*-*-*-*-*-\n");
+    log_trace(kernel_log, "Estado: %s\n", estado_to_string(PCB.Estado));
+    log_trace(kernel_log, "Tiempo inicio exec: %f\n", PCB.tiempo_inicio_exec);
+    log_trace(kernel_log, "Rafaga estimada: %.2f\n", PCB.estimacion_rafaga);
+    log_trace(kernel_log, "Path: %s\n", PCB.path);
+    log_trace(kernel_log, "Tamanio de memoria: %u\n", PCB.tamanio_memoria);
+    log_trace(kernel_log, "-*-*-*-*-*-*-*-*-*-*-*-*-*-\n");
 }
 
 void mostrar_metrica(const char* nombre, int* metrica) {
@@ -40,11 +40,11 @@ void mostrar_metrica(const char* nombre, int* metrica) {
 
     snprintf(buffer + offset, sizeof(buffer) - offset, "]");
 
-    log_debug(kernel_log, "%s", buffer);
+    log_trace(kernel_log, "%s", buffer);
 }
 
 void mostrar_colas_estados() {
-    log_debug(kernel_log, "Colas -> [NEW: %d, READY: %d, EXEC: %d, BLOCK: %d, SUSP.BLOCK: %d, SUSP.READY: %d, EXIT: %d] | Procesos en total: %d\n",
+    log_trace(kernel_log, "Colas -> [NEW: %d, READY: %d, EXEC: %d, BLOCK: %d, SUSP.BLOCK: %d, SUSP.READY: %d, EXIT: %d] | Procesos en total: %d\n",
         list_size(cola_new),
         list_size(cola_ready),
         list_size(cola_running),

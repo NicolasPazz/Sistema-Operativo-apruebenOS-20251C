@@ -103,7 +103,7 @@ void menu(int fd_a_testear) {
             if (send(fd_a_testear, &cod, sizeof(op_code), 0) <= 0) {
                 log_error(mock_log, "Fallo al enviar op_code %d", cod);
             } else {
-                log_info(mock_log, "op_code %d enviado correctamente a Memoria", cod);
+                log_trace(mock_log, "op_code %d enviado correctamente a Memoria", cod);
             }
 
             // Menú de cada op_code
@@ -115,5 +115,5 @@ void menu(int fd_a_testear) {
 
     } while(opcion != 20);
 
-    log_info(mock_log, "Saliendo del menú mock...");
+    log_trace(mock_log, "Saliendo del menú mock...");
 }

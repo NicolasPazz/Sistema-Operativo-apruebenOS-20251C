@@ -14,7 +14,7 @@ static int obtener_siguiente_pid() {
 //////////////////////////////////////////////////////////// INIT PROC ////////////////////////////////////////////////////////////
 void INIT_PROC(char* nombre_archivo, int tam_memoria) {
     log_info(kernel_log, "## Solicitó syscall: INIT_PROC");
-    log_debug(kernel_log, "INIT_PROC - Nombre archivo recibido: '%s'", nombre_archivo);
+    log_trace(kernel_log, "INIT_PROC - Nombre archivo recibido: '%s'", nombre_archivo);
     
     // Crear nuevo PCB
     t_pcb* nuevo_proceso = malloc(sizeof(t_pcb));
@@ -29,7 +29,7 @@ void INIT_PROC(char* nombre_archivo, int tam_memoria) {
     agregar_a_paquete(paquete, &nuevo_proceso->PID, sizeof(int));
     
     // Asegurarnos de que el nombre del archivo se envíe correctamente
-    log_debug(kernel_log, "INIT_PROC - Nombre archivo a enviar: '%s'", nombre_archivo);
+    log_trace(kernel_log, "INIT_PROC - Nombre archivo a enviar: '%s'", nombre_archivo);
     agregar_a_paquete(paquete, nombre_archivo, strlen(nombre_archivo) + 1);
     
     agregar_a_paquete(paquete, &tam_memoria, sizeof(int));
@@ -121,8 +121,10 @@ void bloquear_pcb_por_io(io* dispositivo, t_pcb* pcb, int tiempo_a_usar) {
     // Agregar a la lista de PCBs bloqueados
     list_add(pcbs_bloqueados_por_io, pcb_io);
     
-    log_info(kernel_log, "## (%d) - Bloqueado por IO: %s (tiempo: %d ms)", 
-             pcb->PID, dispositivo->nombre, tiempo_a_usar);
+    log_info(kernel_log, "## (%d) - Bloqueado por IO: %s", 
+             pcb->PID, dispositivo->nombre);
+    log_debug(kernel_log, "## (%d) - Bloqueado por IO: %s (tiempo: %d ms)", 
+                pcb->PID, dispositivo->nombre, tiempo_a_usar);  
 }
 
 // Envía un proceso a un dispositivo IO
@@ -151,7 +153,7 @@ void enviar_io(io* dispositivo, t_pcb* pcb, int tiempo_a_usar) {
     enviar_paquete(paquete, dispositivo->fd);
     eliminar_paquete(paquete);
     
-    log_info(kernel_log, "Enviado PID=%d a IO '%s' por %d ms", pcb->PID, dispositivo->nombre, tiempo_a_usar);
+    log_trace(kernel_log, "Enviado PID=%d a IO '%s' por %d ms", pcb->PID, dispositivo->nombre, tiempo_a_usar);
 }
 
 // Procesa una solicitud de entrada/salida
@@ -183,7 +185,7 @@ void IO(char* nombre_io, int tiempo_a_usar, t_pcb* pcb_a_io) {
     if (esta_libre_io(dispositivo)) {
         enviar_io(dispositivo, pcb_a_io, tiempo_a_usar);
     } else {
-        log_info(kernel_log, "IO '%s' ocupada, proceso PID=%d en espera", nombre_io, pcb_a_io->PID);
+        log_trace(kernel_log, "IO '%s' ocupada, proceso PID=%d en espera", nombre_io, pcb_a_io->PID);
     }
 }
 
@@ -229,7 +231,7 @@ void fin_io(io* dispositivo, int pid_finalizado) {
     // Si hay un proceso esperando, enviarlo a la IO
     if (siguiente_pcb_io) {
         // Usar el tiempo guardado en la estructura
-        log_info(kernel_log, "Enviando siguiente proceso PID=%d a IO '%s' por %d ms", 
+        log_trace(kernel_log, "Enviando siguiente proceso PID=%d a IO '%s' por %d ms", 
                 siguiente_pcb_io->pcb->PID, dispositivo->nombre, siguiente_pcb_io->tiempo_a_usar);
         enviar_io(dispositivo, siguiente_pcb_io->pcb, siguiente_pcb_io->tiempo_a_usar);
     }
@@ -276,7 +278,7 @@ void EXIT(t_pcb* pcb_a_finalizar) {
     }
     
     if (confirmacion == OK) {
-        log_debug(kernel_log, "EXIT: Memoria confirmó finalización de PID %d", pcb_a_finalizar->PID);
+        log_trace(kernel_log, "EXIT: Memoria confirmó finalización de PID %d", pcb_a_finalizar->PID);
     } else if (confirmacion == ERROR) {
         log_error(kernel_log, "EXIT: Memoria rechazó la finalización de PID %d", pcb_a_finalizar->PID);
         terminar_kernel();

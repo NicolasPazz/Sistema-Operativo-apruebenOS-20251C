@@ -60,7 +60,7 @@ int cargar_configuracion(char* path) {
     cfg_memoria->LOG_LEVEL = strdup(config_get_string_value(cfg_file, "LOG_LEVEL"));
     cfg_memoria->DUMP_PATH = strdup(config_get_string_value(cfg_file, "DUMP_PATH"));
 
-    log_debug(cpu_log, "Archivo de configuracion cargado correctamente");
+    log_trace(cpu_log, "Archivo de configuracion cargado correctamente");
     config_destroy(cfg_file);
 
     return 1;

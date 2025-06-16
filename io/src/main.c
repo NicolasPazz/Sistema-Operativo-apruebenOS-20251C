@@ -5,7 +5,7 @@
 void signal_handler(int sig) {
     if (sig == SIGINT) {
         printf("\n\nRecibida señal de terminación. Cerrando IO...\n");
-        log_info(io_log, "Recibida señal SIGINT. Iniciando terminación limpia de IO...");
+        log_trace(io_log, "Recibida señal SIGINT. Iniciando terminación limpia de IO...");
         terminar_io();
         exit(EXIT_SUCCESS);
     }
@@ -25,12 +25,12 @@ int main(int argc, char* argv[]) {
     iniciar_config_io();
     iniciar_logger_io();
 
-    log_info(io_log, "=== Iniciando dispositivo IO: %s ===", nombre_io);
-    log_debug(io_log, "Configuración cargada - IP_KERNEL: %s, PUERTO_KERNEL: %s", IP_KERNEL, PUERTO_KERNEL);
+    log_trace(io_log, "=== Iniciando dispositivo IO: %s ===", nombre_io);
+    log_trace(io_log, "Configuración cargada - IP_KERNEL: %s, PUERTO_KERNEL: %s", IP_KERNEL, PUERTO_KERNEL);
 
     iniciar_conexiones_io(nombre_io);
     
-    log_info(io_log, "Dispositivo IO %s listo para recibir operaciones del Kernel", nombre_io);
+    log_trace(io_log, "Dispositivo IO %s listo para recibir operaciones del Kernel", nombre_io);
     
     // Bucle principal para atender operaciones del Kernel
     bool continuar_ejecucion = true;
@@ -50,11 +50,11 @@ int main(int argc, char* argv[]) {
             break;
         }
         
-        log_debug(io_log, "Operación recibida del Kernel: %d", cop);
+        log_trace(io_log, "Operación recibida del Kernel: %d", cop);
     
         switch (cop) {
             case IO_OP: {
-                log_debug(io_log, "Procesando operación IO_OP...");
+                log_trace(io_log, "Procesando operación IO_OP...");
                 
                 // Recibir y deserializar el PID y tiempo_io
                 int pid;
@@ -80,7 +80,7 @@ int main(int argc, char* argv[]) {
                 log_info(io_log, "## PID: %d - Inicio de IO - Tiempo: %ld", pedido.pid, pedido.tiempo_io);
                 
                 // Simular la operación de I/O
-                log_debug(io_log, "Simulando operación de I/O para PID %d durante %ld unidades de tiempo...", 
+                log_trace(io_log, "Simulando operación de I/O para PID %d durante %ld unidades de tiempo...", 
                          pedido.pid, pedido.tiempo_io);
                 sleep(pedido.tiempo_io);
                 
@@ -102,7 +102,7 @@ int main(int argc, char* argv[]) {
                     break;
                 }
                 
-                log_debug(io_log, "Notificación de finalización enviada al Kernel para PID %d", pedido.pid);
+                log_trace(io_log, "Notificación de finalización enviada al Kernel para PID %d", pedido.pid);
                 break;
             }
             default:
@@ -111,11 +111,11 @@ int main(int argc, char* argv[]) {
         }
     }
     
-    log_info(io_log, "Finalizando dispositivo IO %s...", nombre_io);
+    log_trace(io_log, "Finalizando dispositivo IO %s...", nombre_io);
     terminar_io();
     return EXIT_SUCCESS;
 }
 
 void iterator(char* value) {
-    log_debug(io_log, "%s", value);
+    log_trace(io_log, "%s", value);
 }

@@ -10,7 +10,7 @@ pthread_t hilo_dispatch, hilo_interrupt, hilo_memoria;
 void signal_handler(int sig) {
     if (sig == SIGINT) {
         printf("\n\nRecibida señal de terminación. Cerrando CPU...\n");
-        log_info(cpu_log, "Recibida señal SIGINT. Iniciando terminación limpia del CPU...");
+        log_trace(cpu_log, "Recibida señal SIGINT. Iniciando terminación limpia del CPU...");
         terminar_programa();
         exit(EXIT_SUCCESS);
     }
@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
     iniciar_logger_cpu();
     inicializar_mmu();
 
-    log_debug(cpu_log, "[CPU %i] Iniciando proceso CPU", numero_cpu);
+    log_trace(cpu_log, "[CPU %i] Iniciando proceso CPU", numero_cpu);
 
     conectar_kernel_dispatch();
     send(fd_kernel_dispatch, &numero_cpu, sizeof(int), 0);
@@ -61,20 +61,20 @@ int main(int argc, char* argv[]) {
 }  
 
 void* recibir_kernel_dispatch(void* arg) {
-    log_info(cpu_log, "[DISPATCH] Hilo de recepción de Kernel Dispatch iniciado");
+    log_trace(cpu_log, "[DISPATCH] Hilo de recepción de Kernel Dispatch iniciado");
     int noFinalizar = 0;
     while (noFinalizar != -1) {
-        log_debug(cpu_log, "[DISPATCH] Esperando operación desde Kernel...");
+        log_trace(cpu_log, "[DISPATCH] Esperando operación desde Kernel...");
         int cod_op = recibir_operacion(fd_kernel_dispatch);
-        log_debug(cpu_log, "[DISPATCH] Operación recibida desde Kernel: %d", cod_op);
+        log_trace(cpu_log, "[DISPATCH] Operación recibida desde Kernel: %d", cod_op);
         
         switch (cod_op) {
             case MENSAJE_OP:
-                log_debug(cpu_log, "[DISPATCH] Procesando MENSAJE_OP");
+                log_trace(cpu_log, "[DISPATCH] Procesando MENSAJE_OP");
 			    recibir_mensaje(fd_kernel_dispatch, cpu_log);
 			    break;
             case EXEC_OP:
-                log_info(cpu_log, "[DISPATCH] ✓ EXEC_OP recibido desde Kernel - Iniciando ejecución");
+                log_trace(cpu_log, "[DISPATCH] ✓ EXEC_OP recibido desde Kernel - Iniciando ejecución");
                 
                 // Recibir el paquete con PC y PID
                 t_list* lista = recibir_paquete(fd_kernel_dispatch);
@@ -103,12 +103,12 @@ void* recibir_kernel_dispatch(void* arg) {
                 pc = *(int*)pc_ptr;
                 pid_ejecutando = *(int*)pid_ptr;
                 
-                log_info(cpu_log, "[DISPATCH] ✓ Proceso asignado - PID: %d, PC inicial: %d", pid_ejecutando, pc);
-                log_info(cpu_log, "[DISPATCH] ▶ Iniciando ejecución del proceso...");
+                log_trace(cpu_log, "[DISPATCH] ✓ Proceso asignado - PID: %d, PC inicial: %d", pid_ejecutando, pc);
+                log_trace(cpu_log, "[DISPATCH] ▶ Iniciando ejecución del proceso...");
                 
                 ejecutar_ciclo_instruccion();
                 
-                log_info(cpu_log, "[DISPATCH] ◼ Ejecución del proceso PID %d finalizada", pid_ejecutando);
+                log_trace(cpu_log, "[DISPATCH] ◼ Ejecución del proceso PID %d finalizada", pid_ejecutando);
                 // Resetear variables después de la ejecución
                 pid_ejecutando = -1;
                 pc = 0;
@@ -136,7 +136,7 @@ void* recibir_kernel_interrupt(void* arg) {
             case INTERRUPCION_OP:
                 // Recibir PID de la interrupción
                 recv(fd_kernel_interrupt, &pid_interrupt, sizeof(int), MSG_WAITALL);
-                log_info(cpu_log, "Recibida interrupción para PID: %d", pid_interrupt);
+                log_trace(cpu_log, "Recibida interrupción para PID: %d", pid_interrupt);
                 
                 hay_interrupcion = 1;
                 break;
@@ -147,37 +147,37 @@ void* recibir_kernel_interrupt(void* arg) {
 }
 
 void iterator(char* value) {
-    log_debug(cpu_log, "%s", value);
+    log_trace(cpu_log, "%s", value);
 }
 
 
 void terminar_programa() {
-    log_info(cpu_log, "Iniciando terminación limpia del CPU...");
+    log_trace(cpu_log, "Iniciando terminación limpia del CPU...");
     
     // Cerrar conexiones de sockets
     if (fd_kernel_dispatch > 0) {
         close(fd_kernel_dispatch);
-        log_debug(cpu_log, "Conexión Kernel Dispatch cerrada");
+        log_trace(cpu_log, "Conexión Kernel Dispatch cerrada");
     }
     
     if (fd_kernel_interrupt > 0) {
         close(fd_kernel_interrupt);
-        log_debug(cpu_log, "Conexión Kernel Interrupt cerrada");
+        log_trace(cpu_log, "Conexión Kernel Interrupt cerrada");
     }
     
     if (fd_memoria > 0) {
         close(fd_memoria);
-        log_debug(cpu_log, "Conexión Memoria cerrada");
+        log_trace(cpu_log, "Conexión Memoria cerrada");
     }
     
     // Liberar recursos de configuración y logging
     if (cpu_config != NULL) {
         config_destroy(cpu_config);
-        log_debug(cpu_log, "Configuración CPU liberada");
+        log_trace(cpu_log, "Configuración CPU liberada");
     }
     
     if (cpu_log != NULL) {
-        log_info(cpu_log, "CPU terminado correctamente");
+        log_trace(cpu_log, "CPU terminado correctamente");
         log_destroy(cpu_log);
     }
 }

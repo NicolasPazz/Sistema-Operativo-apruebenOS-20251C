@@ -101,7 +101,7 @@ int suspender_proceso_completo(int pid) {
     // Aplicar retardo de SWAP
     aplicar_retardo_swap();
     
-    log_info(logger, "PID: %d - Proceso suspendido completamente. Páginas escritas a SWAP: %d", 
+    log_trace(logger, "PID: %d - Proceso suspendido completamente. Páginas escritas a SWAP: %d", 
              pid, paginas_escritas);
     
     return 1;
@@ -203,7 +203,7 @@ int reanudar_proceso_suspendido(int pid) {
     // Aplicar retardo de SWAP
     aplicar_retardo_swap();
     
-    log_info(logger, "PID: %d - Proceso reanudado exitosamente. Páginas cargadas desde SWAP: %d", 
+    log_trace(logger, "PID: %d - Proceso reanudado exitosamente. Páginas cargadas desde SWAP: %d", 
              pid, paginas_cargadas);
     
     return 1;
@@ -355,7 +355,7 @@ int asignar_espacio_swap_proceso(int pid) {
     
     pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
     
-    log_debug(logger, "PID: %d - Espacio en SWAP verificado: %d páginas disponibles", 
+    log_trace(logger, "PID: %d - Espacio en SWAP verificado: %d páginas disponibles", 
               pid, paginas_necesarias);
     
     return 1;
@@ -384,7 +384,7 @@ void liberar_espacio_swap_proceso(int pid) {
     
     pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
     
-    log_debug(logger, "PID: %d - Liberadas %d páginas de SWAP", pid, paginas_liberadas);
+    log_trace(logger, "PID: %d - Liberadas %d páginas de SWAP", pid, paginas_liberadas);
 }
 
 bool proceso_tiene_paginas_en_swap(int pid) {

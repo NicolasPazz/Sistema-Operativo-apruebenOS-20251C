@@ -6,7 +6,7 @@
 
 void func_noop() {
     //no hace nada, solo se usa para el log
-    log_info(cpu_log, "PID: %d - Acción: NOOP", pid_ejecutando);
+    log_debug(cpu_log, "PID: %d - Acción: NOOP", pid_ejecutando);
 }
 
 void func_write(char* direccion_logica_str, char* datos) {
@@ -88,8 +88,8 @@ void func_init_proc(t_instruccion* instruccion) {
     char* size_str = instruccion->parametros3;
     int size = atoi(size_str);
 
-    log_info(cpu_log, "[SYSCALL] ▶ Ejecutando INIT_PROC - Archivo: '%s', Tamaño: %d", path, size);
-    log_debug(cpu_log, "[SYSCALL] Enviando INIT_PROC_OP a Kernel...");
+    log_trace(cpu_log, "[SYSCALL] ▶ Ejecutando INIT_PROC - Archivo: '%s', Tamaño: %d", path, size);
+    log_trace(cpu_log, "[SYSCALL] Enviando INIT_PROC_OP a Kernel...");
 
     t_paquete* paquete = crear_paquete_op(INIT_PROC_OP);
     agregar_a_paquete(paquete, path, strlen(path)+1);
@@ -97,8 +97,8 @@ void func_init_proc(t_instruccion* instruccion) {
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
     
-    //log_info(cpu_log, "## (<PID>) - Solicitó syscall: INIT_PROC");
-    log_info(cpu_log, "[SYSCALL] ✓ INIT_PROC enviado a Kernel - Finalizando ejecución del proceso actual");
+    //log_trace(cpu_log, "## (<PID>) - Solicitó syscall: INIT_PROC");
+    log_trace(cpu_log, "[SYSCALL] ✓ INIT_PROC enviado a Kernel - Finalizando ejecución del proceso actual");
 
     seguir_ejecutando = 0;
 }
@@ -123,7 +123,7 @@ void func_exit() {
 }
 
 t_instruccion* recibir_instruccion(int conexion) {
-    log_debug(cpu_log, "[MEMORIA->CPU] Iniciando recepción de instrucción desde memoria...");
+    log_trace(cpu_log, "[MEMORIA->CPU] Iniciando recepción de instrucción desde memoria...");
     
     t_instruccion* instruccion_nueva = malloc(sizeof(t_instruccion));
     int size = 0;
@@ -139,7 +139,7 @@ t_instruccion* recibir_instruccion(int conexion) {
         return NULL;
     }
     
-    log_debug(cpu_log, "[MEMORIA->CPU] Buffer recibido exitosamente - Tamaño: %d bytes", size);
+    log_trace(cpu_log, "[MEMORIA->CPU] Buffer recibido exitosamente - Tamaño: %d bytes", size);
 
     // Leer los 3 parámetros en orden (siempre están presentes)
     instruccion_nueva->parametros1 = leer_string(buffer, &desp);
@@ -155,7 +155,7 @@ t_instruccion* recibir_instruccion(int conexion) {
     }
 
     // Log detallado de la instrucción recibida
-    log_info(cpu_log, "[MEMORIA->CPU] ✓ INSTRUCCIÓN RECIBIDA: '%s' | Param2: '%s' | Param3: '%s'", 
+    log_trace(cpu_log, "[MEMORIA->CPU] ✓ INSTRUCCIÓN RECIBIDA: '%s' | Param2: '%s' | Param3: '%s'", 
               instruccion_nueva->parametros1, 
               instruccion_nueva->parametros2 ? instruccion_nueva->parametros2 : "(vacío)",
               instruccion_nueva->parametros3 ? instruccion_nueva->parametros3 : "(vacío)");

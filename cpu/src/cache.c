@@ -140,16 +140,16 @@ void liberar_cache(){
 
 void cache_modificar(int frame, char* datos){
     if (cache == NULL){
-        log_debug(cpu_log,"la cache ya estaba liberada.");
+        log_trace(cpu_log,"la cache ya estaba liberada.");
         return;
     }
     if (!cache_habilitada(cache)){
-        log_debug(cpu_log, "La cache esta deshabilitada.");
+        log_trace(cpu_log, "La cache esta deshabilitada.");
         return;
     }
     int nro_pagina_en_cache = buscar_pagina_en_cache(frame);
     if (nro_pagina_en_cache <= -1){
-        log_debug(cpu_log, "No se encontro la pagina %d en la cache", frame);
+        log_trace(cpu_log, "No se encontro la pagina %d en la cache", frame);
         return;
     }
     cache->entradas[nro_pagina_en_cache].contenido = datos;
@@ -158,11 +158,11 @@ void cache_modificar(int frame, char* datos){
 
 void cache_escribir(int frame, char* datos){
     if (cache == NULL){
-        log_debug(cpu_log,"la cache ya estaba liberada.");
+        log_trace(cpu_log,"la cache ya estaba liberada.");
         return;
     }
     if (!cache_habilitada(cache)){
-        log_debug(cpu_log, "La cache esta deshabilitada.");
+        log_trace(cpu_log, "La cache esta deshabilitada.");
         return;
     }
     
