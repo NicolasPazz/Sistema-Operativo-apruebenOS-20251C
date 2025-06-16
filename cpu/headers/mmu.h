@@ -22,7 +22,7 @@ void tlb_insertar(int pagina, int frame);
 bool tlb_habilitada(void);
 int timestamp_actual(void);
 int seleccionar_victima_tlb(void);
-uint8_t cargar_configuracion(char* path);
+int cargar_configuracion(char* path);
 
 
 #endif // MMU_H

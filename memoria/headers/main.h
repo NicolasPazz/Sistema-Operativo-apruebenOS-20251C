@@ -8,7 +8,6 @@
 #include <commons/memory.h>
 
 #include "init_memoria.h"
-#include "monitor_memoria.h"
 #include "manejo_memoria.h"
 #include "../../utils/headers/sockets.h"
 

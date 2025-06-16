@@ -244,9 +244,9 @@ t_instruccion* get_instruction(int pid, int pc) {
     }
     
     // Incrementar contador de instrucciones solicitadas para el proceso
-    t_process_info* process_info = get_process_info(pid);
-    if (process_info != NULL) {
-        process_info->instructions_requested++;
+    t_proceso_memoria* process_info = get_process_info(pid);
+    if (process_info != NULL && process_info->metricas != NULL) {
+        process_info->metricas->instrucciones_solicitadas++;
     }
     
     t_extended_instruccion* extended_instr = list_get(process_inst->instructions, pc);
@@ -320,7 +320,7 @@ int get_available_memory() {
 int initialize_process(int pid, int size) {
     // Verificar si el proceso ya existe
     for (int i = 0; i < list_size(processes_in_memory); i++) {
-        t_process_info* process = list_get(processes_in_memory, i);
+        t_proceso_memoria* process = list_get(processes_in_memory, i);
         if (process->pid == pid) {
             log_error(logger, "PID: %d - El proceso ya existe en memoria", pid);
             return -1;
@@ -328,18 +328,24 @@ int initialize_process(int pid, int size) {
     }
     
     // En el checkpoint 2, siempre aceptamos la inicialización
-    t_process_info* new_process = malloc(sizeof(t_process_info));
+    t_proceso_memoria* new_process = malloc(sizeof(t_proceso_memoria));
     new_process->pid = pid;
-    new_process->size = size;
-    new_process->is_active = true;
+    new_process->tamanio = size;
+    new_process->activo = true;
+    new_process->suspendido = false;
+    new_process->estructura_paginas = NULL;
+    new_process->instrucciones = NULL;
     
     // Inicializar métricas
-    new_process->page_table_accesses = 0;
-    new_process->instructions_requested = 0;
-    new_process->swap_writes = 0;
-    new_process->memory_loads = 0;
-    new_process->memory_reads = 0;
-    new_process->memory_writes = 0;
+    new_process->metricas = malloc(sizeof(t_metricas_proceso));
+    new_process->metricas->pid = pid;
+    new_process->metricas->accesos_tabla_paginas = 0;
+    new_process->metricas->instrucciones_solicitadas = 0;
+    new_process->metricas->bajadas_swap = 0;
+    new_process->metricas->subidas_memoria_principal = 0;
+    new_process->metricas->lecturas_memoria = 0;
+    new_process->metricas->escrituras_memoria = 0;
+    pthread_mutex_init(&new_process->metricas->mutex_metricas, NULL);
     
     if (processes_in_memory == NULL) {
         memory_init();
@@ -360,12 +366,12 @@ void finalize_process(int pid) {
         return;
     }
     
-    t_process_info* process_to_remove = NULL;
+    t_proceso_memoria* process_to_remove = NULL;
     int index_to_remove = -1;
     
     // Buscar el proceso por PID
     for (int i = 0; i < list_size(processes_in_memory); i++) {
-        t_process_info* process = list_get(processes_in_memory, i);
+        t_proceso_memoria* process = list_get(processes_in_memory, i);
         if (process->pid == pid) {
             process_to_remove = process;
             index_to_remove = i;
@@ -381,12 +387,18 @@ void finalize_process(int pid) {
     // Log obligatorio con métricas
     log_info(logger, "## PID: %d - Proceso Destruido - Métricas - Acc.T.Pag: %d; Inst.Sol.: %d; SWAP: %d; Mem.Prin.: %d; Lec.Mem.: %d; Esc.Mem.: %d",
              pid,
-             process_to_remove->page_table_accesses,
-             process_to_remove->instructions_requested,
-             process_to_remove->swap_writes,
-             process_to_remove->memory_loads,
-             process_to_remove->memory_reads,
-             process_to_remove->memory_writes);
+             process_to_remove->metricas->accesos_tabla_paginas,
+             process_to_remove->metricas->instrucciones_solicitadas,
+             process_to_remove->metricas->bajadas_swap,
+             process_to_remove->metricas->subidas_memoria_principal,
+             process_to_remove->metricas->lecturas_memoria,
+             process_to_remove->metricas->escrituras_memoria);
+    
+    // Liberar métricas
+    if (process_to_remove->metricas != NULL) {
+        pthread_mutex_destroy(&process_to_remove->metricas->mutex_metricas);
+        free(process_to_remove->metricas);
+    }
     
     // Eliminar el proceso de la lista
     list_remove_and_destroy_element(processes_in_memory, index_to_remove, free);
@@ -402,13 +414,13 @@ void finalize_process(int pid) {
 }
 
 // Obtiene la información de un proceso
-t_process_info* get_process_info(int pid) {
+t_proceso_memoria* get_process_info(int pid) {
     if (processes_in_memory == NULL) {
         return NULL;
     }
     
     for (int i = 0; i < list_size(processes_in_memory); i++) {
-        t_process_info* process = list_get(processes_in_memory, i);
+        t_proceso_memoria* process = list_get(processes_in_memory, i);
         if (process->pid == pid) {
             return process;
         }

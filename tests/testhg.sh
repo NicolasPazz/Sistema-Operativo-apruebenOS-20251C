@@ -21,31 +21,23 @@ rm -f memoria/memoria.log kernel/kernel.log cpu/cpu.log io/io.log
 
 ############################
 # INICIAR MEMORIA
-cd memoria
-valgrind --tool=helgrind --log-file=memoria.helgrind ./bin/memoria &
+valgrind --tool=helgrind --log-file=memoria.helgrind ./memoria/bin/memoria &
 PID_MEMORIA=$!
-cd ..
 timeout 30 bash -c "tail -Fn0 memoria/memoria.log | grep -q 'Servidor de memoria iniciado correctamente. Esperando conexiones...'"
 
 # INICIAR KERNEL
-cd kernel
-valgrind --tool=helgrind --log-file=kernel.helgrind ./bin/kernel ../scripts/PROCESO_INICIAL 128 --action &
+valgrind --tool=helgrind --log-file=kernel.helgrind ./kernel/bin/kernel ../scripts/PROCESO_INICIAL 128 --action &
 PID_KERNEL=$!
-cd ..
 timeout 30 bash -c "tail -Fn0 kernel/kernel.log | grep -q 'Servidor Kernel IO escuchando en puerto 8003'"
 
 # INICIAR CPU
-cd cpu
-valgrind --tool=helgrind --log-file=cpu.helgrind ./bin/cpu 1 &
+valgrind --tool=helgrind --log-file=cpu.helgrind ./cpu/bin/cpu 1 &
 PID_CPU1=$!
-cd ..
 timeout 30 bash -c "tail -Fn0 cpu/cpu.log | grep -q 'HANDSHAKE_MEMORIA_CPU: CPU conectado exitosamente a Memoria'"
 
 # INICIAR IO
-cd io
-valgrind --tool=helgrind --log-file=io.helgrind ./bin/io teclado &
+valgrind --tool=helgrind --log-file=io.helgrind ./io/bin/io teclado &
 PID_IO1=$!
-cd ..
 timeout 30 bash -c "tail -Fn0 io/io.log | grep -q 'HANDSHAKE_IO_KERNEL: IO conectado exitosamente a Kernel'"
 
 ############################

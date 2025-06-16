@@ -1,4 +1,6 @@
 #include "../headers/comunicacion.h"
+#include "../headers/metricas.h"
+#include "../headers/manejo_memoria.h"
 #include <commons/string.h>
 
 /////////////////////////////// Inicializacion de variables globales ///////////////////////////////
@@ -7,6 +9,7 @@ int fd_kernel;
 int fd_cpu;
 extern t_log* logger;
 extern t_config_memoria* cfg;
+extern t_sistema_memoria* sistema_memoria;
 
 typedef struct {
     int fd;
@@ -185,54 +188,133 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         case INIT_PROC_OP: {
             log_debug(logger, "INIT_PROC_OP recibido");
 
-            // CAMBIO: Recibir parámetros desde paquete (para coincidir con kernel)
+            // Recibir parámetros desde paquete
             t_list* lista = recibir_contenido_paquete(cliente_socket);
             
-            // Ahora todos los parámetros son strings
             char* pid_str = (char*)list_get(lista, 0);
             char* tamanio_str = (char*)list_get(lista, 1);
             char* nombre_proceso = (char*)list_get(lista, 2);
             
-            // Convertir strings a enteros
             int pid = atoi(pid_str);
             int tamanio = atoi(tamanio_str);
             
             log_debug(logger, "Inicialización de proceso solicitada - PID: %d, Tamaño: %d, Nombre: %s", pid, tamanio, nombre_proceso);
         
-            // Construir el path relativo concatenando "scripts/" con el nombre del proceso
-            char* path_completo = string_from_format("scripts/%s", nombre_proceso);
-            log_debug(logger, "Path construido: %s", path_completo);
-        
-            // Verificar espacio disponible en memoria
-            int memoria_disponible = get_available_memory();
-            log_debug(logger, "Memoria disponible: %d bytes", memoria_disponible);
+            // 1. Construir path completo para instrucciones
+            char* path_completo = string_from_format("%s/%s", cfg->PATH_INSTRUCCIONES, nombre_proceso);
+            log_debug(logger, "Path de instrucciones: %s", path_completo);
             
-            int resultado;
-            if (memoria_disponible >= tamanio) {
-                // Hay suficiente memoria disponible
-                log_debug(logger, "Hay suficiente memoria disponible para el proceso (necesita %d bytes, hay %d bytes)",
-                        tamanio, memoria_disponible);
-                // Para el checkpoint 2, siempre aceptamos la inicialización
-                resultado = initialize_process(pid, tamanio);
+            // 2. Verificar si el proceso ya existe
+            char* pid_key = string_itoa(pid);
+            if (dictionary_has_key(sistema_memoria->procesos, pid_key)) {
+                log_error(logger, "PID: %d - El proceso ya existe en memoria", pid);
+                free(path_completo);
+                free(pid_key);
+                list_destroy_and_destroy_elements(lista, free);
+                
+                t_respuesta_memoria respuesta = ERROR;
+                send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+                break;
+            }
+            
+            // 3. Calcular páginas necesarias
+            int paginas_necesarias = (tamanio + cfg->TAM_PAGINA - 1) / cfg->TAM_PAGINA;
+            log_debug(logger, "PID: %d - Páginas necesarias: %d", pid, paginas_necesarias);
+            
+            // 4. Verificar espacio disponible en memoria principal
+            pthread_mutex_lock(&sistema_memoria->admin_marcos->mutex_frames);
+            if (sistema_memoria->admin_marcos->frames_libres < paginas_necesarias) {
+                log_error(logger, "PID: %d - No hay suficiente espacio en memoria (necesita %d páginas, hay %d libres)", 
+                          pid, paginas_necesarias, sistema_memoria->admin_marcos->frames_libres);
+                pthread_mutex_unlock(&sistema_memoria->admin_marcos->mutex_frames);
+                free(path_completo);
+                free(pid_key);
+                list_destroy_and_destroy_elements(lista, free);
+                
+                t_respuesta_memoria respuesta = ERROR;
+                send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+                break;
+            }
+            pthread_mutex_unlock(&sistema_memoria->admin_marcos->mutex_frames);
+            
+            // 5. Crear proceso en memoria con estructuras administrativas completas
+            t_proceso_memoria* proceso = crear_proceso_memoria(pid, tamanio);
+            if (proceso == NULL) {
+                log_error(logger, "PID: %d - Error al crear proceso en memoria", pid);
+                free(path_completo);
+                free(pid_key);
+                list_destroy_and_destroy_elements(lista, free);
+                
+                t_respuesta_memoria respuesta = ERROR;
+                send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+                break;
+            }
+            
+            // 6. Asignar frames para todas las páginas del proceso
+            bool asignacion_exitosa = true;
+            for (int i = 0; i < paginas_necesarias && asignacion_exitosa; i++) {
+                int frame_asignado = asignar_frame_libre(pid, i);
+                if (frame_asignado == -1) {
+                    log_error(logger, "PID: %d - Error al asignar frame para página %d", pid, i);
+                    asignacion_exitosa = false;
+                    break;
+                }
+                
+                // Actualizar entrada en tabla de páginas
+                t_entrada_tabla* entrada = buscar_entrada_tabla(proceso->estructura_paginas, i);
+                if (entrada != NULL) {
+                    entrada->presente = true;
+                    entrada->numero_frame = frame_asignado;
+                    log_trace(logger, "PID: %d - Página %d asignada al frame %d", pid, i, frame_asignado);
+                }
+            }
+            
+            if (!asignacion_exitosa) {
+                // Liberar frames ya asignados y proceso
+                for (int i = 0; i < paginas_necesarias; i++) {
+                    t_entrada_tabla* entrada = buscar_entrada_tabla(proceso->estructura_paginas, i);
+                    if (entrada != NULL && entrada->presente) {
+                        liberar_frame(entrada->numero_frame);
+                    }
+                }
+                liberar_proceso_memoria(proceso);
+                free(path_completo);
+                free(pid_key);
+                list_destroy_and_destroy_elements(lista, free);
+                
+                t_respuesta_memoria respuesta = ERROR;
+                send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+                break;
+            }
+            
+            // 7. Agregar proceso a los diccionarios del sistema
+            dictionary_put(sistema_memoria->procesos, pid_key, proceso);
+            dictionary_put(sistema_memoria->estructuras_paginas, pid_key, proceso->estructura_paginas);
+            dictionary_put(sistema_memoria->metricas_procesos, pid_key, proceso->metricas);
+            
+            // 8. Cargar instrucciones desde archivo
+            t_process_instructions* instrucciones = load_process_instructions(pid, path_completo);
+            if (instrucciones != NULL) {
+                dictionary_put(sistema_memoria->process_instructions, pid_key, instrucciones);
+                log_debug(logger, "PID: %d - Instrucciones cargadas desde %s", pid, path_completo);
             } else {
-                // No hay suficiente memoria disponible
-                log_error(logger, "No hay suficiente memoria para inicializar el proceso (necesita %d bytes, hay %d bytes)",
-                        tamanio, memoria_disponible);
-                resultado = -1;
-            }
-        
-            // Cargar las instrucciones del proceso si se pudo inicializar
-            if (resultado == 0) {
-                load_process_instructions(pid, path_completo);
+                log_warning(logger, "PID: %d - No se pudieron cargar instrucciones desde %s", pid, path_completo);
             }
             
-            // Liberar memoria de los strings y lista
+            // 9. Actualizar estadísticas del sistema
+            sistema_memoria->procesos_activos++;
+            sistema_memoria->memoria_utilizada += tamanio;
+            
+            // 10. Liberar memoria temporal
             free(path_completo);
+            free(pid_key);
             list_destroy_and_destroy_elements(lista, free);
         
-            // Enviar respuesta
-            t_respuesta_memoria respuesta_enum = (resultado == 0) ? OK : ERROR;
-            send(cliente_socket, &respuesta_enum, sizeof(t_respuesta_memoria), 0);
+            // 11. Enviar respuesta de éxito
+            t_respuesta_memoria respuesta = OK;
+            send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+            
+            log_info(logger, "PID: %d - Proceso inicializado exitosamente con %d páginas", pid, paginas_necesarias);
             break;
         }
 
@@ -344,6 +426,144 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 
                 log_debug(logger, "Configuración enviada a CPU: Entradas por tabla: %d, Tamaño página: %d, Niveles: %d",
                         entradas_por_tabla, tam_pagina, cantidad_niveles);
+            break;
+        }
+
+        // ============================================================================
+        // HANDLERS PARA LOS 4 TIPOS DE ACCESO ESPECÍFICOS DE LA CONSIGNA
+        // ============================================================================
+
+        case ACCESO_TABLA_PAGINAS_OP: {
+            log_debug(logger, "ACCESO_TABLA_PAGINAS_OP recibido");
+
+            // Recibir parámetros: PID y número de página
+            t_list* lista = recibir_2_enteros_sin_op(cliente_socket);
+            int pid = (int)(intptr_t)list_get(lista, 0);
+            int numero_pagina = (int)(intptr_t)list_get(lista, 1);
+            list_destroy(lista);
+            
+            log_debug(logger, "Acceso a tabla de páginas - PID: %d, Página: %d", pid, numero_pagina);
+            
+            // Realizar acceso a tabla de páginas
+            int numero_marco = acceso_tabla_paginas(pid, numero_pagina);
+            
+            // Enviar respuesta
+            if (numero_marco != -1) {
+                send_data(cliente_socket, &numero_marco, sizeof(int));
+                log_debug(logger, "Marco %d enviado para PID: %d, Página: %d", numero_marco, pid, numero_pagina);
+            } else {
+                int error = -1;
+                send_data(cliente_socket, &error, sizeof(int));
+                log_error(logger, "Error en acceso a tabla de páginas - PID: %d, Página: %d", pid, numero_pagina);
+            }
+            break;
+        }
+
+        case ACCESO_ESPACIO_USUARIO_OP: {
+            log_debug(logger, "ACCESO_ESPACIO_USUARIO_OP recibido");
+
+            // Recibir parámetros del paquete
+            t_list* lista = recibir_contenido_paquete(cliente_socket);
+            
+            char* pid_str = (char*)list_get(lista, 0);
+            char* direccion_str = (char*)list_get(lista, 1);
+            char* tamanio_str = (char*)list_get(lista, 2);
+            char* es_escritura_str = (char*)list_get(lista, 3);
+            
+            int pid = atoi(pid_str);
+            int direccion_fisica = atoi(direccion_str);
+            int tamanio = atoi(tamanio_str);
+            bool es_escritura = (strcmp(es_escritura_str, "true") == 0);
+            
+            log_debug(logger, "Acceso a espacio de usuario - PID: %d, Dir: %d, Tamaño: %d, Escritura: %s", 
+                     pid, direccion_fisica, tamanio, es_escritura ? "true" : "false");
+            
+            if (es_escritura) {
+                // Para escritura, recibir datos adicionales
+                void* datos = list_get(lista, 4);
+                bool resultado = acceso_espacio_usuario_escritura(pid, direccion_fisica, tamanio, datos);
+                
+                // Enviar respuesta
+                t_respuesta_memoria respuesta = resultado ? OK : ERROR;
+                send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+                
+                log_debug(logger, "Escritura en espacio de usuario %s - PID: %d", 
+                         resultado ? "exitosa" : "fallida", pid);
+            } else {
+                // Para lectura, devolver datos
+                void* datos = acceso_espacio_usuario_lectura(pid, direccion_fisica, tamanio);
+                
+                if (datos != NULL) {
+                    send_data(cliente_socket, datos, tamanio);
+                    free(datos);
+                    log_debug(logger, "Lectura de espacio de usuario exitosa - PID: %d", pid);
+                } else {
+                    t_respuesta_memoria respuesta = ERROR;
+                    send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+                    log_error(logger, "Error en lectura de espacio de usuario - PID: %d", pid);
+                }
+            }
+            
+            list_destroy_and_destroy_elements(lista, free);
+            break;
+        }
+
+        case LEER_PAGINA_COMPLETA_OP: {
+            log_debug(logger, "LEER_PAGINA_COMPLETA_OP recibido");
+
+            // Recibir parámetros: PID y dirección física
+            t_list* lista = recibir_2_enteros_sin_op(cliente_socket);
+            int pid = (int)(intptr_t)list_get(lista, 0);
+            int direccion_fisica = (int)(intptr_t)list_get(lista, 1);
+            list_destroy(lista);
+            
+            log_debug(logger, "Leer página completa - PID: %d, Dir. Física: %d", pid, direccion_fisica);
+            
+            // Leer página completa
+            void* pagina_completa = leer_pagina_completa(pid, direccion_fisica);
+            
+            if (pagina_completa != NULL) {
+                // Enviar página completa
+                send_data(cliente_socket, pagina_completa, cfg->TAM_PAGINA);
+                free(pagina_completa);
+                log_debug(logger, "Página completa enviada - PID: %d, Dir: %d", pid, direccion_fisica);
+            } else {
+                // Enviar error
+                t_respuesta_memoria respuesta = ERROR;
+                send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+                log_error(logger, "Error al leer página completa - PID: %d, Dir: %d", pid, direccion_fisica);
+            }
+            break;
+        }
+
+        case ACTUALIZAR_PAGINA_COMPLETA_OP: {
+            log_debug(logger, "ACTUALIZAR_PAGINA_COMPLETA_OP recibido");
+
+            // Recibir parámetros del paquete
+            t_list* lista = recibir_contenido_paquete(cliente_socket);
+            
+            char* pid_str = (char*)list_get(lista, 0);
+            char* direccion_str = (char*)list_get(lista, 1);
+            
+            int pid = atoi(pid_str);
+            int direccion_fisica = atoi(direccion_str);
+            
+            // El contenido de la página viene como el tercer elemento
+            void* contenido_pagina = list_get(lista, 2);
+            
+            log_debug(logger, "Actualizar página completa - PID: %d, Dir. Física: %d", pid, direccion_fisica);
+            
+            // Actualizar página completa
+            bool resultado = actualizar_pagina_completa(pid, direccion_fisica, contenido_pagina);
+            
+            // Enviar respuesta
+            t_respuesta_memoria respuesta = resultado ? OK : ERROR;
+            send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+            
+            log_debug(logger, "Actualización de página completa %s - PID: %d", 
+                     resultado ? "exitosa" : "fallida", pid);
+            
+            list_destroy_and_destroy_elements(lista, free);
             break;
         }
 

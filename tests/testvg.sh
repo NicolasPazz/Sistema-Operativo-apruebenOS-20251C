@@ -21,31 +21,23 @@ rm -f memoria/memoria.log kernel/kernel.log cpu/cpu.log io/io.log
 
 ############################
 # INICIAR MEMORIA
-cd memoria
-valgrind --leak-check=full --log-file=memoria.valgrind ./bin/memoria &
+valgrind --leak-check=full --log-file=memoria.valgrind ./memoria/bin/memoria &
 PID_MEMORIA=$!
-cd ..
 timeout 30 bash -c "tail -Fn0 memoria/memoria.log | grep -q 'Servidor de memoria iniciado correctamente. Esperando conexiones...'"
 
 # INICIAR KERNEL
-cd kernel
-valgrind --leak-check=full --log-file=kernel.valgrind ./bin/kernel ../scripts/PROCESO_INICIAL 128 --action &
+valgrind --leak-check=full --log-file=kernel.valgrind ./kernel/bin/kernel ../scripts/PROCESO_INICIAL 128 --action &
 PID_KERNEL=$!
-cd ..
 timeout 30 bash -c "tail -Fn0 kernel/kernel.log | grep -q 'Servidor Kernel IO escuchando en puerto 8003'"
 
 # INICIAR CPU
-cd cpu
-valgrind --leak-check=full --log-file=cpu.valgrind ./bin/cpu 1 &
+valgrind --leak-check=full --log-file=cpu.valgrind ./cpu/bin/cpu 1 &
 PID_CPU1=$!
-cd ..
 timeout 30 bash -c "tail -Fn0 cpu/cpu.log | grep -q 'HANDSHAKE_MEMORIA_CPU: CPU conectado exitosamente a Memoria'"
 
 # INICIAR IO
-cd io
-valgrind --leak-check=full --log-file=io.valgrind ./bin/io teclado &
+valgrind --leak-check=full --log-file=io.valgrind ./io/bin/io teclado &
 PID_IO1=$!
-cd ..
 timeout 30 bash -c "tail -Fn0 io/io.log | grep -q 'HANDSHAKE_IO_KERNEL: IO conectado exitosamente a Kernel'"
 
 ############################

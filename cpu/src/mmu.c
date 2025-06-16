@@ -14,7 +14,7 @@ void inicializar_mmu() {
     cache = inicializar_cache();    
 }
 
-uint8_t cargar_configuracion(char* path) {
+int cargar_configuracion(char* path) {
     t_config* cfg_file = config_create(path);
 
     if (cfg_file == NULL) {
@@ -147,7 +147,7 @@ void tlb_insertar(int pagina, int frame) {
 int seleccionar_victima_tlb() {
     int victima = 0;
     if (strcmp(REEMPLAZO_TLB, "LRU") == 0) {
-        int min_uso = UINT64_MAX;
+        int min_uso = INT_MAX;
         for (int i = 0; i < list_size(tlb); i++) {
             entrada_tlb_t* entrada = list_get(tlb, i);
             if (entrada->tiempo_uso < min_uso) {
@@ -156,7 +156,7 @@ int seleccionar_victima_tlb() {
             }
         }
     } else if (strcmp(REEMPLAZO_TLB, "FIFO") == 0) {
-        int min_orden = UINT32_MAX;
+        int min_orden = INT_MAX;
         for (int i = 0; i < list_size(tlb); i++) {
             entrada_tlb_t* entrada = list_get(tlb, i);
             if (entrada->orden_fifo < min_orden) {

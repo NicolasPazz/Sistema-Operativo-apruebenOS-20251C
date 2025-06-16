@@ -24,7 +24,6 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "[CPU] Uso: %s <ID_CPU>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
-    int numero_cpu = atoi(argv[1]);
 
     int numero_cpu = atoi(argv[1]);
     leer_config_cpu();
@@ -77,7 +76,7 @@ void* recibir_kernel_dispatch(void* arg) {
             case EXEC_OP:
                 log_info(cpu_log, "[DISPATCH] ✓ EXEC_OP recibido desde Kernel - Iniciando ejecución");
                 // Ejecutar la instrucción
-                t_list* lista = recibir_2_enteros(fd_kernel_dispatch);
+                t_list* lista = recibir_2_enteros_sin_op(fd_kernel_dispatch);
                 pc = (int)(intptr_t) list_get(lista, 0);
                 pid_ejecutando = (int)(intptr_t) list_get(lista, 1);
                 

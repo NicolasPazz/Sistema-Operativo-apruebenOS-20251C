@@ -23,7 +23,8 @@ void func_write(char* direccion_logica_str, char* datos) {
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
 
-        int pagina = recibir_entero(fd_memoria);     // falta recibir_entero
+        int pagina;
+        recibir_entero(fd_memoria, &pagina);
         cache_escribir(pagina, datos);      
     } else {
         t_paquete* paquete = crear_paquete_op(WRITE_OP);

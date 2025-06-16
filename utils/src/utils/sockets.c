@@ -412,8 +412,6 @@ bool enviar_operacion(int socket, op_code operacion) {
     return bytes_enviados == sizeof(op);
 }
 
-
-/*
 char* leer_string(char* buffer, int* desplazamiento) {
     int tamanio = leer_entero(buffer, desplazamiento);
 
@@ -435,16 +433,36 @@ int leer_entero(char *buffer, int * desplazamiento){
     return entero;
 }
 
+t_list* recibir_2_enteros_sin_op(int socket){
+    int buffer_size;
 
+    // Recibo tamaño del buffer (ya se leyó el código de operación antes)  
+    if (recv(socket, &buffer_size, sizeof(int), MSG_WAITALL) <= 0)
+        return NULL;
 
+    void* buffer = malloc(buffer_size);
+    if (!buffer) return NULL;
 
+    // Recibo el buffer completo
+    if (recv(socket, buffer, buffer_size, MSG_WAITALL) <= 0) {
+        free(buffer);
+        return NULL;
+    }
 
+    t_list* lista = list_create();
+    int desp = 0;
 
+    int entero1 = leer_entero(buffer, &desp);
+    int entero2 = leer_entero(buffer, &desp);
 
+    list_add(lista, (void *)(uintptr_t)entero1);
+    list_add(lista, (void *)(uintptr_t)entero2);
 
+    free(buffer);
+    return lista;
+}
 
-
-
+/*
 t_list* recibir_4_enteros(int socket){
 	int entero1;
 	int entero2;
@@ -486,35 +504,6 @@ int recibir_entero(int socket)
     
     free(buffer);
     return entero;
-}
-
-t_list* recibir_2_enteros_sin_op(int socket){
-    int buffer_size;
-
-    // Recibo tamaño del buffer (ya se leyó el código de operación antes)  
-    if (recv(socket, &buffer_size, sizeof(int), MSG_WAITALL) <= 0)
-        return NULL;
-
-    void* buffer = malloc(buffer_size);
-    if (!buffer) return NULL;
-
-    // Recibo el buffer completo
-    if (recv(socket, buffer, buffer_size, MSG_WAITALL) <= 0) {
-        free(buffer);
-        return NULL;
-    }
-
-    t_list* lista = list_create();
-    int desp = 0;
-
-    int entero1 = leer_entero(buffer, &desp);
-    int entero2 = leer_entero(buffer, &desp);
-
-    list_add(lista, (void *)(uintptr_t)entero1);
-    list_add(lista, (void *)(uintptr_t)entero2);
-
-    free(buffer);
-    return lista;
 }
 
 t_list* recibir_2_enteros(int socket){

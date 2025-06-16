@@ -20,31 +20,23 @@ rm -f memoria/memoria.log kernel/kernel.log cpu/cpu.log io/io.log
 
 ############################
 # INICIAR MEMORIA
-cd memoria
-./bin/memoria &
+./memoria/bin/memoria &
 PID_MEMORIA=$!
-cd ..
 sleep 10 
 
 # INICIAR KERNEL
-cd kernel
-./bin/kernel ../scripts/PROCESO_INICIAL 128 --action &
+./kernel/bin/kernel ../scripts/PROCESO_INICIAL 128 --action &
 PID_KERNEL=$!
-cd ..
 sleep 10 
 
 # INICIAR CPU
-cd cpu
-./bin/cpu 1 &
+./cpu/bin/cpu 1 &
 PID_CPU1=$!
-cd ..
 sleep 10 
 
 # INICIAR IO
-cd io
-./bin/io teclado &
+./io/bin/io teclado &
 PID_IO1=$!
-cd ..
 sleep 10 
 
 ############################

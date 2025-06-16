@@ -42,6 +42,6 @@ int initialize_process(int pid, int size);
 void finalize_process(int pid);
 
 // Obtiene la información de un proceso
-t_process_info* get_process_info(int pid);
+t_proceso_memoria* get_process_info(int pid);
 
 #endif

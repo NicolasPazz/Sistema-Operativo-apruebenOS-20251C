@@ -30,7 +30,6 @@
 #include <commons/string.h>
 
 #include "serializacion.h"
-#include "types.h"
 
 /////////////////////////////// Estructuras compartidas ///////////////////////////////
 typedef enum {
@@ -54,7 +53,12 @@ typedef enum {
 	READ_OP, 
 	GOTO_OP,
 	PEDIR_PAGINA_OP,
-	SOLICITAR_FRAME_PARA_ENTRADAS
+	SOLICITAR_FRAME_PARA_ENTRADAS,
+	// Códigos de operación para los 4 tipos de acceso específicos de la consigna
+	ACCESO_TABLA_PAGINAS_OP,      // Acceso a tabla de páginas - devuelve número de marco
+	ACCESO_ESPACIO_USUARIO_OP,    // Acceso a espacio de usuario - lectura/escritura
+	LEER_PAGINA_COMPLETA_OP,      // Leer página completa desde dirección física
+	ACTUALIZAR_PAGINA_COMPLETA_OP // Actualizar página completa en dirección física
 } op_code;
 
 typedef struct {
@@ -115,6 +119,31 @@ typedef struct {
     long tiempo_io;
 } t_pedido_io;
 
+// Estructuras para los 4 tipos de acceso específicos de la consigna
+typedef struct {
+    int pid;
+    int numero_pagina;
+} t_acceso_tabla_paginas;
+
+typedef struct {
+    int pid;
+    int direccion_fisica;
+    int tamanio;
+    bool es_escritura;  // true para escritura, false para lectura
+    void* datos;        // Solo para escritura
+} t_acceso_espacio_usuario;
+
+typedef struct {
+    int pid;
+    int direccion_fisica;  // Debe coincidir con byte 0 de la página
+} t_leer_pagina_completa;
+
+typedef struct {
+    int pid;
+    int direccion_fisica;  // Debe coincidir con byte 0 de la página
+    void* contenido_pagina; // Contenido completo de la página
+} t_actualizar_pagina_completa;
+
 /////////////////////////////// Prototipos ///////////////////////////////
 
 /////////////// Logs y Config
@@ -156,9 +185,6 @@ void eliminar_paquete(t_paquete* paquete);
 void iterator(char* value);
 char* leer_string(char* buffer, int* desplazamiento);
 int leer_entero(char *buffer, int * desplazamiento);
-t_list* recibir_4_enteros(int socket);
-int recibir_entero(int socket);
-t_list* recibir_2_enteros(int socket);
 t_list* recibir_2_enteros_sin_op(int socket);
 
 #endif /* UTILS_SOCKETS_H_ */
