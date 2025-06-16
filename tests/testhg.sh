@@ -26,7 +26,7 @@ PID_MEMORIA=$!
 timeout 30 bash -c "tail -Fn0 memoria/memoria.log | grep -q 'Escuchando en puerto 8002. Esperando conexiones...'"
 
 # INICIAR KERNEL
-valgrind --tool=helgrind --log-file=kernel/kernel.helgrind ./kernel/bin/kernel ../scripts/PROCESO_INICIAL 128 --action &
+valgrind --tool=helgrind --log-file=kernel/kernel.helgrind ./kernel/bin/kernel PROCESO_INICIAL 128 --action &
 PID_KERNEL=$!
 timeout 30 bash -c "tail -Fn0 kernel/kernel_config_debug.log | grep -q 'LOG_LEVEL: INFO'"
 
