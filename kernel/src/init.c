@@ -110,12 +110,12 @@ void iniciar_config_kernel() {
 }
 
 void iniciar_logger_kernel() {
-    kernel_log = iniciar_logger("kernel/kernel.log", "kernel", 1, log_level_from_string(LOG_LEVEL));
+    kernel_log = iniciar_logger("kernel/kernel.log", "KERNEL", 1, log_level_from_string(LOG_LEVEL));
     log_trace(kernel_log, "Kernel log iniciado correctamente!");
 }
 
 void iniciar_logger_kernel_debug() {
-    kernel_log_debug = iniciar_logger("kernel/kernel_config_debug.log", "kernel", 1, LOG_LEVEL_TRACE);
+    kernel_log_debug = iniciar_logger("kernel/kernel_config_debug.log", "KERNEL", 1, LOG_LEVEL_TRACE);
     log_trace(kernel_log_debug, "Kernel log de debug iniciado correctamente!");
 }
 

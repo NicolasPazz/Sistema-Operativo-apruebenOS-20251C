@@ -21,7 +21,7 @@ void iniciar_config_io() {
 }
 
 void iniciar_logger_io() {
-    io_log = iniciar_logger("io/io.log", "io", 1, log_level_from_string(LOG_LEVEL));
+    io_log = iniciar_logger("io/io.log", "CPU", 1, log_level_from_string(LOG_LEVEL));
     if (io_log == NULL) {
         printf("Error al iniciar IO logs\n");
     } else {
