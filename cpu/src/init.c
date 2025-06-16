@@ -45,7 +45,7 @@ void leer_config_cpu() {
 }
 
 void iniciar_logger_cpu() {
-    cpu_log = iniciar_logger("cpu.log", "cpu", 1, log_level_from_string(LOG_LEVEL));
+    cpu_log = iniciar_logger("cpu/cpu.log", "cpu", 1, log_level_from_string(LOG_LEVEL));
     if (cpu_log == NULL) {
         printf("Error al iniciar cpu logs\n");
     } else {

@@ -22,7 +22,7 @@ void destruir_tabla_paginas_recursiva(t_tabla_paginas* tabla);
 // ============================================================================
 
 void iniciar_logger_memoria() {
-    logger = iniciar_logger("memoria.log", MODULENAME, 1, LOG_LEVEL_TRACE);
+    logger = iniciar_logger("memoria/memoria.log", MODULENAME, 1, LOG_LEVEL_TRACE);
     if (logger == NULL) {
         printf("Error al iniciar memoria logs\n");
     } else {

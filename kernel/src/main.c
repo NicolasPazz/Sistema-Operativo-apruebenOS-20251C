@@ -120,7 +120,7 @@ int main(int argc, char* argv[]) {
     activar_planificador_largo_plazo();
 
     //////////////////////////// Mantener el kernel ejecutandose ////////////////////////////
-    log_info(kernel_log, "Kernel iniciado correctamente. Planificadores en ejecucion...");
+    log_debug(kernel_log, "Kernel iniciado correctamente. Planificadores en ejecucion...");
     printf("Kernel ejecutandose. Presione Ctrl+C para terminar.\n");
     
     // Mantener el programa principal ejecutándose
