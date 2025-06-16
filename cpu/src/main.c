@@ -75,10 +75,33 @@ void* recibir_kernel_dispatch(void* arg) {
 			    break;
             case EXEC_OP:
                 log_info(cpu_log, "[DISPATCH] ✓ EXEC_OP recibido desde Kernel - Iniciando ejecución");
-                // Ejecutar la instrucción
-                t_list* lista = recibir_2_enteros_sin_op(fd_kernel_dispatch);
-                pc = (int)(intptr_t) list_get(lista, 0);
-                pid_ejecutando = (int)(intptr_t) list_get(lista, 1);
+                
+                // Recibir el paquete con PC y PID
+                t_list* lista = recibir_paquete(fd_kernel_dispatch);
+                if (lista == NULL) {
+                    log_error(cpu_log, "[DISPATCH] ✗ Error al recibir paquete EXEC_OP");
+                    break;
+                }
+
+                // Verificar que la lista tenga los elementos necesarios
+                if (list_size(lista) < 2) {
+                    log_error(cpu_log, "[DISPATCH] ✗ Paquete EXEC_OP incompleto - Faltan datos");
+                    list_destroy_and_destroy_elements(lista, free);
+                    break;
+                }
+                
+                // Obtener PC y PID de la lista del paquete
+                void* pc_ptr = list_get(lista, 0);
+                void* pid_ptr = list_get(lista, 1);
+                
+                if (pc_ptr == NULL || pid_ptr == NULL) {
+                    log_error(cpu_log, "[DISPATCH] ✗ Error al obtener PC o PID del paquete");
+                    list_destroy_and_destroy_elements(lista, free);
+                    break;
+                }
+
+                pc = *(int*)pc_ptr;
+                pid_ejecutando = *(int*)pid_ptr;
                 
                 log_info(cpu_log, "[DISPATCH] ✓ Proceso asignado - PID: %d, PC inicial: %d", pid_ejecutando, pc);
                 log_info(cpu_log, "[DISPATCH] ▶ Iniciando ejecución del proceso...");
@@ -89,6 +112,8 @@ void* recibir_kernel_dispatch(void* arg) {
                 // Resetear variables después de la ejecución
                 pid_ejecutando = -1;
                 pc = 0;
+                
+                list_destroy_and_destroy_elements(lista, free);
                 break;
             case -1:
                 log_error(cpu_log, "[DISPATCH] ✗ Desconexión de Kernel (Dispatch)");

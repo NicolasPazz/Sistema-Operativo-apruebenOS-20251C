@@ -97,7 +97,7 @@ void func_init_proc(t_instruccion* instruccion) {
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
     
-    log_info(cpu_log, "## (<PID>) - Solicitó syscall: INIT_PROC");
+    //log_info(cpu_log, "## (<PID>) - Solicitó syscall: INIT_PROC");
     log_info(cpu_log, "[SYSCALL] ✓ INIT_PROC enviado a Kernel - Finalizando ejecución del proceso actual");
 
     seguir_ejecutando = 0;

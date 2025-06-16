@@ -20,7 +20,7 @@ char* RETARDO_CACHE;
 char* LOG_LEVEL;
 
 void leer_config_cpu() {
-    cpu_config = iniciar_config("cpu.config");
+    cpu_config = iniciar_config("cpu/cpu.config");
 
     IP_MEMORIA = config_get_string_value(cpu_config, "IP_MEMORIA");
     PUERTO_MEMORIA = config_get_string_value(cpu_config, "PUERTO_MEMORIA");
