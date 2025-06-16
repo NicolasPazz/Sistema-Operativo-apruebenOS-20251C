@@ -117,6 +117,7 @@ int main(int argc, char* argv[]) {
 
     //////////////////////////// Planificacion ////////////////////////////
     iniciar_planificador_largo_plazo();
+    activar_planificador_largo_plazo();
 
     //////////////////////////// Mantener el kernel ejecutandose ////////////////////////////
     log_info(kernel_log, "Kernel iniciado correctamente. Planificadores en ejecucion...");
@@ -125,7 +126,6 @@ int main(int argc, char* argv[]) {
     // Mantener el programa principal ejecutándose
     while (1) {
         sleep(10); // Dormir para no consumir CPU innecesariamente
-        // Aquí podrías agregar chequeos periódicos si fuera necesario
     }
 
     //////////////////////////// Terminar ////////////////////////////  

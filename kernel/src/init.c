@@ -1,4 +1,5 @@
 #include "../headers/kernel.h"
+#include <libgen.h>
 
 /////////////////////////////// Declaracion de variables globales ///////////////////////////////
 // Logger
@@ -74,7 +75,7 @@ sem_t sem_finalizacion_de_proceso;
 
 /////////////////////////////// Inicializacion de variables globales ///////////////////////////////
 void iniciar_config_kernel() {
-    kernel_config = iniciar_config("kernel.config");    // lanzar error
+    kernel_config = iniciar_config("kernel/kernel.config");    // lanzar error
 
     IP_MEMORIA = config_get_string_value(kernel_config, "IP_MEMORIA");
     PUERTO_MEMORIA = config_get_string_value(kernel_config, "PUERTO_MEMORIA");
@@ -425,6 +426,29 @@ void* atender_cpu_dispatch(void* arg) {
         pthread_mutex_unlock(&mutex_lista_cpus);
 
         switch (cop) {
+            case INIT_PROC_OP: {
+                log_debug(kernel_log, "INIT_PROC_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
+
+                // Recibir path y tamaño
+                int path_len;
+                recv(fd_cpu_dispatch, &path_len, sizeof(int), 0);
+                char* path = malloc(path_len);
+                recv(fd_cpu_dispatch, path, path_len, 0);
+
+                int size;
+                recv(fd_cpu_dispatch, &size, sizeof(int), 0);
+
+                // Extraer solo el nombre del archivo
+                char* last_slash = strrchr(path, '/');
+                char* nombre = last_slash ? last_slash + 1 : path;
+
+                // Llamar a la syscall INIT_PROC
+                INIT_PROC(nombre, size);
+
+                free(path);
+                break;
+            }
+
             case IO_OP:
                 log_debug(kernel_log, "IO_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
 

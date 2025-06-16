@@ -3,65 +3,66 @@
 
 t_temporal* tiempo_estado_actual;
 
+// Variable global para el siguiente PID
+static int siguiente_pid = 1;
+
+// Función para obtener el siguiente PID disponible
+static int obtener_siguiente_pid() {
+    return siguiente_pid++;
+}
+
 //////////////////////////////////////////////////////////// INIT PROC ////////////////////////////////////////////////////////////
 void INIT_PROC(char* nombre_archivo, int tam_memoria) {
-    t_pcb* nuevo_pcb = malloc(sizeof(t_pcb));
-    if (nuevo_pcb == NULL) {
-        log_error(kernel_log, "INIT_PROC: Error al reservar memoria para nuevo PCB");
-        free(nuevo_pcb);
-        terminar_kernel();
-        exit(EXIT_FAILURE);
-    }
-
-    nuevo_pcb->PID = list_size(cola_procesos);  // Asignacion secuencial de PID
-    nuevo_pcb->PC = 0;
-
-    for (int i = 0; i < 7; i++) {
-        nuevo_pcb->ME[i] = 0;
-        nuevo_pcb->MT[i] = 0;
-    }
-
-    nuevo_pcb->Estado = NEW;
-    nuevo_pcb->tiempo_inicio_exec = 0;
-    nuevo_pcb->estimacion_rafaga = atof(ESTIMACION_INICIAL);
-
-    // Asignar path y tamanio
-    nuevo_pcb->path = strdup(nombre_archivo);
-    nuevo_pcb->tamanio_memoria = tam_memoria;
-
-    if (nuevo_pcb->path == NULL) {
-        log_error(kernel_log, "INIT_PROC: Error al copiar el path del archivo");
-        free(nuevo_pcb);
-        terminar_kernel();
-        exit(EXIT_FAILURE);
-    }
-
-    if (nuevo_pcb->tamanio_memoria < 0) {
-        log_error(kernel_log, "INIT_PROC: Error al copiar el tamanio de memoria");
-        free(nuevo_pcb);
-        terminar_kernel();
-        exit(EXIT_FAILURE);
-    }
-
-    // Agregar a NEW
-    pthread_mutex_lock(&mutex_cola_new);
-    list_add(cola_new, nuevo_pcb);
-    nuevo_pcb->ME[NEW]++;
-    pthread_mutex_unlock(&mutex_cola_new);
-
-    sem_post(&sem_proceso_a_new); // Notificar al planificador LP
+    log_info(kernel_log, "## Solicitó syscall: INIT_PROC");
+    log_debug(kernel_log, "INIT_PROC - Nombre archivo recibido: '%s'", nombre_archivo);
     
-    // Cronometro de metricas de tiempo
-    char* pid_key = string_itoa(nuevo_pcb->PID);
-    char* path = nuevo_pcb->path;
-    t_temporal* nuevo_cronometro = temporal_create();
-    dictionary_put(tiempos_por_pid, pid_key, nuevo_cronometro);
-    dictionary_put(archivo_por_pcb, pid_key, path);
-    free(pid_key);
-
-    // Agregar a cola general de procesos
-    list_add(cola_procesos, nuevo_pcb);
-    log_info(kernel_log, "## (<%d>) Se crea el proceso - Estado: NEW", nuevo_pcb->PID);
+    // Crear nuevo PCB
+    t_pcb* nuevo_proceso = malloc(sizeof(t_pcb));
+    nuevo_proceso->PID = obtener_siguiente_pid();
+    nuevo_proceso->Estado = NEW;
+    nuevo_proceso->tamanio_memoria = tam_memoria;
+    nuevo_proceso->path = strdup(nombre_archivo);
+    nuevo_proceso->PC = 0;  // Inicializar PC a 0
+    
+    // Comunicarse con memoria para inicializar el proceso
+    t_paquete* paquete = crear_paquete_op(INIT_PROC_OP);
+    agregar_a_paquete(paquete, &nuevo_proceso->PID, sizeof(int));
+    
+    // Asegurarnos de que el nombre del archivo se envíe correctamente
+    log_debug(kernel_log, "INIT_PROC - Nombre archivo a enviar: '%s'", nombre_archivo);
+    agregar_a_paquete(paquete, nombre_archivo, strlen(nombre_archivo) + 1);
+    
+    agregar_a_paquete(paquete, &tam_memoria, sizeof(int));
+    
+    // Usar la conexión global fd_memoria en lugar de crear una nueva
+    enviar_paquete(paquete, fd_memoria);
+    eliminar_paquete(paquete);
+    
+    // Esperar respuesta de memoria
+    t_respuesta_memoria respuesta;
+    if (recv(fd_memoria, &respuesta, sizeof(t_respuesta_memoria), 0) <= 0) {
+        log_error(kernel_log, "Error al recibir respuesta de memoria para INIT_PROC");
+        free(nuevo_proceso->path);
+        free(nuevo_proceso);
+        return;
+    }
+    
+    // Procesar respuesta
+    if (respuesta == OK) {
+        // Agregar proceso a la cola NEW
+        pthread_mutex_lock(&mutex_cola_new);
+        list_add(cola_new, nuevo_proceso);
+        pthread_mutex_unlock(&mutex_cola_new);
+        
+        // Notificar al planificador de largo plazo
+        sem_post(&sem_proceso_a_new);
+        
+        log_info(kernel_log, "## (%d) Se crea el proceso - Estado: NEW", nuevo_proceso->PID);
+    } else {
+        log_error(kernel_log, "Error al crear proceso en memoria");
+        free(nuevo_proceso->path);
+        free(nuevo_proceso);
+    }
 }
 
 //////////////////////////////////////////////////////////// DUMP MEMORY ////////////////////////////////////////////////////////////
@@ -80,10 +81,6 @@ extern pthread_mutex_t mutex_ios;
 extern t_list* pcbs_bloqueados_por_io;
 
 //////////////////////////////////////////////////////////// IO ////////////////////////////////////////////////////////////
-
-void bloquear_pbc_por_io(io* io_a_usar, t_pcb* pcb){
-    list_add(pcbs_bloqueados_por_io, pcb);
-}
 
 // Busca un dispositivo IO por su nombre
 io* get_io(char* nombre_io) {

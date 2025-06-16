@@ -28,6 +28,7 @@ extern sem_t sem_proceso_a_exit;
 extern sem_t sem_susp_ready_vacia;
 extern sem_t sem_finalizacion_de_proceso;
 
+// Funciones de planificación
 void iniciar_planificador_corto_plazo(char* algoritmo);
 void dispatch(t_pcb* proceso_a_ejecutar);
 t_pcb* elegir_por_fifo(void);
@@ -42,5 +43,6 @@ void* menor_tamanio(void* a, void* b);
 t_pcb* elegir_por_pmcp(void);
 void* gestionar_exit(void* arg);
 void* planificador_corto_plazo_reactivo(void* arg);
+bool hay_espacio_suficiente_memoria(int tamanio);
 
 #endif /* PLANIFICADORES_H */

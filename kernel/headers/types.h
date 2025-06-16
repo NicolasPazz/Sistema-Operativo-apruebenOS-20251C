@@ -2,6 +2,7 @@
 #define TYPES_H
 
 #include "../../utils/headers/sockets.h"
+#include "../../memoria/headers/estructuras.h"
 
 /////////////////////////////// TADs ///////////////////////////////
 
