@@ -443,6 +443,7 @@ void* atender_cpu_dispatch(void* arg) {
                 char* nombre = last_slash ? last_slash + 1 : path;
 
                 // Llamar a la syscall INIT_PROC
+                log_debug(kernel_log, "atender_cpu_dispatch: Iniciando nuevo proceso");
                 INIT_PROC(nombre, size);
 
                 free(path);

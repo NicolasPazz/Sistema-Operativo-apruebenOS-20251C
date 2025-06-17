@@ -13,13 +13,14 @@ static int obtener_siguiente_pid() {
 
 //////////////////////////////////////////////////////////// INIT PROC ////////////////////////////////////////////////////////////
 void INIT_PROC(char* nombre_archivo, int tam_memoria) {
-    log_info(kernel_log, "## Solicitó syscall: INIT_PROC");
+    log_info(kernel_log, "## (<PID>) Solicitó syscall: INIT_PROC"); // FIXME: esto no va aca, va cuando cpu informa que un proceso quiere iniciar otro
     log_trace(kernel_log, "INIT_PROC - Nombre archivo recibido: '%s'", nombre_archivo);
     
     // Crear nuevo PCB
     t_pcb* nuevo_proceso = malloc(sizeof(t_pcb));
+    memset(nuevo_proceso, 0, sizeof(t_pcb));    // Inicializar todo en 0
     nuevo_proceso->PID = obtener_siguiente_pid();
-    nuevo_proceso->Estado = NEW;
+    nuevo_proceso->Estado = INIT;
     nuevo_proceso->tamanio_memoria = tam_memoria;
     nuevo_proceso->path = strdup(nombre_archivo);
     nuevo_proceso->PC = 0;  // Inicializar PC a 0
@@ -27,14 +28,11 @@ void INIT_PROC(char* nombre_archivo, int tam_memoria) {
     // Comunicarse con memoria para inicializar el proceso
     t_paquete* paquete = crear_paquete_op(INIT_PROC_OP);
     agregar_a_paquete(paquete, &nuevo_proceso->PID, sizeof(int));
-    
-    // Asegurarnos de que el nombre del archivo se envíe correctamente
-    log_trace(kernel_log, "INIT_PROC - Nombre archivo a enviar: '%s'", nombre_archivo);
     agregar_a_paquete(paquete, nombre_archivo, strlen(nombre_archivo) + 1);
-    
     agregar_a_paquete(paquete, &tam_memoria, sizeof(int));
     
     // Usar la conexión global fd_memoria en lugar de crear una nueva
+    // FIXME: crear una nueva por peticion?
     enviar_paquete(paquete, fd_memoria);
     eliminar_paquete(paquete);
     
@@ -49,14 +47,8 @@ void INIT_PROC(char* nombre_archivo, int tam_memoria) {
     
     // Procesar respuesta
     if (respuesta == OK) {
-        // Agregar proceso a la cola NEW
-        pthread_mutex_lock(&mutex_cola_new);
-        list_add(cola_new, nuevo_proceso);
-        pthread_mutex_unlock(&mutex_cola_new);
-        
-        // Notificar al planificador de largo plazo
-        sem_post(&sem_proceso_a_new);
-        
+        log_trace(kernel_log, "INIT_PROC: proceso nuevo a la cola NEW");
+        cambiar_estado_pcb(nuevo_proceso, NEW);  
         log_info(kernel_log, "## (%d) Se crea el proceso - Estado: NEW", nuevo_proceso->PID);
     } else {
         log_error(kernel_log, "Error al crear proceso en memoria");

@@ -49,65 +49,60 @@ t_pcb* elegir_por_srt(){
     return (t_pcb*)list_get(cola_ready, 0);
 }
 
-void dispatch(t_pcb* proceso_a_ejecutar){
+void dispatch(t_pcb* proceso_a_ejecutar) {
     log_trace(kernel_log, "=== DISPATCH INICIADO PARA PID %d ===", proceso_a_ejecutar->PID);
 
-    // Una vez seleccionado el proceso a ejecutar, se lo transicionara al estado EXEC
-    cambiar_estado_pcb(proceso_a_ejecutar, EXEC);
-    proceso_a_ejecutar->tiempo_inicio_exec = get_time();
-
-    // CAMBIO: Implementar envío real al CPU
-    log_trace(kernel_log, "Enviando PID %d a CPU por Dispatch para que lo ejecute", proceso_a_ejecutar->PID);
-    
     // Buscar una CPU disponible (con pid = -1 indica que está libre)
     pthread_mutex_lock(&mutex_lista_cpus);
     cpu* cpu_disponible = NULL;
-    int total_cpus = 0;
+    int total_cpus = list_size(lista_cpus);
     int cpus_dispatch = 0;
     int cpus_libres = 0;
-    
-    log_trace(kernel_log, "Dispatch: Total de CPUs conectadas: %d", total_cpus);
-    
-    for (int i = 0; i < list_size(lista_cpus); i++) {
+
+    for (int i = 0; i < total_cpus; i++) {
         cpu* c = list_get(lista_cpus, i);
         if (c->tipo_conexion == CPU_DISPATCH) {
-            total_cpus++;
             cpus_dispatch++;
             if (c->pid == -1) {
                 cpus_libres++;
                 if (!cpu_disponible) {
                     cpu_disponible = c;
-                    log_trace(kernel_log, "Dispatch: ✓ CPU %d seleccionada (fd=%d) - Es la primera CPU libre encontrada", c->id, c->fd);
+                    log_trace(kernel_log, "Dispatch: ✓ CPU %d seleccionada (fd=%d)", c->id, c->fd);
                 }
             }
         }
         log_trace(kernel_log, "Dispatch: CPU %d - tipo=%d, pid=%d, fd=%d, estado=%s", 
-                 c->id, c->tipo_conexion, c->pid, c->fd, 
-                 c->tipo_conexion == CPU_DISPATCH ? (c->pid == -1 ? "LIBRE" : "OCUPADA") : "NO-DISPATCH");
+                  c->id, c->tipo_conexion, c->pid, c->fd, 
+                  c->tipo_conexion == CPU_DISPATCH ? (c->pid == -1 ? "LIBRE" : "OCUPADA") : "NO-DISPATCH");
     }
-    
-    log_trace(kernel_log, "Dispatch: CPUs de tipo DISPATCH: %d, CPUs libres: %d", cpus_dispatch, cpus_libres);
-    
+
+    log_trace(kernel_log, "Dispatch: Total CPUs=%d, CPUs DISPATCH=%d, CPUs libres=%d", total_cpus, cpus_dispatch, cpus_libres);
+
     if (!cpu_disponible) {
         pthread_mutex_unlock(&mutex_lista_cpus);
         log_error(kernel_log, "Dispatch: ✗ No hay CPUs disponibles para ejecutar PID %d", proceso_a_ejecutar->PID);
-        // TODO: Manejar caso sin CPUs disponibles (encolar para después)
+        // TODO: Manejar caso sin CPUs disponibles (ej: reencolar o retry)
         return;
     }
-    
+
     // Marcar CPU como ocupada y guardar PID
     cpu_disponible->pid = proceso_a_ejecutar->PID;
     cpu_disponible->instruccion_actual = EXEC_OP;
+    pthread_mutex_unlock(&mutex_lista_cpus);
 
-    // Crear paquete con PC y PID
+    // Transicionar a EXEC
+    cambiar_estado_pcb(proceso_a_ejecutar, EXEC);
+    proceso_a_ejecutar->tiempo_inicio_exec = get_time();
+
+    // Crear y enviar paquete a CPU
     t_paquete* paquete = crear_paquete_op(EXEC_OP);
     agregar_a_paquete(paquete, &proceso_a_ejecutar->PC, sizeof(int));
     agregar_a_paquete(paquete, &proceso_a_ejecutar->PID, sizeof(int));
     enviar_paquete(paquete, cpu_disponible->fd);
     eliminar_paquete(paquete);
 
-    log_trace(kernel_log, "Planificador CP reactivo: 🚀 Despachando proceso %d a CPU %d (PC: %d)", 
-        proceso_a_ejecutar->PID, cpu_disponible->id, proceso_a_ejecutar->PC);
+    log_trace(kernel_log, "Dispatch: Proceso %d despachado a CPU %d (PC=%d)", 
+              proceso_a_ejecutar->PID, cpu_disponible->id, proceso_a_ejecutar->PC);
 }
 
 void iniciar_planificador_corto_plazo(char* algoritmo){
@@ -205,43 +200,38 @@ void* planificador_largo_plazo(void* arg) {
         }
         pthread_mutex_unlock(&mutex_planificador_lp);
 
-        // Verificar si hay procesos en NEW
-        pthread_mutex_lock(&mutex_cola_new);
-        bool hay_procesos_new = !list_is_empty(cola_new);
-        pthread_mutex_unlock(&mutex_cola_new);
+        // Esperar procesos en NEW
+        log_debug(kernel_log, "planificador_largo_plazo: Semaforo a NEW disminuido");
+        sem_wait(&sem_proceso_a_new);
 
-        if (hay_procesos_new) {
-            log_trace(kernel_log, "Planificador LP: Hay procesos en NEW, intentando mover a READY");
+        log_trace(kernel_log, "planificador_largo_plazo: Hay procesos en NEW, intentando mover a READY");
             
-            // Esperar a que cola_susp_ready esté vacía
-            sem_wait(&sem_susp_ready_vacia);
+        // Esperar a que cola_susp_ready esté vacía
+        //log_debug(kernel_log, "planificador_largo_plazo: Semaforo SUSP READY VACIA disminuido");
+        //sem_wait(&sem_susp_ready_vacia);
             
-            // Obtener el proceso de NEW según el algoritmo
-            pthread_mutex_lock(&mutex_cola_new);
-            t_pcb* pcb = NULL;
-            if (strcmp(ALGORITMO_INGRESO_A_READY, "FIFO") == 0) {
-                pcb = (t_pcb*)list_get(cola_new, 0);
-            } else if (strcmp(ALGORITMO_INGRESO_A_READY, "PMCP") == 0) {
-                pcb = elegir_por_pmcp();
-            }
-            
-            if (pcb) {
-                // Mover proceso a READY
-                list_remove_element(cola_new, pcb);
-                pthread_mutex_unlock(&mutex_cola_new);
-                
-                cambiar_estado_pcb(pcb, READY);
-                
-                // Notificar al planificador de corto plazo
-                sem_post(&sem_proceso_a_ready);
-            } else {
-                pthread_mutex_unlock(&mutex_cola_new);
-            }
-            
-            sem_post(&sem_susp_ready_vacia);
+        // Obtener el proceso de NEW según el algoritmo
+        pthread_mutex_lock(&mutex_cola_new);
+        t_pcb* pcb = NULL;
+        if (strcmp(ALGORITMO_INGRESO_A_READY, "FIFO") == 0) {
+            pcb = (t_pcb*)list_get(cola_new, 0);
+        } else if (strcmp(ALGORITMO_INGRESO_A_READY, "PMCP") == 0) {
+            pcb = elegir_por_pmcp();
         }
 
-        sleep(1); // Evitar consumo excesivo de CPU
+        pthread_mutex_unlock(&mutex_cola_new);
+
+        if (pcb) {
+            log_debug(kernel_log, "planificador_largo_plazo: enviando un nuevo proceso a READY");
+            cambiar_estado_pcb(pcb, READY);
+        } else {
+            terminar_kernel();
+            exit(EXIT_FAILURE);
+        }
+           
+        //sem_post(&sem_susp_ready_vacia);
+        //log_debug(kernel_log, "planificador_largo_plazo: Semaforo SUSP READY VACIA aumentado");
+
     }
     return NULL;
 }
@@ -262,6 +252,7 @@ t_pcb* elegir_por_pmcp() {
 
 void* gestionar_exit(void* arg) {
     while (1) {
+        log_debug(kernel_log, "gestionar_exit: Semaforo a EXIT disminuido");
         sem_wait(&sem_proceso_a_exit);
 
         pthread_mutex_lock(&mutex_cola_exit);
@@ -296,6 +287,7 @@ void* planificador_corto_plazo_reactivo(void* arg) {
         log_trace(kernel_log, "Planificador CP reactivo: Esperando semáforo sem_proceso_a_ready...");
         
         // Esperar a que llegue un proceso a READY
+        log_debug(kernel_log, "planificador_corto_plazo_reactivo: Semaforo a READY disminuido");
         sem_wait(&sem_proceso_a_ready);
         
         log_trace(kernel_log, "Planificador CP reactivo: ✓ Proceso llegó a READY - Iniciando evaluación");
@@ -345,6 +337,7 @@ void* planificador_corto_plazo_reactivo(void* arg) {
             log_trace(kernel_log, "Planificador CP reactivo: Reposteando semáforo para reintento posterior");
             // Re-postear el semáforo para que se pueda reintentar cuando cambien las condiciones
             sem_post(&sem_proceso_a_ready);
+            log_debug(kernel_log, "planificador_corto_plazo_reactivo: Semaforo a READY aumentado");
         }
     }
     

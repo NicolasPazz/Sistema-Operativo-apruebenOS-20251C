@@ -111,8 +111,7 @@ int main(int argc, char* argv[]) {
 
     log_trace(kernel_log, "Creando proceso inicial:  Archivo: %s, Tamanio: %d", archivo_pseudocodigo, tamanio_proceso);
     INIT_PROC(archivo_pseudocodigo, tamanio_proceso);
-    
-    loguear_metricas_estado(list_get(cola_new, 0));
+    //loguear_metricas_estado(list_get(cola_new, 0));
     mostrar_colas_estados();
 
     //////////////////////////// Planificacion ////////////////////////////
