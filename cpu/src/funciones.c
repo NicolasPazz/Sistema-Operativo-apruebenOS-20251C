@@ -25,7 +25,8 @@ void func_write(char* direccion_logica_str, char* datos) {
 
         int pagina;
         recibir_entero(fd_memoria, &pagina);
-        cache_escribir(pagina, datos);      
+        cache_escribir(pagina, datos);   
+        log_info(cpu_log, "PID: %d - Cache Miss - Pagina: %d", pid_ejecutando, frame);   
     } else {
         t_paquete* paquete = crear_paquete_op(WRITE_OP);
         agregar_entero_a_paquete(paquete, frame);

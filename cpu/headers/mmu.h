@@ -20,7 +20,7 @@ int traducir_direccion(int direccion_logica, int* desplazamiento);
 bool tlb_buscar(int pagina, int* frame);
 void tlb_insertar(int pagina, int frame);
 bool tlb_habilitada(void);
-int timestamp_actual(void);
+long timestamp_actual(void);
 int seleccionar_victima_tlb(void);
 int cargar_configuracion(char* path);
 

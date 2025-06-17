@@ -266,21 +266,14 @@ t_list* recibir_contenido_paquete(int socket_cliente) {
 }
 
 t_list* recibir_paquete(int socket_cliente) {
-    int codigo_operacion;
     int buffer_size;
 
-    // Recibo código operación
-    if (recv(socket_cliente, &codigo_operacion, sizeof(int), MSG_WAITALL) <= 0)
-        return NULL;
-
-    // Recibo tamaño del buffer
     if (recv(socket_cliente, &buffer_size, sizeof(int), MSG_WAITALL) <= 0)
         return NULL;
 
     void* buffer = malloc(buffer_size);
     if (!buffer) return NULL;
 
-    // Recibo el buffer completo
     if (recv(socket_cliente, buffer, buffer_size, MSG_WAITALL) <= 0) {
         free(buffer);
         return NULL;
@@ -304,6 +297,8 @@ t_list* recibir_paquete(int socket_cliente) {
     free(buffer);
     return lista_parametros;
 }
+
+
 
 void enviar_mensaje(char* mensaje, int socket_cliente) {
 	t_paquete* paquete = malloc(sizeof(t_paquete));

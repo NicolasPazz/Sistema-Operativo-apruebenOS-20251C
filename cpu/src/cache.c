@@ -1,6 +1,7 @@
 #include "../headers/cache.h"
 #include "../headers/mmu.h"
 #include "../headers/init.h"
+#include "../headers/cicloDeInstruccion.h"
 
 t_cache_paginas* inicializar_cache(){
     cache = (t_cache_paginas*)malloc(sizeof(t_cache_paginas));
@@ -41,6 +42,7 @@ int buscar_pagina_en_cache ( int numero_pagina){
         return -1;
     for(int i = 0; i < cache->cantidad_entradas; i++){
         if (cache->entradas[i].numero_pagina == numero_pagina){
+            log_info(cpu_log, "PID: %d - Cache Hit - Pagina: %d", pid_ejecutando, numero_pagina);
             if(strcmp(cache->algoritmo_reemplazo,"CLOCK") == 0 || strcmp(cache->algoritmo_reemplazo, "CLOCK-M") == 0){
                 cache->entradas[i].bit_referencia = 1; // actualizamos el bit de referencia
             }
@@ -94,25 +96,39 @@ char* acceder_a_pagina_en_cache(int numero_pagina){
     return cache->entradas[nro_pagina_en_cache].contenido;
 }
 
-void desalojar_proceso_cache(){ 
-    if (!cache_habilitada(cache)){
+void desalojar_proceso_cache() {
+    if (!cache_habilitada(cache)) {
         log_error(cpu_log, "Cache deshabilitada");
-        EXIT_FAILURE;
+        return;
     }
-    for (int i = 0; i < cache->cantidad_entradas; i++){
-        log_trace(cpu_log, "Limpiando cache");
-        if (cache->entradas[i].modificado && !(cache->entradas[i].numero_pagina <= -1)){
-            log_trace(cpu_log, "Actualizando pagina modificada %d en memoria", cache->entradas[i].numero_pagina);
-            //escribir_pagina_en_memoria();
 
+    for (int i = 0; i < cache->cantidad_entradas; i++) {
+        log_trace(cpu_log, "Limpiando cache");
+
+        if (cache->entradas[i].modificado && cache->entradas[i].numero_pagina >= 0) {
+            int frameC = -1;
+            int pagina = cache->entradas[i].numero_pagina;
+
+            if (tlb_habilitada()) {
+                bool encontrado = tlb_buscar(pagina, &frameC);
+                if (!encontrado) {
+                    log_warning(cpu_log, "TLB no contiene mapeo para página %d. No se pudo determinar frame.", pagina);
+                }
+            }
+
+            log_info(cpu_log, "PID: %d - Memory Update - Página: %d - Frame: %d", pid_ejecutando, pagina, frameC);
+
+            // escribir_pagina_en_memoria(pagina, frame, cache->entradas[i].contenido);
         }
+
         free(cache->entradas[i].contenido);
         cache->entradas[i].contenido = NULL;
         cache->entradas[i].modificado = false;
         cache->entradas[i].bit_referencia = 0;
         cache->entradas[i].numero_pagina = -1;
     }
-    cache->puntero_clock = 0; // reseteo el puntero del reloj
+
+    cache->puntero_clock = 0;
 }
 
 void liberar_cache(){
@@ -193,4 +209,5 @@ void cache_escribir(int frame, char* datos){
     cache->entradas[entrada_index].contenido = datos;
     cache->entradas[entrada_index].modificado = false;
     cache->entradas[entrada_index].bit_referencia = 1;
+    log_info(cpu_log, "PID: %d - Cache Add - Pagina: %d", pid_ejecutando, frame);
 }
