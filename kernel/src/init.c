@@ -119,7 +119,7 @@ void iniciar_logger_kernel_debug() {
     log_trace(kernel_log_debug, "Kernel log de debug iniciado correctamente!");
 }
 
-void iniciar_estados_kernel(){ 
+void iniciar_estados_kernel() { 
     cola_new = list_create();
     cola_ready = list_create();
     cola_running = list_create();
@@ -169,7 +169,7 @@ void iniciar_diccionario_archivos_por_pcb() {
     archivo_por_pcb = dictionary_create();
 }
 
-void terminar_kernel(){
+void terminar_kernel() {
     log_destroy(kernel_log);
     log_destroy(kernel_log_debug);
     config_destroy(kernel_config);
@@ -218,7 +218,7 @@ void terminar_kernel(){
 }
 
 //////////////////////////// Conexiones del Kernel ////////////////////////////
-void* hilo_cliente_memoria(void* _){
+void* hilo_cliente_memoria(void* _) {
     ////////// Conexion hacia Memoria //////////
     fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, kernel_log);
 
@@ -291,7 +291,7 @@ void* hilo_servidor_dispatch(void* _) {
     return NULL;
 }
 
-void* hilo_servidor_interrupt(void* _){
+void* hilo_servidor_interrupt(void* _) {
     ////////// Servidor Interrupt escuchando conexiones  //////////
     fd_interrupt = iniciar_servidor(PUERTO_ESCUCHA_INTERRUPT, kernel_log, "Servidor Kernel Interrupt");
 
@@ -341,7 +341,7 @@ void* hilo_servidor_interrupt(void* _){
     return NULL;
 }
 
-void* hilo_servidor_io(void* _){
+void* hilo_servidor_io(void* _) {
     ////////// Servidor IO //////////
     fd_kernel_io = iniciar_servidor(PUERTO_ESCUCHA_IO, kernel_log, "Servidor Kernel IO");
 

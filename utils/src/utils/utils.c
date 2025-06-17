@@ -2,8 +2,8 @@
 #include "../headers/sockets.h"
 
 bool config_has_all_properties(t_config* cfg, char** properties) {
-    for(int i = 0; properties[i] != NULL; i++) {
-        if(!config_has_property(cfg, properties[i]))
+    for (int i = 0; properties[i] != NULL; i++) {
+        if (!config_has_property(cfg, properties[i]))
             return false;
     }
 
@@ -11,7 +11,7 @@ bool config_has_all_properties(t_config* cfg, char** properties) {
 }
 
 // Deserialización
-void deserializar_un_char_y_un_int (void* stream, char** cadena , int* entero){
+void deserializar_un_char_y_un_int (void* stream, char** cadena , int* entero) {
     //string
     size_t size_cadena;
     memcpy(&size_cadena, stream, sizeof(size_t)); // guardo el tamanio de la cadena
@@ -63,7 +63,6 @@ void* serializar_dos_ints(int int1, int int2) {
     return stream;
 }
 
-
 //** ej de funciones de SEND -> serializan */
 
 bool send_un_char_y_un_int(int fd, char* cadena, int entero) {
@@ -110,7 +109,6 @@ bool send_string(int fd, char* string) {
 bool send_data(int fd, void* data, size_t size) {
     return send(fd, data, size, 0) == size;
 }
-
 
 //** ej funciones de RECV -> Deserializan */
 bool recv_un_char_y_un_int(int fd, char** cadena, int* entero) {

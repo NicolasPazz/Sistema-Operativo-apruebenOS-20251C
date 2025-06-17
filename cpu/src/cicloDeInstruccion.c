@@ -14,7 +14,7 @@ void ejecutar_ciclo_instruccion() {
     seguir_ejecutando = 1;
     log_trace(cpu_log, "[CICLO] ▶ Iniciando ciclo de instrucción para PID: %d", pid_ejecutando);
     
-    while(seguir_ejecutando == 1){
+    while (seguir_ejecutando == 1) {
         log_trace(cpu_log, "[CICLO] ═══ NUEVO CICLO DE INSTRUCCIÓN ═══");
         log_trace(cpu_log, "[CICLO] PID: %d | PC: %d | Seguir: %d", pid_ejecutando, pc, seguir_ejecutando);
         
@@ -34,7 +34,7 @@ void ejecutar_ciclo_instruccion() {
         }
         
         // Actualizar PC (excepto para GOTO)
-        if(tipo_instruccion != GOTO_OP){
+        if (tipo_instruccion != GOTO_OP) {
             pc++;
             log_trace(cpu_log, "[CICLO] PC incrementado a: %d", pc);
         } else {
@@ -50,7 +50,7 @@ void ejecutar_ciclo_instruccion() {
         log_trace(cpu_log, "[CICLO] ✓ Instrucción liberada de memoria");
         
         // CHECK INTERRUPT
-        if(seguir_ejecutando){
+        if (seguir_ejecutando) {
             log_trace(cpu_log, "[CICLO] Verificando interrupciones...");
             check_interrupt();
         }
@@ -62,7 +62,7 @@ void ejecutar_ciclo_instruccion() {
 }
 
 // fetch
-t_instruccion* fetch(){
+t_instruccion* fetch() {
     log_info(cpu_log, "## PID: %d - FETCH - Program Counter: %d", pid_ejecutando, pc);
 
     log_trace(cpu_log, "[FETCH] Enviando solicitud PEDIR_INSTRUCCION_OP a memoria...");
@@ -90,7 +90,7 @@ t_instruccion* fetch(){
 }
 
 // decode
-op_code decode(char* nombre_instruccion){
+op_code decode(char* nombre_instruccion) {
     log_trace(cpu_log, "[DECODE] Decodificando instrucción: '%s'", nombre_instruccion);
     
     op_code resultado = -1;
@@ -181,11 +181,10 @@ void execute(op_code tipo_instruccion, t_instruccion* instruccion) {
     }
 }
 
-
-void check_interrupt(){
-    if (hay_interrupcion){
+void check_interrupt() {
+    if (hay_interrupcion) {
         hay_interrupcion = 0;
-        if(pid_ejecutando == pid_interrupt){
+        if (pid_ejecutando == pid_interrupt) {
             seguir_ejecutando = 0;
 
             t_paquete* paquete_kernel = crear_paquete_op(INTERRUPCION_OP);
@@ -196,7 +195,6 @@ void check_interrupt(){
         }
     }
 }
-
 
 // liberamos memoria
 void liberar_instruccion(t_instruccion* instruccion) {

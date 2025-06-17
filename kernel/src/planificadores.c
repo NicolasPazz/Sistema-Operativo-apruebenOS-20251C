@@ -2,7 +2,7 @@
 #include <sys/time.h>
 
 /////////////////////////////// Planificador Corto Plazo ///////////////////////////////
-t_pcb* elegir_por_fifo(){
+t_pcb* elegir_por_fifo() {
     log_trace(kernel_log, "PLANIFICANDO FIFO");
 
     // Se elegira al siguiente proceso a ejecutar segun su orden de llegada a READY.
@@ -14,7 +14,7 @@ void* menor_rafaga(void* a, void* b) {
     t_pcb* pcb_b = (t_pcb*) b;
     return pcb_a->estimacion_rafaga <= pcb_b->estimacion_rafaga ? pcb_a : pcb_b;
 }
-t_pcb* elegir_por_sjf(){
+t_pcb* elegir_por_sjf() {
     log_trace(kernel_log, "PLANIFICANDO SJF");
 
     /*  Se elegira el proceso que tenga la rafaga mas corta.
@@ -30,7 +30,7 @@ t_pcb* elegir_por_sjf(){
     return (t_pcb*)list_get_minimum(cola_ready, menor_rafaga); // Elige al PCB con la menor ESTIMACIoN de rafaga
 }
 
-t_pcb* elegir_por_srt(){
+t_pcb* elegir_por_srt() {
     log_trace(kernel_log, "PLANIFICANDO SRT");
 
     /*
@@ -105,7 +105,7 @@ void dispatch(t_pcb* proceso_a_ejecutar) {
               proceso_a_ejecutar->PID, cpu_disponible->id, proceso_a_ejecutar->PC);
 }
 
-void iniciar_planificador_corto_plazo(char* algoritmo){
+void iniciar_planificador_corto_plazo(char* algoritmo) {
     t_pcb* proceso_elegido;
 
     if (!list_is_empty(cola_ready) && strcmp(algoritmo, "FIFO") == 0) {

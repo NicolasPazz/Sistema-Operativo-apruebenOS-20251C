@@ -3,9 +3,9 @@
 #include "../headers/init.h"
 #include "../headers/cicloDeInstruccion.h"
 
-t_cache_paginas* inicializar_cache(){
+t_cache_paginas* inicializar_cache() {
     cache = (t_cache_paginas*)malloc(sizeof(t_cache_paginas));
-    if (cache == NULL){
+    if (cache == NULL) {
         log_error(cpu_log,"No se pudo inicializar la cache");
         exit(EXIT_FAILURE);
     }
@@ -13,12 +13,12 @@ t_cache_paginas* inicializar_cache(){
     cache->cantidad_entradas = atoi(ENTRADAS_CACHE);
     if (cache_habilitada(cache)) {
         cache->entradas = (t_entrada_cache*)malloc(cache->cantidad_entradas * sizeof(t_entrada_cache));
-        if(cache->entradas == NULL){
+        if (cache->entradas == NULL) {
             log_error(cpu_log, "Error al asignar memoria para las entradas de la cache");
             free(cache);
             exit(EXIT_FAILURE);
         }
-        for (int i = 0 ; i < cache->cantidad_entradas ; i++){
+        for (int i = 0 ; i < cache->cantidad_entradas ; i++) {
             cache->entradas[i].numero_pagina = -1;
             cache->entradas[i].contenido = NULL;
             cache->entradas[i].modificado = false;
@@ -26,7 +26,7 @@ t_cache_paginas* inicializar_cache(){
         }
     }
     cache->algoritmo_reemplazo = REEMPLAZO_CACHE;
-    if(cache->algoritmo_reemplazo == NULL){
+    if (cache->algoritmo_reemplazo == NULL) {
         log_error(cpu_log, "Error al asignar memoria para las entradas de la cache");
         free(cache);
         exit(EXIT_FAILURE);
@@ -34,16 +34,16 @@ t_cache_paginas* inicializar_cache(){
     cache->puntero_clock = 0;
     return cache;
 }
-bool cache_habilitada(){
+bool cache_habilitada() {
     return cache->cantidad_entradas > 0;
 }
-int buscar_pagina_en_cache ( int numero_pagina){
+int buscar_pagina_en_cache ( int numero_pagina) {
     if (!cache_habilitada(cache))
         return -1;
-    for(int i = 0; i < cache->cantidad_entradas; i++){
-        if (cache->entradas[i].numero_pagina == numero_pagina){
+    for (int i = 0; i < cache->cantidad_entradas; i++) {
+        if (cache->entradas[i].numero_pagina == numero_pagina) {
             log_info(cpu_log, "PID: %d - Cache Hit - Pagina: %d", pid_ejecutando, numero_pagina);
-            if(strcmp(cache->algoritmo_reemplazo,"CLOCK") == 0 || strcmp(cache->algoritmo_reemplazo, "CLOCK-M") == 0){
+            if (strcmp(cache->algoritmo_reemplazo,"CLOCK") == 0 || strcmp(cache->algoritmo_reemplazo, "CLOCK-M") == 0) {
                 cache->entradas[i].bit_referencia = 1; // actualizamos el bit de referencia
             }
             return i;
@@ -53,9 +53,9 @@ int buscar_pagina_en_cache ( int numero_pagina){
 }
 
 // funcion para seleccionar "victima" de reemplazo (clock)
-int seleccionar_victima_clock(){
-    while (1){
-        if(cache->entradas[cache->puntero_clock].bit_referencia == 0){
+int seleccionar_victima_clock() {
+    while (1) {
+        if (cache->entradas[cache->puntero_clock].bit_referencia == 0) {
             return cache->puntero_clock;
         }
         cache->entradas[cache->puntero_clock].bit_referencia = 0;
@@ -63,30 +63,30 @@ int seleccionar_victima_clock(){
     }
 }
 
-int seleccionar_victima_clock_m (){
+int seleccionar_victima_clock_m () {
     // busco los no modificados (Bit referencia = 0 & bit_modificado = 0)
     int comienzo = cache->puntero_clock;
     do {
-        if(cache->entradas[cache->puntero_clock].bit_referencia == 0 && !cache->entradas[cache->puntero_clock].modificado){
+        if (cache->entradas[cache->puntero_clock].bit_referencia == 0 && !cache->entradas[cache->puntero_clock].modificado) {
             return cache->puntero_clock;
         }
-    }while(cache->puntero_clock != comienzo);
+    }while (cache->puntero_clock != comienzo);
 
     // busco no modificados con bit referencia 1 (poner en 0) o con bit de referencia en 0
     do {
-        if(cache->entradas[cache->puntero_clock].bit_referencia == 0){
+        if (cache->entradas[cache->puntero_clock].bit_referencia == 0) {
             return cache->puntero_clock;
         }
         cache->entradas[cache->puntero_clock].bit_referencia = 0;
         cache->puntero_clock = (cache->puntero_clock + 1) % cache->cantidad_entradas;
-    } while(cache->puntero_clock != comienzo);
+    } while (cache->puntero_clock != comienzo);
     return cache->puntero_clock;
 }
 
-char* acceder_a_pagina_en_cache(int numero_pagina){
-    if(cache == NULL)
+char* acceder_a_pagina_en_cache(int numero_pagina) {
+    if (cache == NULL)
         return NULL;
-    if (!cache_habilitada(cache)){
+    if (!cache_habilitada(cache)) {
         log_trace(cpu_log, "La cache esta deshabilitada.");
         return NULL;
     }
@@ -131,12 +131,12 @@ void desalojar_proceso_cache() {
     cache->puntero_clock = 0;
 }
 
-void liberar_cache(){
-    if (cache == NULL){
+void liberar_cache() {
+    if (cache == NULL) {
         log_trace(cpu_log,"la cache ya estaba liberada.");
         return;
     }
-    if(!cache_habilitada(cache)){
+    if (!cache_habilitada(cache)) {
         log_trace(cpu_log, "No hay entradas en la cache.");
         free(cache);
         cache = NULL;
@@ -154,17 +154,17 @@ void liberar_cache(){
     cache = NULL;
 }
 
-void cache_modificar(int frame, char* datos){
-    if (cache == NULL){
+void cache_modificar(int frame, char* datos) {
+    if (cache == NULL) {
         log_trace(cpu_log,"la cache ya estaba liberada.");
         return;
     }
-    if (!cache_habilitada(cache)){
+    if (!cache_habilitada(cache)) {
         log_trace(cpu_log, "La cache esta deshabilitada.");
         return;
     }
     int nro_pagina_en_cache = buscar_pagina_en_cache(frame);
-    if (nro_pagina_en_cache <= -1){
+    if (nro_pagina_en_cache <= -1) {
         log_trace(cpu_log, "No se encontro la pagina %d en la cache", frame);
         return;
     }
@@ -172,12 +172,12 @@ void cache_modificar(int frame, char* datos){
     cache->entradas[nro_pagina_en_cache].modificado = true;
 }
 
-void cache_escribir(int frame, char* datos){
-    if (cache == NULL){
+void cache_escribir(int frame, char* datos) {
+    if (cache == NULL) {
         log_trace(cpu_log,"la cache ya estaba liberada.");
         return;
     }
-    if (!cache_habilitada(cache)){
+    if (!cache_habilitada(cache)) {
         log_trace(cpu_log, "La cache esta deshabilitada.");
         return;
     }

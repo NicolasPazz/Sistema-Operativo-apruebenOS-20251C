@@ -79,7 +79,7 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
         exit(EXIT_FAILURE);
     }
 
-    if(PCB->Estado != INIT) {
+    if (PCB->Estado != INIT) {
         t_list* cola_origen = obtener_cola_por_estado(PCB->Estado);
 
         if (!cola_origen) {
@@ -115,16 +115,16 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
         free(pid_key);
 
         // Si pasa al Estado EXEC hay que actualizar el tiempo_inicio_exec
-        if(nuevo_estado_enum == EXEC){
+        if (nuevo_estado_enum == EXEC) {
             PCB->tiempo_inicio_exec = get_time();
-        } else if (PCB->Estado == EXEC && nuevo_estado_enum == BLOCKED){
+        } else if (PCB->Estado == EXEC && nuevo_estado_enum == BLOCKED) {
             // Cuando SALE de EXEC calculo la estimacion proxima
             double rafaga_real = get_time() - PCB->tiempo_inicio_exec;
             double alfa = 0.5;
             PCB->estimacion_rafaga = alfa * rafaga_real + (1 - alfa) * PCB->estimacion_rafaga;
         }
 
-        if(PCB->Estado == SUSP_READY) {
+        if (PCB->Estado == SUSP_READY) {
             sem_post(&sem_susp_ready_vacia); // Sumar 1 al semaforo
         }
     } else {       
@@ -185,7 +185,6 @@ t_list* obtener_cola_por_estado(Estados estado) {
     }
 }
 
-
 /*
 
     4. Cuando el PCB termina (EXIT), destruis su cronometro y lo quitas del diccionario:
@@ -195,8 +194,6 @@ t_list* obtener_cola_por_estado(Estados estado) {
     char* pid_key = string_itoa(PCB->PID);
     dictionary_remove_and_destroy(tiempos_por_pid, pid_key, (void*)temporal_destroy);
     free(pid_key);
-
-
 
     5. Cuando el sistema termina, limpias todo:
     c

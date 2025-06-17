@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e
 
-
 # Limitar RAM a 512 MB por proceso
 ulimit -v $((512 * 1024))
 

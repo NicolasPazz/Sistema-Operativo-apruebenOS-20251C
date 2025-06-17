@@ -68,14 +68,22 @@ typedef struct {
     char* cliente;
 } cliente_data_t;
 
+/**
+ * @struct t_buffer
+ * @brief Representa un bloque de memoria serializada que puede enviarse por red.
+ */
 typedef struct {
-	int size;
-	void* stream;
+	int size;       /**< Tamaño total del stream de datos en bytes */
+	void* stream;   /**< Puntero al stream de datos (binario) */
 } t_buffer;
 
+/**
+ * @struct t_paquete
+ * @brief Representa un paquete de red que contiene un código de operación y un buffer serializado con datos.
+ */
 typedef struct {
-	op_code codigo_operacion;
-	t_buffer* buffer;
+	op_code codigo_operacion; /**< Código de operación que identifica el tipo de mensaje enviado */
+	t_buffer* buffer;         /**< Puntero a un buffer que contiene los datos serializados */
 } t_paquete;
 
 //Momentaneo si dejarlo aca o solamente en modulo cpu

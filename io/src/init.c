@@ -29,7 +29,7 @@ void iniciar_logger_io() {
     }
 }
 
-void iniciar_conexiones_io(char* nombre_io){
+void iniciar_conexiones_io(char* nombre_io) {
     log_trace(io_log, "Iniciando conexión con Kernel...");
     log_trace(io_log, "Intentando conectar a Kernel en %s:%s", IP_KERNEL, PUERTO_KERNEL);
     

@@ -51,7 +51,6 @@ wait $PID_IO1;     EXIT_IO=$?
 
 ( kill $WAITER_PID 2>/dev/null )
 
-
 ############################
 ERROR=0
 echo ""

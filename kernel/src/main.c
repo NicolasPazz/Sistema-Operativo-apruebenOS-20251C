@@ -74,7 +74,6 @@ int main(int argc, char* argv[]) {
     pthread_detach(hilo_io);
     //log_trace(kernel_log, "Hilo de servidor IO creado correctamente");
 
-
     //////////////////////////// Esperar conexiones minimas ////////////////////////////
     log_trace(kernel_log, "Esperando conexion con al menos una CPU y una IO");
 

@@ -24,5 +24,4 @@ long timestamp_actual(void);
 int seleccionar_victima_tlb(void);
 int cargar_configuracion(char* path);
 
-
 #endif // MMU_H

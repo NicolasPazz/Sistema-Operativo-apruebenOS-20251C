@@ -14,7 +14,6 @@
  */
 void INIT_PROC(char* nombre_archivo, int tam_memoria);
 
-
 /**
  * @brief Hace un Dump en memoria del proceso que la llama
  * 
@@ -22,7 +21,6 @@ void INIT_PROC(char* nombre_archivo, int tam_memoria);
  * en caso de Error el proceso pasa a EXIT, si no hay error pasa a READY
  */
 void DUMP_MEMORY(void);
-
 
 /**
  * @brief Hace uso de un dispositivo de IO

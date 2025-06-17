@@ -14,7 +14,7 @@ void func_write(char* direccion_logica_str, char* datos) {
     int direccion_logica = atoi(direccion_logica_str);
     int frame = traducir_direccion(direccion_logica, &desplazamiento);
     log_info(cpu_log, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %s", pid_ejecutando, frame, datos); 
-    if (cache_habilitada() && (buscar_pagina_en_cache(frame) != -1)){
+    if (cache_habilitada() && (buscar_pagina_en_cache(frame) != -1)) {
         cache_modificar(frame, datos);
     } else if (cache_habilitada()) {
         //solicitar_pagina_a_memoria(frame); paquete y pedirle por medio de op code VER
@@ -65,13 +65,10 @@ void func_read(char* direccion, char* tamanio) {
     free(contenido);
 }
 
-
-
 void func_goto(char* valor) {
     pc = atoi(valor);
     // deberiamos crear un paquete y mandarselo a kernel con este nuevo valor o no es necesario?
 }
-
 
 void func_io(char* nombre_dispositivo, u_int32_t tiempo) {
     t_paquete* paquete = crear_paquete_op(IO_OP);
@@ -82,7 +79,6 @@ void func_io(char* nombre_dispositivo, u_int32_t tiempo) {
 
     seguir_ejecutando = 0;
 }
-
 
 void func_init_proc(t_instruccion* instruccion) {
     char* path = instruccion->parametros2;
@@ -104,7 +100,6 @@ void func_init_proc(t_instruccion* instruccion) {
     seguir_ejecutando = 0;
 }
 
-
 void func_dump_memory() {
     t_paquete* paquete = crear_paquete_op(DUMP_MEMORY_OP);
     agregar_entero_a_paquete(paquete,pid_ejecutando);
@@ -113,7 +108,6 @@ void func_dump_memory() {
 
     seguir_ejecutando = 0;
 }
-
 
 void func_exit() {
     t_paquete* paquete = crear_paquete_op(EXIT_OP);

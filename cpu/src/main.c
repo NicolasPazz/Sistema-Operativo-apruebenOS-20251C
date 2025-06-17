@@ -150,7 +150,6 @@ void iterator(char* value) {
     log_trace(cpu_log, "%s", value);
 }
 
-
 void terminar_programa() {
     log_trace(cpu_log, "Iniciando terminación limpia del CPU...");
     
