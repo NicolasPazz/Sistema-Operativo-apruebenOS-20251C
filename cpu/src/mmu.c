@@ -57,10 +57,10 @@ int cargar_configuracion(char* path) {
     cfg_memoria->ENTRADAS_POR_TABLA = config_get_int_value(cfg_file, "ENTRADAS_POR_TABLA");
     cfg_memoria->CANTIDAD_NIVELES = config_get_int_value(cfg_file, "CANTIDAD_NIVELES");
     cfg_memoria->RETARDO_MEMORIA = config_get_int_value(cfg_file, "RETARDO_MEMORIA");
-    cfg_memoria->PATH_SWAPFILE = strdup(config_get_string_value(cfg_file, "PATH_SWAPFILE"));
+    cfg_memoria->PATH_SWAPFILE = config_get_string_value(cfg_file, "PATH_SWAPFILE");
     cfg_memoria->RETARDO_SWAP = config_get_int_value(cfg_file, "RETARDO_SWAP");
-    cfg_memoria->LOG_LEVEL = strdup(config_get_string_value(cfg_file, "LOG_LEVEL"));
-    cfg_memoria->DUMP_PATH = strdup(config_get_string_value(cfg_file, "DUMP_PATH"));
+    cfg_memoria->LOG_LEVEL = config_get_string_value(cfg_file, "LOG_LEVEL");
+    cfg_memoria->DUMP_PATH = config_get_string_value(cfg_file, "DUMP_PATH");
 
     log_trace(cpu_log, "Archivo de configuracion cargado correctamente");
     config_destroy(cfg_file);
