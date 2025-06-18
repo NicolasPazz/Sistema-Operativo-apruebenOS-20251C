@@ -101,8 +101,8 @@ void dispatch(t_pcb* proceso_a_ejecutar){
 
     // Crear paquete con PC y PID
     t_paquete* paquete = crear_paquete_op(EXEC_OP);
-    agregar_a_paquete(paquete, &proceso_a_ejecutar->PC, sizeof(int));
-    agregar_a_paquete(paquete, &proceso_a_ejecutar->PID, sizeof(int));
+    agregar_entero_a_paquete(paquete, proceso_a_ejecutar->PC);
+    agregar_entero_a_paquete(paquete, proceso_a_ejecutar->PID);
     enviar_paquete(paquete, cpu_disponible->fd);
     eliminar_paquete(paquete);
 

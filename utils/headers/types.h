@@ -39,7 +39,15 @@ typedef enum {
 	FINALIZAR_PROC_OP,
 
 	// Testing
-	DEBUGGER
+	DEBUGGER,
+
+	// Operaciones adicionales de memoria
+	SEND_PSEUDOCOD_FILE, // cod_op para mandar de kernel a memoria la ruta del archivo de pseudocodigo
+	ACCESO_TABLA_PAGINAS_OP,      // Acceso a tabla de páginas - devuelve número de marco
+	ACCESO_ESPACIO_USUARIO_OP,    // Acceso a espacio de usuario - lectura/escritura
+	LEER_PAGINA_COMPLETA_OP,      // Leer página completa desde dirección física
+	ACTUALIZAR_PAGINA_COMPLETA_OP, // Actualizar página completa en dirección física
+	CHECK_MEMORY_SPACE_OP         // Consultar si hay espacio suficiente en memoria
 } op_code;
 
 
@@ -111,5 +119,30 @@ typedef struct {
     int pid;
     long tiempo_io;
 } t_pedido_io;
+
+// Estructuras adicionales para los 4 tipos de acceso específicos de memoria
+typedef struct {
+    int pid;
+    int numero_pagina;
+} t_acceso_tabla_paginas;
+
+typedef struct {
+    int pid;
+    int direccion_fisica;
+    int tamanio;
+    bool es_escritura;  // true para escritura, false para lectura
+    void* datos;        // Solo para escritura
+} t_acceso_espacio_usuario;
+
+typedef struct {
+    int pid;
+    int direccion_fisica;  // Debe coincidir con byte 0 de la página
+} t_leer_pagina_completa;
+
+typedef struct {
+    int pid;
+    int direccion_fisica;  // Debe coincidir con byte 0 de la página
+    void* contenido_pagina; // Contenido completo de la página
+} t_actualizar_pagina_completa;
 
 #endif /* UTILS_TYPES_H */

@@ -1,3 +1,10 @@
+#define _GNU_SOURCE
+#define _DEFAULT_SOURCE
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include "../headers/sockets.h"
 
 /////////////////////////////// Log y Config ///////////////////////////////

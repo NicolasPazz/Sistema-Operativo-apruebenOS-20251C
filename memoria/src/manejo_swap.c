@@ -79,7 +79,7 @@ int suspender_proceso_completo(int pid) {
             }
             
             // Liberar frame en memoria principal
-            liberar_frame(entrada->numero_frame);
+            liberar_marco(entrada->numero_frame);
             
             // Marcar página como NO presente (ya no está en memoria)
             entrada->presente = false;

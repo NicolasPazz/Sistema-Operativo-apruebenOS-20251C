@@ -72,13 +72,18 @@ void func_goto(char* valor) {
 }
 
 
-void func_io(char* nombre_dispositivo, u_int32_t tiempo) {
+void func_io(char* nombre_dispositivo, char* tiempo_str) {
+    int tiempo = atoi(tiempo_str);  // Convertir tiempo de string a int
+    
+    log_info(cpu_log, "[SYSCALL] ▶ Ejecutando IO - Dispositivo: '%s', Tiempo: %d", nombre_dispositivo, tiempo);
+    
     t_paquete* paquete = crear_paquete_op(IO_OP);
-    agregar_entero_a_paquete(paquete, pid_ejecutando);
-    agregar_entero_a_paquete(paquete, tiempo);
+    agregar_a_paquete(paquete, nombre_dispositivo, strlen(nombre_dispositivo) + 1); // Agregar nombre del dispositivo
+    agregar_entero_a_paquete(paquete, tiempo);                                      // Agregar tiempo
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 
+    log_info(cpu_log, "[SYSCALL] ✓ IO enviado a Kernel - Finalizando ejecución del proceso actual");
     seguir_ejecutando = 0;
 }
 

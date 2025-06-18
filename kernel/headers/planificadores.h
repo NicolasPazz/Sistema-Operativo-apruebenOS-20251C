@@ -37,6 +37,7 @@ t_pcb* elegir_por_sjf(void);
 t_pcb* elegir_por_srt(void);
 double get_time(void);
 void iniciar_planificador_largo_plazo(void);
+void activar_planificador_largo_plazo(void);
 void* planificar_FIFO_lp(void* arg);
 void* planificar_PMCP_lp(void* arg);
 void* menor_tamanio(void* a, void* b);

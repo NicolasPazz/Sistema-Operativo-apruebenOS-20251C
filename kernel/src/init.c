@@ -429,14 +429,26 @@ void* atender_cpu_dispatch(void* arg) {
             case INIT_PROC_OP: {
                 log_debug(kernel_log, "INIT_PROC_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
 
-                // Recibir path y tamaño
-                int path_len;
-                recv(fd_cpu_dispatch, &path_len, sizeof(int), 0);
-                char* path = malloc(path_len);
-                recv(fd_cpu_dispatch, path, path_len, 0);
+                // Usar recibir_contenido_paquete para leer el contenido correctamente
+                t_list* lista = recibir_contenido_paquete(fd_cpu_dispatch);
+                if (lista == NULL) {
+                    log_error(kernel_log, "Error al recibir paquete INIT_PROC_OP");
+                    break;
+                }
 
-                int size;
-                recv(fd_cpu_dispatch, &size, sizeof(int), 0);
+                // Verificar que la lista tenga los elementos necesarios
+                if (list_size(lista) < 2) {
+                    log_error(kernel_log, "Paquete INIT_PROC_OP incompleto - Faltan datos");
+                    list_destroy_and_destroy_elements(lista, free);
+                    break;
+                }
+
+                // Extraer path (primer elemento) y size (segundo elemento)
+                char* path = (char*)list_get(lista, 0);
+                int* size_ptr = (int*)list_get(lista, 1);
+                int size = *size_ptr;
+
+                log_debug(kernel_log, "INIT_PROC_OP - Path: '%s', Size: %d", path, size);
 
                 // Extraer solo el nombre del archivo
                 char* last_slash = strrchr(path, '/');
@@ -445,74 +457,85 @@ void* atender_cpu_dispatch(void* arg) {
                 // Llamar a la syscall INIT_PROC
                 INIT_PROC(nombre, size);
 
-                free(path);
+                // Limpiar la lista
+                list_destroy_and_destroy_elements(lista, free);
                 break;
             }
 
             case IO_OP:
                 log_debug(kernel_log, "IO_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
 
-                // Recibir el nombre_io y cant_tiempo desde CPU
-                char* nombre_IO = NULL;
-                int cant_tiempo;
-                if (recv_IO_from_CPU(fd_cpu_dispatch, &nombre_IO, &cant_tiempo)) {
-                    log_info(kernel_log, "Se recibió correctamente la IO '%s' desde CPU, tiempo=%d", 
-                             nombre_IO, cant_tiempo);
-                    
-                    // Obtener PID del proceso que está ejecutando esta CPU
-                    pthread_mutex_lock(&mutex_lista_cpus);
-                    int pid = cpu_actual->pid;
-                    pthread_mutex_unlock(&mutex_lista_cpus);
-                    
-                    log_debug(kernel_log, "IO_OP asociado a PID=%d", pid);
-                    
-                    // Obtener PCB por PID
-                    t_pcb* pcb_a_io = NULL;
-                    for (int i = 0; i < list_size(cola_procesos); i++) {
-                        t_pcb* pcb = list_get(cola_procesos, i);
-                        if (pcb->PID == pid) {
-                            pcb_a_io = pcb;
-                            break;
-                        }
-                    }
-                    
-                    if (pcb_a_io) {
-                        // Exec Syscall: IO
-                        procesar_IO_from_CPU(nombre_IO, cant_tiempo, pcb_a_io);
-                    } else {
-                        log_error(kernel_log, "No se encontró PCB para PID=%d", pid);
-                    }
-                    
-                    free(nombre_IO);
-                } else {
-                    log_error(kernel_log, "Error al recibir la IO desde CPU");
+                // Leer el contenido del paquete que contiene nombre del dispositivo y tiempo
+                t_list* lista_io = recibir_contenido_paquete(fd_cpu_dispatch);
+                if (lista_io == NULL) {
+                    log_error(kernel_log, "Error al recibir paquete IO_OP");
+                    break;
                 }
 
-                int pid_en_cpu = get_pid_from_cpu(fd_cpu_dispatch, IO_OP);
-                log_debug(kernel_log, "IO_OP asociado a PID=%d", pid_en_cpu);
+                // Verificar que la lista tenga los elementos necesarios
+                if (list_size(lista_io) < 2) {
+                    log_error(kernel_log, "Paquete IO_OP incompleto - Faltan datos");
+                    list_destroy_and_destroy_elements(lista_io, free);
+                    break;
+                }
 
-                // Exec Syscall: IO
-                t_pcb* pcb_a_io = list_get(cola_procesos, pid_en_cpu);
-                procesar_IO_from_CPU(nombre_IO, cant_tiempo, pcb_a_io);
+                // Extraer nombre del dispositivo (primer elemento) y tiempo (segundo elemento)
+                char* nombre_IO = (char*)list_get(lista_io, 0);
+                int* tiempo_ptr = (int*)list_get(lista_io, 1);
+                int cant_tiempo = *tiempo_ptr;
 
+                log_debug(kernel_log, "IO_OP - Dispositivo: '%s', Tiempo: %d", nombre_IO, cant_tiempo);
+
+                // Obtener PID del proceso que está ejecutando esta CPU
+                pthread_mutex_lock(&mutex_lista_cpus);
+                int pid_io = cpu_actual->pid;
+                pthread_mutex_unlock(&mutex_lista_cpus);
+                
+                log_debug(kernel_log, "IO_OP asociado a PID=%d", pid_io);
+                
+                // Obtener PCB por PID
+                t_pcb* pcb_a_io = NULL;
+                for (int i = 0; i < list_size(cola_procesos); i++) {
+                    t_pcb* pcb = list_get(cola_procesos, i);
+                    if (pcb->PID == pid_io) {
+                        pcb_a_io = pcb;
+                        break;
+                    }
+                }
+                
+                if (pcb_a_io) {
+                    // Exec Syscall: IO
+                    procesar_IO_from_CPU(nombre_IO, cant_tiempo, pcb_a_io);
+                } else {
+                    log_error(kernel_log, "No se encontró PCB para PID=%d", pid_io);
+                }
+                
+                // Limpiar la lista
+                list_destroy_and_destroy_elements(lista_io, free);
                 break;
 
             case EXIT_OP:
                 log_debug(kernel_log, "EXIT_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
 
+                // Leer el contenido del paquete aunque esté vacío (para mantener protocolo)
+                t_list* lista_exit = recibir_contenido_paquete(fd_cpu_dispatch);
+                if (lista_exit) {
+                    list_destroy_and_destroy_elements(lista_exit, free);
+                }
+
                 // Obtener PID del proceso que está ejecutando esta CPU
                 pthread_mutex_lock(&mutex_lista_cpus);
-                int pid = cpu_actual->pid;
+                int pid_exit = cpu_actual->pid;
                 pthread_mutex_unlock(&mutex_lista_cpus);
                 
-                log_debug(kernel_log, "EXIT_OP asociado a PID=%d", pid);
+                log_debug(kernel_log, "EXIT_OP asociado a PID=%d", pid_exit);
 
                 // Buscar PCB en RUNNING
                 pthread_mutex_lock(&mutex_cola_running);
                 t_pcb* pcb_a_finalizar = NULL;
                 for (int i = 0; i < list_size(cola_running); i++) {
                     t_pcb* pcb = list_get(cola_running, i);
-                    if (pcb->PID == pid) {
+                    if (pcb->PID == pid_exit) {
                         pcb_a_finalizar = list_remove(cola_running, i);
                         break;
                     }
@@ -524,7 +547,7 @@ void* atender_cpu_dispatch(void* arg) {
                     // Cambiar estado y finalizar
                     cambiar_estado_pcb(pcb_a_finalizar, EXIT_ESTADO);
                 } else {
-                    log_error(kernel_log, "EXIT: No se encontró PCB para PID=%d en RUNNING", pid);
+                    log_error(kernel_log, "EXIT: No se encontró PCB para PID=%d en RUNNING", pid_exit);
                 }
 
                 // Limpiar PID de la CPU asociada
@@ -546,7 +569,32 @@ void* atender_cpu_dispatch(void* arg) {
 
             case DUMP_MEMORY_OP:
                 log_debug(kernel_log, "DUMP_MEMORY_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
+                
+                // Leer el contenido del paquete que contiene el PID
+                t_list* lista_dump = recibir_contenido_paquete(fd_cpu_dispatch);
+                if (lista_dump == NULL) {
+                    log_error(kernel_log, "Error al recibir paquete DUMP_MEMORY_OP");
+                    break;
+                }
+
+                // Verificar que la lista tenga el PID
+                if (list_size(lista_dump) < 1) {
+                    log_error(kernel_log, "Paquete DUMP_MEMORY_OP incompleto - Falta PID");
+                    list_destroy_and_destroy_elements(lista_dump, free);
+                    break;
+                }
+
+                // Extraer PID
+                int* pid_dump_ptr = (int*)list_get(lista_dump, 0);
+                int pid_dump = *pid_dump_ptr;
+                
+                log_debug(kernel_log, "DUMP_MEMORY_OP para PID: %d", pid_dump);
+                
                 // TODO: Implementar DUMP_MEMORY
+                log_info(kernel_log, "## PID: %d - Operación DUMP_MEMORY procesada", pid_dump);
+                
+                // Limpiar la lista
+                list_destroy_and_destroy_elements(lista_dump, free);
                 break;
                 
             default:

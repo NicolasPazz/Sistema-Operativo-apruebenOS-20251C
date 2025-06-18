@@ -512,4 +512,33 @@ bool actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido_p
  */
 void liberar_proceso_memoria(t_proceso_memoria* proceso);
 
+// ============================================================================
+// FUNCIONES DE COMUNICACIÓN Y DELEGACIÓN
+// ============================================================================
+
+/**
+ * @brief Procesa una solicitud de memory dump
+ * 
+ * @param pid PID del proceso
+ * @return MEMORIA_OK si se procesó correctamente, error en caso contrario
+ */
+t_resultado_memoria procesar_memory_dump(int pid);
+
+/**
+ * @brief Verifica si hay espacio disponible para un tamaño dado
+ * 
+ * @param tamanio Tamaño en bytes requerido
+ * @return true si hay espacio suficiente, false en caso contrario
+ */
+bool verificar_espacio_disponible(int tamanio);
+
+/**
+ * @brief Obtiene una instrucción y la envía formateada a la CPU
+ * 
+ * @param pid PID del proceso
+ * @param pc Program Counter
+ * @param cliente_socket Socket de comunicación con la CPU
+ */
+void enviar_instruccion_a_cpu(int pid, int pc, int cliente_socket);
+
 #endif
