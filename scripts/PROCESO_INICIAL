@@ -1,1 +1,2 @@
-INIT_PROC script_io_basico_1 128
+INIT_PROC test/script_io_basico_1 128
+EXIT
