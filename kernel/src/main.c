@@ -114,12 +114,12 @@ int main(int argc, char* argv[]) {
     mostrar_colas_estados();
 
     //////////////////////////// Planificacion ////////////////////////////
-    iniciar_planificador_largo_plazo();
+    iniciar_planificadores();
     activar_planificador_largo_plazo();
 
     //////////////////////////// Mantener el kernel ejecutandose ////////////////////////////
     log_trace(kernel_log, "Kernel iniciado correctamente. Planificadores en ejecucion...");
-    printf("Kernel ejecutandose. Presione Ctrl+C para terminar.\n");
+    log_debug(kernel_log, "Kernel ejecutandose. Presione Ctrl+C para terminar.\n");
     
     // Mantener el programa principal ejecutándose
     while (1) {

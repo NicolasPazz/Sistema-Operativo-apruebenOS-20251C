@@ -1,1 +1,3 @@
 INIT_PROC script_io_basico_1 128
+NOOP
+EXIT

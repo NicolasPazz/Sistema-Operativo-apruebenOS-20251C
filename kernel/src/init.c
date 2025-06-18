@@ -72,6 +72,7 @@ sem_t sem_proceso_a_blocked;
 sem_t sem_proceso_a_exit;
 sem_t sem_susp_ready_vacia;
 sem_t sem_finalizacion_de_proceso;
+sem_t sem_cpu_disponible;
 
 /////////////////////////////// Inicializacion de variables globales ///////////////////////////////
 void iniciar_config_kernel() {
@@ -153,6 +154,7 @@ void iniciar_sincronizacion_kernel() {
     sem_init(&sem_proceso_a_exit, 0, 0);
     sem_init(&sem_susp_ready_vacia, 0, 1);
     sem_init(&sem_finalizacion_de_proceso, 0, 0);
+    sem_init(&sem_cpu_disponible, 0, 0);
     
     lista_cpus = list_create();
     lista_ios = list_create();
@@ -204,6 +206,7 @@ void terminar_kernel() {
     sem_destroy(&sem_proceso_a_exit);
     sem_destroy(&sem_susp_ready_vacia);
     sem_destroy(&sem_finalizacion_de_proceso);
+    sem_destroy(&sem_cpu_disponible);
 
     list_destroy(lista_cpus);
     list_destroy(lista_ios);
@@ -274,6 +277,9 @@ void* hilo_servidor_dispatch(void* _) {
         pthread_mutex_lock(&mutex_lista_cpus);
         list_add(lista_cpus, nueva_cpu);
         pthread_mutex_unlock(&mutex_lista_cpus);
+
+        sem_post(&sem_cpu_disponible);
+        log_debug(kernel_log, "hilo_servidor_dispatch: Semaforo CPU DISPONIBLE aumentado");
 
         pthread_mutex_lock(&mutex_conexiones);
         conectado_cpu = true;
@@ -442,7 +448,7 @@ void* atender_cpu_dispatch(void* arg) {
                     break;
                 }
 
-                // Seserializar path y size
+                // Serializar path y size
                 int offset = 0;
                 char* path = leer_string(buffer, &offset);
                 int size = leer_entero(buffer, &offset);            

@@ -1,6 +1,10 @@
 #include "../headers/planificadores.h"
 #include <sys/time.h>
 
+pthread_mutex_t mutex_planificador_lp;
+pthread_cond_t cond_planificador_lp;
+estado_planificador estado_planificador_lp = STOP;
+
 /////////////////////////////// Planificador Corto Plazo ///////////////////////////////
 t_pcb* elegir_por_fifo() {
     log_trace(kernel_log, "PLANIFICANDO FIFO");
@@ -46,7 +50,7 @@ t_pcb* elegir_por_srt() {
     */
     //t_pcb* menor_rafaga = list_get_minimum(cola_ready, menor_rafaga);
 
-    return (t_pcb*)list_get(cola_ready, 0);
+    return (t_pcb*)list_get(cola_ready, 0); // TODO
 }
 
 void dispatch(t_pcb* proceso_a_ejecutar) {
@@ -105,51 +109,11 @@ void dispatch(t_pcb* proceso_a_ejecutar) {
               proceso_a_ejecutar->PID, cpu_disponible->id, proceso_a_ejecutar->PC);
 }
 
-void iniciar_planificador_corto_plazo(char* algoritmo) {
-    t_pcb* proceso_elegido;
-
-    if (!list_is_empty(cola_ready) && strcmp(algoritmo, "FIFO") == 0) {
-        proceso_elegido = elegir_por_fifo();
-    } else if (!list_is_empty(cola_ready) && strcmp(algoritmo, "SJF") == 0) {
-        proceso_elegido = elegir_por_sjf();
-    } else if (!list_is_empty(cola_ready) && strcmp(algoritmo, "SRT") == 0) {
-        proceso_elegido = elegir_por_srt();
-    }
-    else if (list_is_empty(cola_ready)) {
-        log_error(kernel_log, "iniciar_planificador_corto_plazo: Cola READY vacia");
-        terminar_kernel();
-        exit(EXIT_FAILURE);
-    }
-    else {
-        log_error(kernel_log, "iniciar_planificador_corto_plazo: Algoritmo no reconocido");
-        terminar_kernel();
-        exit(EXIT_FAILURE);
-    }
-
-    dispatch(proceso_elegido);
-}
-
 double get_time() {
     struct timeval tv;
     gettimeofday(&tv, NULL);
     return tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
-
-//////////////////////////// Planificacion de Largo Plazo ////////////////////////////
-
-// Add enum for planificador states
-typedef enum {
-    STOP,
-    RUNNING
-} estado_planificador;
-
-// Add global variables for planificador
-static pthread_mutex_t mutex_planificador_lp;
-static pthread_cond_t cond_planificador_lp;
-static estado_planificador estado_planificador_lp = STOP;
-
-// Declaración de la función antes de usarla
-static void* planificador_largo_plazo(void* arg);
 
 void activar_planificador_largo_plazo(void) {
     pthread_mutex_lock(&mutex_planificador_lp);
@@ -159,7 +123,7 @@ void activar_planificador_largo_plazo(void) {
     log_trace(kernel_log, "Planificador de largo plazo activado");
 }
 
-void iniciar_planificador_largo_plazo(void) {
+void iniciar_planificadores(void) {
     // Inicializar mutex y condición
     pthread_mutex_init(&mutex_planificador_lp, NULL);
     pthread_cond_init(&cond_planificador_lp, NULL);
@@ -180,15 +144,15 @@ void iniciar_planificador_largo_plazo(void) {
     }
     pthread_detach(hilo_exit);
     
-    // Iniciar planificador de corto plazo reactivo
+    // Iniciar planificador de corto plazo
     pthread_t hilo_planificador_cp;
-    if (pthread_create(&hilo_planificador_cp, NULL, planificador_corto_plazo_reactivo, NULL) != 0) {
-        log_error(kernel_log, "Error al crear hilo para planificador de corto plazo reactivo");
+    if (pthread_create(&hilo_planificador_cp, NULL, planificador_corto_plazo, NULL) != 0) {
+        log_error(kernel_log, "Error al crear hilo para planificador de corto plazo");
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
     pthread_detach(hilo_planificador_cp);
-    log_trace(kernel_log, "Planificador de corto plazo reactivo iniciado correctamente");
+    log_trace(kernel_log, "Planificador de corto plazo iniciado correctamente");
 }
 
 void* planificador_largo_plazo(void* arg) {
@@ -279,69 +243,40 @@ void* gestionar_exit(void* arg) {
     return NULL;
 }
 
-// NUEVO: Planificador de corto plazo reactivo
-void* planificador_corto_plazo_reactivo(void* arg) {
-    log_trace(kernel_log, "=== PLANIFICADOR CP REACTIVO INICIADO ===");
+// NUEVO: Planificador de corto plazo
+void* planificador_corto_plazo(void* arg) {
+    log_trace(kernel_log, "=== PLANIFICADOR CP INICIADO ===");
     
     while (1) {
-        log_trace(kernel_log, "Planificador CP reactivo: Esperando semáforo sem_proceso_a_ready...");
+        log_trace(kernel_log, "Planificador CP: Esperando semáforo sem_proceso_a_ready...");
         
         // Esperar a que llegue un proceso a READY
-        log_debug(kernel_log, "planificador_corto_plazo_reactivo: Semaforo a READY disminuido");
+        log_debug(kernel_log, "planificador_corto_plazo: Semaforo a READY disminuido");
         sem_wait(&sem_proceso_a_ready);
         
-        log_trace(kernel_log, "Planificador CP reactivo: ✓ Proceso llegó a READY - Iniciando evaluación");
+        log_trace(kernel_log, "Planificador CP: ✓ Proceso llegó a READY - Verificando disponibilidad de cpu");
         
-        // Verificar si hay CPUs disponibles Y procesos en READY
-        pthread_mutex_lock(&mutex_lista_cpus);
-        bool hay_cpu_disponible = false;
-        int cpus_totales = list_size(lista_cpus);
-        int cpus_dispatch = 0;
-        int cpus_libres = 0;
-        
-        for (int i = 0; i < list_size(lista_cpus); i++) {
-            cpu* c = list_get(lista_cpus, i);
-            if (c->tipo_conexion == CPU_DISPATCH) {
-                cpus_dispatch++;
-                if (c->pid == -1) {
-                    hay_cpu_disponible = true;
-                    cpus_libres++;
-                }
-            }
+        // Esperar cpu disponible
+        log_debug(kernel_log, "planificador_corto_plazo: Semaforo CPU DISPONIBLE disminuido");
+        sem_wait(&sem_cpu_disponible);
+        log_trace(kernel_log, "Planificador CP: ✓ Condiciones cumplidas - Iniciando planificación");
+        t_pcb* proceso_elegido;
+
+        if (strcmp(ALGORITMO_CORTO_PLAZO, "FIFO") == 0) {
+            proceso_elegido = elegir_por_fifo();
+        } else if (strcmp(ALGORITMO_CORTO_PLAZO, "SJF") == 0) {
+            proceso_elegido = elegir_por_sjf();
+        } else if (strcmp(ALGORITMO_CORTO_PLAZO, "SRT") == 0) {
+            proceso_elegido = elegir_por_srt();
         }
-        pthread_mutex_unlock(&mutex_lista_cpus);
-        
-        log_trace(kernel_log, "Planificador CP reactivo: CPUs totales=%d, CPUs dispatch=%d, CPUs libres=%d", 
-                 cpus_totales, cpus_dispatch, cpus_libres);
-        
-        // Solo planificar si hay CPU disponible Y cola READY no vacía
-        pthread_mutex_lock(&mutex_cola_ready);
-        bool hay_procesos_ready = !list_is_empty(cola_ready);
-        int procesos_en_ready = list_size(cola_ready);
-        pthread_mutex_unlock(&mutex_cola_ready);
-        
-        log_trace(kernel_log, "Planificador CP reactivo: Procesos en READY=%d, hay_cpu_disponible=%s", 
-                 procesos_en_ready, hay_cpu_disponible ? "SÍ" : "NO");
-        
-        if (hay_cpu_disponible && hay_procesos_ready) {
-            log_trace(kernel_log, "Planificador CP reactivo: ✓ Condiciones cumplidas - Iniciando planificación");
-            iniciar_planificador_corto_plazo(ALGORITMO_CORTO_PLAZO);
-            log_trace(kernel_log, "Planificador CP reactivo: ✓ Planificación completada");
-        } else {
-            if (!hay_cpu_disponible) {
-                log_trace(kernel_log, "Planificador CP reactivo: ⚠ No hay CPUs disponibles");
-            }
-            if (!hay_procesos_ready) {
-                log_trace(kernel_log, "Planificador CP reactivo: ⚠ Cola READY vacía");
-            }
-            log_trace(kernel_log, "Planificador CP reactivo: Reposteando semáforo para reintento posterior");
-            // Re-postear el semáforo para que se pueda reintentar cuando cambien las condiciones
-            sem_post(&sem_proceso_a_ready);
-            log_debug(kernel_log, "planificador_corto_plazo_reactivo: Semaforo a READY aumentado");
+        else {
+            log_error(kernel_log, "iniciar_planificador_corto_plazo: Algoritmo no reconocido");
+            terminar_kernel();
+            exit(EXIT_FAILURE);
         }
+
+        dispatch(proceso_elegido);
     }
-    
-    return NULL;
 }
 
 bool hay_espacio_suficiente_memoria(int tamanio) {

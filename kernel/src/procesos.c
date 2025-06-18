@@ -127,6 +127,10 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
         if (PCB->Estado == SUSP_READY) {
             sem_post(&sem_susp_ready_vacia); // Sumar 1 al semaforo
         }
+
+        // Cambiar Estado y actualizar Metricas de Estados
+        PCB->Estado = nuevo_estado_enum;
+        PCB->ME[nuevo_estado_enum] += 1;  // Se suma 1 en las Metricas de estado del nuevo estado
     } else {       
         log_trace(kernel_log, "cambiar_estado_pcb: proceso en INIT recibido");
         char* pid_key = string_itoa(PCB->PID);
@@ -135,15 +139,15 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
             dictionary_put(tiempos_por_pid, pid_key, nuevo_crono);
         }
         free(pid_key);
+        // Cambiar Estado y actualizar Metricas de Estados
+        PCB->Estado = nuevo_estado_enum;
+        PCB->ME[nuevo_estado_enum] += 1;  // Se suma 1 en las Metricas de estado del nuevo estado
+        list_add(cola_procesos, PCB);
     }
-
-    // Cambiar Estado y actualizar Metricas de Estados
-    PCB->Estado = nuevo_estado_enum;
-    PCB->ME[nuevo_estado_enum] += 1;  // Se suma 1 en las Metricas de estado del nuevo estado
 
     // FIXME: agregar mutex para evitar condiciones de carrera
     list_add(cola_destino, PCB);
-
+    loguear_metricas_estado(PCB);
     switch(nuevo_estado_enum) {
         case NEW: sem_post(&sem_proceso_a_new); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a NEW aumentado"); break;
         case READY: sem_post(&sem_proceso_a_ready); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a READY aumentado"); break;

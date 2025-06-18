@@ -20,14 +20,14 @@ typedef struct PCB {
 } t_pcb;
 
 typedef enum Estados {
-    INIT,
     NEW,
     READY,
     EXEC,
     BLOCKED,
     SUSP_READY,
     SUSP_BLOCKED,
-    EXIT_ESTADO
+    EXIT_ESTADO,
+    INIT
 } Estados;
 
 typedef struct {
