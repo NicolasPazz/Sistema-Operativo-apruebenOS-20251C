@@ -100,10 +100,9 @@ void func_init_proc(t_instruccion* instruccion) {
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
     
-    //log_trace(cpu_log, "## (<PID>) - Solicitó syscall: INIT_PROC");
-    log_trace(cpu_log, "[SYSCALL] ✓ INIT_PROC enviado a Kernel - Finalizando ejecución del proceso actual");
+    log_trace(cpu_log, "[SYSCALL] ✓ INIT_PROC enviado a Kernel - Continuando ejecución del proceso");
 
-    seguir_ejecutando = 0;
+    // NO establecer seguir_ejecutando = 0 para continuar con la siguiente instrucción
 }
 
 void func_dump_memory() {
@@ -112,7 +111,9 @@ void func_dump_memory() {
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 
-    seguir_ejecutando = 0;
+    log_trace(cpu_log, "[SYSCALL] ✓ DUMP_MEMORY enviado a Kernel - Continuando ejecución del proceso");
+
+    // NO establecer seguir_ejecutando = 0 para continuar con la siguiente instrucción
 }
 
 void func_exit() {
@@ -120,7 +121,9 @@ void func_exit() {
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 
-    seguir_ejecutando = 0;
+    log_trace(cpu_log, "[SYSCALL] ✓ EXIT enviado a Kernel - Finalizando ejecución del proceso");
+
+    seguir_ejecutando = 0; // Solo EXIT debe terminar la ejecución
 }
 
 t_instruccion* recibir_instruccion(int conexion) {
