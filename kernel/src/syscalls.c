@@ -29,9 +29,6 @@ void INIT_PROC(char* nombre_archivo, int tam_memoria) {
     agregar_a_paquete(paquete, &nuevo_proceso->PID, sizeof(int));
     agregar_a_paquete(paquete, nombre_archivo, strlen(nombre_archivo) + 1);
     agregar_a_paquete(paquete, &tam_memoria, sizeof(int));
-    
-    // Usar la conexión global fd_memoria en lugar de crear una nueva
-    // FIXME: crear una nueva por peticion?
     enviar_paquete(paquete, fd_memoria);
     eliminar_paquete(paquete);
     

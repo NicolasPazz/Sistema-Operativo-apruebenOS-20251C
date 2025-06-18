@@ -140,12 +140,14 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
         }
         free(pid_key);
         // Cambiar Estado y actualizar Metricas de Estados
+        Estados estado_viejo = PCB->Estado;
         PCB->Estado = nuevo_estado_enum;
         PCB->ME[nuevo_estado_enum] += 1;  // Se suma 1 en las Metricas de estado del nuevo estado
         list_add(cola_procesos, PCB);
     }
 
-    // FIXME: agregar mutex para evitar condiciones de carrera
+    // TODO: agregar mutex para evitar condiciones de carrera
+    Estados estado_viejo = PCB->Estado;
     list_add(cola_destino, PCB);
     loguear_metricas_estado(PCB);
     switch(nuevo_estado_enum) {
@@ -160,6 +162,7 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
                             break;
         case SUSP_BLOCKED: sem_post(&sem_proceso_a_susp_blocked); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a SUSP BLOCKED aumentado"); break;
         case EXIT_ESTADO: sem_post(&sem_proceso_a_exit); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a EXIT aumentado"); break;
+        default: log_error(kernel_log, "nuevo_estado_enum: Error al pasar PCB de %s a %s", estado_to_string(estado_viejo), estado_to_string(nuevo_estado_enum));
     }
 }
 

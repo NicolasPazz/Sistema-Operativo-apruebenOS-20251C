@@ -453,14 +453,14 @@ void* atender_cpu_dispatch(void* arg) {
                 char* path = leer_string(buffer, &offset);
                 int size = leer_entero(buffer, &offset);            
 
-                // Extraer solo el nombre
-                char* last_slash = strrchr(path, '/');
-                char* nombre = last_slash ? last_slash + 1 : path;
+                // Mantener el path completo en lugar de extraer solo el nombre
+                char* nombre = strdup(path); // Hacer una copia del path completo
 
                 log_debug(kernel_log, "atender_cpu_dispatch: Iniciando nuevo proceso con nombre de archivo '%s' y size %d", nombre, size);
                 INIT_PROC(nombre, size);
             
                 free(path);
+                free(nombre); // Liberar la copia del nombre
                 free(buffer);
                 break;
             }

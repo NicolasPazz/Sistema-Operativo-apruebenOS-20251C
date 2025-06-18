@@ -355,7 +355,7 @@ t_administrador_swap* crear_administrador_swap(void) {
     // Configuración básica
     admin->path_archivo = strdup(cfg->PATH_SWAPFILE);
     admin->tam_pagina = cfg->TAM_PAGINA;
-    admin->tamanio_swap = cfg->TAM_MEMORIA * 2;  // SWAP del doble del tamaño de memoria
+    admin->tamanio_swap = cfg->TAM_MEMORIA * 10;  // Tamaño de SWAP
     admin->cantidad_paginas_swap = admin->tamanio_swap / admin->tam_pagina;
     admin->paginas_libres_swap = admin->cantidad_paginas_swap;
     admin->paginas_ocupadas_swap = 0;
