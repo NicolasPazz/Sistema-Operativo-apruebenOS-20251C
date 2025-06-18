@@ -400,7 +400,7 @@ void* atender_cpu_dispatch(void* arg) {
     free(arg);
 
     op_code cop;
-    while (recv(fd_cpu_dispatch, &cop, sizeof(op_code), 0) > 0) {
+    while ((cop = recibir_operacion(fd_cpu_dispatch)) != -1) {
         // Asignar la instrucción actual a la CPU y asociar el PID
         pthread_mutex_lock(&mutex_lista_cpus);
         
@@ -413,44 +413,54 @@ void* atender_cpu_dispatch(void* arg) {
                 break;
             }
         }
-        
+        int pid;
         if (cpu_actual) {
             // Actualizar la operación actual que está procesando esta CPU
             cpu_actual->instruccion_actual = cop;
+            // Buscar PID ejecutando en esa cpu
+            pid = cpu_actual->pid;
             log_trace(kernel_log, "CPU ID=%d está procesando operación %d", cpu_actual->id, cop);
         } else {
             log_error(kernel_log, "No se encontró la CPU con fd=%d en la lista", fd_cpu_dispatch);
             pthread_mutex_unlock(&mutex_lista_cpus);
+            terminar_kernel();
+            exit(EXIT_FAILURE);
             break;
         }
         pthread_mutex_unlock(&mutex_lista_cpus);
 
         switch (cop) {
             case INIT_PROC_OP: {
+                log_info(kernel_log, "## (%d) Solicitó syscall: INIT_PROC", pid);
                 log_trace(kernel_log, "INIT_PROC_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
+            
+                // Recibir buffer
+                int buffer_size;
+                void* buffer = recibir_buffer(&buffer_size, fd_cpu_dispatch);
+                if (!buffer) {
+                    log_error(kernel_log, "Error al recibir buffer en INIT_PROC_OP");
+                    break;
+                }
 
-                // Recibir path y tamaño
-                int path_len;
-                recv(fd_cpu_dispatch, &path_len, sizeof(int), 0);
-                char* path = malloc(path_len);
-                recv(fd_cpu_dispatch, path, path_len, 0);
+                // Seserializar path y size
+                int offset = 0;
+                char* path = leer_string(buffer, &offset);
+                int size = leer_entero(buffer, &offset);            
 
-                int size;
-                recv(fd_cpu_dispatch, &size, sizeof(int), 0);
-
-                // Extraer solo el nombre del archivo
+                // Extraer solo el nombre
                 char* last_slash = strrchr(path, '/');
                 char* nombre = last_slash ? last_slash + 1 : path;
 
-                // Llamar a la syscall INIT_PROC
-                log_debug(kernel_log, "atender_cpu_dispatch: Iniciando nuevo proceso");
+                log_debug(kernel_log, "atender_cpu_dispatch: Iniciando nuevo proceso con nombre de archivo '%s' y size %d", nombre, size);
                 INIT_PROC(nombre, size);
-
+            
                 free(path);
+                free(buffer);
                 break;
             }
 
             case IO_OP:
+                log_info(kernel_log, "## (%d) Solicitó syscall: IO", pid);
                 log_trace(kernel_log, "IO_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
 
                 // Recibir el nombre_io y cant_tiempo desde CPU
@@ -499,6 +509,7 @@ void* atender_cpu_dispatch(void* arg) {
                 break;
 
             case EXIT_OP:
+                log_info(kernel_log, "## (%d) Solicitó syscall: EXIT", pid);
                 log_trace(kernel_log, "EXIT_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
 
                 // Obtener PID del proceso que está ejecutando esta CPU
@@ -546,12 +557,13 @@ void* atender_cpu_dispatch(void* arg) {
                 break;
 
             case DUMP_MEMORY_OP:
+                log_info(kernel_log, "## (%d) Solicitó syscall: DUMP_MEMORY", pid);
                 log_trace(kernel_log, "DUMP_MEMORY_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
                 // TODO: Implementar DUMP_MEMORY
                 break;
                 
             default:
-                log_error(kernel_log, "Código op desconocido recibido de Dispatch: %d", cop);
+                log_error(kernel_log, "(%d) Código op desconocido recibido de Dispatch: %d", pid, cop);
                 break;
         }
 

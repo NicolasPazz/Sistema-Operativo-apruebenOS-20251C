@@ -13,7 +13,6 @@ static int obtener_siguiente_pid() {
 
 //////////////////////////////////////////////////////////// INIT PROC ////////////////////////////////////////////////////////////
 void INIT_PROC(char* nombre_archivo, int tam_memoria) {
-    log_info(kernel_log, "## (<PID>) Solicitó syscall: INIT_PROC"); // FIXME: esto no va aca, va cuando cpu informa que un proceso quiere iniciar otro
     log_trace(kernel_log, "INIT_PROC - Nombre archivo recibido: '%s'", nombre_archivo);
     
     // Crear nuevo PCB

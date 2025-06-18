@@ -85,12 +85,18 @@ void func_init_proc(t_instruccion* instruccion) {
     char* size_str = instruccion->parametros3;
     int size = atoi(size_str);
 
+    if (!path || !size_str) {
+        log_error(cpu_log, "[SYSCALL] INIT_PROC recibido con parámetros inválidos.");
+        return;
+    }
+    
     log_trace(cpu_log, "[SYSCALL] ▶ Ejecutando INIT_PROC - Archivo: '%s', Tamaño: %d", path, size);
     log_trace(cpu_log, "[SYSCALL] Enviando INIT_PROC_OP a Kernel...");
 
-    t_paquete* paquete = crear_paquete_op(INIT_PROC_OP);
-    agregar_a_paquete(paquete, path, strlen(path)+1);
-    agregar_entero_a_paquete(paquete, size);
+    t_paquete* paquete = crear_paquete_op(INIT_PROC_OP);    // Agrega op code
+    agregar_a_paquete(paquete, path, strlen(path)+1);   // Agrega longitud de path y path
+    agregar_entero_a_paquete(paquete, size);    // Agrega memory size
+
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
     

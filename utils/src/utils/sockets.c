@@ -445,11 +445,11 @@ int leer_entero(char *buffer, int * desplazamiento) {
 op_code recibir_operacion(int socket_cliente) {
 	op_code cod_op;
 	if (recv(socket_cliente, &cod_op, sizeof(int), MSG_WAITALL) != sizeof(int)) {
-        close(socket_cliente);
-        exit(EXIT_FAILURE);
+        return -1;  // Retornar -1 para que lo maneje el caller
     }
     return cod_op;
 }
+
 
 /**
  * @brief Recibe un buffer desde el socket con tamaño dinámico.
