@@ -520,7 +520,7 @@ void* atender_cpu_dispatch(void* arg) {
 
                 // Obtener PID del proceso que está ejecutando esta CPU
                 pthread_mutex_lock(&mutex_lista_cpus);
-                int pid = cpu_actual->pid;
+                int pid_exit = cpu_actual->pid;
                 pthread_mutex_unlock(&mutex_lista_cpus);
                 
                 log_trace(kernel_log, "EXIT_OP asociado a PID=%d", pid);
@@ -530,7 +530,7 @@ void* atender_cpu_dispatch(void* arg) {
                 t_pcb* pcb_a_finalizar = NULL;
                 for (int i = 0; i < list_size(cola_running); i++) {
                     t_pcb* pcb = list_get(cola_running, i);
-                    if (pcb->PID == pid) {
+                    if (pcb->PID == pid_exit) {
                         pcb_a_finalizar = list_remove(cola_running, i);
                         break;
                     }
@@ -542,7 +542,7 @@ void* atender_cpu_dispatch(void* arg) {
                     // Cambiar estado y finalizar
                     cambiar_estado_pcb(pcb_a_finalizar, EXIT_ESTADO);
                 } else {
-                    log_error(kernel_log, "EXIT: No se encontró PCB para PID=%d en RUNNING", pid);
+                    log_error(kernel_log, "EXIT: No se encontró PCB para PID=%d en RUNNING", pid_exit);
                 }
 
                 // Limpiar PID de la CPU asociada
@@ -559,6 +559,10 @@ void* atender_cpu_dispatch(void* arg) {
                 log_info(kernel_log, "## (%d) Solicitó syscall: DUMP_MEMORY", pid);
                 log_trace(kernel_log, "DUMP_MEMORY_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
                 // TODO: Implementar DUMP_MEMORY
+                log_info(kernel_log, "## PID: %d - Operación DUMP_MEMORY procesada", pid_dump);
+                
+                // Limpiar la lista
+                list_destroy_and_destroy_elements(lista_dump, free);
                 break;
                 
             default:

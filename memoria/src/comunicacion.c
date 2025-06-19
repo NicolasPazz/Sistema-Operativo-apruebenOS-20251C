@@ -4,10 +4,16 @@
 #include "../headers/manejo_memoria.h"
 #include "../headers/manejo_swap.h"
 #include "../headers/metricas.h"
+#include "../headers/interfaz_memoria.h"
 #include <commons/log.h>
 #include <commons/string.h>
 #include <string.h>
 #include <unistd.h>
+#include <pthread.h>
+#include "../../utils/headers/utils.h"
+#include "../../utils/headers/sockets.h"
+#include "../../utils/headers/serializacion.h"
+#include "../../utils/headers/types.h"
 
 /////////////////////////////// Inicializacion de variables globales ///////////////////////////////
 int fd_memoria;
@@ -151,7 +157,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 actualizar_metricas(pid, "MEMORY_WRITE");
             
             // Simular escritura en memoria
-                *((int*)leer_pagina(direccion)) = valor;
+                *((int*)(sistema_memoria->memoria_principal + direccion)) = valor;
             
             // Enviar respuesta de éxito
                 t_respuesta_memoria respuesta = OK;
@@ -174,7 +180,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 actualizar_metricas(pid, "MEMORY_READ");
             
             // Simular lectura de memoria
-                int valor = *((int*)leer_pagina(direccion));
+                int valor = *((int*)(sistema_memoria->memoria_principal + direccion));
             
             // Enviar el valor leído
                 send_data(cliente_socket, &valor, sizeof(int));
@@ -196,139 +202,54 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         case INIT_PROC_OP: {
             log_trace(logger, "INIT_PROC_OP recibido");
 
-            // Recibir parámetros desde paquete
+            // ========== RECEPCIÓN DE PARÁMETROS ==========
             t_list* lista = recibir_contenido_paquete(cliente_socket);
             
             int pid = *(int*)list_get(lista, 0);
-            char* nombre_proceso = strdup((char*)list_get(lista, 1));  // Hacer una copia del string
+            char* nombre_proceso = strdup((char*)list_get(lista, 1));
             int tamanio = *(int*)list_get(lista, 2);
             
-            log_trace(logger, "Inicialización de proceso solicitada - PID: %d, Tamaño: %d, Nombre: '%s'", pid, tamanio, nombre_proceso);
-        
-            // 1. Construir path completo para instrucciones
-            char* path_completo = string_from_format("%s%s", cfg->PATH_INSTRUCCIONES, nombre_proceso);
-            log_trace(logger, "Path de instrucciones: '%s'", path_completo);
+            log_debug(logger, "Inicialización de proceso solicitada - PID: %d, Tamaño: %d, Nombre: '%s'", 
+                      pid, tamanio, nombre_proceso);
+
+            // ========== EJECUCIÓN DEL PROCESO DE CREACIÓN ==========
+            t_resultado_memoria resultado = crear_proceso_en_memoria(pid, tamanio, nombre_proceso);
             
-            // 2. Verificar si el proceso ya existe
-            char* pid_key = string_itoa(pid);
-            if (dictionary_has_key(sistema_memoria->procesos, pid_key)) {
-                log_error(logger, "PID: %d - El proceso ya existe en memoria", pid);
-                free(path_completo);
-                free(pid_key);
-                free(nombre_proceso);  // Liberar la copia del nombre
-                list_destroy_and_destroy_elements(lista, free);
+            // ========== CARGA DE INSTRUCCIONES ==========
+            if (resultado == MEMORIA_OK) {
+                // Construir path completo para instrucciones
+                char* path_completo = string_from_format("%s%s", cfg->PATH_INSTRUCCIONES, nombre_proceso);
                 
-                t_respuesta_memoria respuesta = ERROR;
-                log_trace(logger, "Enviando respuesta ERROR a cliente (fd=%d) - Proceso ya existe", cliente_socket);
-                send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
-                break;
-            }
-            
-            // 3. Calcular páginas necesarias
-            int paginas_necesarias = (tamanio + cfg->TAM_PAGINA - 1) / cfg->TAM_PAGINA;
-            log_trace(logger, "PID: %d - Páginas necesarias: %d", pid, paginas_necesarias);
-            
-            // 4. Verificar espacio disponible en memoria principal
-            pthread_mutex_lock(&sistema_memoria->admin_marcos->mutex_frames);
-            if (sistema_memoria->admin_marcos->frames_libres < paginas_necesarias) {
-                log_error(logger, "PID: %d - No hay suficiente espacio en memoria (necesita %d páginas, hay %d libres)", 
-                          pid, paginas_necesarias, sistema_memoria->admin_marcos->frames_libres);
-                pthread_mutex_unlock(&sistema_memoria->admin_marcos->mutex_frames);
-                free(path_completo);
+                // Cargar instrucciones desde archivo
+                t_process_instructions* instrucciones = load_process_instructions(pid, path_completo);
+                if (instrucciones != NULL) {
+                    char* pid_key = string_itoa(pid);
+                    dictionary_put(sistema_memoria->process_instructions, pid_key, instrucciones);
+                    log_debug(logger, "PID: %d - Instrucciones cargadas desde %s", pid, path_completo);
                 free(pid_key);
-                free(nombre_proceso);  // Liberar la copia del nombre
-                list_destroy_and_destroy_elements(lista, free);
-                
-                t_respuesta_memoria respuesta = ERROR;
-                log_trace(logger, "Enviando respuesta ERROR a cliente (fd=%d) - No hay espacio suficiente", cliente_socket);
-                send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
-                break;
-            }
-            pthread_mutex_unlock(&sistema_memoria->admin_marcos->mutex_frames);
-            
-            // 5. Crear proceso en memoria con estructuras administrativas completas
-            t_proceso_memoria* proceso = crear_proceso_memoria(pid, tamanio);
-            if (proceso == NULL) {
-                log_error(logger, "PID: %d - Error al crear proceso en memoria", pid);
-                free(path_completo);
-                free(pid_key);
-                free(nombre_proceso);  // Liberar la copia del nombre
-                list_destroy_and_destroy_elements(lista, free);
-                
-                t_respuesta_memoria respuesta = ERROR;
-                log_trace(logger, "Enviando respuesta ERROR a cliente (fd=%d) - Error al crear proceso", cliente_socket);
-                send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
-                break;
-            }
-            
-            // 6. Asignar frames para todas las páginas del proceso
-            bool asignacion_exitosa = true;
-            for (int i = 0; i < paginas_necesarias && asignacion_exitosa; i++) {
-                int frame_asignado = asignar_frame_libre(pid, i);
-                if (frame_asignado == -1) {
-                    log_error(logger, "PID: %d - Error al asignar frame para página %d", pid, i);
-                    asignacion_exitosa = false;
-                    break;
+                } else {
+                    log_warning(logger, "PID: %d - No se pudieron cargar instrucciones desde %s", pid, path_completo);
                 }
-                
-                // Actualizar entrada en tabla de páginas
-                t_entrada_tabla* entrada = buscar_entrada_tabla(proceso->estructura_paginas, i);
-                if (entrada != NULL) {
-                    entrada->presente = true;
-                    entrada->numero_frame = frame_asignado;
-                    log_trace(logger, "PID: %d - Página %d asignada al frame %d", pid, i, frame_asignado);
-                }
-            }
-            
-            if (!asignacion_exitosa) {
-                // Liberar frames ya asignados y proceso
-                for (int i = 0; i < paginas_necesarias; i++) {
-                    t_entrada_tabla* entrada = buscar_entrada_tabla(proceso->estructura_paginas, i);
-                    if (entrada != NULL && entrada->presente) {
-                        liberar_frame(entrada->numero_frame);
-                    }
-                }
-                liberar_proceso_memoria(proceso);
+                 
                 free(path_completo);
-                free(pid_key);
-                free(nombre_proceso);  // Liberar la copia del nombre
-                list_destroy_and_destroy_elements(lista, free);
-                
-                t_respuesta_memoria respuesta = ERROR;
-                send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
-                break;
             }
-            
-            // 7. Agregar proceso a los diccionarios del sistema
-            dictionary_put(sistema_memoria->procesos, pid_key, proceso);
-            dictionary_put(sistema_memoria->estructuras_paginas, pid_key, proceso->estructura_paginas);
-            dictionary_put(sistema_memoria->metricas_procesos, pid_key, proceso->metricas);
-            
-            // 8. Cargar instrucciones desde archivo
-            t_process_instructions* instrucciones = load_process_instructions(pid, path_completo);
-            if (instrucciones != NULL) {
-                dictionary_put(sistema_memoria->process_instructions, pid_key, instrucciones);
-                log_trace(logger, "PID: %d - Instrucciones cargadas desde %s", pid, path_completo);
-            } else {
-                log_warning(logger, "PID: %d - No se pudieron cargar instrucciones desde %s", pid, path_completo);
-            }
-            
-            // 9. Actualizar estadísticas del sistema
-            sistema_memoria->procesos_activos++;
-            sistema_memoria->memoria_utilizada += tamanio;
-            
-            // 10. Liberar memoria temporal
-            free(path_completo);
-            free(pid_key);
-            free(nombre_proceso);  // Liberar la copia del nombre
+
+            // ========== LIBERACIÓN DE MEMORIA TEMPORAL ==========
+            free(nombre_proceso);
             list_destroy_and_destroy_elements(lista, free);
-        
-            // 11. Enviar respuesta de éxito
-            t_respuesta_memoria respuesta = OK;
-            log_trace(logger, "Enviando respuesta OK a cliente (fd=%d)", cliente_socket);
-            send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+
+            // ========== ENVÍO DE RESPUESTA ==========
+            t_respuesta_memoria respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
             
-            log_trace(logger, "PID: %d - Proceso inicializado exitosamente con %d páginas", pid, paginas_necesarias);
+            if (resultado == MEMORIA_OK) {
+                log_info(logger, "Enviando respuesta OK a cliente (fd=%d) - Proceso %d creado exitosamente", 
+                         cliente_socket, pid);
+            } else {
+                log_info(logger, "Enviando respuesta ERROR a cliente (fd=%d) - Falló creación del proceso %d", 
+                         cliente_socket, pid);
+            }
+            
+            send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
             break;
         }
 
@@ -339,18 +260,19 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 int pid;
                 recv_data(cliente_socket, &pid, sizeof(int));
             
-            // Log obligatorio
-                log_info(logger, "## PID: %d - Memory Dump solicitado", pid);
+            // Procesar memory dump
+            t_resultado_memoria resultado = procesar_memory_dump(pid);
             
-            // Para el checkpoint 2, enviamos una respuesta OK
-                t_respuesta_memoria respuesta = OK;
-                log_trace(logger, "Enviando respuesta OK a cliente (fd=%d)", cliente_socket);
+            // Enviar respuesta
+            t_respuesta_memoria respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
+            log_info(logger, "Enviando respuesta %s a cliente (fd=%d)", 
+                    (respuesta == OK) ? "OK" : "ERROR", cliente_socket);
                 send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
             break;
         }
 
-        case EXIT_OP: {
-            log_trace(logger, "EXIT_OP recibido");
+        case FINALIZAR_PROC_OP: {
+            log_debug(logger, "FINALIZAR_PROC_OP recibido");
 
             // Recibir PID
                 int pid;
@@ -358,12 +280,13 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             
                 log_trace(logger, "Finalización de proceso solicitada - PID: %d", pid);
             
-            // Finalizar el proceso
-                finalize_process(pid);
+            // Finalizar el proceso usando la función principal que maneja métricas
+                t_resultado_memoria resultado = finalizar_proceso_en_memoria(pid);
             
             // Enviar respuesta
-                t_respuesta_memoria respuesta = OK;
-                log_trace(logger, "Enviando respuesta OK a cliente (fd=%d)", cliente_socket);
+                t_respuesta_memoria respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
+                log_info(logger, "Enviando respuesta %s a cliente (fd=%d)", 
+                        (respuesta == OK) ? "OK" : "ERROR", cliente_socket);
                 send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
             break;
         }
@@ -383,7 +306,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         case PEDIR_INSTRUCCION_OP: {
             log_trace(logger, "PEDIR_INSTRUCCION_OP recibido");
 
-            // CAMBIO: Recibir PID y PC desde paquete (para coincidir con CPU)
+            // Recibir PID y PC desde paquete (para coincidir con CPU)
             t_list* lista = recibir_2_enteros_sin_op(cliente_socket);
             int pid = (int)(intptr_t)list_get(lista, 0);  // PID primero
             int pc = (int)(intptr_t)list_get(lista, 1);   // PC segundo
@@ -391,39 +314,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             
             log_trace(logger, "Instrucción solicitada - PID: %d, PC: %d", pid, pc);
         
-            // Obtener la instrucción
-            t_instruccion* instruccion = get_instruction(pid, pc);
-            
-            if (instruccion != NULL) {
-                // Log obligatorio con formato correcto
-                char* args_log = string_new();
-                if (instruccion->parametros2 && strlen(instruccion->parametros2) > 0) {
-                    string_append_with_format(&args_log, " %s", instruccion->parametros2);
-                    if (instruccion->parametros3 && strlen(instruccion->parametros3) > 0) {
-                        string_append_with_format(&args_log, " %s", instruccion->parametros3);
-                    }
-                }
-                log_info(logger, "## PID: %d - Obtener instrucción: %d - Instrucción: %s%s", 
-                         pid, pc, instruccion->parametros1, args_log);
-                free(args_log);
-
-                // usamos la instruccion
-                t_paquete* paquete = crear_paquete_op(PEDIR_INSTRUCCION_OP);
-
-                // siempre 3 params
-                char* p1 = instruccion->parametros1 ? instruccion->parametros1 : "";
-                char* p2 = instruccion->parametros2 ? instruccion->parametros2 : "";
-                char* p3 = instruccion->parametros3 ? instruccion->parametros3 : "";
-                
-                // orden fijo
-                agregar_a_paquete(paquete, p1, strlen(p1) + 1);
-                agregar_a_paquete(paquete, p2, strlen(p2) + 1);
-                agregar_a_paquete(paquete, p3, strlen(p3) + 1);
-
-                // estandarizamos protocolo
-                enviar_paquete(paquete, cliente_socket);
-                eliminar_paquete(paquete);
-            }
+            // Obtener y enviar la instrucción
+            enviar_instruccion_a_cpu(pid, pc, cliente_socket);
             break;
         }
 
@@ -590,15 +482,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             int tamanio;
             recv_data(cliente_socket, &tamanio, sizeof(int));
             
-            // Calcular páginas necesarias
-            int paginas_necesarias = (tamanio + cfg->TAM_PAGINA - 1) / cfg->TAM_PAGINA;
-            log_trace(logger, "Verificación de espacio - Tamaño: %d bytes, Páginas necesarias: %d", 
-                     tamanio, paginas_necesarias);
-            
             // Verificar espacio disponible
-            pthread_mutex_lock(&sistema_memoria->admin_marcos->mutex_frames);
-            bool hay_espacio = sistema_memoria->admin_marcos->frames_libres >= paginas_necesarias;
-            pthread_mutex_unlock(&sistema_memoria->admin_marcos->mutex_frames);
+            bool hay_espacio = verificar_espacio_disponible(tamanio);
             
             // Enviar respuesta
             t_respuesta_memoria respuesta = hay_espacio ? OK : ERROR;
@@ -613,49 +498,4 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             log_error(logger, "Codigo de operacion desconocido recibido del cliente %d: %d", cliente_socket, cop);
             break;
     }
-}
-
-t_proceso_memoria* crear_proceso_memoria(int pid, int tamanio) {
-    t_proceso_memoria* proceso = malloc(sizeof(t_proceso_memoria));
-    if (!proceso) {
-        log_error(logger, "Error al crear proceso %d", pid);
-        return NULL;
-    }
-
-    // Inicializar campos básicos
-    proceso->pid = pid;
-    proceso->tamanio = tamanio;
-    proceso->activo = true;
-    proceso->suspendido = false;
-    proceso->timestamp_creacion = time(NULL);
-    proceso->timestamp_ultimo_uso = time(NULL);
-
-    // Crear estructura de páginas
-    proceso->estructura_paginas = crear_estructura_paginas(pid, tamanio);
-    if (!proceso->estructura_paginas) {
-        log_error(logger, "Error al crear estructura de páginas para proceso %d", pid);
-        free(proceso);
-        return NULL;
-    }
-
-    // Crear métricas
-    proceso->metricas = crear_metricas_proceso(pid);
-    if (!proceso->metricas) {
-        log_error(logger, "Error al crear métricas para proceso %d", pid);
-        destruir_estructura_paginas(proceso->estructura_paginas);
-        free(proceso);
-        return NULL;
-    }
-
-    // Inicializar lista de instrucciones
-    proceso->instrucciones = list_create();
-    if (!proceso->instrucciones) {
-        log_error(logger, "Error al crear lista de instrucciones para proceso %d", pid);
-        destruir_metricas_proceso(proceso->metricas);
-        destruir_estructura_paginas(proceso->estructura_paginas);
-        free(proceso);
-        return NULL;
-    }
-
-    return proceso;
 }

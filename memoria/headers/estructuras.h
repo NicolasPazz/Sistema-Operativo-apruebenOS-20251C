@@ -298,11 +298,15 @@ typedef enum {
     MEMORIA_ERROR_PROCESO_NO_EXISTE, // Proceso no existe
     MEMORIA_ERROR_PROCESO_EXISTENTE, // Proceso ya existe
     MEMORIA_ERROR_PROCESO_NO_ENCONTRADO, // Proceso no encontrado
+    MEMORIA_ERROR_PROCESO_SUSPENDIDO, // Proceso está suspendido
     MEMORIA_ERROR_PAGINA_NO_PRESENTE, // Página no está en memoria
     MEMORIA_ERROR_DIRECCION_INVALIDA, // Dirección fuera de rango
     MEMORIA_ERROR_SWAP_LLENO,       // SWAP lleno
     MEMORIA_ERROR_IO,               // Error de entrada/salida
-    MEMORIA_ERROR_MEMORIA_INSUFICIENTE // Error de malloc/calloc
+    MEMORIA_ERROR_MEMORIA_INSUFICIENTE, // Error de malloc/calloc
+    MEMORIA_ERROR_ARCHIVO,          // Error al crear/abrir archivo
+    MEMORIA_ERROR_LECTURA,          // Error al leer datos
+    MEMORIA_ERROR_ESCRITURA         // Error al escribir datos
 } t_resultado_memoria;
 
 #endif
