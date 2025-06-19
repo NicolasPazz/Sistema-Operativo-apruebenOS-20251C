@@ -4,10 +4,16 @@
 #include "../headers/manejo_memoria.h"
 #include "../headers/manejo_swap.h"
 #include "../headers/metricas.h"
+#include "../headers/interfaz_memoria.h"
 #include <commons/log.h>
 #include <commons/string.h>
 #include <string.h>
 #include <unistd.h>
+#include <pthread.h>
+#include "../../utils/headers/utils.h"
+#include "../../utils/headers/sockets.h"
+#include "../../utils/headers/serializacion.h"
+#include "../../utils/headers/types.h"
 
 /////////////////////////////// Inicializacion de variables globales ///////////////////////////////
 int fd_memoria;
@@ -220,7 +226,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                     char* pid_key = string_itoa(pid);
                     dictionary_put(sistema_memoria->process_instructions, pid_key, instrucciones);
                     log_debug(logger, "PID: %d - Instrucciones cargadas desde %s", pid, path_completo);
-                    free(pid_key);
+                free(pid_key);
                 } else {
                     log_warning(logger, "PID: %d - No se pudieron cargar instrucciones desde %s", pid, path_completo);
                 }
@@ -251,8 +257,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             log_debug(logger, "DUMP_MEMORY_OP recibido");
 
             // Recibir PID
-            int pid;
-            recv_data(cliente_socket, &pid, sizeof(int));
+                int pid;
+                recv_data(cliente_socket, &pid, sizeof(int));
             
             // Procesar memory dump
             t_resultado_memoria resultado = procesar_memory_dump(pid);
@@ -261,12 +267,12 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             t_respuesta_memoria respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
             log_info(logger, "Enviando respuesta %s a cliente (fd=%d)", 
                     (respuesta == OK) ? "OK" : "ERROR", cliente_socket);
-            send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+                send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
             break;
         }
 
-        case EXIT_OP: {
-            log_debug(logger, "EXIT_OP recibido");
+        case FINALIZAR_PROC_OP: {
+            log_debug(logger, "FINALIZAR_PROC_OP recibido");
 
             // Recibir PID
                 int pid;
@@ -274,12 +280,13 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             
                 log_debug(logger, "Finalización de proceso solicitada - PID: %d", pid);
             
-            // Finalizar el proceso
-                finalize_process(pid);
+            // Finalizar el proceso usando la función principal que maneja métricas
+                t_resultado_memoria resultado = finalizar_proceso_en_memoria(pid);
             
             // Enviar respuesta
-                t_respuesta_memoria respuesta = OK;
-                log_info(logger, "Enviando respuesta OK a cliente (fd=%d)", cliente_socket);
+                t_respuesta_memoria respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
+                log_info(logger, "Enviando respuesta %s a cliente (fd=%d)", 
+                        (respuesta == OK) ? "OK" : "ERROR", cliente_socket);
                 send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
             break;
         }

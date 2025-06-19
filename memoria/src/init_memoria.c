@@ -674,16 +674,15 @@ void destruir_tabla_paginas_recursiva(t_tabla_paginas* tabla) {
     free(tabla);
 }
 
+void _liberar_instrucciones(char* key, void* value) {
+    t_list* instrucciones = (t_list*)value;
+    if (instrucciones) {
+        list_destroy_and_destroy_elements(instrucciones, free);
+    }
+}
+
 void liberar_instrucciones_dictionary(t_dictionary* dict) {
     if (!dict) return;
-    
-    void _liberar_instrucciones(char* key, void* value) {
-        t_list* instrucciones = (t_list*)value;
-        if (instrucciones) {
-            list_destroy_and_destroy_elements(instrucciones, free);
-        }
-    }
-    
     dictionary_iterator(dict, _liberar_instrucciones);
     dictionary_destroy(dict);
 }

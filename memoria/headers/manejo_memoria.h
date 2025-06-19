@@ -387,6 +387,13 @@ t_instruccion* obtener_instruccion_proceso(int pid, int pc);
  */
 void liberar_instrucciones_proceso(t_list* instrucciones);
 
+/**
+ * @brief Libera una instrucción individual
+ * 
+ * @param instruccion Puntero a la instrucción a liberar
+ */
+void liberar_instruccion(t_instruccion* instruccion);
+
 // ============================================================================
 // FUNCIONES DE DUMP DE MEMORIA
 // ============================================================================

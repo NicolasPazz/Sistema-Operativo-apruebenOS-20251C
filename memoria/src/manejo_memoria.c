@@ -1,4 +1,5 @@
 #include "../headers/manejo_memoria.h"
+#include "../headers/interfaz_memoria.h"
 #include "../headers/estructuras.h"
 #include "../headers/init_memoria.h"
 #include "../headers/metricas.h"
@@ -603,9 +604,12 @@ void aplicar_retardo_memoria(void) {
     }
 }
 
-void aplicar_retardo_swap(void) {
-    if (cfg->RETARDO_SWAP > 0) {
-        usleep(cfg->RETARDO_SWAP * 1000); // Convertir ms a microsegundos
+void liberar_instruccion(t_instruccion* instruccion) {
+    if (instruccion != NULL) {
+        if (instruccion->parametros1 != NULL) free(instruccion->parametros1);
+        if (instruccion->parametros2 != NULL) free(instruccion->parametros2);
+        if (instruccion->parametros3 != NULL) free(instruccion->parametros3);
+        free(instruccion);
     }
 }
 
@@ -651,16 +655,8 @@ void* acceso_espacio_usuario_lectura(int pid, int direccion_fisica, int tamanio)
         return NULL;
     }
     
-    // Actualizar métricas
-    char* pid_key = string_itoa(pid);
-    t_metricas_proceso* metricas = dictionary_get(sistema_memoria->metricas_procesos, pid_key);
-    free(pid_key);
-    
-    if (metricas != NULL) {
-        pthread_mutex_lock(&metricas->mutex_metricas);
-        metricas->lecturas_memoria++;
-        pthread_mutex_unlock(&metricas->mutex_metricas);
-    }
+    // Incrementar métrica de lecturas usando función estándar
+    incrementar_lecturas_memoria(pid);
     
     // Aplicar retardo de acceso a memoria
     usleep(cfg->RETARDO_MEMORIA * 1000);
@@ -709,16 +705,8 @@ bool acceso_espacio_usuario_escritura(int pid, int direccion_fisica, int tamanio
         return false;
     }
     
-    // Actualizar métricas
-    char* pid_key = string_itoa(pid);
-    t_metricas_proceso* metricas = dictionary_get(sistema_memoria->metricas_procesos, pid_key);
-    free(pid_key);
-    
-    if (metricas != NULL) {
-        pthread_mutex_lock(&metricas->mutex_metricas);
-        metricas->escrituras_memoria++;
-        pthread_mutex_unlock(&metricas->mutex_metricas);
-    }
+    // Incrementar métrica de escrituras usando función estándar
+    incrementar_escrituras_memoria(pid);
     
     // Aplicar retardo de acceso a memoria
     usleep(cfg->RETARDO_MEMORIA * 1000);
@@ -761,16 +749,8 @@ void* leer_pagina_completa(int pid, int direccion_fisica) {
         return NULL;
     }
     
-    // Actualizar métricas
-    char* pid_key = string_itoa(pid);
-    t_metricas_proceso* metricas = dictionary_get(sistema_memoria->metricas_procesos, pid_key);
-    free(pid_key);
-    
-    if (metricas != NULL) {
-        pthread_mutex_lock(&metricas->mutex_metricas);
-        metricas->lecturas_memoria++;
-        pthread_mutex_unlock(&metricas->mutex_metricas);
-    }
+    // Incrementar métrica de lecturas usando función estándar
+    incrementar_lecturas_memoria(pid);
     
     // Aplicar retardo de acceso a memoria
     usleep(cfg->RETARDO_MEMORIA * 1000);
@@ -825,16 +805,8 @@ bool actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido_p
         return false;
     }
     
-    // Actualizar métricas
-    char* pid_key = string_itoa(pid);
-    t_metricas_proceso* metricas = dictionary_get(sistema_memoria->metricas_procesos, pid_key);
-    free(pid_key);
-    
-    if (metricas != NULL) {
-        pthread_mutex_lock(&metricas->mutex_metricas);
-        metricas->escrituras_memoria++;
-        pthread_mutex_unlock(&metricas->mutex_metricas);
-    }
+    // Incrementar métrica de escrituras usando función estándar
+    incrementar_escrituras_memoria(pid);
     
     // Aplicar retardo de acceso a memoria
     usleep(cfg->RETARDO_MEMORIA * 1000);
@@ -1194,12 +1166,224 @@ t_resultado_memoria asignar_marcos_proceso(int pid) {
 // FUNCIONES DE COMUNICACIÓN Y DELEGACIÓN
 // ============================================================================
 
+/**
+ * @brief Genera un timestamp en formato YYYYMMDD_HHMMSS para nombres de archivo
+ * 
+ * @return String con el timestamp (debe ser liberado por el llamador)
+ */
+static char* generar_timestamp(void) {
+    time_t tiempo_actual = time(NULL);
+    struct tm* tiempo_local = localtime(&tiempo_actual);
+    
+    char* timestamp = malloc(20); // YYYYMMDD_HHMMSS + \0
+    if (!timestamp) {
+        log_error(logger, "Error al asignar memoria para timestamp");
+        return NULL;
+    }
+    
+    strftime(timestamp, 20, "%Y%m%d_%H%M%S", tiempo_local);
+    return timestamp;
+}
+
+/**
+ * @brief Lee el contenido completo de un marco físico
+ * 
+ * @param numero_frame Número del marco a leer
+ * @param buffer Buffer donde almacenar el contenido (debe ser de TAM_PAGINA bytes)
+ * @return true si se leyó correctamente, false en caso de error
+ */
+static bool leer_contenido_marco(int numero_frame, void* buffer) {
+    if (!sistema_memoria || numero_frame < 0 || !buffer) {
+        return false;
+    }
+    
+    // Calcular dirección física del marco
+    uint32_t direccion_fisica = numero_frame * cfg->TAM_PAGINA;
+    
+    // Verificar que está dentro del rango de memoria
+    if (direccion_fisica + cfg->TAM_PAGINA > cfg->TAM_MEMORIA) {
+        log_error(logger, "Marco %d fuera de rango de memoria", numero_frame);
+        return false;
+    }
+    
+    // Copiar contenido del marco al buffer
+    memcpy(buffer, (char*)sistema_memoria->memoria_principal + direccion_fisica, cfg->TAM_PAGINA);
+    return true;
+}
+
+/**
+ * @brief Obtiene todos los marcos físicos asignados a un proceso en orden de páginas
+ * 
+ * @param pid PID del proceso
+ * @param marcos_out Array donde almacenar los números de marco (debe tener tamaño suficiente)
+ * @param cantidad_marcos_out Puntero donde almacenar la cantidad de marcos encontrados
+ * @return true si se obtuvieron correctamente, false en caso de error
+ */
+static bool obtener_marcos_proceso(int pid, int* marcos_out, int* cantidad_marcos_out) {
+    if (!marcos_out || !cantidad_marcos_out) {
+        return false;
+    }
+    
+    t_proceso_memoria* proceso = obtener_proceso(pid);
+    if (!proceso || !proceso->estructura_paginas) {
+        log_error(logger, "PID: %d - Proceso o estructura de páginas no encontrada", pid);
+        return false;
+    }
+    
+    t_estructura_paginas* estructura = proceso->estructura_paginas;
+    int marcos_encontrados = 0;
+    
+    // Recorrer todas las páginas del proceso en orden
+    for (int numero_pagina = 0; numero_pagina < estructura->paginas_totales; numero_pagina++) {
+        t_entrada_tabla* entrada = buscar_entrada_tabla(estructura, numero_pagina);
+        
+        if (entrada && entrada->presente) {
+            marcos_out[marcos_encontrados] = entrada->numero_frame;
+            marcos_encontrados++;
+            log_trace(logger, "PID: %d - Página %d -> Marco %d", 
+                     pid, numero_pagina, entrada->numero_frame);
+        } else {
+            // Si la página no está presente, esto es un error para memory dump
+            log_error(logger, "PID: %d - Página %d no está presente en memoria", pid, numero_pagina);
+            return false;
+        }
+    }
+    
+    *cantidad_marcos_out = marcos_encontrados;
+    log_debug(logger, "PID: %d - Encontrados %d marcos en memoria", pid, marcos_encontrados);
+    return true;
+}
+
 t_resultado_memoria procesar_memory_dump(int pid) {
-    // Log obligatorio
+    // ========== LOG OBLIGATORIO ==========
     log_info(logger, "## PID: %d - Memory Dump solicitado", pid);
     
-    // Para el checkpoint 2, simplemente retornamos OK
-    // En el futuro aquí se implementará la lógica real de dump
+    // ========== VALIDACIONES INICIALES ==========
+    if (pid < 0) {
+        log_error(logger, "PID: %d - PID inválido para memory dump", pid);
+        return MEMORIA_ERROR_DIRECCION_INVALIDA;
+    }
+    
+    if (!sistema_memoria) {
+        log_error(logger, "PID: %d - Sistema de memoria no inicializado", pid);
+        return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
+    }
+    
+    if (!cfg || !cfg->DUMP_PATH) {
+        log_error(logger, "PID: %d - Configuración DUMP_PATH no disponible", pid);
+        return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
+    }
+    
+    // ========== VERIFICAR EXISTENCIA DEL PROCESO ==========
+    t_proceso_memoria* proceso = obtener_proceso(pid);
+    if (!proceso) {
+        log_error(logger, "PID: %d - Proceso no encontrado para memory dump", pid);
+        return MEMORIA_ERROR_PROCESO_NO_ENCONTRADO;
+    }
+    
+    if (proceso->suspendido) {
+        log_error(logger, "PID: %d - No se puede hacer dump de proceso suspendido", pid);
+        return MEMORIA_ERROR_PROCESO_SUSPENDIDO;
+    }
+    
+    // ========== GENERACIÓN DEL NOMBRE DEL ARCHIVO ==========
+    char* timestamp = generar_timestamp();
+    if (!timestamp) {
+        log_error(logger, "PID: %d - Error al generar timestamp para dump", pid);
+        return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
+    }
+    
+    // Construir path completo: DUMP_PATH + PID-TIMESTAMP.dmp
+    char* nombre_archivo = malloc(512);
+    if (!nombre_archivo) {
+        log_error(logger, "PID: %d - Error al asignar memoria para nombre de archivo", pid);
+        free(timestamp);
+        return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
+    }
+    
+    snprintf(nombre_archivo, 512, "%s%d-%s.dmp", cfg->DUMP_PATH, pid, timestamp);
+    free(timestamp);
+    
+    log_debug(logger, "PID: %d - Archivo dump: %s", pid, nombre_archivo);
+    
+    // ========== OBTENER MARCOS DEL PROCESO ==========
+    int* marcos_proceso = malloc(sizeof(int) * proceso->estructura_paginas->paginas_totales);
+    if (!marcos_proceso) {
+        log_error(logger, "PID: %d - Error al asignar memoria para lista de marcos", pid);
+        free(nombre_archivo);
+        return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
+    }
+    
+    int cantidad_marcos = 0;
+    if (!obtener_marcos_proceso(pid, marcos_proceso, &cantidad_marcos)) {
+        log_error(logger, "PID: %d - Error al obtener marcos del proceso", pid);
+        free(marcos_proceso);
+        free(nombre_archivo);
+        return MEMORIA_ERROR_DIRECCION_INVALIDA;
+    }
+    
+    // ========== CREAR Y ESCRIBIR ARCHIVO DUMP ==========
+    FILE* archivo_dump = fopen(nombre_archivo, "wb");
+    if (!archivo_dump) {
+        log_error(logger, "PID: %d - Error al crear archivo dump: %s", pid, nombre_archivo);
+        free(marcos_proceso);
+        free(nombre_archivo);
+        return MEMORIA_ERROR_ARCHIVO;
+    }
+    
+    // Buffer para leer el contenido de cada marco
+    void* buffer_pagina = malloc(cfg->TAM_PAGINA);
+    if (!buffer_pagina) {
+        log_error(logger, "PID: %d - Error al asignar buffer para lectura de páginas", pid);
+        fclose(archivo_dump);
+        free(marcos_proceso);
+        free(nombre_archivo);
+        return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
+    }
+    
+    // Escribir contenido de cada marco al archivo en orden de páginas
+    size_t bytes_escritos_total = 0;
+    for (int i = 0; i < cantidad_marcos; i++) {
+        int numero_marco = marcos_proceso[i];
+        
+        // Leer contenido del marco
+        if (!leer_contenido_marco(numero_marco, buffer_pagina)) {
+            log_error(logger, "PID: %d - Error al leer contenido del marco %d", pid, numero_marco);
+            fclose(archivo_dump);
+            free(buffer_pagina);
+            free(marcos_proceso);
+            free(nombre_archivo);
+            return MEMORIA_ERROR_LECTURA;
+        }
+        
+        // Escribir contenido al archivo
+        size_t bytes_escritos = fwrite(buffer_pagina, 1, cfg->TAM_PAGINA, archivo_dump);
+        if (bytes_escritos != cfg->TAM_PAGINA) {
+            log_error(logger, "PID: %d - Error al escribir página %d al archivo dump", pid, i);
+            fclose(archivo_dump);
+            free(buffer_pagina);
+            free(marcos_proceso);
+            free(nombre_archivo);
+            return MEMORIA_ERROR_ESCRITURA;
+        }
+        
+        bytes_escritos_total += bytes_escritos;
+        log_trace(logger, "PID: %d - Página %d (Marco %d) escrita al dump", pid, i, numero_marco);
+    }
+    
+    // ========== FINALIZACIÓN ==========
+    fclose(archivo_dump);
+    free(buffer_pagina);
+    free(marcos_proceso);
+    
+    // ========== LOG FINAL OBLIGATORIO ==========
+    log_info(logger, "## PID: %d - Memory Dump generado exitosamente", pid);
+    log_info(logger, "   - Archivo: %s", nombre_archivo);
+    log_info(logger, "   - Tamaño del proceso: %d bytes", proceso->tamanio);
+    log_info(logger, "   - Páginas escritas: %d", cantidad_marcos);
+    log_info(logger, "   - Bytes totales escritos: %zu", bytes_escritos_total);
+    
+    free(nombre_archivo);
     return MEMORIA_OK;
 }
 
@@ -1250,7 +1434,15 @@ void enviar_instruccion_a_cpu(int pid, int pc, int cliente_socket) {
         // Enviar paquete
         enviar_paquete(paquete, cliente_socket);
         eliminar_paquete(paquete);
+        
+        // Liberar la instrucción obtenida
+        liberar_instruccion(instruccion);
     } else {
         log_error(logger, "No se pudo obtener instrucción - PID: %d, PC: %d", pid, pc);
+        
+        // Enviar respuesta de error
+        t_paquete* paquete_error = crear_paquete_op(ERROR);
+        enviar_paquete(paquete_error, cliente_socket);
+        eliminar_paquete(paquete_error);
     }
 } 
