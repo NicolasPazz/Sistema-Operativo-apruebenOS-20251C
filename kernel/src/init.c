@@ -549,16 +549,9 @@ void* atender_cpu_dispatch(void* arg) {
                 pthread_mutex_lock(&mutex_lista_cpus);
                 cpu_actual->pid = -1; // Limpiar PID de la CPU
                 pthread_mutex_unlock(&mutex_lista_cpus);
-                
-                // Reactivar planificador si hay procesos en READY esperando
-                pthread_mutex_lock(&mutex_cola_ready);
-                bool hay_procesos_ready = !list_is_empty(cola_ready);
-                pthread_mutex_unlock(&mutex_cola_ready);
-                
-                if (hay_procesos_ready) {
-                    log_trace(kernel_log, "CPU liberada, reactivando planificador para procesos en READY");
-                    sem_post(&sem_proceso_a_ready);
-                }
+                               
+                log_trace(kernel_log, "CPU liberada por EXIT de proceso");
+                sem_post(&sem_cpu_disponible);
                 
                 break;
 
@@ -569,7 +562,7 @@ void* atender_cpu_dispatch(void* arg) {
                 break;
                 
             default:
-                log_error(kernel_log, "(%d) Código op desconocido recibido de Dispatch: %d", pid, cop);
+                log_error(kernel_log, "(%d) Código op desconocido recibido de Dispatch fd %d: %d", pid, cop, fd_cpu_dispatch);
                 break;
         }
 

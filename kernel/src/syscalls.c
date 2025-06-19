@@ -250,7 +250,7 @@ void EXIT(t_pcb* pcb_a_finalizar) {
     }
 
     // Notificar a Memoria
-    int cod_op = FINALIZAR_PROC_OP;
+    int cod_op = EXIT_OP;
     if (send(fd_memoria, &cod_op, sizeof(int), 0) <= 0 ||
         send(fd_memoria, &pcb_a_finalizar->PID, sizeof(int), 0) <= 0) {
         log_error(kernel_log, "EXIT: Error al enviar FINALIZAR_PROC_OP a Memoria para PID %d", pcb_a_finalizar->PID);
@@ -258,6 +258,7 @@ void EXIT(t_pcb* pcb_a_finalizar) {
         exit(EXIT_FAILURE);
     }
 
+    log_trace(kernel_log, "EXIT: Enviado FINALIZAR_PROC_OP a Memoria para PID %d. Esperando respuesta...", pcb_a_finalizar->PID);
     t_respuesta_memoria confirmacion;
     if (recv(fd_memoria, &confirmacion, sizeof(t_respuesta_memoria), 0) <= 0) {
         log_error(kernel_log, "EXIT: No se pudo recibir confirmación de Memoria para PID %d", pcb_a_finalizar->PID);
