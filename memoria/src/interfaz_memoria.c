@@ -24,7 +24,7 @@ extern t_config_memoria* cfg;
 void instructions_init() {
     if (process_instructions_list == NULL) {
         process_instructions_list = list_create();
-        log_debug(logger, "Lista de instrucciones inicializada correctamente");
+        log_trace(logger, "Lista de instrucciones inicializada correctamente");
     }
 }
 
@@ -39,7 +39,7 @@ void instructions_destroy() {
         }
         list_destroy(process_instructions_list);
         process_instructions_list = NULL;
-        log_debug(logger, "Lista de instrucciones destruida correctamente");
+        log_trace(logger, "Lista de instrucciones destruida correctamente");
     }
 }
 
@@ -219,7 +219,7 @@ t_process_instructions* load_process_instructions(int pid, char* instructions_fi
     }
     list_add(process_instructions_list, process_inst);
     
-    log_debug(logger, "PID: %d - Loaded %d instructions from file: %s", 
+    log_trace(logger, "PID: %d - Loaded %d instructions from file: %s", 
               pid, line_count, instructions_file);
     
     return process_inst;
@@ -297,7 +297,7 @@ char* instruction_to_string(t_extended_instruccion* instruction, int pc) {
 void memory_init() {
     if (processes_in_memory == NULL) {
         processes_in_memory = list_create();
-        log_debug(logger, "Lista de procesos en memoria inicializada correctamente");
+        log_trace(logger, "Lista de procesos en memoria inicializada correctamente");
     }
 }
 
@@ -307,7 +307,7 @@ void memory_destroy() {
         // Liberar memoria de cada proceso
         list_destroy_and_destroy_elements(processes_in_memory, free);
         processes_in_memory = NULL;
-        log_debug(logger, "Lista de procesos en memoria destruida correctamente");
+        log_trace(logger, "Lista de procesos en memoria destruida correctamente");
     }
 }
 
@@ -318,7 +318,7 @@ int get_available_memory() {
     // Para simplificar, asumimos que la mitad de la memoria siempre está disponible
     int memoria_disponible = cfg->TAM_MEMORIA / 2;
     
-    log_debug(logger, "Espacio disponible en memoria (mock): %d bytes", memoria_disponible);
+    log_trace(logger, "Espacio disponible en memoria (mock): %d bytes", memoria_disponible);
     
     return memoria_disponible;
 }

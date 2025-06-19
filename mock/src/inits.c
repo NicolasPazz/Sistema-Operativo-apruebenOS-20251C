@@ -20,6 +20,7 @@ sem_t sem_proceso_a_blocked;
 sem_t sem_proceso_a_exit;
 sem_t sem_susp_ready_vacia;
 sem_t sem_finalizacion_de_proceso;
+sem_t sem_cpu_disponible;
 
 // Colas de procesos
 t_list* cola_new;

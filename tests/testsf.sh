@@ -25,7 +25,7 @@ PID_MEMORIA=$!
 sleep 10 
 
 # INICIAR KERNEL
-./kernel/bin/kernel ../scripts/PROCESO_INICIAL 128 --action &
+./kernel/bin/kernel PROCESO_INICIAL 128 --action &
 PID_KERNEL=$!
 sleep 10 
 
@@ -50,7 +50,6 @@ wait $PID_CPU1;    EXIT_CPU=$?
 wait $PID_IO1;     EXIT_IO=$?
 
 ( kill $WAITER_PID 2>/dev/null )
-
 
 ############################
 ERROR=0

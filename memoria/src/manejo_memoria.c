@@ -191,7 +191,7 @@ void liberar_proceso_memoria(t_proceso_memoria* proceso) {
     dictionary_remove(sistema_memoria->procesos, pid_str);
     destruir_proceso(proceso);
 
-    log_info(logger, "PID: %d - Proceso eliminado exitosamente", proceso->pid);
+    log_trace(logger, "PID: %d - Proceso eliminado exitosamente", proceso->pid);
 }
 
 void destruir_proceso(t_proceso_memoria* proceso) {
@@ -266,7 +266,7 @@ t_resultado_memoria finalizar_proceso_en_memoria(int pid) {
     
     pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
     
-    log_info(logger, "## PID: %d - Finaliza el proceso", pid);
+    log_trace(logger, "## PID: %d - Finaliza el proceso", pid);
     return MEMORIA_OK;
 }
 
@@ -320,7 +320,7 @@ t_resultado_memoria suspender_proceso_en_memoria(int pid) {
     
     pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
     
-    log_info(logger, "## PID: %d - Proceso suspendido exitosamente", pid);
+    log_trace(logger, "## PID: %d - Proceso suspendido exitosamente", pid);
     return MEMORIA_OK;
 }
 
@@ -393,7 +393,7 @@ t_resultado_memoria reanudar_proceso_en_memoria(int pid) {
     
     pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
     
-    log_info(logger, "## PID: %d - Proceso reanudado exitosamente", pid);
+    log_trace(logger, "## PID: %d - Proceso reanudado exitosamente", pid);
     return MEMORIA_OK;
 }
 
@@ -432,7 +432,7 @@ t_estructura_paginas* crear_estructura_paginas(int pid, int tamanio) {
         return NULL;
     }
     
-    log_debug(logger, "PID: %d - Estructura de paginación creada - %d páginas, %d niveles", 
+    log_trace(logger, "PID: %d - Estructura de paginación creada - %d páginas, %d niveles", 
               pid, estructura->paginas_totales, estructura->cantidad_niveles);
     return estructura;
 }
@@ -633,7 +633,7 @@ bool proceso_existe(int pid) {
  * Ante un pedido de lectura, devolver el valor que se encuentra en la posición pedida.
  */
 void* acceso_espacio_usuario_lectura(int pid, int direccion_fisica, int tamanio) {
-    log_trace(logger, "PID: %d - Lectura - Dir. Física: %d - Tamaño: %d", 
+    log_info(logger, "PID: %d - Lectura - Dir. Física: %d - Tamaño: %d", 
              pid, direccion_fisica, tamanio);
     
     // Validar parámetros
@@ -683,7 +683,7 @@ void* acceso_espacio_usuario_lectura(int pid, int direccion_fisica, int tamanio)
  * En caso satisfactorio se responderá un mensaje de 'OK'.
  */
 bool acceso_espacio_usuario_escritura(int pid, int direccion_fisica, int tamanio, void* datos) {
-    log_trace(logger, "PID: %d - Escritura - Dir. Física: %d - Tamaño: %d", 
+    log_info(logger, "PID: %d - Escritura - Dir. Física: %d - Tamaño: %d", 
              pid, direccion_fisica, tamanio);
     
     // Validar parámetros
@@ -727,7 +727,7 @@ bool acceso_espacio_usuario_escritura(int pid, int direccion_fisica, int tamanio
  * coincidir con la posición del byte 0 de la página.
  */
 void* leer_pagina_completa(int pid, int direccion_fisica) {
-    log_trace(logger, "PID: %d - Leer página completa - Dir. Física: %d", pid, direccion_fisica);
+    log_info(logger, "PID: %d - Leer página completa - Dir. Física: %d", pid, direccion_fisica);
     
     // Validar que la dirección coincide con el byte 0 de una página
     if (direccion_fisica % cfg->TAM_PAGINA != 0) {
@@ -777,7 +777,7 @@ void* leer_pagina_completa(int pid, int direccion_fisica) {
  * Usuario y se responderá como OK.
  */
 bool actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido_pagina) {
-    log_trace(logger, "PID: %d - Actualizar página completa - Dir. Física: %d", pid, direccion_fisica);
+    log_info(logger, "PID: %d - Actualizar página completa - Dir. Física: %d", pid, direccion_fisica);
     
     // Validar parámetros
     if (contenido_pagina == NULL) {

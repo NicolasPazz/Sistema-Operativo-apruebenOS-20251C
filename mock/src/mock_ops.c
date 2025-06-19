@@ -25,7 +25,7 @@ static int obtener_siguiente_pid() {
 /////////////////////////////// Kernel -> Memoria ///////////////////////////////
 
 void INIT_PROC(char* nombre_archivo, int tam_memoria) {
-    log_info(mock_log, "## Solicitó syscall: INIT_PROC para archivo %s con tamaño %d", nombre_archivo, tam_memoria);
+    log_trace(mock_log, "## Solicitó syscall: INIT_PROC para archivo %s con tamaño %d", nombre_archivo, tam_memoria);
     
     // Comunicarse con memoria para inicializar proceso
     t_paquete* paquete = crear_paquete_op(INIT_PROC_OP);
@@ -36,7 +36,7 @@ void INIT_PROC(char* nombre_archivo, int tam_memoria) {
     agregar_a_paquete(paquete, nombre_archivo, strlen(nombre_archivo) + 1);
     agregar_a_paquete(paquete, &tam_memoria, sizeof(int));
     
-    log_info(mock_log, "Enviando paquete INIT_PROC_OP con: PID=%d, nombre=%s, tamaño=%d", pid, nombre_archivo, tam_memoria);
+    log_trace(mock_log, "Enviando paquete INIT_PROC_OP con: PID=%d, nombre=%s, tamaño=%d", pid, nombre_archivo, tam_memoria);
     
     enviar_paquete(paquete, fd_memoria);
     eliminar_paquete(paquete);
@@ -64,14 +64,14 @@ void INIT_PROC(char* nombre_archivo, int tam_memoria) {
         // Señalar que hay un nuevo proceso
         sem_post(&sem_proceso_a_new);
         
-        log_info(mock_log, "## (%d) - Proceso creado", nuevo_proceso->PID);
+        log_trace(mock_log, "## (%d) - Proceso creado", nuevo_proceso->PID);
     } else {
         log_error(mock_log, "Error al inicializar proceso en memoria");
     }
 }
 
 void FINALIZAR_PROC(int pid) {
-    log_info(mock_log, "## Solicitó syscall: FINALIZAR_PROC para PID %d", pid);
+    log_trace(mock_log, "## Solicitó syscall: FINALIZAR_PROC para PID %d", pid);
     
     // Comunicarse con memoria para finalizar proceso
     t_paquete* paquete = crear_paquete_op(FINALIZAR_PROC_OP);
@@ -122,7 +122,7 @@ void FINALIZAR_PROC(int pid) {
 }
 
 void DUMP_MEMORY(int pid) {
-    log_info(mock_log, "## Solicitó syscall: DUMP_MEMORY para PID %d", pid);
+    log_trace(mock_log, "## Solicitó syscall: DUMP_MEMORY para PID %d", pid);
     
     // Comunicarse con memoria para hacer dump
     t_paquete* paquete = crear_paquete_op(DUMP_MEMORY_OP);
@@ -141,7 +141,7 @@ void DUMP_MEMORY(int pid) {
     // Procesar respuesta
     t_paquete* respuesta = list_get(lista_respuesta, 0);
     if (respuesta->codigo_operacion == DUMP_MEMORY_OP) {
-        log_info(mock_log, "## (%d) - Memory Dump completado", pid);
+        log_trace(mock_log, "## (%d) - Memory Dump completado", pid);
     } else {
         log_error(mock_log, "Error al realizar memory dump");
     }
@@ -150,7 +150,7 @@ void DUMP_MEMORY(int pid) {
 }
 
 bool CHECK_MEMORY_SPACE(int tamanio) {
-    log_info(mock_log, "## Solicitó syscall: CHECK_MEMORY_SPACE para tamaño %d", tamanio);
+    log_trace(mock_log, "## Solicitó syscall: CHECK_MEMORY_SPACE para tamaño %d", tamanio);
     
     // Comunicarse con memoria para verificar espacio
     t_paquete* paquete = crear_paquete_op(CHECK_MEMORY_SPACE_OP);
@@ -213,7 +213,7 @@ bool PEDIR_INSTRUCCION_OP_mock(int cliente_socket) {
             memcpy(param, stream + offset, size);
             offset += size;
 
-            log_info(mock_log, "Param %d: [%s]", i, param);
+            log_trace(mock_log, "Param %d: [%s]", i, param);
             free(param);
         }
     }
@@ -235,19 +235,19 @@ bool PEDIR_PAGINA_OP_mock() { return true; }
 /////////////////////////////// Funciones Mock Faltantes ///////////////////////////////
 
 void MENSAJE_OP_mock() {
-    log_info(mock_log, "## Ejecutando MENSAJE_OP_mock");
+    log_trace(mock_log, "## Ejecutando MENSAJE_OP_mock");
 }
 
 void PAQUETE_OP_mock() {
-    log_info(mock_log, "## Ejecutando PAQUETE_OP_mock");
+    log_trace(mock_log, "## Ejecutando PAQUETE_OP_mock");
 }
 
 void IO_OP_mock() {
-    log_info(mock_log, "## Ejecutando IO_OP_mock");
+    log_trace(mock_log, "## Ejecutando IO_OP_mock");
 }
 
 void INIT_PROC_OP_mock(int fd_a_testear) {
-    log_info(mock_log, "## Ejecutando INIT_PROC_OP_mock");
+    log_trace(mock_log, "## Ejecutando INIT_PROC_OP_mock");
     char nombre_archivo[100];
     int tamanio;
     
@@ -260,7 +260,7 @@ void INIT_PROC_OP_mock(int fd_a_testear) {
 }
 
 void DUMP_MEMORY_OP_mock() {
-    log_info(mock_log, "## Ejecutando DUMP_MEMORY_OP_mock");
+    log_trace(mock_log, "## Ejecutando DUMP_MEMORY_OP_mock");
     int pid;
     printf("PID del proceso: ");
     scanf("%d", &pid);
@@ -268,19 +268,19 @@ void DUMP_MEMORY_OP_mock() {
 }
 
 void EXIT_OP_mock() {
-    log_info(mock_log, "## Ejecutando EXIT_OP_mock");
+    log_trace(mock_log, "## Ejecutando EXIT_OP_mock");
 }
 
 void EXEC_OP_mock() {
-    log_info(mock_log, "## Ejecutando EXEC_OP_mock");
+    log_trace(mock_log, "## Ejecutando EXEC_OP_mock");
 }
 
 void INTERRUPCION_OP_mock() {
-    log_info(mock_log, "## Ejecutando INTERRUPCION_OP_mock");
+    log_trace(mock_log, "## Ejecutando INTERRUPCION_OP_mock");
 }
 
 void FINALIZAR_PROC_OP_mock() {
-    log_info(mock_log, "## Ejecutando FINALIZAR_PROC_OP_mock");
+    log_trace(mock_log, "## Ejecutando FINALIZAR_PROC_OP_mock");
     int pid;
     printf("PID del proceso: ");
     scanf("%d", &pid);
@@ -288,5 +288,5 @@ void FINALIZAR_PROC_OP_mock() {
 }
 
 void SEND_PSEUDOCOD_FILE_mock() {
-    log_info(mock_log, "## Ejecutando SEND_PSEUDOCOD_FILE_mock");
+    log_trace(mock_log, "## Ejecutando SEND_PSEUDOCOD_FILE_mock");
 }

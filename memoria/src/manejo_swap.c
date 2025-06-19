@@ -377,7 +377,7 @@ int asignar_espacio_swap_proceso(int pid) {
     
     pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
     
-    log_debug(logger, "PID: %d - Espacio en SWAP verificado: %d páginas disponibles", 
+    log_trace(logger, "PID: %d - Espacio en SWAP verificado: %d páginas disponibles", 
               pid, paginas_necesarias);
     
     return 1;
@@ -406,7 +406,7 @@ void liberar_espacio_swap_proceso(int pid) {
     
     pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
     
-    log_debug(logger, "PID: %d - Liberadas %d páginas de SWAP", pid, paginas_liberadas);
+    log_trace(logger, "PID: %d - Liberadas %d páginas de SWAP", pid, paginas_liberadas);
 }
 
 bool proceso_tiene_paginas_en_swap(int pid) {

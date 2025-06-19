@@ -13,7 +13,6 @@
 
 #include "comunicacion.h"
 
-
 #define SERVERNAME "MEMORIA_SERVER"
 
 void iterator(char* value);

@@ -10,12 +10,12 @@ typedef struct {
 } modulo_info;
 
 modulo_info obtener_info_modulo(char* nombre) {
-    if (strcmp(nombre, "memoria") == 0) return (modulo_info){"memoria", "127.0.0.1", "8002"};
-    if (strcmp(nombre, "kernel_dispatch") == 0) return (modulo_info){"kernel_dispatch", "127.0.0.1", "8001"};
-    if (strcmp(nombre, "kernel_interrupt") == 0) return (modulo_info){"kernel_interrupt", "127.0.0.1", "8004"};
-    if (strcmp(nombre, "kernel_io") == 0) return (modulo_info){"kernel_io", "127.0.0.1", "8003"};
-    if (strcmp(nombre, "cpu_dispatch") == 0) return (modulo_info){"cpu_dispatch", "127.0.0.1", "8001"};
-    if (strcmp(nombre, "cpu_interrupt") == 0) return (modulo_info){"cpu_interrupt", "127.0.0.1", "8004"};
+    if (strcmp(nombre, "memoria") == 0) return (modulo_info) {"memoria", "127.0.0.1", "8002"};
+    if (strcmp(nombre, "kernel_dispatch") == 0) return (modulo_info) {"kernel_dispatch", "127.0.0.1", "8001"};
+    if (strcmp(nombre, "kernel_interrupt") == 0) return (modulo_info) {"kernel_interrupt", "127.0.0.1", "8004"};
+    if (strcmp(nombre, "kernel_io") == 0) return (modulo_info) {"kernel_io", "127.0.0.1", "8003"};
+    if (strcmp(nombre, "cpu_dispatch") == 0) return (modulo_info) {"cpu_dispatch", "127.0.0.1", "8001"};
+    if (strcmp(nombre, "cpu_interrupt") == 0) return (modulo_info) {"cpu_interrupt", "127.0.0.1", "8004"};
 
     log_error(mock_log, "Módulo desconocido: %s", nombre);
     exit(EXIT_FAILURE);
@@ -64,5 +64,5 @@ int main(int argc, char* argv[]) {
 }
 
 void iterator(char* value) {
-    log_debug(mock_log, "%s", value);
+    log_trace(mock_log, "%s", value);
 }

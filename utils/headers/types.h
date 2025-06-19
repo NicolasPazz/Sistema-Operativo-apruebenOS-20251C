@@ -1,7 +1,6 @@
 #ifndef UTILS_TYPES_H
 #define UTILS_TYPES_H
 
-
 /////////////////////////////// Estructuras compartidas ///////////////////////////////
 
 // Codigos de operaciones entre modulos
@@ -50,7 +49,6 @@ typedef enum {
 	CHECK_MEMORY_SPACE_OP         // Consultar si hay espacio suficiente en memoria
 } op_code;
 
-
 // Handshake
 typedef enum {
     HANDSHAKE_MEMORIA_CPU,
@@ -59,7 +57,6 @@ typedef enum {
     HANDSHAKE_CPU_KERNEL_DISPATCH,
     HANDSHAKE_IO_KERNEL
 } handshake_code;
-
 
 // Estructuras de serialización
 typedef struct {
@@ -78,7 +75,6 @@ typedef struct {
 	t_buffer* buffer;
 } t_paquete;
 
-
 /*
  typedef struct {
      int entradas[NIVELES_PAGINACION]; 
@@ -92,13 +88,11 @@ typedef struct {
 	int desplazamiento;
 } t_direccion_fisica;
 
-
 // Respuestas de Memoria
 typedef enum {
     OK,
 	ERROR
 } t_respuesta_memoria;
-
 
 // Instrucciones de CPU
 typedef struct{
@@ -112,7 +106,6 @@ typedef struct {
     t_instruccion instruccion_base;
     op_code tipo;                   // Tipo de operación (NOOP_OP, WRITE_OP, etc.)
 } t_extended_instruccion;
-
 
 // IOs
 typedef struct {

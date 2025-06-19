@@ -27,23 +27,45 @@ extern sem_t sem_proceso_a_blocked;
 extern sem_t sem_proceso_a_exit;
 extern sem_t sem_susp_ready_vacia;
 extern sem_t sem_finalizacion_de_proceso;
+extern sem_t sem_cpu_disponible;
 
-// Funciones de planificación
-void iniciar_planificador_corto_plazo(char* algoritmo);
-void dispatch(t_pcb* proceso_a_ejecutar);
-t_pcb* elegir_por_fifo(void);
+/////////////////////////// Planificacion de Largo Plazo ////////////////////////////
+
+// Add enum for planificador states
+typedef enum {
+    STOP,
+    RUNNING
+} estado_planificador;
+
+//////////////////////////////////////////////////////////////
+t_pcb* elegir_por_fifo();
+
 void* menor_rafaga(void* a, void* b);
-t_pcb* elegir_por_sjf(void);
-t_pcb* elegir_por_srt(void);
-double get_time(void);
-void iniciar_planificador_largo_plazo(void);
+t_pcb* elegir_por_sjf();
+
+t_pcb* elegir_por_srt();
+
+void dispatch(t_pcb* proceso_a_ejecutar);
+
+double get_time();
+
+void* planificador_largo_plazo(void* arg);
+
 void activar_planificador_largo_plazo(void);
-void* planificar_FIFO_lp(void* arg);
-void* planificar_PMCP_lp(void* arg);
+
+void iniciar_planificadores(void);
+
+void* planificador_largo_plazo(void* arg);
+
 void* menor_tamanio(void* a, void* b);
-t_pcb* elegir_por_pmcp(void);
+
+t_pcb* elegir_por_pmcp();
+
 void* gestionar_exit(void* arg);
-void* planificador_corto_plazo_reactivo(void* arg);
+void* planificador_corto_plazo(void* arg);
+
 bool hay_espacio_suficiente_memoria(int tamanio);
+
+
 
 #endif /* PLANIFICADORES_H */

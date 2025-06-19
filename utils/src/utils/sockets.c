@@ -7,10 +7,10 @@
 #include <arpa/inet.h>
 #include "../headers/sockets.h"
 
-/////////////////////////////// Log y Config ///////////////////////////////
+        /////////////////////////////// Log y Config ///////////////////////////////
 t_log* iniciar_logger(char *file, char *process_name, bool is_active_console, t_log_level level) {
 	t_log* nuevo_logger = log_create(file, process_name,is_active_console,level);
-	if(nuevo_logger == NULL){
+	if (nuevo_logger == NULL) {
 		perror("Error al crear el log");
 		exit(EXIT_FAILURE);
 	}
@@ -19,15 +19,14 @@ t_log* iniciar_logger(char *file, char *process_name, bool is_active_console, t_
 
 t_config* iniciar_config(char* path) {
 	t_config* nuevo_config = config_create(path);
-	if(nuevo_config == NULL){
+	if (nuevo_config == NULL) {
 		perror("Error al intentar leer el config");
 		exit(EXIT_FAILURE);
 	}
 	return nuevo_config;
 }
 
-
-/////////////////////////////// Conexiones ///////////////////////////////
+        /////////////////////////////// Conexiones ///////////////////////////////
 int iniciar_servidor(char *puerto, t_log* logger, char* msj_server) {
 	if (logger == NULL) {
         printf("Error: Logger no inicializado\n");
@@ -78,7 +77,7 @@ int iniciar_servidor(char *puerto, t_log* logger, char* msj_server) {
 	}
 
 	freeaddrinfo(servinfo);
-	log_debug(logger, "%s escuchando en puerto %s", msj_server, puerto);
+	log_trace(logger, "%s escuchando en puerto %s", msj_server, puerto);
 
 	return socket_servidor;
 }
@@ -134,7 +133,7 @@ int esperar_cliente(int socket_servidor, t_log* logger) {
         log_error(logger, "Error al aceptar cliente: %s", strerror(errno));
         return -1;
     }
-    log_debug(logger, "Se conecto un nuevo cliente (fd = %d)", socket_cliente);
+    log_trace(logger, "Se conecto un nuevo cliente (fd = %d)", socket_cliente);
     return socket_cliente;
 }
 
@@ -161,6 +160,22 @@ void atender_cliente(void* arg) {
                 break;
         }
     }
+    liberar_cliente_data(data);
+}
+
+/**
+ * @brief Libera toda la memoria asociada a un cliente_data_t.
+ *
+ * Esta función libera la memoria heap alocada para la cadena 'cliente'
+ * y luego para la estructura cliente_data_t completa.
+ * 
+ * @param data Puntero a la estructura cliente_data_t a liberar.
+ */
+void liberar_cliente_data(cliente_data_t *data) {
+    if (data != NULL) {
+        free(data->cliente);  // liberar la cadena duplicada
+        free(data);           // liberar la estructura
+    }
 }
 
 void liberar_conexion(int socket_cliente) {
@@ -169,7 +184,7 @@ void liberar_conexion(int socket_cliente) {
 
 bool validar_handshake(int fd, handshake_code esperado, t_log* log) {
     int recibido;
-    if (recv(fd, &recibido, sizeof(int), 0) <= 0) {
+    if (recv(fd, &recibido, sizeof(int), MSG_WAITALL) != sizeof(int)) {
         log_error(log, "Error recibiendo handshake (fd=%d): %s", fd, strerror(errno));
         return false;
     }
@@ -182,212 +197,32 @@ bool validar_handshake(int fd, handshake_code esperado, t_log* log) {
     return true;
 }
 
-/////////////////////////////// Mensajes y paquetes ///////////////////////////////
-cliente_data_t *crear_cliente_data(int fd_cliente, t_log* logger, char* cliente) {
-    cliente_data_t *data = malloc(sizeof(cliente_data_t));
-    if (data == NULL) {
-        perror("Error al asignar memoria para cliente_data_t*");
-        return NULL;
-    }
-    data->fd = fd_cliente;
-    data->logger = logger;
-    data->cliente = strdup(cliente);
-    if (data->cliente == NULL) {
-        perror("Error al asignar memoria para cliente en crear_cliente_data");
-        free(data);
-        return NULL;
-    }
-    return data;
-}
-
-op_code recibir_operacion(int socket_cliente) {
-	op_code cod_op;
-	if(recv(socket_cliente, &cod_op, sizeof(int), MSG_WAITALL) > 0)
-		return cod_op;
-	else {
-		close(socket_cliente);
-		return -1;
-	}
-}
-
-void liberar_cliente_data(cliente_data_t *data) {
-    if (data != NULL) {
-        // Liberar la memoria de la cadena duplicada
-        free(data->cliente);
-        // Liberar la memoria de la estructura
-        free(data);
-    }
-}
-
-void* recibir_buffer(int* size, int socket_cliente) {
-    void * buffer;
-
-    // Leer el tamaño del buffer (2do int en el paquete)
-    recv(socket_cliente, size, sizeof(int), MSG_WAITALL);
-    buffer = malloc(*size);
-    recv(socket_cliente, buffer, *size, MSG_WAITALL);
-
-    return buffer;
-}
-
-void recibir_mensaje(int socket_cliente,t_log* logger) {
-	int size;
-	char* buffer = recibir_buffer(&size, socket_cliente);
-	log_debug(logger, "Me llego el mensaje: %s", buffer);
-	free(buffer);
-}
-
-t_list* recibir_contenido_paquete(int socket_cliente) {
-    int buffer_size;
-
-    // Recibo tamaño del buffer (ya se leyó el código de operación antes)
-    if (recv(socket_cliente, &buffer_size, sizeof(int), MSG_WAITALL) <= 0)
-        return NULL;
-
-    void* buffer = malloc(buffer_size);
-    if (!buffer) return NULL;
-
-    // Recibo el buffer completo
-    if (recv(socket_cliente, buffer, buffer_size, MSG_WAITALL) <= 0) {
-        free(buffer);
-        return NULL;
-    }
-
-    t_list* lista_parametros = list_create();
-
-    int offset = 0;
-    while (offset < buffer_size) {
-        int param_size;
-        memcpy(&param_size, buffer + offset, sizeof(int));
-        offset += sizeof(int);
-
-        void* param = malloc(param_size);
-        memcpy(param, buffer + offset, param_size);
-        offset += param_size;
-
-        list_add(lista_parametros, param);
-    }
-
-    free(buffer);
-    return lista_parametros;
-}
-
-t_list* recibir_paquete(int socket_cliente) {
-    int codigo_operacion;
-    int buffer_size;
-
-    // Recibo código operación
-    if (recv(socket_cliente, &codigo_operacion, sizeof(int), MSG_WAITALL) <= 0)
-        return NULL;
-
-    // Recibo tamaño del buffer
-    if (recv(socket_cliente, &buffer_size, sizeof(int), MSG_WAITALL) <= 0)
-        return NULL;
-
-    void* buffer = malloc(buffer_size);
-    if (!buffer) return NULL;
-
-    // Recibo el buffer completo
-    if (recv(socket_cliente, buffer, buffer_size, MSG_WAITALL) <= 0) {
-        free(buffer);
-        return NULL;
-    }
-
-    t_list* lista_parametros = list_create();
-
-    int offset = 0;
-    while (offset < buffer_size) {
-        int param_size;
-        memcpy(&param_size, buffer + offset, sizeof(int));
-        offset += sizeof(int);
-
-        void* param = malloc(param_size);
-        memcpy(param, buffer + offset, param_size);
-        offset += param_size;
-
-        list_add(lista_parametros, param);
-    }
-
-    free(buffer);
-    return lista_parametros;
-}
-
-void enviar_mensaje(char* mensaje, int socket_cliente) {
-	t_paquete* paquete = malloc(sizeof(t_paquete));
-
-	paquete->codigo_operacion = MENSAJE_OP;
-	paquete->buffer = malloc(sizeof(t_buffer));
-	paquete->buffer->size = strlen(mensaje) + 1;
-	paquete->buffer->stream = malloc(paquete->buffer->size);
-	memcpy(paquete->buffer->stream, mensaje, paquete->buffer->size);
-
-	int bytes = paquete->buffer->size + 2*sizeof(int);
-
-	void* a_enviar = serializar_paquete(paquete, bytes);
-
-	send(socket_cliente, a_enviar, bytes, 0);
-
-	free(a_enviar);
-	eliminar_paquete(paquete);
-}
-
-void crear_buffer(t_paquete* paquete) {
-	paquete->buffer = malloc(sizeof(t_buffer));
-	paquete->buffer->size = 0;
-	paquete->buffer->stream = NULL;
-}
-
-t_paquete* crear_paquete(void) {
-	t_paquete* paquete = malloc(sizeof(t_paquete));
-	paquete->codigo_operacion = PAQUETE_OP;
-	crear_buffer(paquete);
-	return paquete;
-}
-
-void agregar_a_paquete(t_paquete* paquete, void* valor, int tamanio) {
-    paquete->buffer->stream = realloc(paquete->buffer->stream, paquete->buffer->size + tamanio + sizeof(int));
-
-    memcpy(paquete->buffer->stream + paquete->buffer->size, &tamanio, sizeof(int));
-    memcpy(paquete->buffer->stream + paquete->buffer->size + sizeof(int), valor, tamanio);
-
-    paquete->buffer->size += tamanio + sizeof(int);
-}
-
-void enviar_paquete(t_paquete* paquete, int socket_cliente) {
-	int bytes = paquete->buffer->size + 2*sizeof(int);
-	void* a_enviar = serializar_paquete(paquete, bytes);
-
-	send(socket_cliente, a_enviar, bytes, 0);
-
-	free(a_enviar);
-}
-
-void eliminar_paquete(t_paquete* paquete) {
-	free(paquete->buffer->stream);
-	free(paquete->buffer);
-	free(paquete);
-}
-
-void paquete(int conexion) {
-	char* leido;
-	t_paquete* paquete = crear_paquete();
-
-
-	leido = readline(">> ");
-	
-	while (strcmp(leido, "") != 0){
-		agregar_a_paquete(paquete,leido,strlen(leido)+1);
-		free(leido);
-		leido = readline(">> ");
-	}
-
-	enviar_paquete(paquete,conexion);
-	free(leido);
-	eliminar_paquete(paquete);
-}
-
+        /////////////////////////////// Serializacion ///////////////////////////////
+/**
+ * @brief Serializa un paquete en un bloque continuo de memoria para su envío por red.
+ *
+ * Esta función toma un paquete que contiene un código de operación y un buffer de datos, 
+ * y lo convierte en un único bloque de memoria contiguo con el siguiente formato:
+ * 
+ *     [op_code (int)][tamaño del buffer (int)][contenido del buffer (bytes)]
+ *
+ * Este orden debe ser respetado por el receptor para poder deserializar correctamente el paquete.
+ *
+ * @param paquete Puntero al paquete a serializar. Debe contener el código de operación y un buffer válido.
+ * @param bytes Tamaño total del bloque a serializar. Debe ser igual a:
+ *              paquete->buffer->size + 2 * sizeof(int)
+ *
+ * @return Puntero a un bloque de memoria contiguo listo para ser enviado con send().
+ *         La memoria debe ser liberada por quien llama a la función.
+ */
+// WARNING: posible leak usando esta funcion (reserva memoria y no la libera), siempre liberar los mallocs despues de usar
 void* serializar_paquete(t_paquete* paquete, int bytes) {
 	void * magic = malloc(bytes);
+    if (magic == NULL) {
+        perror("Error al asignar memoria");
+        exit(EXIT_FAILURE);
+    }
+
 	int desplazamiento = 0;
 
 	memcpy(magic + desplazamiento, &(paquete->codigo_operacion), sizeof(int));
@@ -400,14 +235,176 @@ void* serializar_paquete(t_paquete* paquete, int bytes) {
 	return magic;
 }
 
-t_paquete* crear_paquete_op(op_code codop){
+// WARNING: posible leak usando esta funcion (reserva memoria y no la libera), siempre liberar los mallocs despues de usar
+cliente_data_t *crear_cliente_data(int fd_cliente, t_log* logger, char* cliente) {
+    cliente_data_t *data = malloc(sizeof(cliente_data_t));
+    if (data == NULL) {
+        perror("Error al asignar memoria para cliente_data_t*");
+        exit(EXIT_FAILURE);
+    }
+    data->fd = fd_cliente;
+    data->logger = logger;
+    data->cliente = strdup(cliente);
+    if (data->cliente == NULL) {
+        perror("Error al asignar memoria para cliente en crear_cliente_data");
+        free(data);
+        exit(EXIT_FAILURE);
+    }
+    return data;
+}
+
+void paquete(int conexion) {
+	char* leido;
+	t_paquete* paquete = crear_paquete();
+
+	leido = readline(">> ");
+	
+	while (strcmp(leido, "") != 0) {
+		agregar_a_paquete(paquete,leido,strlen(leido)+1);
+		free(leido);
+		leido = readline(">> ");
+	}
+
+	enviar_paquete(paquete,conexion);
+	free(leido);
+	eliminar_paquete(paquete);
+}
+
+        /////////////////////////////// Envio de paquete/mensaje ///////////////////////////////
+void enviar_mensaje(char* mensaje, int socket_cliente) {
+	t_paquete* paquete = malloc(sizeof(t_paquete));
+    if (paquete == NULL) {
+        perror("Error al asignar memoria");
+        exit(EXIT_FAILURE);
+    }
+
+	paquete->codigo_operacion = MENSAJE_OP;
+	paquete->buffer = malloc(sizeof(t_buffer));
+    if (paquete->buffer == NULL) {
+        perror("Error al asignar memoria");
+        exit(EXIT_FAILURE);
+    }
+	paquete->buffer->size = strlen(mensaje) + 1;
+	paquete->buffer->stream = malloc(paquete->buffer->size);
+    if (paquete->buffer->stream == NULL) {
+        perror("Error al asignar memoria");
+        exit(EXIT_FAILURE);
+    }
+	memcpy(paquete->buffer->stream, mensaje, paquete->buffer->size);
+
+	int bytes = paquete->buffer->size + 2*sizeof(int);
+
+	void* a_enviar = serializar_paquete(paquete, bytes);
+
+    if (send(socket_cliente, a_enviar, bytes, 0) != bytes) {
+        perror("Error al enviar paquete");
+    }
+    
+	free(a_enviar);
+	eliminar_paquete(paquete);
+}
+
+/**
+ * @brief Inicializa el buffer de un paquete asignando memoria vacía y seteando tamaño cero.
+ * 
+ * @param paquete Puntero al paquete cuyo buffer se va a inicializar.
+ */
+void crear_buffer(t_paquete* paquete) {
+	paquete->buffer = malloc(sizeof(t_buffer));
+    if (paquete->buffer == NULL) {
+        perror("Error al asignar memoria");
+        exit(EXIT_FAILURE);
+    }
+	paquete->buffer->size = 0;
+	paquete->buffer->stream = NULL;
+}
+
+// WARNING: posible leak usando esta funcion (reserva memoria y no la libera), siempre liberar los mallocs despues de usar
+t_paquete* crear_paquete(void) {
+	t_paquete* paquete = malloc(sizeof(t_paquete));
+    if (paquete == NULL) {
+        perror("Error al asignar memoria");
+        exit(EXIT_FAILURE);
+    }
+	paquete->codigo_operacion = PAQUETE_OP;
+	crear_buffer(paquete);
+	return paquete;
+}
+
+/**
+ * @brief Agrega un dato genérico al final del stream del paquete, precedido por su tamaño.
+ * 
+ * Este método permite agregar strings u otros datos dinámicos al buffer. El formato agregado es:
+ * [int tamaño][bytes del dato]
+ * 
+ * @param paquete Puntero al paquete al que se le agregará el dato.
+ * @param valor Puntero al contenido del dato a agregar.
+ * @param tamanio Cantidad de bytes del dato (sin incluir el sizeof(int) agregado).
+ */
+void agregar_a_paquete(t_paquete* paquete, void* valor, int tamanio) {
+    paquete->buffer->stream = realloc(paquete->buffer->stream, paquete->buffer->size + tamanio + sizeof(int));
+
+    memcpy(paquete->buffer->stream + paquete->buffer->size, &tamanio, sizeof(int));
+    memcpy(paquete->buffer->stream + paquete->buffer->size + sizeof(int), valor, tamanio);
+
+    paquete->buffer->size += tamanio + sizeof(int);
+}
+
+/**
+ * @brief Serializa y envía un paquete completo por el socket especificado.
+ * 
+ * El mensaje enviado incluye: [op_code][tamaño buffer][buffer serializado]
+ * 
+ * @param paquete Puntero al paquete a enviar.
+ * @param socket_cliente Descriptor del socket destino.
+ */
+void enviar_paquete(t_paquete* paquete, int socket_cliente) {
+	int bytes = paquete->buffer->size + 2 * sizeof(int);    // 2 int, uno de op_code, otro de buffer->size
+	void* a_enviar = serializar_paquete(paquete, bytes);
+
+    if (send(socket_cliente, a_enviar, bytes, 0) != bytes) {
+        perror("Error al enviar paquete");
+    }
+    
+	free(a_enviar);
+}
+
+/**
+ * @brief Libera toda la memoria asociada al paquete, incluyendo su buffer y stream.
+ * 
+ * @param paquete Puntero al paquete a liberar.
+ */
+void eliminar_paquete(t_paquete* paquete) {
+	free(paquete->buffer->stream);
+	free(paquete->buffer);
+	free(paquete);
+}
+
+/**
+ * @brief Crea un nuevo paquete con un código de operación específico.
+ * 
+ * @param codop Código de operación que representará al paquete.
+ * @return Puntero a un nuevo t_paquete con buffer inicializado con size 0 y stream null.
+ */
+// WARNING: posible leak usando esta funcion (reserva memoria y no la libera), siempre liberar los mallocs despues de usar
+t_paquete* crear_paquete_op(op_code codop) {
     t_paquete* paquete = malloc(sizeof(t_paquete));
+    if (paquete == NULL) {
+        perror("Error al asignar memoria");
+        exit(EXIT_FAILURE);
+    }
     paquete->codigo_operacion = codop;
     crear_buffer(paquete);
     return paquete;
 }
 
-void agregar_entero_a_paquete(t_paquete *paquete, int numero){
+/**
+ * @brief Agrega un número entero al final del stream del paquete.
+ * 
+ * @param paquete Puntero al paquete al que se desea agregar el entero.
+ * @param numero Valor entero (4 bytes) que se agregará al final del buffer.
+ */
+void agregar_entero_a_paquete(t_paquete *paquete, int numero) {
     paquete->buffer->stream = realloc(paquete->buffer->stream, paquete->buffer->size + sizeof(int));
     memcpy(paquete->buffer->stream + paquete->buffer->size, &numero, sizeof(int));
     paquete->buffer->size += sizeof(int);
@@ -419,10 +416,15 @@ bool enviar_operacion(int socket, op_code operacion) {
     return bytes_enviados == sizeof(op);
 }
 
+        /////////////////////////////// Deserializacion ///////////////////////////////
 char* leer_string(char* buffer, int* desplazamiento) {
     int tamanio = leer_entero(buffer, desplazamiento);
 
     char* palabra = malloc(tamanio + 1);
+    if (palabra == NULL) {
+        perror("Error al asignar memoria");
+        exit(EXIT_FAILURE);
+    }
 
     memcpy(palabra, buffer + *desplazamiento, tamanio);
 
@@ -433,27 +435,179 @@ char* leer_string(char* buffer, int* desplazamiento) {
     return palabra;
 }
 
-int leer_entero(char *buffer, int * desplazamiento){
+int leer_entero(char *buffer, int * desplazamiento) {
     int entero;
     memcpy(&entero, buffer + (*desplazamiento), sizeof(int));
     (*desplazamiento) += sizeof(int);
     return entero;
 }
 
-t_list* recibir_2_enteros_sin_op(int socket){
+        /////////////////////////////// Recepcion de paquete/mensaje ///////////////////////////////
+/**
+ * @brief Recibe el código de operación enviado desde un socket.
+ * 
+ * @param socket_cliente El descriptor del socket del cual se recibe el código.
+ * @return op_code El código de operación recibido, o -1 si la conexión se cerró.
+ */
+op_code recibir_operacion(int socket_cliente) {
+	op_code cod_op;
+	if (recv(socket_cliente, &cod_op, sizeof(int), MSG_WAITALL) != sizeof(int)) {
+        return -1;  // Retornar -1 para que lo maneje el caller
+    }
+    return cod_op;
+}
+
+
+/**
+ * @brief Recibe un buffer desde el socket con tamaño dinámico.
+ * 
+ * @param size Puntero a entero donde se almacenará el tamaño del buffer recibido.
+ * @param socket_cliente Socket desde el que se recibe el buffer.
+ * @return void* Puntero al buffer recibido, debe liberarse manualmente.
+ */
+void* recibir_buffer(int* size, int socket_cliente) {
+    void * buffer;
+
+    // Leer el tamaño del buffer (2do int en el paquete)
+    if (recv(socket_cliente, size, sizeof(int), MSG_WAITALL) != sizeof(int)) exit(EXIT_FAILURE);
+    buffer = malloc(*size);
+    if (buffer == NULL) {
+        perror("Error al asignar memoria");
+        exit(EXIT_FAILURE);
+    }
+
+    if (recv(socket_cliente, buffer, *size, MSG_WAITALL) != *size) {
+        free(buffer);
+        exit(EXIT_FAILURE);
+    }
+
+    return buffer;
+}
+
+/**
+ * @brief Recibe un mensaje de texto y lo muestra por log.
+ * 
+ * @param socket_cliente Socket desde el cual se recibe el mensaje.
+ * @param logger Logger utilizado para mostrar el mensaje recibido.
+ */
+void recibir_mensaje(int socket_cliente,t_log* logger) {
+	int size;
+	char* buffer = recibir_buffer(&size, socket_cliente);
+	log_trace(logger, "Me llego el mensaje: %s", buffer);
+	free(buffer);
+}
+
+/**
+ * @brief Recibe un paquete compuesto por múltiples parámetros serializados y los deserializa.
+ * Este paquete debe estar compuesto por una serie de [int tamaño][contenido].
+ * 
+ * @param socket_cliente Socket desde el cual se recibe el paquete.
+ * @return t_list* Lista de punteros a los parámetros deserializados. Cada elemento debe ser liberado manualmente.
+ */
+// WARNING: posible leak usando esta funcion (reserva memoria y no la libera), siempre liberar los mallocs despues de usar
+t_list* recibir_contenido_paquete(int socket_cliente) {
+    int buffer_size;
+
+    // Recibo tamaño del buffer (ya se leyó el código de operación antes)
+    if (recv(socket_cliente, &buffer_size, sizeof(int), MSG_WAITALL) != sizeof(int))
+        exit(EXIT_FAILURE);
+
+    void* buffer = malloc(buffer_size);
+    if (buffer == NULL) {
+        perror("Error al asignar memoria");
+        exit(EXIT_FAILURE);
+    }
+
+    // Recibo el buffer completo
+    if (recv(socket_cliente, buffer, buffer_size, MSG_WAITALL) != buffer_size) {
+        free(buffer);
+        exit(EXIT_FAILURE);
+    }
+
+    t_list* lista_parametros = list_create();
+
+    int offset = 0;
+    while (offset < buffer_size) {
+        int param_size;
+        memcpy(&param_size, buffer + offset, sizeof(int));
+        offset += sizeof(int);
+
+        void* param = malloc(param_size);
+        if (param == NULL) {
+            perror("Error al asignar memoria");
+            exit(EXIT_FAILURE);
+        }
+
+        memcpy(param, buffer + offset, param_size);
+        offset += param_size;
+
+        list_add(lista_parametros, param);
+    }
+
+    free(buffer);
+    return lista_parametros;
+}
+
+// WARNING: posible leak usando esta funcion (reserva memoria y no la libera), siempre liberar los mallocs despues de usar
+t_list* recibir_paquete(int socket_cliente) {
+    int buffer_size;
+
+    if (recv(socket_cliente, &buffer_size, sizeof(int), MSG_WAITALL) != sizeof(int))
+        exit(EXIT_FAILURE);
+
+    void* buffer = malloc(buffer_size);
+    if (buffer == NULL) {
+        perror("Error al asignar memoria");
+        exit(EXIT_FAILURE);
+    }
+
+    if (recv(socket_cliente, buffer, buffer_size, MSG_WAITALL) != buffer_size) {
+        free(buffer);
+        exit(EXIT_FAILURE);
+    }
+
+    t_list* lista_parametros = list_create();
+
+    int offset = 0;
+    while (offset < buffer_size) {
+        int param_size;
+        memcpy(&param_size, buffer + offset, sizeof(int));
+        offset += sizeof(int);
+
+        void* param = malloc(param_size);
+        if (param == NULL) {
+            perror("Error al asignar memoria");
+            exit(EXIT_FAILURE);
+        }
+
+        memcpy(param, buffer + offset, param_size);
+        offset += param_size;
+
+        list_add(lista_parametros, param);
+    }
+
+    free(buffer);
+    return lista_parametros;
+}
+
+// WARNING: posible leak usando esta funcion (reserva memoria y no la libera), siempre liberar los mallocs despues de usar
+t_list* recibir_2_enteros_sin_op(int socket) {
     int buffer_size;
 
     // Recibo tamaño del buffer (ya se leyó el código de operación antes)  
-    if (recv(socket, &buffer_size, sizeof(int), MSG_WAITALL) <= 0)
-        return NULL;
+    if (recv(socket, &buffer_size, sizeof(int), MSG_WAITALL) != sizeof(int))
+        exit(EXIT_FAILURE);
 
     void* buffer = malloc(buffer_size);
-    if (!buffer) return NULL;
-
+    if (buffer == NULL) {
+        perror("Error al asignar memoria");
+        exit(EXIT_FAILURE);
+    }
+    
     // Recibo el buffer completo
-    if (recv(socket, buffer, buffer_size, MSG_WAITALL) <= 0) {
+    if (recv(socket, buffer, buffer_size, MSG_WAITALL) != buffer_size) {
         free(buffer);
-        return NULL;
+        exit(EXIT_FAILURE);
     }
 
     t_list* lista = list_create();
@@ -470,7 +624,8 @@ t_list* recibir_2_enteros_sin_op(int socket){
 }
 
 /*
-t_list* recibir_4_enteros(int socket){
+// WARNING: posible leak usando esta funcion (reserva memoria y no la libera), siempre liberar los mallocs despues de usar
+t_list* recibir_4_enteros(int socket) {
 	int entero1;
 	int entero2;
 	int entero3;
@@ -513,7 +668,8 @@ int recibir_entero(int socket)
     return entero;
 }
 
-t_list* recibir_2_enteros(int socket){
+// WARNING: posible leak usando esta funcion (reserva memoria y no la libera), siempre liberar los mallocs despues de usar
+t_list* recibir_2_enteros(int socket) {
 	int entero1;
 	int entero2;
 	

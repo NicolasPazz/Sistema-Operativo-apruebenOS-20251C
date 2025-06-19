@@ -26,7 +26,8 @@ typedef enum Estados {
     BLOCKED,
     SUSP_READY,
     SUSP_BLOCKED,
-    EXIT_ESTADO
+    EXIT_ESTADO,
+    INIT
 } Estados;
 
 typedef struct {

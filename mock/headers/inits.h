@@ -24,6 +24,7 @@ extern sem_t sem_proceso_a_blocked;
 extern sem_t sem_proceso_a_exit;
 extern sem_t sem_susp_ready_vacia;
 extern sem_t sem_finalizacion_de_proceso;
+extern sem_t sem_cpu_disponible;
 
 // Colas de procesos
 extern t_list* cola_new;

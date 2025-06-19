@@ -44,7 +44,7 @@ int iniciar_conexiones_memoria(char* PUERTO_ESCUCHA, t_log* logger_param) {
         exit(EXIT_FAILURE);
     }
 
-    log_debug(logger_param, "Esperando conexiones entrantes en Memoria...");
+    log_trace(logger_param, "Esperando conexiones entrantes en Memoria...");
     return fd_memoria; // Devuelve el socket del servidor
 }
 
@@ -92,7 +92,7 @@ void procesar_conexion(void* void_args) {
             break;
 
         case HANDSHAKE_MEMORIA_CPU:
-            log_debug(logger, "## CPU Conectado - FD del socket: %d", cliente_socket);
+            log_trace(logger, "## CPU Conectado - FD del socket: %d", cliente_socket);
             fd_cpu = cliente_socket;
             break;
 
@@ -101,7 +101,7 @@ void procesar_conexion(void* void_args) {
             close(cliente_socket);
             return;
     }
-    log_debug(logger, "Conexion procesada exitosamente para %s (fd=%d)", server_name, cliente_socket);
+    log_trace(logger, "Conexion procesada exitosamente para %s (fd=%d)", server_name, cliente_socket);
 
     op_code cop;
     while (recv(cliente_socket, &cop, sizeof(op_code), 0) > 0) {
@@ -122,27 +122,27 @@ void procesar_conexion(void* void_args) {
 void procesar_cod_ops(op_code cop, int cliente_socket) {
     switch (cop) {
         case MENSAJE_OP:
-            log_debug(logger, "MENSAJE_OP recibido");
+            log_trace(logger, "MENSAJE_OP recibido");
         
             // Recibir un Mensaje char* y loguearlo
                 char* mensaje;
                 recv_string(cliente_socket, &mensaje);
-                log_debug(logger, "Mensaje recibido: %s", mensaje);
+                log_trace(logger, "Mensaje recibido: %s", mensaje);
                 free(mensaje);
             break;
 
         case PAQUETE_OP:
-            log_debug(logger, "PAQUETE_OP recibido");
+            log_trace(logger, "PAQUETE_OP recibido");
             // No implementado para el checkpoint 2
             break;
 
         case NOOP_OP:
-            log_debug(logger, "NOOP_OP recibido");
+            log_trace(logger, "NOOP_OP recibido");
             // No implementado para el checkpoint 2
             break;
 
         case WRITE_OP: {
-            log_debug(logger, "WRITE_OP recibido");
+            log_trace(logger, "WRITE_OP recibido");
 
             // Recibir parámetros (PID, dirección y valor)
                 int pid, direccion, valor;
@@ -166,7 +166,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         }
 
         case READ_OP: {
-            log_debug(logger, "READ_OP recibido");
+            log_trace(logger, "READ_OP recibido");
 
             // Recibir parámetros (PID y dirección)
                 int pid, direccion;
@@ -188,19 +188,19 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         }
 
         case GOTO_OP:
-            log_debug(logger, "GOTO_OP recibido");
+            log_trace(logger, "GOTO_OP recibido");
 
             // No implementado para el checkpoint 2
             break;
 
         case IO_OP:
-            log_debug(logger, "IO_OP recibido");
+            log_trace(logger, "IO_OP recibido");
 
             // No implementado para el checkpoint 2
             break;
 
         case INIT_PROC_OP: {
-            log_debug(logger, "INIT_PROC_OP recibido");
+            log_trace(logger, "INIT_PROC_OP recibido");
 
             // ========== RECEPCIÓN DE PARÁMETROS ==========
             t_list* lista = recibir_contenido_paquete(cliente_socket);
@@ -254,7 +254,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         }
 
         case DUMP_MEMORY_OP: {
-            log_debug(logger, "DUMP_MEMORY_OP recibido");
+            log_trace(logger, "DUMP_MEMORY_OP recibido");
 
             // Recibir PID
                 int pid;
@@ -278,7 +278,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 int pid;
                 recv_data(cliente_socket, &pid, sizeof(int));
             
-                log_debug(logger, "Finalización de proceso solicitada - PID: %d", pid);
+                log_trace(logger, "Finalización de proceso solicitada - PID: %d", pid);
             
             // Finalizar el proceso usando la función principal que maneja métricas
                 t_resultado_memoria resultado = finalizar_proceso_en_memoria(pid);
@@ -292,19 +292,19 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         }
 
         case EXEC_OP:
-            log_debug(logger, "EXEC_OP recibido");
+            log_trace(logger, "EXEC_OP recibido");
 
             // No implementado para el checkpoint 2
             break;
 
         case INTERRUPCION_OP:
-            log_debug(logger, "INTERRUPCION_OP recibido");
+            log_trace(logger, "INTERRUPCION_OP recibido");
 
             // No implementado para el checkpoint 2
             break;
 
         case PEDIR_INSTRUCCION_OP: {
-            log_debug(logger, "PEDIR_INSTRUCCION_OP recibido");
+            log_trace(logger, "PEDIR_INSTRUCCION_OP recibido");
 
             // Recibir PID y PC desde paquete (para coincidir con CPU)
             t_list* lista = recibir_2_enteros_sin_op(cliente_socket);
@@ -312,7 +312,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             int pc = (int)(intptr_t)list_get(lista, 1);   // PC segundo
             list_destroy(lista);
             
-            log_debug(logger, "Instrucción solicitada - PID: %d, PC: %d", pid, pc);
+            log_trace(logger, "Instrucción solicitada - PID: %d, PC: %d", pid, pc);
         
             // Obtener y enviar la instrucción
             enviar_instruccion_a_cpu(pid, pc, cliente_socket);
@@ -320,7 +320,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         }
 
         case PEDIR_CONFIG_CPU_OP: {
-            log_debug(logger, "PEDIR_CONFIG_CPU_OP recibido");
+            log_trace(logger, "PEDIR_CONFIG_CPU_OP recibido");
 
             // Enviar la configuración necesaria para la CPU
                 int entradas_por_tabla = cfg->ENTRADAS_POR_TABLA;
@@ -332,7 +332,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 send_data(cliente_socket, &tam_pagina, sizeof(int));
                 send_data(cliente_socket, &cantidad_niveles, sizeof(int));
                 
-                log_debug(logger, "Configuración enviada a CPU: Entradas por tabla: %d, Tamaño página: %d, Niveles: %d",
+                log_trace(logger, "Configuración enviada a CPU: Entradas por tabla: %d, Tamaño página: %d, Niveles: %d",
                         entradas_por_tabla, tam_pagina, cantidad_niveles);
             break;
         }
@@ -342,7 +342,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         // ============================================================================
 
         case ACCESO_TABLA_PAGINAS_OP: {
-            log_debug(logger, "ACCESO_TABLA_PAGINAS_OP recibido");
+            log_trace(logger, "ACCESO_TABLA_PAGINAS_OP recibido");
 
             // Recibir parámetros: PID y número de página
             t_list* lista = recibir_2_enteros_sin_op(cliente_socket);
@@ -350,7 +350,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             int numero_pagina = (int)(intptr_t)list_get(lista, 1);
             list_destroy(lista);
             
-            log_debug(logger, "Acceso a tabla de páginas - PID: %d, Página: %d", pid, numero_pagina);
+            log_trace(logger, "Acceso a tabla de páginas - PID: %d, Página: %d", pid, numero_pagina);
             
             // Realizar acceso a tabla de páginas
             int numero_marco = acceso_tabla_paginas(pid, numero_pagina);
@@ -358,7 +358,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             // Enviar respuesta
             if (numero_marco != -1) {
                 send_data(cliente_socket, &numero_marco, sizeof(int));
-                log_debug(logger, "Marco %d enviado para PID: %d, Página: %d", numero_marco, pid, numero_pagina);
+                log_trace(logger, "Marco %d enviado para PID: %d, Página: %d", numero_marco, pid, numero_pagina);
             } else {
                 int error = -1;
                 send_data(cliente_socket, &error, sizeof(int));
@@ -368,7 +368,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         }
 
         case ACCESO_ESPACIO_USUARIO_OP: {
-            log_debug(logger, "ACCESO_ESPACIO_USUARIO_OP recibido");
+            log_trace(logger, "ACCESO_ESPACIO_USUARIO_OP recibido");
 
             // Recibir parámetros del paquete
             t_list* lista = recibir_contenido_paquete(cliente_socket);
@@ -383,7 +383,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             int tamanio = atoi(tamanio_str);
             bool es_escritura = (strcmp(es_escritura_str, "true") == 0);
             
-            log_debug(logger, "Acceso a espacio de usuario - PID: %d, Dir: %d, Tamaño: %d, Escritura: %s", 
+            log_trace(logger, "Acceso a espacio de usuario - PID: %d, Dir: %d, Tamaño: %d, Escritura: %s", 
                      pid, direccion_fisica, tamanio, es_escritura ? "true" : "false");
             
             if (es_escritura) {
@@ -395,7 +395,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 t_respuesta_memoria respuesta = resultado ? OK : ERROR;
                 send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
                 
-                log_debug(logger, "Escritura en espacio de usuario %s - PID: %d", 
+                log_trace(logger, "Escritura en espacio de usuario %s - PID: %d", 
                          resultado ? "exitosa" : "fallida", pid);
             } else {
                 // Para lectura, devolver datos
@@ -404,7 +404,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 if (datos != NULL) {
                     send_data(cliente_socket, datos, tamanio);
                     free(datos);
-                    log_debug(logger, "Lectura de espacio de usuario exitosa - PID: %d", pid);
+                    log_trace(logger, "Lectura de espacio de usuario exitosa - PID: %d", pid);
                 } else {
                     t_respuesta_memoria respuesta = ERROR;
                     send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
@@ -417,7 +417,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         }
 
         case LEER_PAGINA_COMPLETA_OP: {
-            log_debug(logger, "LEER_PAGINA_COMPLETA_OP recibido");
+            log_trace(logger, "LEER_PAGINA_COMPLETA_OP recibido");
 
             // Recibir parámetros: PID y dirección física
             t_list* lista = recibir_2_enteros_sin_op(cliente_socket);
@@ -425,7 +425,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             int direccion_fisica = (int)(intptr_t)list_get(lista, 1);
             list_destroy(lista);
             
-            log_debug(logger, "Leer página completa - PID: %d, Dir. Física: %d", pid, direccion_fisica);
+            log_trace(logger, "Leer página completa - PID: %d, Dir. Física: %d", pid, direccion_fisica);
             
             // Leer página completa
             void* pagina_completa = leer_pagina_completa(pid, direccion_fisica);
@@ -434,7 +434,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 // Enviar página completa
                 send_data(cliente_socket, pagina_completa, cfg->TAM_PAGINA);
                 free(pagina_completa);
-                log_debug(logger, "Página completa enviada - PID: %d, Dir: %d", pid, direccion_fisica);
+                log_trace(logger, "Página completa enviada - PID: %d, Dir: %d", pid, direccion_fisica);
             } else {
                 // Enviar error
                 t_respuesta_memoria respuesta = ERROR;
@@ -445,7 +445,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         }
 
         case ACTUALIZAR_PAGINA_COMPLETA_OP: {
-            log_debug(logger, "ACTUALIZAR_PAGINA_COMPLETA_OP recibido");
+            log_trace(logger, "ACTUALIZAR_PAGINA_COMPLETA_OP recibido");
 
             // Recibir parámetros del paquete
             t_list* lista = recibir_contenido_paquete(cliente_socket);
@@ -459,7 +459,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             // El contenido de la página viene como el tercer elemento
             void* contenido_pagina = list_get(lista, 2);
             
-            log_debug(logger, "Actualizar página completa - PID: %d, Dir. Física: %d", pid, direccion_fisica);
+            log_trace(logger, "Actualizar página completa - PID: %d, Dir. Física: %d", pid, direccion_fisica);
             
             // Actualizar página completa
             bool resultado = actualizar_pagina_completa(pid, direccion_fisica, contenido_pagina);
@@ -468,7 +468,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             t_respuesta_memoria respuesta = resultado ? OK : ERROR;
             send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
             
-            log_debug(logger, "Actualización de página completa %s - PID: %d", 
+            log_trace(logger, "Actualización de página completa %s - PID: %d", 
                      resultado ? "exitosa" : "fallida", pid);
             
             list_destroy_and_destroy_elements(lista, free);
@@ -476,7 +476,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         }
 
         case CHECK_MEMORY_SPACE_OP: {
-            log_debug(logger, "CHECK_MEMORY_SPACE_OP recibido");
+            log_trace(logger, "CHECK_MEMORY_SPACE_OP recibido");
 
             // Recibir tamaño solicitado
             int tamanio;
@@ -489,7 +489,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             t_respuesta_memoria respuesta = hay_espacio ? OK : ERROR;
             send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
             
-            log_debug(logger, "Respuesta de verificación de espacio: %s", 
+            log_trace(logger, "Respuesta de verificación de espacio: %s", 
                      hay_espacio ? "OK" : "ERROR");
             break;
         }
