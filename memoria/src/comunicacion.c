@@ -217,20 +217,20 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             
             // ========== CARGA DE INSTRUCCIONES ==========
             if (resultado == MEMORIA_OK) {
-                // Construir path completo para instrucciones
-                char* path_completo = string_from_format("%s%s", cfg->PATH_INSTRUCCIONES, nombre_proceso);
                 
-                // Cargar instrucciones desde archivo
+                char* path_completo = strdup(nombre_proceso);
+                log_debug(logger, "EMAAAA NOMBRE DEL PATH '%s'", nombre_proceso);
+            
                 t_process_instructions* instrucciones = load_process_instructions(pid, path_completo);
                 if (instrucciones != NULL) {
                     char* pid_key = string_itoa(pid);
                     dictionary_put(sistema_memoria->process_instructions, pid_key, instrucciones);
                     log_debug(logger, "PID: %d - Instrucciones cargadas desde %s", pid, path_completo);
-                free(pid_key);
+                    free(pid_key);
                 } else {
                     log_warning(logger, "PID: %d - No se pudieron cargar instrucciones desde %s", pid, path_completo);
                 }
-                 
+            
                 free(path_completo);
             }
 

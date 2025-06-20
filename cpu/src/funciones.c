@@ -109,7 +109,7 @@ void func_init_proc(t_instruccion* instruccion) {
     
     log_trace(cpu_log, "[SYSCALL] ✓ INIT_PROC enviado a Kernel - Continuando ejecución del proceso");
 
-    // NO establecer seguir_ejecutando = 0 para continuar con la siguiente instrucción
+    
 }
 
 void func_dump_memory() {
