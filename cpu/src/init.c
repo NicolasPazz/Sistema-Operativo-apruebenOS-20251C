@@ -1,4 +1,5 @@
 #include "../headers/init.h"
+#include "../headers/mmu.h"
 
 /////////////////////////////// Inicializacion de variables globales ///////////////////////////////
 t_log* cpu_log;
@@ -60,16 +61,42 @@ void* conectar_cpu_memoria() {
         exit(EXIT_FAILURE);
     }
 
+    /* ────────────── 1. handshake ────────────── */
     int handshake = HANDSHAKE_MEMORIA_CPU;
     if (send(fd_memoria, &handshake, sizeof(int), 0) <= 0) {
         log_error(cpu_log, "Error al enviar handshake a Memoria: %s", strerror(errno));
         close(fd_memoria);
         exit(EXIT_FAILURE);
     }
-
     log_trace(cpu_log, "HANDSHAKE_MEMORIA_CPU: CPU conectado exitosamente a Memoria (fd=%d)", fd_memoria);
+
+    /* ────────────── 2. pedir la configuración ────────────── */
+    op_code op = PEDIR_CONFIG_CPU_OP;
+    if (send(fd_memoria, &op, sizeof(op_code), 0) <= 0) {
+        log_error(cpu_log, "Error al solicitar configuración a Memoria: %s", strerror(errno));
+        close(fd_memoria);
+        exit(EXIT_FAILURE);
+    }
+
+    int entradas_pt, tam_pagina, niveles;
+    recv(fd_memoria, &entradas_pt, sizeof(int), MSG_WAITALL);
+    recv(fd_memoria, &tam_pagina,  sizeof(int), MSG_WAITALL);
+    recv(fd_memoria, &niveles,     sizeof(int), MSG_WAITALL);
+
+    /* ────────────── 3. guardar en cfg_memoria ────────────── */
+    cfg_memoria = malloc(sizeof(t_config_memoria));
+    cfg_memoria->ENTRADAS_POR_TABLA = entradas_pt;
+    cfg_memoria->TAM_PAGINA         = tam_pagina;
+    cfg_memoria->CANTIDAD_NIVELES   = niveles;
+    /* los demás campos podés dejarlos en 0 o completarlos luego */
+    
+    log_trace(cpu_log,
+        "Config recibida de Memoria ► Entradas/tabla=%d | Tamaño página=%d | Niveles=%d",
+        entradas_pt, tam_pagina, niveles);
+
     return NULL;
 }
+
 
 void* conectar_kernel_dispatch() {
     fd_kernel_dispatch = crear_conexion(IP_KERNEL, PUERTO_KERNEL_DISPATCH, cpu_log);

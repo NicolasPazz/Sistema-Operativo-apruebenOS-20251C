@@ -559,10 +559,10 @@ void* atender_cpu_dispatch(void* arg) {
                 log_info(kernel_log, "## (%d) Solicitó syscall: DUMP_MEMORY", pid);
                 log_trace(kernel_log, "DUMP_MEMORY_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
                 // TODO: Implementar DUMP_MEMORY
-                log_info(kernel_log, "## PID: %d - Operación DUMP_MEMORY procesada", pid_dump);
+                // log_info(kernel_log, "## PID: %d - Operación DUMP_MEMORY procesada", pid_dump);
                 
                 // Limpiar la lista
-                list_destroy_and_destroy_elements(lista_dump, free);
+                // list_destroy_and_destroy_elements(lista_dump, free);
                 break;
                 
             default:
