@@ -137,6 +137,17 @@ t_resultado_memoria crear_proceso_en_memoria(int pid, int tamanio, char* nombre_
         }
     }
 
+        // ========== REGISTRO EN DICCIONARIOS DEL SISTEMA ==========
+        char pid_str[16];
+        sprintf(pid_str, "%d", pid);
+    
+        pthread_mutex_lock(&sistema_memoria->mutex_procesos);
+    
+        // Registrar en todos los diccionarios correspondientes
+        dictionary_put(sistema_memoria->procesos, pid_str, proceso);
+        dictionary_put(sistema_memoria->estructuras_paginas, pid_str, proceso->estructura_paginas);
+        dictionary_put(sistema_memoria->metricas_procesos, pid_str, proceso->metricas);
+        
     // ========== ASIGNACIÓN DE MARCOS FÍSICOS PARA TODAS LAS PÁGINAS ==========
     log_debug(logger, "PID: %d - Iniciando asignación de %d marcos físicos", pid, paginas_necesarias);
     
@@ -146,17 +157,6 @@ t_resultado_memoria crear_proceso_en_memoria(int pid, int tamanio, char* nombre_
         destruir_proceso(proceso);
         return resultado_asignacion;
     }
-
-    // ========== REGISTRO EN DICCIONARIOS DEL SISTEMA ==========
-    char pid_str[16];
-    sprintf(pid_str, "%d", pid);
-
-    pthread_mutex_lock(&sistema_memoria->mutex_procesos);
-
-    // Registrar en todos los diccionarios correspondientes
-    dictionary_put(sistema_memoria->procesos, pid_str, proceso);
-    dictionary_put(sistema_memoria->estructuras_paginas, pid_str, proceso->estructura_paginas);
-    dictionary_put(sistema_memoria->metricas_procesos, pid_str, proceso->metricas);
 
     // ========== ACTUALIZACIÓN DE ESTADÍSTICAS DEL SISTEMA ==========
     sistema_memoria->procesos_activos++;

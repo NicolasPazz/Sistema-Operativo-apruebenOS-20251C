@@ -69,7 +69,10 @@ int cargar_configuracion(char* path) {
 }
 
 int traducir_direccion(int direccion_logica, int* desplazamiento) {
-
+    if (cfg_memoria == NULL) {
+        log_error(cpu_log, "ERROR: cfg_memoria no inicializada");
+        exit(EXIT_FAILURE);
+    }
     int tam_pagina = cfg_memoria->TAM_PAGINA;
     int entradas_por_tabla = cfg_memoria->ENTRADAS_POR_TABLA;
     int cantidad_niveles = cfg_memoria->CANTIDAD_NIVELES;
