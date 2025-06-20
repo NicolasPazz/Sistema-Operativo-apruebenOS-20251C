@@ -415,6 +415,7 @@ t_estructura_paginas* crear_estructura_paginas(int pid, int tamanio) {
     estructura->tam_pagina = cfg->TAM_PAGINA;
     estructura->tamanio_proceso = tamanio;
     estructura->paginas_totales = (tamanio + cfg->TAM_PAGINA - 1) / cfg->TAM_PAGINA;
+    estructura->paginas_asignadas = 0;
     
     // Inicializar mutex
     if (pthread_mutex_init(&estructura->mutex_estructura, NULL) != 0) {

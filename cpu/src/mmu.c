@@ -68,19 +68,20 @@ int cargar_configuracion(char* path) {
     return 1;
 }
 
-int traducir_direccion(int direccion_logica, int* desplazamiento) {
+int traducir_direccion_fisica(int direccion_logica) {
     if (cfg_memoria == NULL) {
         log_error(cpu_log, "ERROR: cfg_memoria no inicializada");
         exit(EXIT_FAILURE);
     }
+
     int tam_pagina = cfg_memoria->TAM_PAGINA;
     int entradas_por_tabla = cfg_memoria->ENTRADAS_POR_TABLA;
     int cantidad_niveles = cfg_memoria->CANTIDAD_NIVELES;
 
-    
     int nro_pagina = direccion_logica / tam_pagina;
-    *desplazamiento = direccion_logica % tam_pagina;
+    int desplazamiento = direccion_logica % tam_pagina;
 
+    // Calcular entradas de cada nivel para paginación multinivel
     int entradas[cantidad_niveles];
     for (int nivel = 0; nivel < cantidad_niveles; nivel++) {
         int divisor = pow(entradas_por_tabla, cantidad_niveles - (nivel + 1));
@@ -88,12 +89,14 @@ int traducir_direccion(int direccion_logica, int* desplazamiento) {
     }
 
     int frame = 0;
+
+    // Buscar en la TLB
     if (tlb_habilitada() && tlb_buscar(nro_pagina, &frame)) {
         log_info(cpu_log, "PID: %d - TLB HIT - Página: %d", pid_ejecutando, nro_pagina);    
     } else {
         log_info(cpu_log, "PID: %d - TLB MISS - Página: %d", pid_ejecutando, nro_pagina);
 
-        // Enviar entradas de página a Memoria
+        // Pedir a Memoria el frame
         t_paquete* paquete = crear_paquete_op(SOLICITAR_FRAME_PARA_ENTRADAS);
         agregar_a_paquete(paquete, &pid_ejecutando, sizeof(int));
         agregar_a_paquete(paquete, &cantidad_niveles, sizeof(int));
@@ -103,18 +106,25 @@ int traducir_direccion(int direccion_logica, int* desplazamiento) {
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
 
-        // Recibir frame
-        recv(fd_memoria, &frame, sizeof(int), MSG_WAITALL);
-        log_info(cpu_log, "PID: %d - OBTENER MARCO - Página: %d - Marco: %d", pid_ejecutando, nro_pagina, frame);
+        if (recv(fd_memoria, &frame, sizeof(int), MSG_WAITALL) <= 0) {
+            log_error(cpu_log, "Error al recibir el frame desde Memoria");
+            exit(EXIT_FAILURE);
+        }
+
+        log_info(cpu_log, "PID: %d - OBTENER MARCO - Página: %d - Marco: %d",
+                 pid_ejecutando, nro_pagina, frame);
 
         if (tlb_habilitada()) {
             tlb_insertar(nro_pagina, frame);
         }
     }
-    
-    
-    return frame;
+
+    // Finalmente: dirección física = frame * tamaño_página + desplazamiento
+    return frame * tam_pagina + desplazamiento;
 }
+
+
+
 
 bool tlb_buscar(int pagina, int* frame_out) {
     for (int i = 0; i < list_size(tlb); i++) {
