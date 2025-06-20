@@ -123,9 +123,8 @@ void func_dump_memory() {
 }
 
 void func_exit() {
-    t_paquete* paquete = crear_paquete_op(EXIT_OP);
-    enviar_paquete(paquete, fd_kernel_dispatch);
-    eliminar_paquete(paquete);
+    int op = EXIT_OP;
+    send(fd_kernel_dispatch, &op, sizeof(int), 0);
 
     log_trace(cpu_log, "[SYSCALL] ✓ EXIT enviado a Kernel - Finalizando ejecución del proceso");
 

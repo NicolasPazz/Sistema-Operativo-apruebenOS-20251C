@@ -1,5 +1,6 @@
 #ifndef UTILS_SOCKETS_H_
 #define UTILS_SOCKETS_H_
+#define MAX_STRING_SIZE 256
 
 /////////////// C Libs ///////////////
 #include <sys/types.h>

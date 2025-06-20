@@ -28,9 +28,9 @@ char* PUERTO_ESCUCHA_INTERRUPT;
 char* PUERTO_ESCUCHA_IO;
 char* ALGORITMO_CORTO_PLAZO;
 char* ALGORITMO_INGRESO_A_READY;
-char* ALFA;
+double ALFA;
 char* TIEMPO_SUSPENSION;
-char* ESTIMACION_INICIAL;
+double ESTIMACION_INICIAL;
 char* LOG_LEVEL;
 
 // Colas de Estados
@@ -53,6 +53,7 @@ pthread_mutex_t mutex_ios;
 // Conexiones minimas
 bool conectado_cpu = false;
 bool conectado_io = false;
+bool conectado_memoria = false;
 pthread_mutex_t mutex_conexiones;
 
 // Semaforos de planificacion
@@ -85,8 +86,8 @@ void iniciar_config_kernel() {
     PUERTO_ESCUCHA_IO = config_get_string_value(kernel_config, "PUERTO_ESCUCHA_IO");
     ALGORITMO_CORTO_PLAZO = config_get_string_value(kernel_config, "ALGORITMO_CORTO_PLAZO");
     ALGORITMO_INGRESO_A_READY = config_get_string_value(kernel_config, "ALGORITMO_INGRESO_A_READY");
-    ALFA = config_get_string_value(kernel_config, "ALFA");
-    ESTIMACION_INICIAL = config_get_string_value(kernel_config, "ESTIMACION_INICIAL");
+    ALFA = config_get_double_value(kernel_config, "ALFA");
+    ESTIMACION_INICIAL = config_get_double_value(kernel_config, "ESTIMACION_INICIAL");
     TIEMPO_SUSPENSION = config_get_string_value(kernel_config, "TIEMPO_SUSPENSION");
     LOG_LEVEL = config_get_string_value(kernel_config, "LOG_LEVEL");
 
@@ -103,8 +104,8 @@ void iniciar_config_kernel() {
         log_trace(kernel_log_debug, "PUERTO_ESCUCHA_IO: %s", PUERTO_ESCUCHA_IO);
         log_trace(kernel_log_debug, "ALGORITMO_CORTO_PLAZO: %s", ALGORITMO_CORTO_PLAZO);
         log_trace(kernel_log_debug, "ALGORITMO_INGRESO_A_READY: %s", ALGORITMO_INGRESO_A_READY);
-        log_trace(kernel_log_debug, "ALFA: %s", ALFA);
-        log_trace(kernel_log_debug, "ESTIMACION_INICIAL: %s", ESTIMACION_INICIAL);
+        log_trace(kernel_log_debug, "ALFA: %.2f", ALFA);
+        log_trace(kernel_log_debug, "ESTIMACION_INICIAL: %.2f", ESTIMACION_INICIAL);
         log_trace(kernel_log_debug, "TIEMPO_SUSPENSION: %s", TIEMPO_SUSPENSION);
         log_trace(kernel_log_debug, "LOG_LEVEL: %s", LOG_LEVEL);
     }
@@ -161,6 +162,7 @@ void iniciar_sincronizacion_kernel() {
 
     conectado_cpu = false;
     conectado_io = false;
+    conectado_memoria = false;
 }
 
 void iniciar_diccionario_tiempos() {
@@ -238,6 +240,10 @@ void* hilo_cliente_memoria(void* _) {
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
+
+    pthread_mutex_lock(&mutex_conexiones);
+    conectado_memoria = true;
+    pthread_mutex_unlock(&mutex_conexiones);
 
     log_trace(kernel_log, "HANDSHAKE_MEMORIA_KERNEL: Kernel conectado correctamente a Memoria (fd=%d)", fd_memoria);
 
@@ -526,7 +532,9 @@ void* atender_cpu_dispatch(void* arg) {
                 log_trace(kernel_log, "EXIT_OP asociado a PID=%d", pid);
 
                 // Buscar PCB en RUNNING
+                log_debug(kernel_log, "atender_cpu_dispatch: esperando mutex_cola_running para buscar PCB con PID=%d", pid_exit);
                 pthread_mutex_lock(&mutex_cola_running);
+                log_debug(kernel_log, "atender_cpu_dispatch: bloqueando mutex_cola_running para buscar PCB con PID=%d", pid_exit);
                 t_pcb* pcb_a_finalizar = NULL;
                 for (int i = 0; i < list_size(cola_running); i++) {
                     t_pcb* pcb = list_get(cola_running, i);
@@ -566,7 +574,7 @@ void* atender_cpu_dispatch(void* arg) {
                 break;
                 
             default:
-                log_error(kernel_log, "(%d) Código op desconocido recibido de Dispatch fd %d: %d", pid, cop, fd_cpu_dispatch);
+                log_error(kernel_log, "(%d) Código op desconocido recibido de Dispatch fd %d: %d", pid, fd_cpu_dispatch, cop);
                 break;
         }
 

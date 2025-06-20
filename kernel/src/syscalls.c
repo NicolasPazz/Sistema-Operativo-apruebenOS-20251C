@@ -23,6 +23,7 @@ void INIT_PROC(char* nombre_archivo, int tam_memoria) {
     nuevo_proceso->tamanio_memoria = tam_memoria;
     nuevo_proceso->path = strdup(nombre_archivo);
     nuevo_proceso->PC = 0;  // Inicializar PC a 0
+    nuevo_proceso->estimacion_rafaga = ESTIMACION_INICIAL;
     
     // Comunicarse con memoria para inicializar el proceso
     t_paquete* paquete = crear_paquete_op(INIT_PROC_OP);
@@ -250,7 +251,7 @@ void EXIT(t_pcb* pcb_a_finalizar) {
     }
 
     // Notificar a Memoria
-    int cod_op = EXIT_OP;
+    int cod_op = FINALIZAR_PROC_OP;
     if (send(fd_memoria, &cod_op, sizeof(int), 0) <= 0 ||
         send(fd_memoria, &pcb_a_finalizar->PID, sizeof(int), 0) <= 0) {
         log_error(kernel_log, "EXIT: Error al enviar FINALIZAR_PROC_OP a Memoria para PID %d", pcb_a_finalizar->PID);
@@ -279,11 +280,13 @@ void EXIT(t_pcb* pcb_a_finalizar) {
     }
 
     // Logs
-    log_info(kernel_log, "## (<%d>) - Finaliza el proceso", pcb_a_finalizar->PID);
+    log_info(kernel_log, "## (%d) - Finaliza el proceso", pcb_a_finalizar->PID);
     loguear_metricas_estado(pcb_a_finalizar);
 
     // Eliminar de cola_exit, liberar pcb y cronometro
+    log_debug(kernel_log, "EXIT: esperando mutex_cola_exit para eliminar PCB PID=%d", pcb_a_finalizar->PID);
     pthread_mutex_lock(&mutex_cola_exit);
+    log_debug(kernel_log, "EXIT: bloqueando mutex_cola_exit para eliminar PCB PID=%d", pcb_a_finalizar->PID);
     list_remove_element(cola_exit, pcb_a_finalizar);
     pthread_mutex_unlock(&mutex_cola_exit);
 

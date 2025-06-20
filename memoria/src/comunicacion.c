@@ -276,7 +276,10 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
 
             // Recibir PID
                 int pid;
-                recv_data(cliente_socket, &pid, sizeof(int));
+                if (recv_data(cliente_socket, &pid, sizeof(int)) <= 0) {
+                    log_error(logger, "Error al recibir PID para FINALIZAR_PROC_OP");
+                    return;
+                }                
             
                 log_trace(logger, "Finalización de proceso solicitada - PID: %d", pid);
             
@@ -491,6 +494,17 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             
             log_trace(logger, "Respuesta de verificación de espacio: %s", 
                      hay_espacio ? "OK" : "ERROR");
+            break;
+        }
+
+        case SOLICITAR_FRAME_PARA_ENTRADAS: {
+            log_trace(logger, "SOLICITAR_FRAME_PARA_ENTRADAS recibido");
+        
+            // TODO
+            while(1) {
+                sleep(1000);
+            }
+            
             break;
         }
 

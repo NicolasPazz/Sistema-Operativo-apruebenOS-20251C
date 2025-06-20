@@ -117,11 +117,13 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
         // Si pasa al Estado EXEC hay que actualizar el tiempo_inicio_exec
         if (nuevo_estado_enum == EXEC) {
             PCB->tiempo_inicio_exec = get_time();
-        } else if (PCB->Estado == EXEC && nuevo_estado_enum == BLOCKED) {
+        } 
+        
+        // SJF
+        if (PCB->Estado == EXEC && nuevo_estado_enum == BLOCKED) {
             // Cuando SALE de EXEC calculo la estimacion proxima
             double rafaga_real = get_time() - PCB->tiempo_inicio_exec;
-            double alfa = 0.5;
-            PCB->estimacion_rafaga = alfa * rafaga_real + (1 - alfa) * PCB->estimacion_rafaga;
+            PCB->estimacion_rafaga = ALFA * rafaga_real + (1 - ALFA) * PCB->estimacion_rafaga;
         }
 
         if (PCB->Estado == SUSP_READY) {

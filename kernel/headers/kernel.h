@@ -37,9 +37,9 @@ extern char* PUERTO_ESCUCHA_INTERRUPT;
 extern char* PUERTO_ESCUCHA_IO;
 extern char* ALGORITMO_CORTO_PLAZO;
 extern char* ALGORITMO_INGRESO_A_READY;
-extern char* ALFA;
+extern double ALFA;
 extern char* TIEMPO_SUSPENSION;
-extern char* ESTIMACION_INICIAL;
+extern double ESTIMACION_INICIAL;
 extern char* LOG_LEVEL;
 
 // Colas de Estados
@@ -64,6 +64,7 @@ extern pthread_mutex_t mutex_ios;
 // Conexiones minimas
 extern bool conectado_cpu;
 extern bool conectado_io;
+extern bool conectado_memoria;
 extern pthread_mutex_t mutex_conexiones;
 
 /////////////////////////////// Prototipos ///////////////////////////////

@@ -95,17 +95,35 @@ int traducir_direccion(int direccion_logica, int* desplazamiento) {
 
         // Enviar entradas de página a Memoria
         t_paquete* paquete = crear_paquete_op(SOLICITAR_FRAME_PARA_ENTRADAS);
-        agregar_a_paquete(paquete, &pid_ejecutando, sizeof(int));
-        agregar_a_paquete(paquete, &cantidad_niveles, sizeof(int));
+        log_trace(cpu_log, "PID: %d - OBTENER MARCO - Página: %d", pid_ejecutando, nro_pagina);
+        log_trace(cpu_log, "Serializando SOLICITAR_FRAME_PARA_ENTRADAS:");
+        log_trace(cpu_log, "  PID: %d", pid_ejecutando);
+        log_trace(cpu_log, "  Cant. niveles: %d", cantidad_niveles);
+
+        agregar_entero_a_paquete(paquete, pid_ejecutando);
+        agregar_entero_a_paquete(paquete, cantidad_niveles);
+
         for (int i = 0; i < cantidad_niveles; i++) {
-            agregar_a_paquete(paquete, &entradas[i], sizeof(int));
+            log_trace(cpu_log, "  Entrada[%d] = %d", i, entradas[i]);
+            agregar_entero_a_paquete(paquete, entradas[i]);
         }
+
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
 
         // Recibir frame
-        recv(fd_memoria, &frame, sizeof(int), MSG_WAITALL);
+        if (recv(fd_memoria, &frame, sizeof(int), MSG_WAITALL) != sizeof(int)) {
+            log_error(cpu_log, "PID: %d - Error al recibir marco desde Memoria", pid_ejecutando);
+            exit(EXIT_FAILURE);
+        }
+
+        if (frame == -1) {
+            log_error(cpu_log, "PID: %d - Error al traducir dirección: Marco no encontrado", pid_ejecutando);
+            exit(EXIT_FAILURE);
+        }
+
         log_info(cpu_log, "PID: %d - OBTENER MARCO - Página: %d - Marco: %d", pid_ejecutando, nro_pagina, frame);
+
 
         if (tlb_habilitada()) {
             tlb_insertar(nro_pagina, frame);
