@@ -8,7 +8,7 @@ char* PUERTO_KERNEL;
 char* LOG_LEVEL;
 
 void iniciar_config_io() {
-    io_config = iniciar_config("io.config");
+    io_config = iniciar_config("io/io.config");
 
     IP_KERNEL = config_get_string_value(io_config, "IP_KERNEL");
     PUERTO_KERNEL= config_get_string_value(io_config, "PUERTO_KERNEL");
@@ -21,17 +21,17 @@ void iniciar_config_io() {
 }
 
 void iniciar_logger_io() {
-    io_log = iniciar_logger("io.log", "io", 1, log_level_from_string(LOG_LEVEL));
+    io_log = iniciar_logger("io/io.log", "CPU", 1, log_level_from_string(LOG_LEVEL));
     if (io_log == NULL) {
         printf("Error al iniciar IO logs\n");
     } else {
-        log_debug(io_log, "IO logs iniciados correctamente!");
+        log_trace(io_log, "IO logs iniciados correctamente!");
     }
 }
 
-void iniciar_conexiones_io(char* nombre_io){
-    log_info(io_log, "Iniciando conexión con Kernel...");
-    log_debug(io_log, "Intentando conectar a Kernel en %s:%s", IP_KERNEL, PUERTO_KERNEL);
+void iniciar_conexiones_io(char* nombre_io) {
+    log_trace(io_log, "Iniciando conexión con Kernel...");
+    log_trace(io_log, "Intentando conectar a Kernel en %s:%s", IP_KERNEL, PUERTO_KERNEL);
     
     //////////////////////////// Conexion hacia Kernel ////////////////////////////
     fd_kernel_io = crear_conexion(IP_KERNEL, PUERTO_KERNEL, io_log);
@@ -40,7 +40,7 @@ void iniciar_conexiones_io(char* nombre_io){
         exit(EXIT_FAILURE);
     }
 
-    log_debug(io_log, "Socket creado exitosamente (fd=%d). Enviando handshake...", fd_kernel_io);
+    log_trace(io_log, "Socket creado exitosamente (fd=%d). Enviando handshake...", fd_kernel_io);
 
     int handshake = HANDSHAKE_IO_KERNEL;
     if (send(fd_kernel_io, &handshake, sizeof(int), 0) <= 0) {
@@ -49,7 +49,7 @@ void iniciar_conexiones_io(char* nombre_io){
         exit(EXIT_FAILURE);
     }
 
-    log_debug(io_log, "Handshake enviado. Enviando nombre del dispositivo: '%s'", nombre_io);
+    log_trace(io_log, "Handshake enviado. Enviando nombre del dispositivo: '%s'", nombre_io);
 
     if (send(fd_kernel_io, nombre_io, strlen(nombre_io) + 1, 0) <= 0) {
         log_error(io_log, "Error al enviar el nombre de IO a Kernel: %s", strerror(errno));
@@ -57,36 +57,36 @@ void iniciar_conexiones_io(char* nombre_io){
         exit(EXIT_FAILURE);
     }
 
-    log_info(io_log, "✓ Dispositivo IO '%s' conectado exitosamente a Kernel (fd=%d)", nombre_io, fd_kernel_io);
-    log_debug(io_log, "HANDSHAKE_IO_KERNEL completado correctamente");
+    log_trace(io_log, "✓ Dispositivo IO '%s' conectado exitosamente a Kernel (fd=%d)", nombre_io, fd_kernel_io);
+    log_trace(io_log, "HANDSHAKE_IO_KERNEL completado correctamente");
 }
 
 void terminar_io() {
-    log_info(io_log, "=== Iniciando terminación limpia del dispositivo IO ===");
+    log_trace(io_log, "=== Iniciando terminación limpia del dispositivo IO ===");
     
     // Cerrar conexión con Kernel
     if (fd_kernel_io > 0) {
-        log_debug(io_log, "Cerrando conexión con Kernel (fd=%d)...", fd_kernel_io);
+        log_trace(io_log, "Cerrando conexión con Kernel (fd=%d)...", fd_kernel_io);
         if (close(fd_kernel_io) == 0) {
-            log_debug(io_log, "✓ Conexión con Kernel cerrada correctamente");
+            log_trace(io_log, "✓ Conexión con Kernel cerrada correctamente");
         } else {
             log_warning(io_log, "⚠ Error al cerrar conexión con Kernel: %s", strerror(errno));
         }
         fd_kernel_io = -1;
     } else {
-        log_debug(io_log, "No hay conexión activa con Kernel para cerrar");
+        log_trace(io_log, "No hay conexión activa con Kernel para cerrar");
     }
     
     // Liberar recursos de configuración
     if (io_config != NULL) {
         config_destroy(io_config);
         io_config = NULL;
-        log_debug(io_log, "✓ Configuración IO liberada correctamente");
+        log_trace(io_log, "✓ Configuración IO liberada correctamente");
     }
     
     // Finalizar logging
     if (io_log != NULL) {
-        log_info(io_log, "✓ Dispositivo IO terminado correctamente");
+        log_trace(io_log, "✓ Dispositivo IO terminado correctamente");
         log_destroy(io_log);
         io_log = NULL;
     }
@@ -99,7 +99,7 @@ void terminar_io() {
 //     while (recv(fd_kernel_io, &cop, sizeof(op_code), 0) > 0) {
 //         switch (cop) {
 //             case IO_OP:
-//                 log_debug(io_log, "IO_OP recibido");
+//                 log_trace(io_log, "IO_OP recibido");
 //                 // procesar op
 //                 break;
 //             default:

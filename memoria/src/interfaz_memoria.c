@@ -1,7 +1,17 @@
 #include "../headers/interfaz_memoria.h"
-#include <commons/string.h>
-#include <string.h>
+#include "../headers/estructuras.h"
 #include "../headers/init_memoria.h"
+#include "../headers/metricas.h"
+#include <commons/log.h>
+#include <commons/config.h>
+#include <commons/string.h>
+#include <commons/memory.h>
+#include <commons/collections/list.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <pthread.h>
 
 // Instanciación de variables globales
 t_list* process_instructions_list = NULL;
@@ -14,7 +24,7 @@ extern t_config_memoria* cfg;
 void instructions_init() {
     if (process_instructions_list == NULL) {
         process_instructions_list = list_create();
-        log_debug(logger, "Lista de instrucciones inicializada correctamente");
+        log_trace(logger, "Lista de instrucciones inicializada correctamente");
     }
 }
 
@@ -29,7 +39,7 @@ void instructions_destroy() {
         }
         list_destroy(process_instructions_list);
         process_instructions_list = NULL;
-        log_debug(logger, "Lista de instrucciones destruida correctamente");
+        log_trace(logger, "Lista de instrucciones destruida correctamente");
     }
 }
 
@@ -209,7 +219,7 @@ t_process_instructions* load_process_instructions(int pid, char* instructions_fi
     }
     list_add(process_instructions_list, process_inst);
     
-    log_debug(logger, "PID: %d - Loaded %d instructions from file: %s", 
+    log_trace(logger, "PID: %d - Loaded %d instructions from file: %s", 
               pid, line_count, instructions_file);
     
     return process_inst;
@@ -243,11 +253,8 @@ t_instruccion* get_instruction(int pid, int pc) {
         return NULL;
     }
     
-    // Incrementar contador de instrucciones solicitadas para el proceso
-    t_proceso_memoria* process_info = get_process_info(pid);
-    if (process_info != NULL && process_info->metricas != NULL) {
-        process_info->metricas->instrucciones_solicitadas++;
-    }
+    // Incrementar métrica de instrucciones solicitadas usando la función estándar
+    incrementar_instrucciones_solicitadas(pid);
     
     t_extended_instruccion* extended_instr = list_get(process_inst->instructions, pc);
     
@@ -290,7 +297,7 @@ char* instruction_to_string(t_extended_instruccion* instruction, int pc) {
 void memory_init() {
     if (processes_in_memory == NULL) {
         processes_in_memory = list_create();
-        log_debug(logger, "Lista de procesos en memoria inicializada correctamente");
+        log_trace(logger, "Lista de procesos en memoria inicializada correctamente");
     }
 }
 
@@ -300,7 +307,7 @@ void memory_destroy() {
         // Liberar memoria de cada proceso
         list_destroy_and_destroy_elements(processes_in_memory, free);
         processes_in_memory = NULL;
-        log_debug(logger, "Lista de procesos en memoria destruida correctamente");
+        log_trace(logger, "Lista de procesos en memoria destruida correctamente");
     }
 }
 
@@ -311,120 +318,33 @@ int get_available_memory() {
     // Para simplificar, asumimos que la mitad de la memoria siempre está disponible
     int memoria_disponible = cfg->TAM_MEMORIA / 2;
     
-    log_debug(logger, "Espacio disponible en memoria (mock): %d bytes", memoria_disponible);
+    log_trace(logger, "Espacio disponible en memoria (mock): %d bytes", memoria_disponible);
     
     return memoria_disponible;
 }
 
+/*
+ * FUNCIONES COMENTADAS - ESTAS FUNCIONES ESTÁN DUPLICADAS
+ * La implementación principal está en manejo_memoria.c
+ * Comentadas para evitar logs duplicados de métricas
+ */
+
+/*
 // Inicializa un proceso en memoria (mock para checkpoint 2)
 int initialize_process(int pid, int size) {
-    // Verificar si el proceso ya existe
-    for (int i = 0; i < list_size(processes_in_memory); i++) {
-        t_proceso_memoria* process = list_get(processes_in_memory, i);
-        if (process->pid == pid) {
-            log_error(logger, "PID: %d - El proceso ya existe en memoria", pid);
-            return -1;
-        }
-    }
-    
-    // En el checkpoint 2, siempre aceptamos la inicialización
-    t_proceso_memoria* new_process = malloc(sizeof(t_proceso_memoria));
-    new_process->pid = pid;
-    new_process->tamanio = size;
-    new_process->activo = true;
-    new_process->suspendido = false;
-    new_process->estructura_paginas = NULL;
-    new_process->instrucciones = NULL;
-    
-    // Inicializar métricas
-    new_process->metricas = malloc(sizeof(t_metricas_proceso));
-    new_process->metricas->pid = pid;
-    new_process->metricas->accesos_tabla_paginas = 0;
-    new_process->metricas->instrucciones_solicitadas = 0;
-    new_process->metricas->bajadas_swap = 0;
-    new_process->metricas->subidas_memoria_principal = 0;
-    new_process->metricas->lecturas_memoria = 0;
-    new_process->metricas->escrituras_memoria = 0;
-    pthread_mutex_init(&new_process->metricas->mutex_metricas, NULL);
-    
-    if (processes_in_memory == NULL) {
-        memory_init();
-    }
-    
-    list_add(processes_in_memory, new_process);
-    
-    // Log obligatorio
-    log_info(logger, "## PID: %d - Proceso Creado - Tamaño: %d", pid, size);
-    
-    return 0; // Éxito
+    // Esta función está duplicada - la implementación principal está en manejo_memoria.c
+    return 0;
 }
 
 // Finaliza un proceso y libera sus recursos
 void finalize_process(int pid) {
-    if (processes_in_memory == NULL) {
-        log_error(logger, "Lista de procesos no inicializada");
-        return;
-    }
-    
-    t_proceso_memoria* process_to_remove = NULL;
-    int index_to_remove = -1;
-    
-    // Buscar el proceso por PID
-    for (int i = 0; i < list_size(processes_in_memory); i++) {
-        t_proceso_memoria* process = list_get(processes_in_memory, i);
-        if (process->pid == pid) {
-            process_to_remove = process;
-            index_to_remove = i;
-            break;
-        }
-    }
-    
-    if (process_to_remove == NULL) {
-        log_error(logger, "PID: %d - No se encontró el proceso a finalizar", pid);
-        return;
-    }
-    
-    // Log obligatorio con métricas
-    log_info(logger, "## PID: %d - Proceso Destruido - Métricas - Acc.T.Pag: %d; Inst.Sol.: %d; SWAP: %d; Mem.Prin.: %d; Lec.Mem.: %d; Esc.Mem.: %d",
-             pid,
-             process_to_remove->metricas->accesos_tabla_paginas,
-             process_to_remove->metricas->instrucciones_solicitadas,
-             process_to_remove->metricas->bajadas_swap,
-             process_to_remove->metricas->subidas_memoria_principal,
-             process_to_remove->metricas->lecturas_memoria,
-             process_to_remove->metricas->escrituras_memoria);
-    
-    // Liberar métricas
-    if (process_to_remove->metricas != NULL) {
-        pthread_mutex_destroy(&process_to_remove->metricas->mutex_metricas);
-        free(process_to_remove->metricas);
-    }
-    
-    // Eliminar el proceso de la lista
-    list_remove_and_destroy_element(processes_in_memory, index_to_remove, free);
-    
-    // También eliminar sus instrucciones
-    for (int i = 0; i < list_size(process_instructions_list); i++) {
-        t_process_instructions* p = list_get(process_instructions_list, i);
-        if (p->pid == pid) {
-            list_remove_and_destroy_element(process_instructions_list, i, (void*)free);
-            break;
-        }
-    }
+    // Esta función está duplicada - la implementación principal está en manejo_memoria.c
+    // IMPORTANTE: Los logs de métricas se manejan en finalizar_proceso_en_memoria()
 }
 
 // Obtiene la información de un proceso
 t_proceso_memoria* get_process_info(int pid) {
-    if (processes_in_memory == NULL) {
-        return NULL;
-    }
-    
-    for (int i = 0; i < list_size(processes_in_memory); i++) {
-        t_proceso_memoria* process = list_get(processes_in_memory, i);
-        if (process->pid == pid) {
-            return process;
-        }
-    }
-    
+    // Esta función está duplicada - usar obtener_proceso() de manejo_memoria.c
     return NULL;
 }
+*/

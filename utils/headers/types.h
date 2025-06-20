@@ -1,7 +1,6 @@
 #ifndef UTILS_TYPES_H
 #define UTILS_TYPES_H
 
-
 /////////////////////////////// Estructuras compartidas ///////////////////////////////
 
 // Codigos de operaciones entre modulos
@@ -39,9 +38,16 @@ typedef enum {
 	FINALIZAR_PROC_OP,
 
 	// Testing
-	DEBUGGER
-} op_code;
+	DEBUGGER,
 
+	// Operaciones adicionales de memoria
+	SEND_PSEUDOCOD_FILE, // cod_op para mandar de kernel a memoria la ruta del archivo de pseudocodigo
+	ACCESO_TABLA_PAGINAS_OP,      // Acceso a tabla de páginas - devuelve número de marco
+	ACCESO_ESPACIO_USUARIO_OP,    // Acceso a espacio de usuario - lectura/escritura
+	LEER_PAGINA_COMPLETA_OP,      // Leer página completa desde dirección física
+	ACTUALIZAR_PAGINA_COMPLETA_OP, // Actualizar página completa en dirección física
+	CHECK_MEMORY_SPACE_OP         // Consultar si hay espacio suficiente en memoria
+} op_code;
 
 // Handshake
 typedef enum {
@@ -51,7 +57,6 @@ typedef enum {
     HANDSHAKE_CPU_KERNEL_DISPATCH,
     HANDSHAKE_IO_KERNEL
 } handshake_code;
-
 
 // Estructuras de serialización
 typedef struct {
@@ -70,7 +75,6 @@ typedef struct {
 	t_buffer* buffer;
 } t_paquete;
 
-
 /*
  typedef struct {
      int entradas[NIVELES_PAGINACION]; 
@@ -84,13 +88,11 @@ typedef struct {
 	int desplazamiento;
 } t_direccion_fisica;
 
-
 // Respuestas de Memoria
 typedef enum {
     OK,
 	ERROR
 } t_respuesta_memoria;
-
 
 // Instrucciones de CPU
 typedef struct{
@@ -105,11 +107,35 @@ typedef struct {
     op_code tipo;                   // Tipo de operación (NOOP_OP, WRITE_OP, etc.)
 } t_extended_instruccion;
 
-
 // IOs
 typedef struct {
     int pid;
     long tiempo_io;
 } t_pedido_io;
+
+// Estructuras adicionales para los 4 tipos de acceso específicos de memoria
+typedef struct {
+    int pid;
+    int numero_pagina;
+} t_acceso_tabla_paginas;
+
+typedef struct {
+    int pid;
+    int direccion_fisica;
+    int tamanio;
+    bool es_escritura;  // true para escritura, false para lectura
+    void* datos;        // Solo para escritura
+} t_acceso_espacio_usuario;
+
+typedef struct {
+    int pid;
+    int direccion_fisica;  // Debe coincidir con byte 0 de la página
+} t_leer_pagina_completa;
+
+typedef struct {
+    int pid;
+    int direccion_fisica;  // Debe coincidir con byte 0 de la página
+    void* contenido_pagina; // Contenido completo de la página
+} t_actualizar_pagina_completa;
 
 #endif /* UTILS_TYPES_H */

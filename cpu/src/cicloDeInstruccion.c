@@ -12,11 +12,11 @@ int pc = 0;                    // Program Counter inicial
 
 void ejecutar_ciclo_instruccion() {
     seguir_ejecutando = 1;
-    log_info(cpu_log, "[CICLO] ▶ Iniciando ciclo de instrucción para PID: %d", pid_ejecutando);
+    log_trace(cpu_log, "[CICLO] ▶ Iniciando ciclo de instrucción para PID: %d", pid_ejecutando);
     
-    while(seguir_ejecutando == 1){
-        log_debug(cpu_log, "[CICLO] ═══ NUEVO CICLO DE INSTRUCCIÓN ═══");
-        log_debug(cpu_log, "[CICLO] PID: %d | PC: %d | Seguir: %d", pid_ejecutando, pc, seguir_ejecutando);
+    while (seguir_ejecutando == 1) {
+        log_trace(cpu_log, "[CICLO] ═══ NUEVO CICLO DE INSTRUCCIÓN ═══");
+        log_trace(cpu_log, "[CICLO] PID: %d | PC: %d | Seguir: %d", pid_ejecutando, pc, seguir_ejecutando);
         
         // FETCH
         t_instruccion* instruccion = fetch();
@@ -34,54 +34,54 @@ void ejecutar_ciclo_instruccion() {
         }
         
         // Actualizar PC (excepto para GOTO)
-        if(tipo_instruccion != GOTO_OP){
+        if (tipo_instruccion != GOTO_OP) {
             pc++;
-            log_debug(cpu_log, "[CICLO] PC incrementado a: %d", pc);
+            log_trace(cpu_log, "[CICLO] PC incrementado a: %d", pc);
         } else {
-            log_debug(cpu_log, "[CICLO] PC no incrementado (instrucción GOTO)");
+            log_trace(cpu_log, "[CICLO] PC no incrementado (instrucción GOTO)");
         }
         
         // EXECUTE
-        log_debug(cpu_log, "[CICLO] ▶ Ejecutando instrucción...");
+        log_trace(cpu_log, "[CICLO] ▶ Ejecutando instrucción...");
         execute(tipo_instruccion, instruccion);
         
         // Liberar la memoria de la instrucción
         liberar_instruccion(instruccion);
-        log_debug(cpu_log, "[CICLO] ✓ Instrucción liberada de memoria");
+        log_trace(cpu_log, "[CICLO] ✓ Instrucción liberada de memoria");
         
         // CHECK INTERRUPT
-        if(seguir_ejecutando){
-            log_debug(cpu_log, "[CICLO] Verificando interrupciones...");
+        if (seguir_ejecutando) {
+            log_trace(cpu_log, "[CICLO] Verificando interrupciones...");
             check_interrupt();
         }
         
-        log_debug(cpu_log, "[CICLO] ═══ FIN CICLO ═══ (Seguir: %d)", seguir_ejecutando);
+        log_trace(cpu_log, "[CICLO] ═══ FIN CICLO ═══ (Seguir: %d)", seguir_ejecutando);
     }
     
-    log_info(cpu_log, "[CICLO] ◼ Ciclo de instrucción finalizado para PID: %d", pid_ejecutando);
+    log_trace(cpu_log, "[CICLO] ◼ Ciclo de instrucción finalizado para PID: %d", pid_ejecutando);
 }
 
 // fetch
-t_instruccion* fetch(){
+t_instruccion* fetch() {
     log_info(cpu_log, "## PID: %d - FETCH - Program Counter: %d", pid_ejecutando, pc);
 
-    log_debug(cpu_log, "[FETCH] Enviando solicitud PEDIR_INSTRUCCION_OP a memoria...");
+    log_trace(cpu_log, "[FETCH] Enviando solicitud PEDIR_INSTRUCCION_OP a memoria...");
     t_paquete* paquete = crear_paquete_op(PEDIR_INSTRUCCION_OP);
     agregar_entero_a_paquete(paquete, pid_ejecutando);  // CAMBIO: PID primero
     agregar_entero_a_paquete(paquete, pc);              // CAMBIO: PC segundo
     enviar_paquete(paquete, fd_memoria);
     eliminar_paquete(paquete);
 
-    log_debug(cpu_log, "[FETCH] ✓ Solicitud enviada a memoria - PID: %d, PC: %d", pid_ejecutando, pc);
+    log_trace(cpu_log, "[FETCH] ✓ Solicitud enviada a memoria - PID: %d, PC: %d", pid_ejecutando, pc);
 
     // Recibir el código de operación primero
     int codigo = recibir_operacion(fd_memoria);
-    log_debug(cpu_log, "[FETCH] Código de operación recibido desde memoria: %d", codigo);
+    log_trace(cpu_log, "[FETCH] Código de operación recibido desde memoria: %d", codigo);
 
     t_instruccion* instruccion = recibir_instruccion(fd_memoria);
     
     if (instruccion != NULL) {
-        log_info(cpu_log, "[FETCH] ✓ Instrucción obtenida exitosamente desde memoria");
+        log_trace(cpu_log, "[FETCH] ✓ Instrucción obtenida exitosamente desde memoria");
     } else {
         log_error(cpu_log, "[FETCH] ✗ Error al recibir instrucción desde memoria");
     }
@@ -90,8 +90,8 @@ t_instruccion* fetch(){
 }
 
 // decode
-op_code decode(char* nombre_instruccion){
-    log_debug(cpu_log, "[DECODE] Decodificando instrucción: '%s'", nombre_instruccion);
+op_code decode(char* nombre_instruccion) {
+    log_trace(cpu_log, "[DECODE] Decodificando instrucción: '%s'", nombre_instruccion);
     
     op_code resultado = -1;
     
@@ -116,7 +116,7 @@ op_code decode(char* nombre_instruccion){
     }
     
     if (resultado != -1) {
-        log_debug(cpu_log, "[DECODE] ✓ Instrucción '%s' decodificada como op_code: %d", nombre_instruccion, resultado);
+        log_trace(cpu_log, "[DECODE] ✓ Instrucción '%s' decodificada como op_code: %d", nombre_instruccion, resultado);
     } else {
         log_error(cpu_log, "[DECODE] ✗ Instrucción '%s' no reconocida", nombre_instruccion);
     }
@@ -144,35 +144,35 @@ void execute(op_code tipo_instruccion, t_instruccion* instruccion) {
 
     switch (tipo_instruccion) {
         case NOOP_OP:
-            log_debug(cpu_log, "INSTRUCCION :%d", tipo_instruccion); 
+            log_trace(cpu_log, "INSTRUCCION :%d", tipo_instruccion); 
             func_noop();
             break;
         case WRITE_OP:
-            log_debug(cpu_log, "INSTRUCCION :%d - PARAMETRO 1: %s - PARAMETRO 2: %s", tipo_instruccion, instruccion->parametros2, instruccion->parametros3); 
+            log_trace(cpu_log, "INSTRUCCION :%d - PARAMETRO 1: %s - PARAMETRO 2: %s", tipo_instruccion, instruccion->parametros2, instruccion->parametros3); 
             func_write(instruccion->parametros2, instruccion->parametros3);
             break;
         case READ_OP:
-            log_debug(cpu_log, "INSTRUCCION :%d - PARAMETRO 1: %s - PARAMETRO 2: %s", tipo_instruccion, instruccion->parametros2, instruccion->parametros3); 
+            log_trace(cpu_log, "INSTRUCCION :%d - PARAMETRO 1: %s - PARAMETRO 2: %s", tipo_instruccion, instruccion->parametros2, instruccion->parametros3); 
             func_read(instruccion->parametros2, instruccion->parametros3);  
             break;
         case GOTO_OP:
-            log_debug(cpu_log, "INSTRUCCION :%d - PARAMETRO 1: %s", tipo_instruccion, instruccion->parametros2); 
+            log_trace(cpu_log, "INSTRUCCION :%d - PARAMETRO 1: %s", tipo_instruccion, instruccion->parametros2); 
             func_goto(instruccion->parametros2);
             break;
         case IO_OP:
-            log_debug(cpu_log, "INSTRUCCION :%d - PARAMETRO 1: %s", tipo_instruccion, instruccion->parametros2); 
+            log_trace(cpu_log, "INSTRUCCION :%d - PARAMETRO 1: %s", tipo_instruccion, instruccion->parametros2); 
             func_io(instruccion->parametros2, instruccion->parametros3); 
             break;
         case INIT_PROC_OP:
-            log_debug(cpu_log, "INSTRUCCION :%d - PARAMETRO 1: %s - PARAMETRO 2: %s", tipo_instruccion, instruccion->parametros2, instruccion->parametros3); 
+            log_trace(cpu_log, "INSTRUCCION :%d - PARAMETRO 1: %s - PARAMETRO 2: %s", tipo_instruccion, instruccion->parametros2, instruccion->parametros3); 
             func_init_proc(instruccion); // en realidad son 2 parametros
             break;
         case DUMP_MEMORY_OP:
-            log_debug(cpu_log, "INSTRUCCION :%d", tipo_instruccion);   
+            log_trace(cpu_log, "INSTRUCCION :%d", tipo_instruccion);   
             func_dump_memory();
             break;
         case EXIT_OP:
-            log_debug(cpu_log, "INSTRUCCION :%d", tipo_instruccion); 
+            log_trace(cpu_log, "INSTRUCCION :%d", tipo_instruccion); 
             func_exit();
             break;
         default:
@@ -181,11 +181,10 @@ void execute(op_code tipo_instruccion, t_instruccion* instruccion) {
     }
 }
 
-
-void check_interrupt(){
-    if (hay_interrupcion){
+void check_interrupt() {
+    if (hay_interrupcion) {
         hay_interrupcion = 0;
-        if(pid_ejecutando == pid_interrupt){
+        if (pid_ejecutando == pid_interrupt) {
             seguir_ejecutando = 0;
 
             t_paquete* paquete_kernel = crear_paquete_op(INTERRUPCION_OP);
@@ -196,7 +195,6 @@ void check_interrupt(){
         }
     }
 }
-
 
 // liberamos memoria
 void liberar_instruccion(t_instruccion* instruccion) {

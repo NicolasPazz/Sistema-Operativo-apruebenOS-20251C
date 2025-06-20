@@ -25,5 +25,4 @@ bool recv_dos_ints(int fd, int* int1, int* int2);
 bool recv_string(int fd, char** string);
 bool recv_data(int fd, void* buffer, size_t size);
 
-
 #endif /* UTILS_H_ */

@@ -3,69 +3,58 @@
 
 t_temporal* tiempo_estado_actual;
 
+// Variable global para el siguiente PID
+static int siguiente_pid = 1;
+
+// Función para obtener el siguiente PID disponible
+static int obtener_siguiente_pid() {
+    return siguiente_pid++;
+}
+
 //////////////////////////////////////////////////////////// INIT PROC ////////////////////////////////////////////////////////////
 void INIT_PROC(char* nombre_archivo, int tam_memoria) {
-    t_pcb* nuevo_pcb = malloc(sizeof(t_pcb));
-    if (nuevo_pcb == NULL) {
-        log_error(kernel_log, "INIT_PROC: Error al reservar memoria para nuevo PCB");
-        free(nuevo_pcb);
-        terminar_kernel();
-        exit(EXIT_FAILURE);
-    }
-
-    nuevo_pcb->PID = list_size(cola_procesos);  // Asignacion secuencial de PID
-    nuevo_pcb->PC = 0;
-
-    for (int i = 0; i < 7; i++) {
-        nuevo_pcb->ME[i] = 0;
-        nuevo_pcb->MT[i] = 0;
-    }
-
-    nuevo_pcb->Estado = NEW;
-    nuevo_pcb->tiempo_inicio_exec = 0;
-    nuevo_pcb->estimacion_rafaga = atof(ESTIMACION_INICIAL);
-
-    // Asignar path y tamanio
-    nuevo_pcb->path = strdup(nombre_archivo);
-    nuevo_pcb->tamanio_memoria = tam_memoria;
-
-    if (nuevo_pcb->path == NULL) {
-        log_error(kernel_log, "INIT_PROC: Error al copiar el path del archivo");
-        free(nuevo_pcb);
-        terminar_kernel();
-        exit(EXIT_FAILURE);
-    }
-
-    if (nuevo_pcb->tamanio_memoria < 0) {
-        log_error(kernel_log, "INIT_PROC: Error al copiar el tamanio de memoria");
-        free(nuevo_pcb);
-        terminar_kernel();
-        exit(EXIT_FAILURE);
-    }
-
-    // Agregar a NEW
-    pthread_mutex_lock(&mutex_cola_new);
-    list_add(cola_new, nuevo_pcb);
-    nuevo_pcb->ME[NEW]++;
-    pthread_mutex_unlock(&mutex_cola_new);
-
-    sem_post(&sem_proceso_a_new); // Notificar al planificador LP
+    log_trace(kernel_log, "INIT_PROC - Nombre archivo recibido: '%s'", nombre_archivo);
     
-    // Cronometro de metricas de tiempo
-    char* pid_key = string_itoa(nuevo_pcb->PID);
-    char* path = nuevo_pcb->path;
-    t_temporal* nuevo_cronometro = temporal_create();
-    dictionary_put(tiempos_por_pid, pid_key, nuevo_cronometro);
-    dictionary_put(archivo_por_pcb, pid_key, path);
-    free(pid_key);
-
-    // Agregar a cola general de procesos
-    list_add(cola_procesos, nuevo_pcb);
-    log_info(kernel_log, "## (<%d>) Se crea el proceso - Estado: NEW", nuevo_pcb->PID);
+    // Crear nuevo PCB
+    t_pcb* nuevo_proceso = malloc(sizeof(t_pcb));
+    memset(nuevo_proceso, 0, sizeof(t_pcb));    // Inicializar todo en 0
+    nuevo_proceso->PID = obtener_siguiente_pid();
+    nuevo_proceso->Estado = INIT;
+    nuevo_proceso->tamanio_memoria = tam_memoria;
+    nuevo_proceso->path = strdup(nombre_archivo);
+    nuevo_proceso->PC = 0;  // Inicializar PC a 0
+    
+    // Comunicarse con memoria para inicializar el proceso
+    t_paquete* paquete = crear_paquete_op(INIT_PROC_OP);
+    agregar_a_paquete(paquete, &nuevo_proceso->PID, sizeof(int));
+    agregar_a_paquete(paquete, nombre_archivo, strlen(nombre_archivo) + 1);
+    agregar_a_paquete(paquete, &tam_memoria, sizeof(int));
+    enviar_paquete(paquete, fd_memoria);
+    eliminar_paquete(paquete);
+    
+    // Esperar respuesta de memoria
+    t_respuesta_memoria respuesta;
+    if (recv(fd_memoria, &respuesta, sizeof(t_respuesta_memoria), 0) <= 0) {
+        log_error(kernel_log, "Error al recibir respuesta de memoria para INIT_PROC");
+        free(nuevo_proceso->path);
+        free(nuevo_proceso);
+        return;
+    }
+    
+    // Procesar respuesta
+    if (respuesta == OK) {
+        log_trace(kernel_log, "INIT_PROC: proceso nuevo a la cola NEW");
+        cambiar_estado_pcb(nuevo_proceso, NEW);  
+        log_info(kernel_log, "## (%d) Se crea el proceso - Estado: NEW", nuevo_proceso->PID);
+    } else {
+        log_error(kernel_log, "Error al crear proceso en memoria");
+        free(nuevo_proceso->path);
+        free(nuevo_proceso);
+    }
 }
 
 //////////////////////////////////////////////////////////// DUMP MEMORY ////////////////////////////////////////////////////////////
-void DUMP_MEMORY(){
+void DUMP_MEMORY() {
     
 }
 
@@ -80,10 +69,6 @@ extern pthread_mutex_t mutex_ios;
 extern t_list* pcbs_bloqueados_por_io;
 
 //////////////////////////////////////////////////////////// IO ////////////////////////////////////////////////////////////
-
-void bloquear_pbc_por_io(io* io_a_usar, t_pcb* pcb){
-    list_add(pcbs_bloqueados_por_io, pcb);
-}
 
 // Busca un dispositivo IO por su nombre
 io* get_io(char* nombre_io) {
@@ -124,8 +109,10 @@ void bloquear_pcb_por_io(io* dispositivo, t_pcb* pcb, int tiempo_a_usar) {
     // Agregar a la lista de PCBs bloqueados
     list_add(pcbs_bloqueados_por_io, pcb_io);
     
-    log_info(kernel_log, "## (%d) - Bloqueado por IO: %s (tiempo: %d ms)", 
-             pcb->PID, dispositivo->nombre, tiempo_a_usar);
+    log_info(kernel_log, "## (%d) - Bloqueado por IO: %s", 
+             pcb->PID, dispositivo->nombre);
+    log_debug(kernel_log, "## (%d) - Bloqueado por IO: %s (tiempo: %d ms)", 
+                pcb->PID, dispositivo->nombre, tiempo_a_usar);  
 }
 
 // Envía un proceso a un dispositivo IO
@@ -154,7 +141,7 @@ void enviar_io(io* dispositivo, t_pcb* pcb, int tiempo_a_usar) {
     enviar_paquete(paquete, dispositivo->fd);
     eliminar_paquete(paquete);
     
-    log_info(kernel_log, "Enviado PID=%d a IO '%s' por %d ms", pcb->PID, dispositivo->nombre, tiempo_a_usar);
+    log_trace(kernel_log, "Enviado PID=%d a IO '%s' por %d ms", pcb->PID, dispositivo->nombre, tiempo_a_usar);
 }
 
 // Procesa una solicitud de entrada/salida
@@ -186,7 +173,7 @@ void IO(char* nombre_io, int tiempo_a_usar, t_pcb* pcb_a_io) {
     if (esta_libre_io(dispositivo)) {
         enviar_io(dispositivo, pcb_a_io, tiempo_a_usar);
     } else {
-        log_info(kernel_log, "IO '%s' ocupada, proceso PID=%d en espera", nombre_io, pcb_a_io->PID);
+        log_trace(kernel_log, "IO '%s' ocupada, proceso PID=%d en espera", nombre_io, pcb_a_io->PID);
     }
 }
 
@@ -232,7 +219,7 @@ void fin_io(io* dispositivo, int pid_finalizado) {
     // Si hay un proceso esperando, enviarlo a la IO
     if (siguiente_pcb_io) {
         // Usar el tiempo guardado en la estructura
-        log_info(kernel_log, "Enviando siguiente proceso PID=%d a IO '%s' por %d ms", 
+        log_trace(kernel_log, "Enviando siguiente proceso PID=%d a IO '%s' por %d ms", 
                 siguiente_pcb_io->pcb->PID, dispositivo->nombre, siguiente_pcb_io->tiempo_a_usar);
         enviar_io(dispositivo, siguiente_pcb_io->pcb, siguiente_pcb_io->tiempo_a_usar);
     }
@@ -263,7 +250,7 @@ void EXIT(t_pcb* pcb_a_finalizar) {
     }
 
     // Notificar a Memoria
-    int cod_op = FINALIZAR_PROC_OP;
+    int cod_op = EXIT_OP;
     if (send(fd_memoria, &cod_op, sizeof(int), 0) <= 0 ||
         send(fd_memoria, &pcb_a_finalizar->PID, sizeof(int), 0) <= 0) {
         log_error(kernel_log, "EXIT: Error al enviar FINALIZAR_PROC_OP a Memoria para PID %d", pcb_a_finalizar->PID);
@@ -271,6 +258,7 @@ void EXIT(t_pcb* pcb_a_finalizar) {
         exit(EXIT_FAILURE);
     }
 
+    log_trace(kernel_log, "EXIT: Enviado FINALIZAR_PROC_OP a Memoria para PID %d. Esperando respuesta...", pcb_a_finalizar->PID);
     t_respuesta_memoria confirmacion;
     if (recv(fd_memoria, &confirmacion, sizeof(t_respuesta_memoria), 0) <= 0) {
         log_error(kernel_log, "EXIT: No se pudo recibir confirmación de Memoria para PID %d", pcb_a_finalizar->PID);
@@ -279,7 +267,7 @@ void EXIT(t_pcb* pcb_a_finalizar) {
     }
     
     if (confirmacion == OK) {
-        log_debug(kernel_log, "EXIT: Memoria confirmó finalización de PID %d", pcb_a_finalizar->PID);
+        log_trace(kernel_log, "EXIT: Memoria confirmó finalización de PID %d", pcb_a_finalizar->PID);
     } else if (confirmacion == ERROR) {
         log_error(kernel_log, "EXIT: Memoria rechazó la finalización de PID %d", pcb_a_finalizar->PID);
         terminar_kernel();

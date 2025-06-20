@@ -2,6 +2,7 @@
 #define TYPES_H
 
 #include "../../utils/headers/sockets.h"
+#include "../../memoria/headers/estructuras.h"
 
 /////////////////////////////// TADs ///////////////////////////////
 
@@ -25,7 +26,8 @@ typedef enum Estados {
     BLOCKED,
     SUSP_READY,
     SUSP_BLOCKED,
-    EXIT_ESTADO
+    EXIT_ESTADO,
+    INIT
 } Estados;
 
 typedef struct {

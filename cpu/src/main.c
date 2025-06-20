@@ -10,7 +10,7 @@ pthread_t hilo_dispatch, hilo_interrupt, hilo_memoria;
 void signal_handler(int sig) {
     if (sig == SIGINT) {
         printf("\n\nRecibida señal de terminación. Cerrando CPU...\n");
-        log_info(cpu_log, "Recibida señal SIGINT. Iniciando terminación limpia del CPU...");
+        log_trace(cpu_log, "Recibida señal SIGINT. Iniciando terminación limpia del CPU...");
         terminar_programa();
         exit(EXIT_SUCCESS);
     }
@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
     iniciar_logger_cpu();
     inicializar_mmu();
 
-    log_debug(cpu_log, "[CPU %i] Iniciando proceso CPU", numero_cpu);
+    log_trace(cpu_log, "[CPU %i] Iniciando proceso CPU", numero_cpu);
 
     conectar_kernel_dispatch();
     send(fd_kernel_dispatch, &numero_cpu, sizeof(int), 0);
@@ -61,34 +61,50 @@ int main(int argc, char* argv[]) {
 }  
 
 void* recibir_kernel_dispatch(void* arg) {
-    log_info(cpu_log, "[DISPATCH] Hilo de recepción de Kernel Dispatch iniciado");
+    log_trace(cpu_log, "[DISPATCH] Hilo de recepción de Kernel Dispatch iniciado");
     int noFinalizar = 0;
     while (noFinalizar != -1) {
-        log_debug(cpu_log, "[DISPATCH] Esperando operación desde Kernel...");
+        log_trace(cpu_log, "[DISPATCH] Esperando operación desde Kernel...");
         int cod_op = recibir_operacion(fd_kernel_dispatch);
-        log_debug(cpu_log, "[DISPATCH] Operación recibida desde Kernel: %d", cod_op);
+        log_trace(cpu_log, "[DISPATCH] Operación recibida desde Kernel: %d", cod_op);
         
         switch (cod_op) {
             case MENSAJE_OP:
-                log_debug(cpu_log, "[DISPATCH] Procesando MENSAJE_OP");
+                log_trace(cpu_log, "[DISPATCH] Procesando MENSAJE_OP");
 			    recibir_mensaje(fd_kernel_dispatch, cpu_log);
 			    break;
             case EXEC_OP:
-                log_info(cpu_log, "[DISPATCH] ✓ EXEC_OP recibido desde Kernel - Iniciando ejecución");
-                // Ejecutar la instrucción
-                t_list* lista = recibir_2_enteros_sin_op(fd_kernel_dispatch);
-                pc = (int)(intptr_t) list_get(lista, 0);
-                pid_ejecutando = (int)(intptr_t) list_get(lista, 1);
+                log_trace(cpu_log, "[DISPATCH] ✓ EXEC_OP recibido desde Kernel - Iniciando ejecución");
                 
-                log_info(cpu_log, "[DISPATCH] ✓ Proceso asignado - PID: %d, PC inicial: %d", pid_ejecutando, pc);
-                log_info(cpu_log, "[DISPATCH] ▶ Iniciando ejecución del proceso...");
+                // Recibir PC y PID usando la función correcta para enteros
+                t_list* lista = recibir_2_enteros_sin_op(fd_kernel_dispatch);
+                if (lista == NULL) {
+                    log_error(cpu_log, "[DISPATCH] ✗ Error al recibir paquete EXEC_OP");
+                    break;
+                }
+
+                // Verificar que la lista tenga los elementos necesarios
+                if (list_size(lista) < 2) {
+                    log_error(cpu_log, "[DISPATCH] ✗ Paquete EXEC_OP incompleto - Faltan datos");
+                    list_destroy(lista);
+                    break;
+                }
+                
+                // Los enteros vienen como valores directos (no punteros) por uintptr_t casting
+                pc = (int)(uintptr_t)list_get(lista, 0);         // Primer elemento = PC
+                pid_ejecutando = (int)(uintptr_t)list_get(lista, 1);  // Segundo elemento = PID
+                
+                log_trace(cpu_log, "[DISPATCH] ✓ Proceso asignado - PID: %d, PC inicial: %d", pid_ejecutando, pc);
+                log_trace(cpu_log, "[DISPATCH] ▶ Iniciando ejecución del proceso...");
                 
                 ejecutar_ciclo_instruccion();
                 
-                log_info(cpu_log, "[DISPATCH] ◼ Ejecución del proceso PID %d finalizada", pid_ejecutando);
+                log_trace(cpu_log, "[DISPATCH] ◼ Ejecución del proceso PID %d finalizada", pid_ejecutando);
                 // Resetear variables después de la ejecución
                 pid_ejecutando = -1;
                 pc = 0;
+                
+                list_destroy(lista);
                 break;
             case -1:
                 log_error(cpu_log, "[DISPATCH] ✗ Desconexión de Kernel (Dispatch)");
@@ -111,7 +127,7 @@ void* recibir_kernel_interrupt(void* arg) {
             case INTERRUPCION_OP:
                 // Recibir PID de la interrupción
                 recv(fd_kernel_interrupt, &pid_interrupt, sizeof(int), MSG_WAITALL);
-                log_info(cpu_log, "Recibida interrupción para PID: %d", pid_interrupt);
+                log_info(cpu_log, "## Llega interrupción al puerto Interrupt");
                 
                 hay_interrupcion = 1;
                 break;
@@ -122,37 +138,36 @@ void* recibir_kernel_interrupt(void* arg) {
 }
 
 void iterator(char* value) {
-    log_debug(cpu_log, "%s", value);
+    log_trace(cpu_log, "%s", value);
 }
 
-
 void terminar_programa() {
-    log_info(cpu_log, "Iniciando terminación limpia del CPU...");
+    log_trace(cpu_log, "Iniciando terminación limpia del CPU...");
     
     // Cerrar conexiones de sockets
     if (fd_kernel_dispatch > 0) {
         close(fd_kernel_dispatch);
-        log_debug(cpu_log, "Conexión Kernel Dispatch cerrada");
+        log_trace(cpu_log, "Conexión Kernel Dispatch cerrada");
     }
     
     if (fd_kernel_interrupt > 0) {
         close(fd_kernel_interrupt);
-        log_debug(cpu_log, "Conexión Kernel Interrupt cerrada");
+        log_trace(cpu_log, "Conexión Kernel Interrupt cerrada");
     }
     
     if (fd_memoria > 0) {
         close(fd_memoria);
-        log_debug(cpu_log, "Conexión Memoria cerrada");
+        log_trace(cpu_log, "Conexión Memoria cerrada");
     }
     
     // Liberar recursos de configuración y logging
     if (cpu_config != NULL) {
         config_destroy(cpu_config);
-        log_debug(cpu_log, "Configuración CPU liberada");
+        log_trace(cpu_log, "Configuración CPU liberada");
     }
     
     if (cpu_log != NULL) {
-        log_info(cpu_log, "CPU terminado correctamente");
+        log_trace(cpu_log, "CPU terminado correctamente");
         log_destroy(cpu_log);
     }
 }

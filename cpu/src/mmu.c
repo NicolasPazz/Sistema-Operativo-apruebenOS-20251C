@@ -1,8 +1,10 @@
+#define _POSIX_C_SOURCE 199309L
 #include "../headers/mmu.h"
 #include "../headers/init.h"
 #include "../headers/cache.h"
 #include "../headers/cicloDeInstruccion.h"
 #include "../../memoria/headers/init_memoria.h"
+#include <time.h>
 
 t_cache_paginas* cache = NULL;
 t_list* tlb = NULL;
@@ -55,12 +57,12 @@ int cargar_configuracion(char* path) {
     cfg_memoria->ENTRADAS_POR_TABLA = config_get_int_value(cfg_file, "ENTRADAS_POR_TABLA");
     cfg_memoria->CANTIDAD_NIVELES = config_get_int_value(cfg_file, "CANTIDAD_NIVELES");
     cfg_memoria->RETARDO_MEMORIA = config_get_int_value(cfg_file, "RETARDO_MEMORIA");
-    cfg_memoria->PATH_SWAPFILE = strdup(config_get_string_value(cfg_file, "PATH_SWAPFILE"));
+    cfg_memoria->PATH_SWAPFILE = config_get_string_value(cfg_file, "PATH_SWAPFILE");
     cfg_memoria->RETARDO_SWAP = config_get_int_value(cfg_file, "RETARDO_SWAP");
-    cfg_memoria->LOG_LEVEL = strdup(config_get_string_value(cfg_file, "LOG_LEVEL"));
-    cfg_memoria->DUMP_PATH = strdup(config_get_string_value(cfg_file, "DUMP_PATH"));
+    cfg_memoria->LOG_LEVEL = config_get_string_value(cfg_file, "LOG_LEVEL");
+    cfg_memoria->DUMP_PATH = config_get_string_value(cfg_file, "DUMP_PATH");
 
-    log_debug(cpu_log, "Archivo de configuracion cargado correctamente");
+    log_trace(cpu_log, "Archivo de configuracion cargado correctamente");
     config_destroy(cfg_file);
 
     return 1;
@@ -100,6 +102,7 @@ int traducir_direccion(int direccion_logica, int* desplazamiento) {
 
         // Recibir frame
         recv(fd_memoria, &frame, sizeof(int), MSG_WAITALL);
+        log_info(cpu_log, "PID: %d - OBTENER MARCO - Página: %d - Marco: %d", pid_ejecutando, nro_pagina, frame);
 
         if (tlb_habilitada()) {
             tlb_insertar(nro_pagina, frame);
@@ -168,8 +171,8 @@ int seleccionar_victima_tlb() {
     return victima;
 }
 
-int timestamp_actual() {
+long timestamp_actual() {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (int)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000); // en milisegundos
+    return ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
 }

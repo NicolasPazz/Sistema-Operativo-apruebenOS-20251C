@@ -21,7 +21,6 @@ extern int fd_memoria;
 extern int fd_kernel;
 extern int fd_cpu;
 
-
 extern char* PUERTO_ESCUCHA;
 extern char* TAM_MEMORIA;
 extern char* TAM_PAGINA;
@@ -40,6 +39,5 @@ void procesar_cod_ops(op_code cop, int cliente_socket);
 
 int iniciar_conexiones_memoria(char* puerto, t_log* logger);
 int server_escuchar(char* server_name, int server_socket);
-
 
 #endif 

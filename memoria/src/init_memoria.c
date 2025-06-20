@@ -1,20 +1,32 @@
 #include "../headers/init_memoria.h"
+#include "../headers/estructuras.h"
+#include "../headers/manejo_memoria.h"
+#include "../headers/metricas.h"
+#include "../headers/manejo_swap.h"
+#include <commons/log.h>
+#include <commons/string.h>
+#include <string.h>
+#include <unistd.h>
 
 // Variables globales
 t_log* logger;
 t_config_memoria* cfg;
 t_sistema_memoria* sistema_memoria = NULL;
 
+// Declaraciones de funciones internas
+void liberar_instrucciones_dictionary(t_dictionary* dict);
+void destruir_tabla_paginas_recursiva(t_tabla_paginas* tabla);
+
 // ============================================================================
 // FUNCIONES DE INICIALIZACIÓN PRINCIPAL
 // ============================================================================
 
 void iniciar_logger_memoria() {
-    logger = iniciar_logger("memoria.log", MODULENAME, 1, LOG_LEVEL_TRACE);
+    logger = iniciar_logger("memoria/memoria.log", MODULENAME, 1, LOG_LEVEL_TRACE);
     if (logger == NULL) {
         printf("Error al iniciar memoria logs\n");
     } else {
-        log_debug(logger, "Memoria logs iniciados correctamente!");
+        log_trace(logger, "Memoria logs iniciados correctamente!");
     }
 }
 
@@ -66,7 +78,7 @@ int cargar_configuracion(char* path) {
     cfg->DUMP_PATH = strdup(config_get_string_value(cfg_file, "DUMP_PATH"));
     cfg->PATH_INSTRUCCIONES = strdup(config_get_string_value(cfg_file, "PATH_INSTRUCCIONES"));
 
-    log_debug(logger, "Archivo de configuracion cargado correctamente");
+    log_trace(logger, "Archivo de configuracion cargado correctamente");
     config_destroy(cfg_file);
 
     return 1;
@@ -77,7 +89,7 @@ int cargar_configuracion(char* path) {
 // ============================================================================
 
 t_administrador_marcos* crear_administrador_marcos(int cantidad_frames, int tam_pagina) {
-    log_info(logger, "## Inicializando administrador centralizado de marcos - Total: %d marcos", cantidad_frames);
+    log_trace(logger, "## Inicializando administrador centralizado de marcos - Total: %d marcos", cantidad_frames);
     
     t_administrador_marcos* admin = malloc(sizeof(t_administrador_marcos));
     if (!admin) {
@@ -156,17 +168,17 @@ t_administrador_marcos* crear_administrador_marcos(int cantidad_frames, int tam_
         return NULL;
     }
     
-    log_info(logger, "## Administrador de marcos inicializado correctamente - %d frames disponibles", cantidad_frames);
+    log_trace(logger, "## Administrador de marcos inicializado correctamente - %d frames disponibles", cantidad_frames);
     return admin;
 }
 
 void destruir_administrador_marcos(t_administrador_marcos* admin) {
     if (!admin) return;
     
-    log_info(logger, "## Destruyendo administrador de marcos - Estadísticas finales:");
-    log_info(logger, "   - Total asignaciones: %d", admin->total_asignaciones);
-    log_info(logger, "   - Total liberaciones: %d", admin->total_liberaciones);
-    log_info(logger, "   - Frames libres al finalizar: %d", admin->frames_libres);
+    log_trace(logger, "## Destruyendo administrador de marcos - Estadísticas finales:");
+    log_trace(logger, "   - Total asignaciones: %d", admin->total_asignaciones);
+    log_trace(logger, "   - Total liberaciones: %d", admin->total_liberaciones);
+    log_trace(logger, "   - Frames libres al finalizar: %d", admin->frames_libres);
     
     // Destruir mutex
     pthread_mutex_destroy(&admin->mutex_frames);
@@ -332,7 +344,7 @@ void obtener_estadisticas_marcos(int* total_frames, int* frames_libres, int* fra
 // ============================================================================
 
 t_administrador_swap* crear_administrador_swap(void) {
-    log_info(logger, "## Inicializando administrador de SWAP");
+    log_trace(logger, "## Inicializando administrador de SWAP");
     
     t_administrador_swap* admin = malloc(sizeof(t_administrador_swap));
     if (!admin) {
@@ -343,7 +355,7 @@ t_administrador_swap* crear_administrador_swap(void) {
     // Configuración básica
     admin->path_archivo = strdup(cfg->PATH_SWAPFILE);
     admin->tam_pagina = cfg->TAM_PAGINA;
-    admin->tamanio_swap = cfg->TAM_MEMORIA * 2;  // SWAP del doble del tamaño de memoria
+    admin->tamanio_swap = cfg->TAM_MEMORIA * 10;  // Tamaño de SWAP
     admin->cantidad_paginas_swap = admin->tamanio_swap / admin->tam_pagina;
     admin->paginas_libres_swap = admin->cantidad_paginas_swap;
     admin->paginas_ocupadas_swap = 0;
@@ -406,17 +418,17 @@ t_administrador_swap* crear_administrador_swap(void) {
         return NULL;
     }
     
-    log_info(logger, "## Administrador de SWAP inicializado - %d páginas disponibles", admin->cantidad_paginas_swap);
+    log_trace(logger, "## Administrador de SWAP inicializado - %d páginas disponibles", admin->cantidad_paginas_swap);
     return admin;
 }
 
 void destruir_administrador_swap(t_administrador_swap* admin) {
     if (!admin) return;
     
-    log_info(logger, "## Destruyendo administrador de SWAP - Estadísticas finales:");
-    log_info(logger, "   - Total escrituras: %d", admin->total_escrituras_swap);
-    log_info(logger, "   - Total lecturas: %d", admin->total_lecturas_swap);
-    log_info(logger, "   - Páginas libres al finalizar: %d", admin->paginas_libres_swap);
+    log_trace(logger, "## Destruyendo administrador de SWAP - Estadísticas finales:");
+    log_trace(logger, "   - Total escrituras: %d", admin->total_escrituras_swap);
+    log_trace(logger, "   - Total lecturas: %d", admin->total_lecturas_swap);
+    log_trace(logger, "   - Páginas libres al finalizar: %d", admin->paginas_libres_swap);
     
     pthread_mutex_destroy(&admin->mutex_swap);
     
@@ -444,7 +456,7 @@ void destruir_administrador_swap(t_administrador_swap* admin) {
 // ============================================================================
 
 t_resultado_memoria inicializar_sistema_memoria(void) {
-    log_info(logger, "## Inicializando sistema completo de memoria");
+    log_trace(logger, "## Inicializando sistema completo de memoria");
     
     // Crear estructura principal del sistema
     sistema_memoria = malloc(sizeof(t_sistema_memoria));
@@ -481,7 +493,7 @@ t_resultado_memoria inicializar_sistema_memoria(void) {
     
     // Inicializar memoria con ceros
     memset(sistema_memoria->memoria_principal, 0, cfg->TAM_MEMORIA);
-    log_info(logger, "## Memoria principal inicializada - %d bytes", cfg->TAM_MEMORIA);
+    log_trace(logger, "## Memoria principal inicializada - %d bytes", cfg->TAM_MEMORIA);
     
     // Crear administrador centralizado de marcos
     int cantidad_frames = cfg->TAM_MEMORIA / cfg->TAM_PAGINA;
@@ -523,69 +535,83 @@ t_resultado_memoria inicializar_sistema_memoria(void) {
         return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
     }
     
-    log_info(logger, "## Sistema de memoria inicializado correctamente");
-    log_info(logger, "   - Memoria física: %d bytes (%d marcos de %d bytes)", 
+    log_trace(logger, "## Sistema de memoria inicializado correctamente");
+    log_trace(logger, "   - Memoria física: %d bytes (%d marcos de %d bytes)", 
              cfg->TAM_MEMORIA, cantidad_frames, cfg->TAM_PAGINA);
-    log_info(logger, "   - Paginación: %d niveles, %d entradas por tabla", 
+    log_trace(logger, "   - Paginación: %d niveles, %d entradas por tabla", 
              cfg->CANTIDAD_NIVELES, cfg->ENTRADAS_POR_TABLA);
-    log_info(logger, "   - Retardos: Memoria %dms, SWAP %dms", 
+    log_trace(logger, "   - Retardos: Memoria %dms, SWAP %dms", 
              cfg->RETARDO_MEMORIA, cfg->RETARDO_SWAP);
     
     return MEMORIA_OK;
 }
 
 void finalizar_sistema_memoria(void) {
-    if (!sistema_memoria) return;
-    
-    log_info(logger, "## Finalizando sistema de memoria");
-    
-    // Imprimir estadísticas finales
-    log_info(logger, "## Estadísticas finales del sistema:");
-    log_info(logger, "   - Procesos activos: %d", sistema_memoria->procesos_activos);
-    log_info(logger, "   - Procesos suspendidos: %d", sistema_memoria->procesos_suspendidos);
-    log_info(logger, "   - Memoria utilizada: %d bytes", sistema_memoria->memoria_utilizada);
-    log_info(logger, "   - SWAP utilizado: %d bytes", sistema_memoria->swap_utilizado);
-    log_info(logger, "   - Total asignaciones: %d", sistema_memoria->total_asignaciones_memoria);
-    log_info(logger, "   - Total liberaciones: %d", sistema_memoria->total_liberaciones_memoria);
-    
-    // Destruir administrador de marcos
-    if (sistema_memoria->admin_marcos) {
-        destruir_administrador_marcos(sistema_memoria->admin_marcos);
+    if (!sistema_memoria) {
+        return;
     }
-    
-    // Destruir administrador de SWAP
-    if (sistema_memoria->admin_swap) {
-        destruir_administrador_swap(sistema_memoria->admin_swap);
-    }
-    
-    // Destruir diccionarios
-    if (sistema_memoria->procesos) {
-        dictionary_destroy(sistema_memoria->procesos);
-    }
-    if (sistema_memoria->estructuras_paginas) {
-        dictionary_destroy(sistema_memoria->estructuras_paginas);
-    }
-    if (sistema_memoria->metricas_procesos) {
-        dictionary_destroy(sistema_memoria->metricas_procesos);
-    }
-    if (sistema_memoria->process_instructions) {
-        dictionary_destroy(sistema_memoria->process_instructions);
-    }
-    
-    // Destruir mutex
-    pthread_mutex_destroy(&sistema_memoria->mutex_sistema);
-    pthread_mutex_destroy(&sistema_memoria->mutex_procesos);
-    pthread_mutex_destroy(&sistema_memoria->mutex_estadisticas);
-    
+
     // Liberar memoria principal
     if (sistema_memoria->memoria_principal) {
         free(sistema_memoria->memoria_principal);
     }
-    
+
+    // Liberar administrador de marcos
+    if (sistema_memoria->admin_marcos) {
+        if (sistema_memoria->admin_marcos->frames) {
+            free(sistema_memoria->admin_marcos->frames);
+        }
+        if (sistema_memoria->admin_marcos->bitmap_frames) {
+            bitarray_destroy(sistema_memoria->admin_marcos->bitmap_frames);
+        }
+        if (sistema_memoria->admin_marcos->lista_frames_libres) {
+            list_destroy_and_destroy_elements(sistema_memoria->admin_marcos->lista_frames_libres, free);
+        }
+        pthread_mutex_destroy(&sistema_memoria->admin_marcos->mutex_frames);
+        free(sistema_memoria->admin_marcos);
+    }
+
+    // Liberar administrador de SWAP
+    if (sistema_memoria->admin_swap) {
+        if (sistema_memoria->admin_swap->path_archivo) {
+            free(sistema_memoria->admin_swap->path_archivo);
+        }
+        if (sistema_memoria->admin_swap->entradas) {
+            free(sistema_memoria->admin_swap->entradas);
+        }
+        if (sistema_memoria->admin_swap->posiciones_libres) {
+            list_destroy(sistema_memoria->admin_swap->posiciones_libres);
+        }
+        pthread_mutex_destroy(&sistema_memoria->admin_swap->mutex_swap);
+        free(sistema_memoria->admin_swap);
+    }
+
+    // Liberar diccionarios
+    if (sistema_memoria->procesos) {
+        dictionary_destroy_and_destroy_elements(sistema_memoria->procesos, (void*)destruir_proceso);
+    }
+    if (sistema_memoria->estructuras_paginas) {
+        dictionary_destroy_and_destroy_elements(sistema_memoria->estructuras_paginas, (void*)destruir_estructura_paginas);
+    }
+    if (sistema_memoria->metricas_procesos) {
+        dictionary_destroy_and_destroy_elements(sistema_memoria->metricas_procesos, (void*)destruir_metricas_proceso);
+    }
+    if (sistema_memoria->process_instructions) {
+        liberar_instrucciones_dictionary(sistema_memoria->process_instructions);
+    }
+
+    // Destruir mutexes
+    pthread_mutex_destroy(&sistema_memoria->mutex_sistema);
+    pthread_mutex_destroy(&sistema_memoria->mutex_procesos);
+    pthread_mutex_destroy(&sistema_memoria->mutex_estadisticas);
+
+    // Liberar estructura principal
     free(sistema_memoria);
     sistema_memoria = NULL;
-    
-    log_info(logger, "## Sistema de memoria finalizado");
+}
+
+void liberar_sistema_memoria(void) {
+    finalizar_sistema_memoria();
 }
 
 // ============================================================================
@@ -593,7 +619,7 @@ void finalizar_sistema_memoria(void) {
 // ============================================================================
 
 void cerrar_programa() {
-    log_info(logger, "## Cerrando programa de memoria");
+    log_trace(logger, "## Cerrando programa de memoria");
     
     finalizar_sistema_memoria();
     
@@ -609,5 +635,54 @@ void cerrar_programa() {
         log_destroy(logger);
     }
     
-    log_info(logger, "## Programa de memoria finalizado correctamente");
+    log_trace(logger, "## Programa de memoria finalizado correctamente");
+}
+
+// ============================================================================
+// FUNCIONES DE DESTRUCCIÓN DE ESTRUCTURAS
+// ============================================================================
+
+void destruir_estructura_paginas(t_estructura_paginas* estructura) {
+    if (!estructura) return;
+    
+    // Destruir tabla de páginas recursivamente
+    destruir_tabla_paginas_recursiva(estructura->tabla_raiz);
+    
+    // Liberar estructura
+    free(estructura);
+}
+
+void destruir_metricas_proceso(t_metricas_proceso* metricas) {
+    if (!metricas) return;
+    free(metricas);
+}
+
+void destruir_tabla_paginas_recursiva(t_tabla_paginas* tabla) {
+    if (!tabla) return;
+    
+    // Si no es el último nivel, destruir recursivamente las tablas hijas
+    if (tabla->nivel > 0) {
+        for (int i = 0; i < cfg->ENTRADAS_POR_TABLA; i++) {
+            if (tabla->entradas[i].presente && tabla->entradas[i].tabla_siguiente) {
+                destruir_tabla_paginas_recursiva(tabla->entradas[i].tabla_siguiente);
+            }
+        }
+    }
+    
+    // Liberar memoria de las entradas y la tabla
+    free(tabla->entradas);
+    free(tabla);
+}
+
+void _liberar_instrucciones(char* key, void* value) {
+    t_list* instrucciones = (t_list*)value;
+    if (instrucciones) {
+        list_destroy_and_destroy_elements(instrucciones, free);
+    }
+}
+
+void liberar_instrucciones_dictionary(t_dictionary* dict) {
+    if (!dict) return;
+    dictionary_iterator(dict, _liberar_instrucciones);
+    dictionary_destroy(dict);
 }
