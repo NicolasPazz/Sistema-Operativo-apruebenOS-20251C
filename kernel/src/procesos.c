@@ -320,6 +320,7 @@ t_pcb* buscar_y_remover_pcb_por_pid(t_list* cola, int pid) {
     // No se encontró el PCB
     log_warning(kernel_log, "buscar_y_remover_pcb_por_pid: No se encontró PCB con PID %d en la cola", pid);
     return NULL;
+}
 
 t_pcb* buscar_pcb(int pid) {
     log_debug(kernel_log, "buscar_pcb: esperando mutex_cola_procesos para buscar PCB del proceso %d", pid);

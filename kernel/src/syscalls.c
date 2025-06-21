@@ -232,6 +232,7 @@ io* buscar_io_por_nombre(char* nombre) {
 // Verifica si un dispositivo IO está disponible
 bool esta_libre_io(io* dispositivo) {
     return dispositivo->estado == IO_DISPONIBLE;
+}
 
 io* io_disponible(char* nombre) {
     if (nombre == NULL) {
@@ -370,10 +371,10 @@ t_pcb_io* buscar_y_remover_pcb_io_por_dispositivo_y_pid(io* dispositivo, int pid
     }
 
     // Buscar manualmente el PCB bloqueado por esta IO con este PID
-    for (int i = 0; i < list_size(pcbs_bloqueados_por_io); i++) {
-        t_pcb_io* pcb_io_actual = list_get(pcbs_bloqueados_por_io, i);
+    for (int i = 0; i < list_size(pcbs_esperando_io); i++) {
+        t_pcb_io* pcb_io_actual = list_get(pcbs_esperando_io, i);
         if (pcb_io_actual->io == dispositivo && pcb_io_actual->pcb->PID == pid) {
-            return list_remove(pcbs_bloqueados_por_io, i);
+            return list_remove(pcbs_esperando_io, i);
         }
     }
 

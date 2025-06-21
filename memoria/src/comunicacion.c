@@ -546,5 +546,6 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         default:
             log_error(logger, "Codigo de operacion desconocido recibido del cliente %d: %d", cliente_socket, cop);
             break;
+        }
     }
 }
