@@ -16,8 +16,15 @@ t_pcb* elegir_por_fifo() {
 void* menor_rafaga(void* a, void* b) {
     t_pcb* pcb_a = (t_pcb*) a;
     t_pcb* pcb_b = (t_pcb*) b;
-    return pcb_a->estimacion_rafaga <= pcb_b->estimacion_rafaga ? pcb_a : pcb_b;
+
+    // Devuelve el de menor estimación de ráfaga
+    if (pcb_a->estimacion_rafaga < pcb_b->estimacion_rafaga) return pcb_a;
+    if (pcb_b->estimacion_rafaga < pcb_a->estimacion_rafaga) return pcb_b;
+
+    // En caso de empate, devolver el primero que llegó (fifo)
+    return pcb_a;
 }
+
 t_pcb* elegir_por_sjf() {
     log_trace(kernel_log, "PLANIFICANDO SJF (Shortest Job First)");
 
@@ -27,10 +34,11 @@ t_pcb* elegir_por_sjf() {
         exit(EXIT_FAILURE);
     }
 
+    log_debug(kernel_log, "SJF: buscando entre %d procesos con menor ráfaga en cola_ready", list_size(cola_ready));
     t_pcb* seleccionado = (t_pcb*)list_get_minimum(cola_ready, menor_rafaga);
 
     if (seleccionado) {
-        log_trace(kernel_log, "SJF: Proceso elegido PID=%d con estimación=%.2f", 
+        log_debug(kernel_log, "SJF: Proceso elegido PID=%d con estimación=%.2f", 
                   seleccionado->PID, seleccionado->estimacion_rafaga);
     } else {
         log_error(kernel_log, "SJF: No se pudo seleccionar un proceso");

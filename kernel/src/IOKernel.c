@@ -1,46 +1,22 @@
 #include "../headers/IOKernel.h"
 
-// Procesa la petición de IO recibida de la CPU
-void procesar_IO_from_CPU(char* nombre_IO, int cant_tiempo, t_pcb* pcb_a_io) {
-    log_trace(kernel_log, "Procesando solicitud de IO '%s' por %d ms para PID=%d", 
-              nombre_IO, cant_tiempo, pcb_a_io->PID);
-    
-    // Llamamos a la syscall IO con los parámetros correctos
-    IO(nombre_IO, cant_tiempo, pcb_a_io);
-}
-
 // Recibe una solicitud de IO desde una CPU
 bool recv_IO_from_CPU(int fd, char** nombre_IO, int* cant_tiempo) {
-    op_code cop;
-    if (recv(fd, &cop, sizeof(op_code), 0) <= 0 || cop != IO_OP) {
-        log_error(kernel_log, "Error al recibir código de operación IO o código incorrecto");
-        return false;
-    }
-    
-    size_t size_payload;
-    if (recv(fd, &size_payload, sizeof(size_t), 0) != sizeof(size_t)) {
-        log_error(kernel_log, "Error al recibir tamaño del payload IO");
+    int buffer_size;
+    void* buffer = recibir_buffer(&buffer_size, fd);
+    if (!buffer) {
+        log_error(kernel_log, "recv_IO_from_CPU: Error al recibir el buffer de IO_OP");
         return false;
     }
 
-    void* stream = malloc(size_payload);
-    if (recv(fd, stream, size_payload, 0) != size_payload) {
-        log_error(kernel_log, "Error al recibir payload IO");
-        free(stream);
-        return false;
-    }
+    // Deserializar: primero string, luego int
+    int offset = 0;
+    *nombre_IO = leer_string(buffer, &offset);
+    *cant_tiempo = leer_entero(buffer, &offset);
 
-    // Deserializar los datos
-    size_t nombre_len;
-    memcpy(&nombre_len, stream, sizeof(size_t));
-    
-    *nombre_IO = malloc(nombre_len);
-    memcpy(*nombre_IO, stream + sizeof(size_t), nombre_len);
-    
-    memcpy(cant_tiempo, stream + sizeof(size_t) + nombre_len, sizeof(int));
+    log_trace(kernel_log, "recv_IO_from_CPU: nombre_IO='%s', tiempo=%d", *nombre_IO, *cant_tiempo);
 
-    log_trace(kernel_log, "Recibido IO: nombre='%s', tiempo=%d", *nombre_IO, *cant_tiempo);
-    
-    free(stream);
+    free(buffer);
     return true;
 }
+

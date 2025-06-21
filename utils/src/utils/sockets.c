@@ -462,7 +462,6 @@ op_code recibir_operacion(int socket_cliente) {
     return cod_op;
 }
 
-
 /**
  * @brief Recibe un buffer desde el socket con tamaño dinámico.
  * 

@@ -70,7 +70,6 @@ void func_goto(char* valor) {
     // deberiamos crear un paquete y mandarselo a kernel con este nuevo valor o no es necesario?
 }
 
-
 void func_io(char* nombre_dispositivo, char* tiempo_str) {
     int tiempo = atoi(tiempo_str);  // Convertir tiempo de string a int
     

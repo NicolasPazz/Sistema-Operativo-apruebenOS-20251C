@@ -2,6 +2,6 @@
 #define CPUKERNEL_H_
 #include "kernel.h"
 
-int get_pid_from_cpu(int fd, op_code instruccion);
+cpu* get_cpu_from_fd(int fd);
 
 #endif /* CPUKERNEL_H_ */

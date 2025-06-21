@@ -59,6 +59,7 @@ typedef struct {
     int fd;
     char* nombre;
     estado_io estado;
+    t_pcb* proceso_actual;
 } io;
 
     ///// PCBs IO

@@ -1,3 +1,4 @@
 INIT_PROC test/script_io_basico_1 128
 NOOP
+IO teclado 100
 EXIT

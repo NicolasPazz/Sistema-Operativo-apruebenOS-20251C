@@ -124,7 +124,6 @@ int traducir_direccion(int direccion_logica, int* desplazamiento) {
 
         log_info(cpu_log, "PID: %d - OBTENER MARCO - Página: %d - Marco: %d", pid_ejecutando, nro_pagina, frame);
 
-
         if (tlb_habilitada()) {
             tlb_insertar(nro_pagina, frame);
         }
