@@ -12,14 +12,14 @@ run:
 	@echo "Iniciando memoria..."
 	@./memoria/bin/memoria > memoria/memoria.log 2>&1 &
 
+	@echo "Iniciando kernel..."
+	@./kernel/bin/kernel PROCESO_INICIAL 128
+
 	@echo "Iniciando cpu..."
 	@./cpu/bin/cpu CPU1 > cpu/cpu.log 2>&1 &
 
 	@echo "Iniciando io..."
 	@./io/bin/io IMPRESORA > io/io.log 2>&1 &
-
-	@echo "Iniciando kernel..."
-	@./kernel/bin/kernel PROCESO_INICIAL 128
 
 # /////////////////////// Detener todos los módulos ///////////////////////
 .PHONY: stop
