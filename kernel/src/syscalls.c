@@ -1,5 +1,6 @@
 #include "../headers/syscalls.h"
 #include "../headers/planificadores.h"
+#include <time.h>
 
 t_temporal* tiempo_estado_actual;
 
@@ -54,19 +55,67 @@ void INIT_PROC(char* nombre_archivo, int tam_memoria) {
 }
 
 //////////////////////////////////////////////////////////// DUMP MEMORY ////////////////////////////////////////////////////////////
-void DUMP_MEMORY() {
+void DUMP_MEMORY(t_pcb* pcb_dump) {
+    if (!pcb_dump) {
+        log_error(kernel_log, "DUMP_MEMORY: PCB nulo");
+        return;
+    }
     
+    log_info(kernel_log, "## (%d) - Solicitó syscall: DUMP_MEMORY", pcb_dump->PID);
+    
+    // Cambiar estado del proceso a BLOCKED
+    cambiar_estado_pcb(pcb_dump, BLOCKED);
+    
+    // Enviar solicitud de DUMP_MEMORY a Memoria de forma síncrona
+    op_code cod_op = DUMP_MEMORY_OP;
+    if (send(fd_memoria, &cod_op, sizeof(op_code), 0) <= 0) {
+        log_error(kernel_log, "Error al enviar DUMP_MEMORY_OP a Memoria para PID %d", pcb_dump->PID);
+        // Si falla el envío, mandar el proceso a EXIT
+        cambiar_estado_pcb(pcb_dump, EXIT_ESTADO);
+        return;
+    }
+    
+    // Enviar PID del proceso
+    if (send(fd_memoria, &pcb_dump->PID, sizeof(int), 0) <= 0) {
+        log_error(kernel_log, "Error al enviar PID a Memoria para DUMP_MEMORY (PID: %d)", pcb_dump->PID);
+        // Si falla el envío, mandar el proceso a EXIT
+        cambiar_estado_pcb(pcb_dump, EXIT_ESTADO);
+        return;
+    }
+    
+    log_trace(kernel_log, "DUMP_MEMORY_OP enviado a Memoria para PID=%d", pcb_dump->PID);
+    
+    // Esperar respuesta de memoria de forma síncrona
+    t_respuesta_memoria respuesta;
+    if (recv(fd_memoria, &respuesta, sizeof(t_respuesta_memoria), 0) <= 0) {
+        log_error(kernel_log, "Error al recibir respuesta de memoria para DUMP_MEMORY PID %d", pcb_dump->PID);
+        // Si falla la recepción, mandar el proceso a EXIT
+        cambiar_estado_pcb(pcb_dump, EXIT_ESTADO);
+        return;
+    }
+    
+    // Procesar la respuesta
+    if (respuesta == OK) {
+        // Si la operación fue exitosa, desbloquear el proceso (pasa a READY)
+        cambiar_estado_pcb(pcb_dump, READY);
+        log_info(kernel_log, "## (%d) finalizó DUMP_MEMORY exitosamente y pasa a READY", pcb_dump->PID);
+    } else {
+        // Si hubo error, enviar el proceso a EXIT
+        cambiar_estado_pcb(pcb_dump, EXIT_ESTADO);
+        log_info(kernel_log, "## (%d) - Error en DUMP_MEMORY, proceso enviado a EXIT", pcb_dump->PID);
+    }
 }
 
-// Declaraciones de funciones auxiliares
-static bool io_por_nombre_matcher(void* elemento, char* nombre);
-static bool pcb_io_matcher(void* elemento, io* disp, int pid);
-static bool esperando_mismo_io_matcher(void* elemento, io* disp);
+//** Comento xq no se usa */
+// // Declaraciones de funciones auxiliares
+// static bool io_por_nombre_matcher(void* elemento, char* nombre);
+// static bool pcb_io_matcher(void* elemento, io* disp, int pid);
+// static bool esperando_mismo_io_matcher(void* elemento, io* disp);
 
-// Variables externas
-extern t_list* lista_ios;
-extern pthread_mutex_t mutex_ios;
-extern t_list* pcbs_bloqueados_por_io;
+// // Variables externas
+// extern t_list* lista_ios;
+// extern pthread_mutex_t mutex_ios;
+// extern t_list* pcbs_bloqueados_por_io;
 
 //////////////////////////////////////////////////////////// IO ////////////////////////////////////////////////////////////
 
@@ -85,6 +134,64 @@ io* get_io(char* nombre_io) {
     }
     pthread_mutex_unlock(&mutex_ios);
     return dispositivo;
+}
+
+// Funciones auxiliares para búsqueda de dispositivos IO
+io* buscar_io_por_fd(int fd) {
+    if (!lista_ios) {
+        log_error(kernel_log, "buscar_io_por_fd: lista_ios es NULL");
+        return NULL;
+    }
+
+    // Buscar el dispositivo IO por file descriptor
+    for (int i = 0; i < list_size(lista_ios); i++) {
+        io* disp = list_get(lista_ios, i);
+        if (disp && disp->fd == fd) {
+            return disp;
+        }
+    }
+
+    // No se encontró el dispositivo
+    log_warning(kernel_log, "buscar_io_por_fd: No se encontró IO con fd %d", fd);
+    return NULL;
+}
+
+io* buscar_y_remover_io_por_fd(int fd) {
+    if (!lista_ios) {
+        log_error(kernel_log, "buscar_y_remover_io_por_fd: lista_ios es NULL");
+        return NULL;
+    }
+
+    // Buscar y remover el dispositivo IO por file descriptor
+    for (int i = 0; i < list_size(lista_ios); i++) {
+        io* disp = list_get(lista_ios, i);
+        if (disp && disp->fd == fd) {
+            return list_remove(lista_ios, i);
+        }
+    }
+
+    // No se encontró el dispositivo
+    log_warning(kernel_log, "buscar_y_remover_io_por_fd: No se encontró IO con fd %d", fd);
+    return NULL;
+}
+
+io* buscar_io_por_nombre(char* nombre) {
+    if (!lista_ios || !nombre) {
+        log_error(kernel_log, "buscar_io_por_nombre: lista_ios o nombre es NULL");
+        return NULL;
+    }
+
+    // Buscar el dispositivo IO por nombre
+    for (int i = 0; i < list_size(lista_ios); i++) {
+        io* disp = list_get(lista_ios, i);
+        if (disp && strcmp(disp->nombre, nombre) == 0) {
+            return disp;
+        }
+    }
+
+    // No se encontró el dispositivo
+    log_warning(kernel_log, "buscar_io_por_nombre: No se encontró IO con nombre '%s'", nombre);
+    return NULL;
 }
 
 // Verifica si un dispositivo IO está disponible
@@ -153,8 +260,8 @@ void IO(char* nombre_io, int tiempo_a_usar, t_pcb* pcb_a_io) {
     
     log_info(kernel_log, "## (%d) - Solicitó syscall: IO", pcb_a_io->PID);
     
-    // Obtener el dispositivo IO
-    io* dispositivo = get_io(nombre_io);
+    // Obtener el dispositivo IO usando función centralizada
+    io* dispositivo = buscar_io_por_nombre(nombre_io);
     
     // Validar que la IO solicitada existe en el sistema
     if (dispositivo == NULL) {
@@ -179,16 +286,8 @@ void IO(char* nombre_io, int tiempo_a_usar, t_pcb* pcb_a_io) {
 
 // Procesa la finalización de una operación IO
 void fin_io(io* dispositivo, int pid_finalizado) {
-    t_pcb_io* pcb_io = NULL;
-    
-    // Buscar manualmente el PCB bloqueado por esta IO con este PID
-    for (int i = 0; i < list_size(pcbs_bloqueados_por_io); i++) {
-        t_pcb_io* pcb_io_actual = list_get(pcbs_bloqueados_por_io, i);
-        if (pcb_io_actual->io == dispositivo && pcb_io_actual->pcb->PID == pid_finalizado) {
-            pcb_io = list_remove(pcbs_bloqueados_por_io, i);
-            break;
-        }
-    }
+    // Buscar y remover el PCB bloqueado por esta IO con este PID usando función centralizada
+    t_pcb_io* pcb_io = buscar_y_remover_pcb_io_por_dispositivo_y_pid(dispositivo, pid_finalizado);
     
     if (!pcb_io) {
         log_error(kernel_log, "fin_io: No se encontró PCB para PID=%d en IO '%s'", 
@@ -226,20 +325,21 @@ void fin_io(io* dispositivo, int pid_finalizado) {
 }
 
 // Implementaciones de funciones auxiliares
-bool io_por_nombre_matcher(void* elemento, char* nombre) {
-    io* dispositivo = (io*) elemento;
-    return strcmp(dispositivo->nombre, nombre) == 0;
-}
+// **Se comenta xq no se usa
+// bool io_por_nombre_matcher(void* elemento, char* nombre) {
+//     io* dispositivo = (io*) elemento;
+//     return strcmp(dispositivo->nombre, nombre) == 0;
+// }
 
-bool pcb_io_matcher(void* elemento, io* disp, int pid) {
-    t_pcb_io* pcb_io = (t_pcb_io*) elemento;
-    return pcb_io->io == disp && pcb_io->pcb->PID == pid;
-}
+// bool pcb_io_matcher(void* elemento, io* disp, int pid) {
+//     t_pcb_io* pcb_io = (t_pcb_io*) elemento;
+//     return pcb_io->io == disp && pcb_io->pcb->PID == pid;
+// }
 
-bool esperando_mismo_io_matcher(void* elemento, io* disp) {
-    t_pcb_io* pcb_io = (t_pcb_io*) elemento;
-    return pcb_io->io == disp;
-}
+// bool esperando_mismo_io_matcher(void* elemento, io* disp) {
+//     t_pcb_io* pcb_io = (t_pcb_io*) elemento;
+//     return pcb_io->io == disp;
+// }
 
 //////////////////////////////////////////////////////////// EXIT ////////////////////////////////////////////////////////////
 void EXIT(t_pcb* pcb_a_finalizar) {
@@ -296,4 +396,23 @@ void EXIT(t_pcb* pcb_a_finalizar) {
 
     // Notificar a planificador LP
     sem_post(&sem_finalizacion_de_proceso);
+}
+
+t_pcb_io* buscar_y_remover_pcb_io_por_dispositivo_y_pid(io* dispositivo, int pid) {
+    if (!dispositivo) {
+        log_error(kernel_log, "buscar_y_remover_pcb_io_por_dispositivo_y_pid: dispositivo es NULL");
+        return NULL;
+    }
+
+    // Buscar manualmente el PCB bloqueado por esta IO con este PID
+    for (int i = 0; i < list_size(pcbs_bloqueados_por_io); i++) {
+        t_pcb_io* pcb_io_actual = list_get(pcbs_bloqueados_por_io, i);
+        if (pcb_io_actual->io == dispositivo && pcb_io_actual->pcb->PID == pid) {
+            return list_remove(pcbs_bloqueados_por_io, i);
+        }
+    }
+
+    // No se encontró el PCB
+    log_warning(kernel_log, "buscar_y_remover_pcb_io_por_dispositivo_y_pid: No se encontró PCB con PID %d para IO '%s'", pid, dispositivo->nombre);
+    return NULL;
 }

@@ -243,6 +243,28 @@ t_resultado_memoria escribir_pagina_memoria(int numero_frame, void* contenido);
 // ============================================================================
 
 /**
+ * @brief Suspende un proceso llevando sus páginas a SWAP (wrapper de alto nivel)
+ * 
+ * Esta función proporciona una interfaz de alto nivel para la suspensión,
+ * incluyendo validaciones y manejo del resultado según el tipo t_resultado_memoria.
+ * 
+ * @param pid PID del proceso a suspender
+ * @return MEMORIA_OK si se suspendió correctamente, error en caso contrario
+ */
+t_resultado_memoria suspender_proceso_en_memoria(int pid);
+
+/**
+ * @brief Reanuda un proceso cargando sus páginas desde SWAP (wrapper de alto nivel)
+ * 
+ * Esta función proporciona una interfaz de alto nivel para la reanudación,
+ * incluyendo validaciones y manejo del resultado según el tipo t_resultado_memoria.
+ * 
+ * @param pid PID del proceso a reanudar
+ * @return MEMORIA_OK si se reanudó correctamente, error en caso contrario
+ */
+t_resultado_memoria reanudar_proceso_en_memoria(int pid);
+
+/**
  * @brief Suspende un proceso completo escribiendo todas sus páginas a SWAP
  * 
  * Mueve todas las páginas del proceso desde memoria física al archivo

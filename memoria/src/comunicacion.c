@@ -494,6 +494,43 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             break;
         }
 
+        case SUSPENDER_PROCESO_OP: {
+            log_trace(logger, "SUSPENDER_PROCESO_OP recibido");
+
+            // Recibir PID del proceso a suspender
+            int pid;
+            recv_data(cliente_socket, &pid, sizeof(int));
+            
+            log_trace(logger, "Suspensión de proceso solicitada - PID: %d", pid);
+            
+            t_resultado_memoria resultado = suspender_proceso_en_memoria(pid);
+            
+            t_respuesta_memoria respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
+            send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+            
+            log_info(logger, "Suspensión de proceso %s - PID: %d", 
+                    (respuesta == OK) ? "exitosa" : "fallida", pid);
+            break;
+        }
+
+        case DESUSPENDER_PROCESO_OP: {
+            log_trace(logger, "DESUSPENDER_PROCESO_OP recibido");
+
+            int pid;
+            recv_data(cliente_socket, &pid, sizeof(int));
+            
+            log_trace(logger, "Des-suspensión de proceso solicitada - PID: %d", pid);
+            
+            t_resultado_memoria resultado = reanudar_proceso_en_memoria(pid);
+            
+            t_respuesta_memoria respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
+            send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+            
+            log_info(logger, "Des-suspensión de proceso %s - PID: %d", 
+                    (respuesta == OK) ? "exitosa" : "fallida", pid);
+            break;
+        }
+
         default:
             log_error(logger, "Codigo de operacion desconocido recibido del cliente %d: %d", cliente_socket, cop);
             break;

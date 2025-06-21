@@ -46,7 +46,11 @@ typedef enum {
 	ACCESO_ESPACIO_USUARIO_OP,    // Acceso a espacio de usuario - lectura/escritura
 	LEER_PAGINA_COMPLETA_OP,      // Leer página completa desde dirección física
 	ACTUALIZAR_PAGINA_COMPLETA_OP, // Actualizar página completa en dirección física
-	CHECK_MEMORY_SPACE_OP         // Consultar si hay espacio suficiente en memoria
+	CHECK_MEMORY_SPACE_OP,        // Consultar si hay espacio suficiente en memoria
+	
+	// Operaciones de suspensión/des-suspensión
+	SUSPENDER_PROCESO_OP,         // Suspender proceso (mover páginas a SWAP)
+	DESUSPENDER_PROCESO_OP        // Des-suspender proceso (cargar páginas desde SWAP)
 } op_code;
 
 // Handshake

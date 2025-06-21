@@ -68,4 +68,10 @@ typedef struct PCB_IO{
     int tiempo_a_usar;  // Tiempo en ms que se va a usar el dispositivo IO
 } t_pcb_io;
 
+    ///// PCBs DUMP MEMORY  
+typedef struct PCB_DUMP_MEMORY{
+    t_pcb* pcb;
+    int timestamp;  // Timestamp para identificar la operación de dump
+} t_pcb_dump_memory;
+
 #endif /* TYPES_H */

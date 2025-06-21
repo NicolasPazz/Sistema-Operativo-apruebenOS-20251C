@@ -6,22 +6,22 @@ all:
 	make -C ./cpu
 	make -C ./kernel
 
-# /////////////////////// Ejecutar módulos ///////////////////////
+# /////////////////////// Ejecutar módulos desde el Makefile ///////////////////////
 .PHONY: run
 run:
+	@mkdir -p logs
 	@echo "Iniciando memoria..."
-	@./memoria/bin/memoria > memoria/memoria.log 2>&1 &
+	@./memoria/bin/memoria > logs/memoria.log 2>&1 &
 
 	@echo "Iniciando cpu..."
-	@./cpu/bin/cpu CPU1 > cpu/cpu.log 2>&1 &
+	@./cpu/bin/cpu CPU1 > logs/cpu.log 2>&1 &
 
 	@echo "Iniciando io..."
-	@./io/bin/io IMPRESORA > io/io.log 2>&1 &
+	@./io/bin/io IMPRESORA > logs/io.log 2>&1 &
 
 	@echo "Iniciando kernel..."
 	@./kernel/bin/kernel PROCESO_INICIAL 128
 
-# /////////////////////// Ejecutar módulos individualmente ///////////////////////
 .PHONY: kernel
 kernel:
 	./kernel/bin/kernel PROCESO_INICIAL 128

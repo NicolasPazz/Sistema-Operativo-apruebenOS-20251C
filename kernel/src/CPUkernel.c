@@ -24,3 +24,41 @@ int get_pid_from_cpu(int fd, op_code instruccion) {
 
     return cpu_asociada->pid;
 }
+
+cpu* buscar_cpu_por_fd(int fd) {
+    if (!lista_cpus) {
+        log_error(kernel_log, "buscar_cpu_por_fd: lista_cpus es NULL");
+        return NULL;
+    }
+
+    // Buscar la CPU por file descriptor
+    for (int i = 0; i < list_size(lista_cpus); i++) {
+        cpu* c = list_get(lista_cpus, i);
+        if (c && c->fd == fd) {
+            return c;
+        }
+    }
+
+    // No se encontró la CPU
+    log_warning(kernel_log, "buscar_cpu_por_fd: No se encontró CPU con fd %d", fd);
+    return NULL;
+}
+
+cpu* buscar_y_remover_cpu_por_fd(int fd) {
+    if (!lista_cpus) {
+        log_error(kernel_log, "buscar_y_remover_cpu_por_fd: lista_cpus es NULL");
+        return NULL;
+    }
+
+    // Buscar y remover la CPU por file descriptor
+    for (int i = 0; i < list_size(lista_cpus); i++) {
+        cpu* c = list_get(lista_cpus, i);
+        if (c && c->fd == fd) {
+            return list_remove(lista_cpus, i);
+        }
+    }
+
+    // No se encontró la CPU
+    log_warning(kernel_log, "buscar_y_remover_cpu_por_fd: No se encontró CPU con fd %d", fd);
+    return NULL;
+}

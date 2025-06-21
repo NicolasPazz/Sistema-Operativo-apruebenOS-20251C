@@ -137,26 +137,16 @@ t_resultado_memoria crear_proceso_en_memoria(int pid, int tamanio, char* nombre_
         }
     }
 
-        // ========== REGISTRO EN DICCIONARIOS DEL SISTEMA ==========
-        char pid_str[16];
-        sprintf(pid_str, "%d", pid);
-    
-        pthread_mutex_lock(&sistema_memoria->mutex_procesos);
-    
-        // Registrar en todos los diccionarios correspondientes
-        dictionary_put(sistema_memoria->procesos, pid_str, proceso);
-        dictionary_put(sistema_memoria->estructuras_paginas, pid_str, proceso->estructura_paginas);
-        dictionary_put(sistema_memoria->metricas_procesos, pid_str, proceso->metricas);
-        
-    // ========== ASIGNACIÓN DE MARCOS FÍSICOS PARA TODAS LAS PÁGINAS ==========
-    log_debug(logger, "PID: %d - Iniciando asignación de %d marcos físicos", pid, paginas_necesarias);
-    
-    t_resultado_memoria resultado_asignacion = asignar_marcos_proceso(pid);
-    if (resultado_asignacion != MEMORIA_OK) {
-        log_error(logger, "PID: %d - Error en asignación de marcos: %d", pid, resultado_asignacion);
-        destruir_proceso(proceso);
-        return resultado_asignacion;
-    }
+    // ========== REGISTRO EN DICCIONARIOS DEL SISTEMA (ANTES DE ASIGNAR MARCOS) ==========
+    char pid_str[16];
+    sprintf(pid_str, "%d", pid);
+
+    pthread_mutex_lock(&sistema_memoria->mutex_procesos);
+
+    // Registrar en todos los diccionarios correspondientes
+    dictionary_put(sistema_memoria->procesos, pid_str, proceso);
+    dictionary_put(sistema_memoria->estructuras_paginas, pid_str, proceso->estructura_paginas);
+    dictionary_put(sistema_memoria->metricas_procesos, pid_str, proceso->metricas);
 
     // ========== ACTUALIZACIÓN DE ESTADÍSTICAS DEL SISTEMA ==========
     sistema_memoria->procesos_activos++;
@@ -164,6 +154,27 @@ t_resultado_memoria crear_proceso_en_memoria(int pid, int tamanio, char* nombre_
     sistema_memoria->total_asignaciones_memoria++;
 
     pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
+
+    // ========== ASIGNACIÓN DE MARCOS FÍSICOS PARA TODAS LAS PÁGINAS ==========
+    log_debug(logger, "PID: %d - Iniciando asignación de %d marcos físicos", pid, paginas_necesarias);
+    
+    t_resultado_memoria resultado_asignacion = asignar_marcos_proceso(pid);
+    if (resultado_asignacion != MEMORIA_OK) {
+        log_error(logger, "PID: %d - Error en asignación de marcos: %d", pid, resultado_asignacion);
+        
+        // Revertir el registro en diccionarios antes de destruir el proceso
+        pthread_mutex_lock(&sistema_memoria->mutex_procesos);
+        dictionary_remove(sistema_memoria->procesos, pid_str);
+        dictionary_remove(sistema_memoria->estructuras_paginas, pid_str);
+        dictionary_remove(sistema_memoria->metricas_procesos, pid_str);
+        sistema_memoria->procesos_activos--;
+        sistema_memoria->memoria_utilizada -= tamanio;
+        sistema_memoria->total_asignaciones_memoria--;
+        pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
+        
+        destruir_proceso(proceso);
+        return resultado_asignacion;
+    }
 
     // ========== LOG OBLIGATORIO DE CREACIÓN ==========
     log_info(logger, "## PID: %d - Proceso Creado - Tamaño: %d", pid, tamanio);
@@ -408,6 +419,9 @@ t_estructura_paginas* crear_estructura_paginas(int pid, int tamanio) {
         return NULL;
     }
     
+    // CAMBIO: Inicializar estructura con memset para limpiar valores de basura
+    memset(estructura, 0, sizeof(t_estructura_paginas));
+    
     // Inicializar estructura
     estructura->pid = pid;
     estructura->cantidad_niveles = cfg->CANTIDAD_NIVELES;
@@ -416,6 +430,12 @@ t_estructura_paginas* crear_estructura_paginas(int pid, int tamanio) {
     estructura->tamanio_proceso = tamanio;
     estructura->paginas_totales = (tamanio + cfg->TAM_PAGINA - 1) / cfg->TAM_PAGINA;
     estructura->paginas_asignadas = 0;
+    
+    // CAMBIO: Inicializar explícitamente campos críticos
+    estructura->paginas_asignadas = 0;          // Inicializar en 0
+    estructura->paginas_en_swap = 0;            // Inicializar páginas en swap
+    estructura->activo = true;                  // Proceso activo por defecto
+    estructura->suspendido = false;             // No suspendido por defecto
     
     // Inicializar mutex
     if (pthread_mutex_init(&estructura->mutex_estructura, NULL) != 0) {

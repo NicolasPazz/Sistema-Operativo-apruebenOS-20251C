@@ -140,7 +140,6 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
         }
         free(pid_key);
         // Cambiar Estado y actualizar Metricas de Estados
-        Estados estado_viejo = PCB->Estado;
         PCB->Estado = nuevo_estado_enum;
         PCB->ME[nuevo_estado_enum] += 1;  // Se suma 1 en las Metricas de estado del nuevo estado
         list_add(cola_procesos, PCB);
@@ -226,4 +225,42 @@ void loguear_metricas_estado(t_pcb* pcb) {
     }
 
     log_info(kernel_log, "%s", buffer);
+}
+
+t_pcb* obtener_pcb_por_pid(int pid) {
+    if (!cola_procesos) {
+        log_error(kernel_log, "obtener_pcb_por_pid: cola_procesos es NULL");
+        return NULL;
+    }
+
+    // Buscar el PCB en la cola de procesos
+    for (int i = 0; i < list_size(cola_procesos); i++) {
+        t_pcb* pcb = list_get(cola_procesos, i);
+        if (pcb && pcb->PID == pid) {
+            return pcb;
+        }
+    }
+
+    // No se encontró el PCB
+    log_warning(kernel_log, "obtener_pcb_por_pid: No se encontró PCB con PID %d", pid);
+    return NULL;
+}
+
+t_pcb* buscar_y_remover_pcb_por_pid(t_list* cola, int pid) {
+    if (!cola) {
+        log_error(kernel_log, "buscar_y_remover_pcb_por_pid: cola es NULL");
+        return NULL;
+    }
+
+    // Buscar y remover el PCB de la cola específica
+    for (int i = 0; i < list_size(cola); i++) {
+        t_pcb* pcb = list_get(cola, i);
+        if (pcb && pcb->PID == pid) {
+            return list_remove(cola, i);
+        }
+    }
+
+    // No se encontró el PCB
+    log_warning(kernel_log, "buscar_y_remover_pcb_por_pid: No se encontró PCB con PID %d en la cola", pid);
+    return NULL;
 }

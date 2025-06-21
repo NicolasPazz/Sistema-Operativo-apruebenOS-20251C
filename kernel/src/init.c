@@ -1,4 +1,6 @@
 #include "../headers/kernel.h"
+#include "../headers/CPUKernel.h"
+#include "../headers/syscalls.h"
 #include <libgen.h>
 
 /////////////////////////////// Declaracion de variables globales ///////////////////////////////
@@ -43,6 +45,7 @@ t_list* cola_susp_blocked;
 t_list* cola_exit;
 t_list* cola_procesos; // Cola con TODOS los procesos sin importar el estado (Procesos totales del sistema)
 t_list* pcbs_bloqueados_por_io;
+t_list* pcbs_bloqueados_por_dump_memory;
 
 // Listas y semaforos de CPUs y IOs conectadas
 t_list* lista_cpus;
@@ -130,6 +133,7 @@ void iniciar_estados_kernel() {
     cola_exit = list_create();
     cola_procesos = list_create();
     pcbs_bloqueados_por_io = list_create();
+    pcbs_bloqueados_por_dump_memory = list_create();
 }
 
 void iniciar_sincronizacion_kernel() {
@@ -185,6 +189,7 @@ void terminar_kernel() {
     list_destroy(cola_exit);
     list_destroy(cola_procesos);
     list_destroy(pcbs_bloqueados_por_io);
+    list_destroy(pcbs_bloqueados_por_dump_memory);
 
     pthread_mutex_destroy(&mutex_lista_cpus);
     pthread_mutex_destroy(&mutex_ios);
@@ -410,15 +415,8 @@ void* atender_cpu_dispatch(void* arg) {
         // Asignar la instrucción actual a la CPU y asociar el PID
         pthread_mutex_lock(&mutex_lista_cpus);
         
-        // Buscar CPU por fd
-        cpu* cpu_actual = NULL;
-        for (int i = 0; i < list_size(lista_cpus); i++) {
-            cpu* c = list_get(lista_cpus, i);
-            if (c->fd == fd_cpu_dispatch) {
-                cpu_actual = c;
-                break;
-            }
-        }
+        // Buscar CPU por fd usando función centralizada
+        cpu* cpu_actual = buscar_cpu_por_fd(fd_cpu_dispatch);
         int pid;
         if (cpu_actual) {
             // Actualizar la operación actual que está procesando esta CPU
@@ -476,22 +474,8 @@ void* atender_cpu_dispatch(void* arg) {
                     log_trace(kernel_log, "Se recibió correctamente la IO '%s' desde CPU, tiempo=%d", 
                              nombre_IO, cant_tiempo);
                     
-                    // Obtener PID del proceso que está ejecutando esta CPU
-                    pthread_mutex_lock(&mutex_lista_cpus);
-                    int pid = cpu_actual->pid;
-                    pthread_mutex_unlock(&mutex_lista_cpus);
-                    
-                    log_trace(kernel_log, "IO_OP asociado a PID=%d", pid);
-                    
-                    // Obtener PCB por PID
-                    t_pcb* pcb_a_io = NULL;
-                    for (int i = 0; i < list_size(cola_procesos); i++) {
-                        t_pcb* pcb = list_get(cola_procesos, i);
-                        if (pcb->PID == pid) {
-                            pcb_a_io = pcb;
-                            break;
-                        }
-                    }
+                    // Obtener PCB por PID usando la función centralizada
+                    t_pcb* pcb_a_io = obtener_pcb_por_pid(pid);
                     
                     if (pcb_a_io) {
                         // Exec Syscall: IO
@@ -504,13 +488,6 @@ void* atender_cpu_dispatch(void* arg) {
                 } else {
                     log_error(kernel_log, "Error al recibir la IO desde CPU");
                 }
-
-                int pid_en_cpu = get_pid_from_cpu(fd_cpu_dispatch, IO_OP);
-                log_trace(kernel_log, "IO_OP asociado a PID=%d", pid_en_cpu);
-
-                // Exec Syscall: IO
-                t_pcb* pcb_a_io = list_get(cola_procesos, pid_en_cpu);
-                procesar_IO_from_CPU(nombre_IO, cant_tiempo, pcb_a_io);
 
                 break;
 
@@ -525,16 +502,9 @@ void* atender_cpu_dispatch(void* arg) {
                 
                 log_trace(kernel_log, "EXIT_OP asociado a PID=%d", pid);
 
-                // Buscar PCB en RUNNING
+                // Buscar y remover PCB de RUNNING usando función centralizada
                 pthread_mutex_lock(&mutex_cola_running);
-                t_pcb* pcb_a_finalizar = NULL;
-                for (int i = 0; i < list_size(cola_running); i++) {
-                    t_pcb* pcb = list_get(cola_running, i);
-                    if (pcb->PID == pid_exit) {
-                        pcb_a_finalizar = list_remove(cola_running, i);
-                        break;
-                    }
-                }
+                t_pcb* pcb_a_finalizar = buscar_y_remover_pcb_por_pid(cola_running, pid_exit);
                 pthread_mutex_unlock(&mutex_cola_running);
 
                 // Confirmar que se encontró el PCB
@@ -549,20 +519,36 @@ void* atender_cpu_dispatch(void* arg) {
                 pthread_mutex_lock(&mutex_lista_cpus);
                 cpu_actual->pid = -1; // Limpiar PID de la CPU
                 pthread_mutex_unlock(&mutex_lista_cpus);
-                               
-                log_trace(kernel_log, "CPU liberada por EXIT de proceso");
+                
+                // CAMBIO: Liberar CPU para que el planificador pueda usarla
                 sem_post(&sem_cpu_disponible);
+                log_debug(kernel_log, "EXIT: CPU liberada - Semáforo CPU DISPONIBLE aumentado");
+                
+                // Reactivar planificador si hay procesos en READY esperando
+                pthread_mutex_lock(&mutex_cola_ready);
+                bool hay_procesos_ready = !list_is_empty(cola_ready);
+                pthread_mutex_unlock(&mutex_cola_ready);
+                
+                if (hay_procesos_ready) {
+                    log_trace(kernel_log, "CPU liberada, reactivando planificador para procesos en READY");
+                    sem_post(&sem_proceso_a_ready);
+                }
                 
                 break;
 
             case DUMP_MEMORY_OP:
                 log_info(kernel_log, "## (%d) Solicitó syscall: DUMP_MEMORY", pid);
                 log_trace(kernel_log, "DUMP_MEMORY_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
-                // TODO: Implementar DUMP_MEMORY
-                // log_info(kernel_log, "## PID: %d - Operación DUMP_MEMORY procesada", pid_dump);
                 
-                // Limpiar la lista
-                // list_destroy_and_destroy_elements(lista_dump, free);
+                // Obtener el PCB del proceso
+                t_pcb* pcb_dump = obtener_pcb_por_pid(pid);
+                if (!pcb_dump) {
+                    log_error(kernel_log, "DUMP_MEMORY_OP: No se encontró PCB para PID %d", pid);
+                    break;
+                }
+                
+                // Llamar a la función DUMP_MEMORY
+                DUMP_MEMORY(pcb_dump);
                 break;
                 
             default:
@@ -578,17 +564,14 @@ void* atender_cpu_dispatch(void* arg) {
 
     log_warning(kernel_log, "CPU Dispatch desconectada (fd=%d)", fd_cpu_dispatch);
     
-    // Eliminar esta CPU de la lista de CPUs
+    // Eliminar esta CPU de la lista de CPUs usando función centralizada
     pthread_mutex_lock(&mutex_lista_cpus);
-    for (int i = 0; i < list_size(lista_cpus); i++) {
-        cpu* c = list_get(lista_cpus, i);
-        if (c->fd == fd_cpu_dispatch) {
-            cpu* cpu_eliminada = list_remove(lista_cpus, i);
-            free(cpu_eliminada);
-            break;
-        }
-    }
+    cpu* cpu_eliminada = buscar_y_remover_cpu_por_fd(fd_cpu_dispatch);
     pthread_mutex_unlock(&mutex_lista_cpus);
+    
+    if (cpu_eliminada) {
+        free(cpu_eliminada);
+    }
 
     close(fd_cpu_dispatch);
     return NULL;
@@ -612,26 +595,19 @@ void* atender_cpu_interrupt(void* arg) {
     close(fd_cpu_interrupt);
     return NULL;
 }
-
-// Declaraciones de funciones auxiliares
-static bool es_bloqueado_por_io(void* elemento, io* dispositivo_io);
-static bool es_misma_instancia(void* e, t_pcb_io* instancia);
-static bool es_misma_io(void* elemento, io* disp_io);
+// **Se comenta xq rompe el build
+// // Declaraciones de funciones auxiliares
+// static bool es_bloqueado_por_io(void* elemento, io* dispositivo_io);
+// static bool es_misma_instancia(void* e, t_pcb_io* instancia);
+// static bool es_misma_io(void* elemento, io* disp_io);
 
 void* atender_io(void* arg) {
     int fd_io = *(int*)arg;
     free(arg);
 
-    // Encontrar la IO asociada a este file descriptor
-    io* dispositivo_io = NULL;
+    // Encontrar la IO asociada a este file descriptor usando función centralizada
     pthread_mutex_lock(&mutex_ios);
-    for (int i = 0; i < list_size(lista_ios); i++) {
-        io* disp = list_get(lista_ios, i);
-        if (disp->fd == fd_io) {
-            dispositivo_io = disp;
-            break;
-        }
-    }
+    io* dispositivo_io = buscar_io_por_fd(fd_io);
     pthread_mutex_unlock(&mutex_ios);
 
     if (!dispositivo_io) {
@@ -710,14 +686,8 @@ void* atender_io(void* arg) {
         free(pcb_io_actual);
     }
     
-    // Eliminar la IO de la lista
-    io* io_eliminada = NULL;
-    for (int i = 0; i < list_size(lista_ios); i++) {
-        if (list_get(lista_ios, i) == dispositivo_io) {
-            io_eliminada = list_remove(lista_ios, i);
-            break;
-        }
-    }
+    // Eliminar la IO de la lista usando función centralizada
+    io* io_eliminada = buscar_y_remover_io_por_fd(fd_io);
     
     pthread_mutex_unlock(&mutex_ios);
     
@@ -733,16 +703,18 @@ void* atender_io(void* arg) {
 }
 
 // Implementaciones de funciones auxiliares
-static bool es_bloqueado_por_io(void* elemento, io* dispositivo_io) {
-    t_pcb_io* pcb_io = (t_pcb_io*) elemento;
-    return pcb_io->io == dispositivo_io;
-}
+// **Se comenta xq rompe el build
+// static bool es_bloqueado_por_io(void* elemento, io* dispositivo_io) {
+//     t_pcb_io* pcb_io = (t_pcb_io*) elemento;
+//     return pcb_io->io == dispositivo_io;
+// }
 
-static bool es_misma_instancia(void* e, t_pcb_io* instancia) {
-    return e == instancia;
-}
+// static bool es_misma_instancia(void* e, t_pcb_io* instancia) {
+//     return e == instancia;
+// }
 
-static bool es_misma_io(void* elemento, io* disp_io) {
-    io* io_ptr = (io*) elemento;
-    return io_ptr == disp_io;
-}
+// static bool es_misma_io(void* elemento, io* disp_io) {
+//     io* io_ptr = (io*) elemento;
+//     return io_ptr == disp_io;
+// }
+
