@@ -420,9 +420,14 @@ bool enviar_operacion(int socket, op_code operacion) {
 char* leer_string(char* buffer, int* desplazamiento) {
     int tamanio = leer_entero(buffer, desplazamiento);
 
+    if (tamanio <= 0 || tamanio > MAX_STRING_SIZE) {
+        fprintf(stderr, "leer_string: Tamaño inválido (%d)\n", tamanio);
+        exit(EXIT_FAILURE);
+    }
+    
     char* palabra = malloc(tamanio + 1);
-    if (palabra == NULL) {
-        perror("Error al asignar memoria");
+    if (!palabra) {
+        perror("leer_string: Error al asignar memoria");
         exit(EXIT_FAILURE);
     }
 
@@ -456,7 +461,6 @@ op_code recibir_operacion(int socket_cliente) {
     }
     return cod_op;
 }
-
 
 /**
  * @brief Recibe un buffer desde el socket con tamaño dinámico.

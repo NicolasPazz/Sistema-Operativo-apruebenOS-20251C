@@ -276,7 +276,10 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
 
             // Recibir PID
                 int pid;
-                recv_data(cliente_socket, &pid, sizeof(int));
+                if (recv_data(cliente_socket, &pid, sizeof(int)) <= 0) {
+                    log_error(logger, "Error al recibir PID para FINALIZAR_PROC_OP");
+                    return;
+                }                
             
                 log_trace(logger, "Finalización de proceso solicitada - PID: %d", pid);
             
@@ -528,6 +531,15 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             
             log_info(logger, "Des-suspensión de proceso %s - PID: %d", 
                     (respuesta == OK) ? "exitosa" : "fallida", pid);
+
+        case SOLICITAR_FRAME_PARA_ENTRADAS: {
+            log_error(logger, "SOLICITAR_FRAME_PARA_ENTRADAS recibido");
+        
+            // TODO: hago esto para poder seguir ejecutando mientras no este implementado
+            while(1) {
+                sleep(1000);
+            }
+            
             break;
         }
 

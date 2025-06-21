@@ -71,7 +71,6 @@ void func_goto(char* valor) {
     // deberiamos crear un paquete y mandarselo a kernel con este nuevo valor o no es necesario?
 }
 
-
 void func_io(char* nombre_dispositivo, char* tiempo_str) {
     int tiempo = atoi(tiempo_str);  // Convertir tiempo de string a int
     
@@ -124,9 +123,8 @@ void func_dump_memory() {
 }
 
 void func_exit() {
-    t_paquete* paquete = crear_paquete_op(EXIT_OP);
-    enviar_paquete(paquete, fd_kernel_dispatch);
-    eliminar_paquete(paquete);
+    int op = EXIT_OP;
+    send(fd_kernel_dispatch, &op, sizeof(int), 0);
 
     log_trace(cpu_log, "[SYSCALL] ✓ EXIT enviado a Kernel - Finalizando ejecución del proceso");
 

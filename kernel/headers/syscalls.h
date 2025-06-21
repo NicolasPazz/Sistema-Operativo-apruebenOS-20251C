@@ -53,13 +53,15 @@ void fin_dump_memory(int pid_finalizado, t_respuesta_memoria respuesta);
  */
 void IO(char* nombre_io, int tiempo_a_usar, t_pcb* pcb_a_io);
 
+io* get_io(char* nombre_io);
+
 /**
  * @brief Bloquea un PCB por un dispositivo IO y lo agrega a la cola de bloqueados
- * @param dispositivo: Dispositivo IO que bloquea al proceso
+ * @param nombre_io: nombre del dispositivo IO que bloquea al proceso
  * @param pcb: PCB del proceso a bloquear
  * @param tiempo_a_usar: Tiempo en ms que se usará el dispositivo
  */
-void bloquear_pcb_por_io(io* dispositivo, t_pcb* pcb, int tiempo_a_usar);
+void bloquear_pcb_por_io(char* nombre_io, t_pcb* pcb, int tiempo_a_usar);
 
 /**
  * @brief Procesa la finalización de una operación IO

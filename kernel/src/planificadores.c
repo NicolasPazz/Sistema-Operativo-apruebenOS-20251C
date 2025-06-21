@@ -16,41 +16,105 @@ t_pcb* elegir_por_fifo() {
 void* menor_rafaga(void* a, void* b) {
     t_pcb* pcb_a = (t_pcb*) a;
     t_pcb* pcb_b = (t_pcb*) b;
-    return pcb_a->estimacion_rafaga <= pcb_b->estimacion_rafaga ? pcb_a : pcb_b;
+
+    // Devuelve el de menor estimación de ráfaga
+    if (pcb_a->estimacion_rafaga < pcb_b->estimacion_rafaga) return pcb_a;
+    if (pcb_b->estimacion_rafaga < pcb_a->estimacion_rafaga) return pcb_b;
+
+    // En caso de empate, devolver el primero que llegó (fifo)
+    return pcb_a;
 }
+
 t_pcb* elegir_por_sjf() {
-    log_trace(kernel_log, "PLANIFICANDO SJF");
+    log_trace(kernel_log, "PLANIFICANDO SJF (Shortest Job First)");
 
-    /*  Se elegira el proceso que tenga la rafaga mas corta.
-        Su funcionamiento sera como se explica en teoria y la funcion de como calcular las rafagas es la siguiente
-    
-        Est(n) = Estimado de la rafaga anterior
-        R(n) = Lo que realmente ejecuto de la rafaga anterior en la CPU
+    if (list_is_empty(cola_ready)) {
+        log_error(kernel_log, "SJF: cola_ready vacía");
+        terminar_kernel();
+        exit(EXIT_FAILURE);
+    }
 
-        Est(n+1) = El estimado de la proxima rafaga
-        Est(n+1) =  R(n) + (1-) Est(n) ;     [0,1]
-    */
+    log_debug(kernel_log, "SJF: buscando entre %d procesos con menor ráfaga en cola_ready", list_size(cola_ready));
+    t_pcb* seleccionado = (t_pcb*)list_get_minimum(cola_ready, menor_rafaga);
 
-    return (t_pcb*)list_get_minimum(cola_ready, menor_rafaga); // Elige al PCB con la menor ESTIMACIoN de rafaga
+    if (seleccionado) {
+        log_debug(kernel_log, "SJF: Proceso elegido PID=%d con estimación=%.2f", 
+                  seleccionado->PID, seleccionado->estimacion_rafaga);
+    } else {
+        log_error(kernel_log, "SJF: No se pudo seleccionar un proceso");
+    }
+
+    return seleccionado;
 }
 
 t_pcb* elegir_por_srt() {
-    log_trace(kernel_log, "PLANIFICANDO SRT");
+    /*log_trace(kernel_log, "PLANIFICANDO SRT (Shortest Remaining Time)");
 
-    /*
-        Funciona igual que el anterior con la variante que al ingresar un proceso en la cola de Ready
-        existiendo al menos un proceso en Exec, se debe evaluar si dicho proceso tiene una rafaga mas corta que 
-        los que se encuentran en ejecucion. En caso de ser asi, se debe informar al CPU que posee al Proceso 
-        con el tiempo mas alto que debe desalojar al mismo para que pueda ser planificado el nuevo.
-    
+    if (list_is_empty(cola_ready)) {
+        log_warning(kernel_log, "SRT: cola_ready vacía");
+        return NULL;
+    }
 
-    pthread_t hilo_algoritmo_srt;
-    pthread_create(&hilo_algoritmo_srt, NULL, chequear_ready, NULL);
-    pthread_detach(hilo_algoritmo_srt);
-    */
-    //t_pcb* menor_rafaga = list_get_minimum(cola_ready, menor_rafaga);
+    // Buscar el proceso en READY con menor estimación
+    t_pcb* candidato_ready = (t_pcb*)list_get_minimum(cola_ready, menor_rafaga);
+    if (!candidato_ready) return NULL;
 
-    return (t_pcb*)list_get(cola_ready, 0); // TODO
+    pthread_mutex_lock(&mutex_lista_cpus);
+
+    cpu* cpu_libre = NULL;
+    cpu* cpu_con_mayor_rafaga = NULL;
+    double max_rafaga = -1;
+
+    for (int i = 0; i < list_size(lista_cpus); i++) {
+        cpu* c = list_get(lista_cpus, i);
+
+        if (c->tipo_conexion != CPU_DISPATCH) continue;
+
+        if (c->pid == -1) {
+            cpu_libre = c;
+            break;  // hay una CPU libre, no hace falta desalojar
+        }
+
+        t_pcb* pcb_exec = buscar_pcb(c->pid);
+        if (pcb_exec && pcb_exec->estimacion_rafaga > max_rafaga) {
+            max_rafaga = pcb_exec->estimacion_rafaga;
+            cpu_con_mayor_rafaga = c;
+        }
+    }
+
+    pthread_mutex_unlock(&mutex_lista_cpus);
+
+    if (cpu_libre) {
+        log_trace(kernel_log, "SRT: Hay CPU libre, se asignará directamente el proceso con menor ráfaga");
+        return candidato_ready;
+    }
+
+    if (!cpu_con_mayor_rafaga) {
+        log_error(kernel_log, "SRT: No se encontró CPU ejecutando proceso válido");
+        return NULL;
+    }
+
+    t_pcb* pcb_en_ejecucion = buscar_pcb(cpu_con_mayor_rafaga->pid);
+    if (!pcb_en_ejecucion) {
+        log_error(kernel_log, "SRT: Error al obtener PCB en ejecución");
+        return NULL;
+    }
+
+    if (candidato_ready->estimacion_rafaga < pcb_en_ejecucion->estimacion_rafaga) {
+        log_info(kernel_log, "SRT: Se requiere desalojo. PID %d (Ready) < PID %d (Exec)", 
+                 candidato_ready->PID, pcb_en_ejecucion->PID);
+
+        // Enviar interrupción a la CPU que ejecuta al proceso con mayor ráfaga
+        int fd_cpu_interrupt = obtener_fd_interrupt(cpu_con_mayor_rafaga->id); // o mapearlo por ID
+        op_code op = INTERRUPCION_OP;
+        send(fd_cpu_interrupt, &op, sizeof(op_code), 0);
+
+        // No se despacha inmediatamente. Esperamos que la CPU finalice y vuelva a planificar.
+        return NULL;
+    }
+
+    log_trace(kernel_log, "SRT: No hay preemption. Proceso READY tiene mayor o igual ráfaga");*/
+    return NULL;
 }
 
 void dispatch(t_pcb* proceso_a_ejecutar) {
@@ -175,7 +239,9 @@ void* planificador_largo_plazo(void* arg) {
         //sem_wait(&sem_susp_ready_vacia);
             
         // Obtener el proceso de NEW según el algoritmo
+        log_debug(kernel_log, "planificador_largo_plazo: esperando mutex_cola_new para obtener PCB de NEW");
         pthread_mutex_lock(&mutex_cola_new);
+        log_debug(kernel_log, "planificador_largo_plazo: Bloqueando mutex_cola_new para obtener PCB de NEW");
         t_pcb* pcb = NULL;
         if (strcmp(ALGORITMO_INGRESO_A_READY, "FIFO") == 0) {
             pcb = (t_pcb*)list_get(cola_new, 0);
@@ -208,9 +274,14 @@ void* menor_tamanio(void* a, void* b) {
 
 t_pcb* elegir_por_pmcp() {
     log_trace(kernel_log, "PLANIFICANDO PMCP (Proceso Mas Chico Primero)");
-    pthread_mutex_lock(&mutex_cola_new);
     t_pcb* pcb_mas_chico = (t_pcb*)list_get_minimum(cola_new, menor_tamanio);
-    pthread_mutex_unlock(&mutex_cola_new);
+    if (!pcb_mas_chico) {
+        log_error(kernel_log, "elegir_por_pmcp: No se encontró ningún proceso en NEW");
+        terminar_kernel();
+        exit(EXIT_FAILURE);
+    } else {
+        log_trace(kernel_log, "elegir_por_pmcp: Proceso elegido PID=%d, Tamaño=%d", pcb_mas_chico->PID, pcb_mas_chico->tamanio_memoria);
+    }
     return (t_pcb*)pcb_mas_chico;
 }
 
@@ -218,8 +289,9 @@ void* gestionar_exit(void* arg) {
     while (1) {
         log_debug(kernel_log, "gestionar_exit: Semaforo a EXIT disminuido");
         sem_wait(&sem_proceso_a_exit);
-
+        log_debug(kernel_log, "gestionar_exit: esperando mutex_cola_exit para procesar EXIT");
         pthread_mutex_lock(&mutex_cola_exit);
+        log_debug(kernel_log, "gestionar_exit: bloqueando mutex_cola_exit para procesar EXIT");
         if (list_is_empty(cola_exit)) {
             pthread_mutex_unlock(&mutex_cola_exit);
             log_error(kernel_log, "gestionar_exit: Se despertó pero no hay procesos en EXIT");
@@ -262,6 +334,7 @@ void* planificador_corto_plazo(void* arg) {
         log_trace(kernel_log, "Planificador CP: ✓ Condiciones cumplidas - Iniciando planificación");
         t_pcb* proceso_elegido;
 
+        pthread_mutex_lock(&mutex_cola_ready);
         if (strcmp(ALGORITMO_CORTO_PLAZO, "FIFO") == 0) {
             proceso_elegido = elegir_por_fifo();
         } else if (strcmp(ALGORITMO_CORTO_PLAZO, "SJF") == 0) {
@@ -271,9 +344,11 @@ void* planificador_corto_plazo(void* arg) {
         }
         else {
             log_error(kernel_log, "iniciar_planificador_corto_plazo: Algoritmo no reconocido");
+            pthread_mutex_unlock(&mutex_cola_ready);
             terminar_kernel();
             exit(EXIT_FAILURE);
         }
+        pthread_mutex_unlock(&mutex_cola_ready);
 
         dispatch(proceso_elegido);
     }

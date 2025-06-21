@@ -10,20 +10,15 @@ void signal_handler(int sig) {
 }
 
 int main(int argc, char* argv[]) {
-    
-    
+
     signal(SIGINT, signal_handler);
   
-    //////////////////////////// Primer Proceso ////////////////////////////
+    //////////////////////////// Config, log e inicializaciones ////////////////////////////
     if (argc < 3) {
         fprintf(stderr, "Uso: %s [archivo_pseudocodigo] [tamanio_proceso]\nEJ: ./bin/kernel PROCESO_INICIAL 128\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
-    char* archivo_pseudocodigo = argv[1];
-    int tamanio_proceso = atoi(argv[2]);
-  
-    //////////////////////////// Config, log e inicializaciones ////////////////////////////
     iniciar_sincronizacion_kernel();
     iniciar_logger_kernel_debug();
     iniciar_config_kernel();
@@ -31,7 +26,11 @@ int main(int argc, char* argv[]) {
     iniciar_estados_kernel();
     iniciar_diccionario_tiempos();
     iniciar_diccionario_archivos_por_pcb();
-    
+    iniciar_planificadores();
+
+    char* archivo_pseudocodigo = argv[1];
+    int tamanio_proceso = atoi(argv[2]);
+       
     //////////////////////////// Conexiones del Kernel ////////////////////////////
 
     // Servidor de CPU (Dispatch)
@@ -75,17 +74,26 @@ int main(int argc, char* argv[]) {
     //log_trace(kernel_log, "Hilo de servidor IO creado correctamente");
 
     //////////////////////////// Esperar conexiones minimas ////////////////////////////
-    log_trace(kernel_log, "Esperando conexion con al menos una CPU y una IO");
+    log_trace(kernel_log, "Esperando conexion con al menos una CPU, una IO y Memoria...");
 
     while (true) {
         pthread_mutex_lock(&mutex_conexiones);
-        if (conectado_cpu && conectado_io) break;
+        if (conectado_cpu && conectado_io && conectado_memoria) break;
         pthread_mutex_unlock(&mutex_conexiones);
         sleep(1);
     }
 
-    log_trace(kernel_log, "CPU e IO conectados. Continuando ejecucion");
-  
+    log_trace(kernel_log, "CPU, IO y Memoria conectados. Continuando ejecucion");
+    
+    //////////////////////////// Primer proceso ////////////////////////////
+    printf("\n\n\n");
+    mostrar_colas_estados();
+    
+    log_trace(kernel_log, "Creando proceso inicial:  Archivo: %s, Tamanio: %d", archivo_pseudocodigo, tamanio_proceso);
+    INIT_PROC(archivo_pseudocodigo, tamanio_proceso);
+    
+    mostrar_colas_estados();    
+
     //////////////////////////// Esperar enter ////////////////////////////
 
     if (argv[3] == NULL) {
@@ -103,27 +111,13 @@ int main(int argc, char* argv[]) {
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
-    
-    //////////////////////////// Primer proceso ////////////////////////////  
-    printf("\n\n\n");
-    mostrar_colas_estados();
 
-    log_trace(kernel_log, "Creando proceso inicial:  Archivo: %s, Tamanio: %d", archivo_pseudocodigo, tamanio_proceso);
-    INIT_PROC(archivo_pseudocodigo, tamanio_proceso);
+    log_debug(kernel_log, "Kernel ejecutandose. Presione Ctrl+C para terminar.\n");
 
-    mostrar_colas_estados();
-
-    //////////////////////////// Planificacion ////////////////////////////
-    iniciar_planificadores();
     activar_planificador_largo_plazo();
 
-    //////////////////////////// Mantener el kernel ejecutandose ////////////////////////////
-    log_trace(kernel_log, "Kernel iniciado correctamente. Planificadores en ejecucion...");
-    log_debug(kernel_log, "Kernel ejecutandose. Presione Ctrl+C para terminar.\n");
-    
-    // Mantener el programa principal ejecutándose
     while (1) {
-        sleep(10); // Dormir para no consumir CPU innecesariamente
+        sleep(10);
     }
 
     //////////////////////////// Terminar ////////////////////////////  

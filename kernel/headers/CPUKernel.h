@@ -12,6 +12,8 @@
  */
 int get_pid_from_cpu(int fd, op_code instruccion);
 
+cpu* get_cpu_from_fd(int fd);
+
 /**
  * @brief Busca una CPU por su file descriptor
  * @param fd: File descriptor de la CPU a buscar

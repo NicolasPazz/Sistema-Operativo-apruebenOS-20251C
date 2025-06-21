@@ -15,8 +15,10 @@ const char* estado_to_string(Estados estado); // Asocia el valor del enum con el
 void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum);
 bool transicion_valida(Estados actual, Estados destino); // Valida transiciones de estados en base al diagrama de 7 estados
 t_list* obtener_cola_por_estado(Estados estado);
+void bloquear_cola_por_estado(Estados estado);
+void liberar_cola_por_estado(Estados estado);
 void loguear_metricas_estado(t_pcb* pcb);
-t_pcb* obtener_pcb_por_pid(int pid); // Busca un PCB por su PID en la cola de procesos
 t_pcb* buscar_y_remover_pcb_por_pid(t_list* cola, int pid); // Busca y remueve un PCB por PID de una cola específica
+t_pcb* buscar_pcb(int pid);
 
 #endif /* PROCESOS_H */

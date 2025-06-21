@@ -13,6 +13,7 @@ extern pthread_mutex_t mutex_cola_ready;
 extern pthread_mutex_t mutex_cola_running;
 extern pthread_mutex_t mutex_cola_blocked;
 extern pthread_mutex_t mutex_cola_exit;
+extern pthread_mutex_t mutex_cola_procesos;
 
 // Semáforos para sincronización
 extern sem_t sem_proceso_a_new;

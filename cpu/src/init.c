@@ -97,7 +97,6 @@ void* conectar_cpu_memoria() {
     return NULL;
 }
 
-
 void* conectar_kernel_dispatch() {
     fd_kernel_dispatch = crear_conexion(IP_KERNEL, PUERTO_KERNEL_DISPATCH, cpu_log);
     if (fd_kernel_dispatch == -1) {

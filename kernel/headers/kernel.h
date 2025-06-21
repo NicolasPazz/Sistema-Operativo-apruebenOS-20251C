@@ -37,9 +37,9 @@ extern char* PUERTO_ESCUCHA_INTERRUPT;
 extern char* PUERTO_ESCUCHA_IO;
 extern char* ALGORITMO_CORTO_PLAZO;
 extern char* ALGORITMO_INGRESO_A_READY;
-extern char* ALFA;
+extern double ALFA;
 extern char* TIEMPO_SUSPENSION;
-extern char* ESTIMACION_INICIAL;
+extern double ESTIMACION_INICIAL;
 extern char* LOG_LEVEL;
 
 // Colas de Estados
@@ -51,8 +51,8 @@ extern t_list* cola_susp_ready;
 extern t_list* cola_susp_blocked;
 extern t_list* cola_exit;
 extern t_list* cola_procesos;
-extern t_list* pcbs_bloqueados_por_io;
 extern t_list* pcbs_bloqueados_por_dump_memory;
+extern t_list* pcbs_esperando_io;
 
 // Listas y semaforos de CPUs y IOs conectadas
 extern t_list* lista_cpus;
@@ -65,25 +65,64 @@ extern pthread_mutex_t mutex_ios;
 // Conexiones minimas
 extern bool conectado_cpu;
 extern bool conectado_io;
+extern bool conectado_memoria;
 extern pthread_mutex_t mutex_conexiones;
 
-/////////////////////////////// Prototipos ///////////////////////////////
-void iniciar_config_kernel(void);
-void iniciar_logger_kernel(void);
-void iniciar_logger_kernel_debug(void);
-void iniciar_diccionario_tiempos(void);
-void iniciar_diccionario_archivos_por_pcb(void);
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+ //                                       INICIALIZACIONES                                       //
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+void iniciar_config_kernel();
+
+void iniciar_logger_kernel();
+
+void iniciar_logger_kernel_debug();
+
+void iniciar_estados_kernel();
+
+void iniciar_sincronizacion_kernel();
+
+void iniciar_diccionario_tiempos();
+
+void iniciar_diccionario_archivos_por_pcb();
+
+void terminar_kernel();
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+ //                                            MEMORIA                                           //
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
 void* hilo_cliente_memoria(void* _);
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+ //                                         CPU DISPATCH                                         //
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
 void* hilo_servidor_dispatch(void* _);
-void* hilo_servidor_interrupt(void* _);
-void* hilo_servidor_io(void* _);
-void iniciar_estados_kernel(void);
-void iniciar_sincronizacion_kernel(void);
-void terminar_kernel(void);
-bool cpu_por_fd_simple(void* ptr, int fd);
-int get_pid_from_cpu(int fd, op_code instruccion);
 void* atender_cpu_dispatch(void* arg);
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+ //                                         CPU INTERRUPT                                        //
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+void* hilo_servidor_interrupt(void* _);
+
 void* atender_cpu_interrupt(void* arg);
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+ //                                              IO                                              //
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+void* hilo_servidor_io(void* _);
+
 void* atender_io(void* arg);
+
+void verificar_procesos_bloqueados(io* io);
+
+t_pcb_io* obtener_pcb_esperando_io(char* nombre_io);
+
+void asignar_proceso(io* dispositivo, t_pcb_io* proceso);
+
+void exit_procesos_relacionados(io* io);
 
 #endif /* KERNEL_H */

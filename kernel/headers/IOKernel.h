@@ -7,15 +7,6 @@
 #include <semaphore.h>
 
 /**
- * @brief Procesa la solicitud de IO recibida de una CPU
- * 
- * @param nombre_IO Nombre del dispositivo IO solicitado
- * @param cant_tiempo Tiempo en ms que se usará el dispositivo
- * @param pcb_a_io PCB del proceso que solicita la IO
- */
-void procesar_IO_from_CPU(char* nombre_IO, int cant_tiempo, t_pcb* pcb_a_io);
-
-/**
  * @brief Recibe los datos de una solicitud IO desde una CPU
  * 
  * @param fd File descriptor de la conexión con la CPU
