@@ -260,8 +260,8 @@ t_instruccion* get_instruction(int pid, int pc) {
     
     // Loguear la instrucción obtenida (formato requerido)
     char* instr_str = instruction_to_string(extended_instr, pc);
-    log_info(logger, "## PID: %d - Obtener instrucción: %d - Instrucción: %s", 
-             pid, pc, instr_str);
+    //log_info(logger, "## PID: %d - Obtener instrucción: %d - Instrucción: %s", 
+    //         pid, pc, instr_str);
     free(instr_str);
     
     // Devolvemos una copia de la instrucción base que será liberada por el llamador

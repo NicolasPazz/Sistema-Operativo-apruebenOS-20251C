@@ -164,7 +164,8 @@ void execute(op_code tipo_instruccion, t_instruccion* instruccion) {
             func_io(instruccion->parametros2, instruccion->parametros3); 
             break;
         case INIT_PROC_OP:
-            log_trace(cpu_log, "INSTRUCCION :%d - PARAMETRO 1: %s - PARAMETRO 2: %s", tipo_instruccion, instruccion->parametros2, instruccion->parametros3); 
+            log_trace(cpu_log, "INSTRUCCION :%d - PARAMETRO 1: %s - PARAMETRO 2: %s", tipo_instruccion, instruccion->parametros2, instruccion->parametros3);
+            log_info(cpu_log, "parametros desde cpu para chequear PATH :%s, :%s",instruccion->parametros2, instruccion->parametros3);
             func_init_proc(instruccion); // en realidad son 2 parametros
             break;
         case DUMP_MEMORY_OP:

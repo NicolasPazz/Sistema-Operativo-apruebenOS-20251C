@@ -1,4 +1,6 @@
 #include "../headers/kernel.h"
+#include "../headers/CPUKernel.h"
+#include "../headers/syscalls.h"
 #include <libgen.h>
 
 /////////////////////////////// Declaracion de variables globales ///////////////////////////////
@@ -42,6 +44,7 @@ t_list* cola_susp_ready;
 t_list* cola_susp_blocked;
 t_list* cola_exit;
 t_list* cola_procesos; // Cola con TODOS los procesos sin importar el estado (Procesos totales del sistema)
+t_list* pcbs_bloqueados_por_dump_memory;
 t_list* pcbs_esperando_io;
 
 // Listas y semaforos de CPUs y IOs conectadas
@@ -135,6 +138,7 @@ void iniciar_estados_kernel() {
     cola_susp_blocked = list_create();
     cola_exit = list_create();
     cola_procesos = list_create();
+    pcbs_bloqueados_por_dump_memory = list_create();
     pcbs_esperando_io = list_create();
 }
 
@@ -193,6 +197,7 @@ void terminar_kernel() {
     list_destroy(cola_susp_blocked);
     list_destroy(cola_exit);
     list_destroy(cola_procesos);
+    list_destroy(pcbs_bloqueados_por_dump_memory);
     list_destroy(pcbs_esperando_io);
 
     pthread_mutex_destroy(&mutex_lista_cpus);
@@ -378,7 +383,7 @@ void* atender_cpu_dispatch(void* arg) {
             
                 char* nombre_IO = NULL;
                 int cant_tiempo;
-            
+           
                 if (!recv_IO_from_CPU(fd_cpu_dispatch, &nombre_IO, &cant_tiempo)) {
                     free(nombre_IO);
                     log_error(kernel_log, "Error al recibir la IO desde CPU");
@@ -408,7 +413,8 @@ void* atender_cpu_dispatch(void* arg) {
                 IO(nombre_IO, cant_tiempo, pcb_a_io);
 
                 free(nombre_IO);
-                break;
+
+              break;
             }            
 
             case EXIT_OP:
@@ -422,18 +428,11 @@ void* atender_cpu_dispatch(void* arg) {
                 
                 log_trace(kernel_log, "EXIT_OP asociado a PID=%d", pid);
 
-                // Buscar PCB en RUNNING
+                // Buscar y remover PCB de RUNNING usando función centralizada
                 log_debug(kernel_log, "atender_cpu_dispatch: esperando mutex_cola_running para buscar PCB con PID=%d", pid_exit);
                 pthread_mutex_lock(&mutex_cola_running);
                 log_debug(kernel_log, "atender_cpu_dispatch: bloqueando mutex_cola_running para buscar PCB con PID=%d", pid_exit);
-                t_pcb* pcb_a_finalizar = NULL;
-                for (int i = 0; i < list_size(cola_running); i++) {
-                    t_pcb* pcb = list_get(cola_running, i);
-                    if (pcb->PID == pid_exit) {
-                        pcb_a_finalizar = list_remove(cola_running, i);
-                        break;
-                    }
-                }
+                t_pcb* pcb_a_finalizar = buscar_y_remover_pcb_por_pid(cola_running, pid_exit);
                 pthread_mutex_unlock(&mutex_cola_running);
 
                 // Confirmar que se encontró el PCB
@@ -448,20 +447,36 @@ void* atender_cpu_dispatch(void* arg) {
                 pthread_mutex_lock(&mutex_lista_cpus);
                 cpu_actual->pid = -1; // Limpiar PID de la CPU
                 pthread_mutex_unlock(&mutex_lista_cpus);
-                               
-                log_trace(kernel_log, "CPU liberada por EXIT de proceso");
+                
+                // CAMBIO: Liberar CPU para que el planificador pueda usarla
                 sem_post(&sem_cpu_disponible);
+                log_debug(kernel_log, "EXIT: CPU liberada - Semáforo CPU DISPONIBLE aumentado");
+                
+                // Reactivar planificador si hay procesos en READY esperando
+                pthread_mutex_lock(&mutex_cola_ready);
+                bool hay_procesos_ready = !list_is_empty(cola_ready);
+                pthread_mutex_unlock(&mutex_cola_ready);
+                
+                if (hay_procesos_ready) {
+                    log_trace(kernel_log, "CPU liberada, reactivando planificador para procesos en READY");
+                    sem_post(&sem_proceso_a_ready);
+                }
                 
                 break;
 
             case DUMP_MEMORY_OP:
                 log_info(kernel_log, "## (%d) Solicitó syscall: DUMP_MEMORY", pid);
                 log_trace(kernel_log, "DUMP_MEMORY_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
-                // TODO: Implementar DUMP_MEMORY
-                // log_info(kernel_log, "## PID: %d - Operación DUMP_MEMORY procesada", pid_dump);
                 
-                // Limpiar la lista
-                // list_destroy_and_destroy_elements(lista_dump, free);
+                // Obtener el PCB del proceso
+                t_pcb* pcb_dump = obtener_pcb_por_pid(pid);
+                if (!pcb_dump) {
+                    log_error(kernel_log, "DUMP_MEMORY_OP: No se encontró PCB para PID %d", pid);
+                    break;
+                }
+                
+                // Llamar a la función DUMP_MEMORY
+                DUMP_MEMORY(pcb_dump);
                 break;
                 
             default:
@@ -477,17 +492,14 @@ void* atender_cpu_dispatch(void* arg) {
 
     log_warning(kernel_log, "CPU Dispatch desconectada (fd=%d)", fd_cpu_dispatch);
     
-    // Eliminar esta CPU de la lista de CPUs
+    // Eliminar esta CPU de la lista de CPUs usando función centralizada
     pthread_mutex_lock(&mutex_lista_cpus);
-    for (int i = 0; i < list_size(lista_cpus); i++) {
-        cpu* c = list_get(lista_cpus, i);
-        if (c->fd == fd_cpu_dispatch) {
-            cpu* cpu_eliminada = list_remove(lista_cpus, i);
-            free(cpu_eliminada);
-            break;
-        }
-    }
+    cpu* cpu_eliminada = buscar_y_remover_cpu_por_fd(fd_cpu_dispatch);
     pthread_mutex_unlock(&mutex_lista_cpus);
+    
+    if (cpu_eliminada) {
+        free(cpu_eliminada);
+    }
 
     close(fd_cpu_dispatch);
     return NULL;
@@ -621,16 +633,9 @@ void* atender_io(void* arg) {
     int fd_io = *(int*)arg;
     free(arg);
 
-    // Buscar el dispositivo asociado a este fd
+    // Encontrar la IO asociada a este file descriptor usando función centralizada
     pthread_mutex_lock(&mutex_ios);
-    io* dispositivo_io = NULL;
-    for (int i = 0; i < list_size(lista_ios); i++) {
-        io* disp = list_get(lista_ios, i);
-        if (disp->fd == fd_io) {
-            dispositivo_io = disp;
-            break;
-        }
-    }
+    io* dispositivo_io = buscar_io_por_fd(fd_io);
     pthread_mutex_unlock(&mutex_ios);
 
     if (!dispositivo_io) {

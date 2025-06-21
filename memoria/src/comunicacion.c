@@ -217,20 +217,20 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             
             // ========== CARGA DE INSTRUCCIONES ==========
             if (resultado == MEMORIA_OK) {
-                // Construir path completo para instrucciones
-                char* path_completo = string_from_format("%s%s", cfg->PATH_INSTRUCCIONES, nombre_proceso);
                 
-                // Cargar instrucciones desde archivo
+                char* path_completo = strdup(nombre_proceso);
+                log_debug(logger, "EMAAAA NOMBRE DEL PATH '%s'", nombre_proceso);
+            
                 t_process_instructions* instrucciones = load_process_instructions(pid, path_completo);
                 if (instrucciones != NULL) {
                     char* pid_key = string_itoa(pid);
                     dictionary_put(sistema_memoria->process_instructions, pid_key, instrucciones);
                     log_debug(logger, "PID: %d - Instrucciones cargadas desde %s", pid, path_completo);
-                free(pid_key);
+                    free(pid_key);
                 } else {
                     log_warning(logger, "PID: %d - No se pudieron cargar instrucciones desde %s", pid, path_completo);
                 }
-                 
+            
                 free(path_completo);
             }
 
@@ -497,10 +497,45 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             break;
         }
 
+        case SUSPENDER_PROCESO_OP: {
+            log_trace(logger, "SUSPENDER_PROCESO_OP recibido");
+
+            // Recibir PID del proceso a suspender
+            int pid;
+            recv_data(cliente_socket, &pid, sizeof(int));
+            
+            log_trace(logger, "Suspensión de proceso solicitada - PID: %d", pid);
+            
+            t_resultado_memoria resultado = suspender_proceso_en_memoria(pid);
+            
+            t_respuesta_memoria respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
+            send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+            
+            log_info(logger, "Suspensión de proceso %s - PID: %d", 
+                    (respuesta == OK) ? "exitosa" : "fallida", pid);
+            break;
+        }
+
+        case DESUSPENDER_PROCESO_OP: {
+            log_trace(logger, "DESUSPENDER_PROCESO_OP recibido");
+
+            int pid;
+            recv_data(cliente_socket, &pid, sizeof(int));
+            
+            log_trace(logger, "Des-suspensión de proceso solicitada - PID: %d", pid);
+            
+            t_resultado_memoria resultado = reanudar_proceso_en_memoria(pid);
+            
+            t_respuesta_memoria respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
+            send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+            
+            log_info(logger, "Des-suspensión de proceso %s - PID: %d", 
+                    (respuesta == OK) ? "exitosa" : "fallida", pid);
+
         case SOLICITAR_FRAME_PARA_ENTRADAS: {
-            log_trace(logger, "SOLICITAR_FRAME_PARA_ENTRADAS recibido");
+            log_error(logger, "SOLICITAR_FRAME_PARA_ENTRADAS recibido");
         
-            // TODO
+            // TODO: hago esto para poder seguir ejecutando mientras no este implementado
             while(1) {
                 sleep(1000);
             }

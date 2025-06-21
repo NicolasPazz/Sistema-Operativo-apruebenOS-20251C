@@ -16,7 +16,7 @@ extern int orden_fifo;
 extern t_config_memoria* cfg_memoria;
 
 void inicializar_mmu(void);
-int traducir_direccion(int direccion_logica, int* desplazamiento);
+int traducir_direccion_fisica(int direccion_logica);
 bool tlb_buscar(int pagina, int* frame);
 void tlb_insertar(int pagina, int frame);
 bool tlb_habilitada(void);

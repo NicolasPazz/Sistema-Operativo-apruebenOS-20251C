@@ -68,19 +68,20 @@ int cargar_configuracion(char* path) {
     return 1;
 }
 
-int traducir_direccion(int direccion_logica, int* desplazamiento) {
+int traducir_direccion_fisica(int direccion_logica) {
     if (cfg_memoria == NULL) {
         log_error(cpu_log, "ERROR: cfg_memoria no inicializada");
         exit(EXIT_FAILURE);
     }
+
     int tam_pagina = cfg_memoria->TAM_PAGINA;
     int entradas_por_tabla = cfg_memoria->ENTRADAS_POR_TABLA;
     int cantidad_niveles = cfg_memoria->CANTIDAD_NIVELES;
 
-    
     int nro_pagina = direccion_logica / tam_pagina;
-    *desplazamiento = direccion_logica % tam_pagina;
+    int desplazamiento = direccion_logica % tam_pagina;
 
+    // Calcular entradas de cada nivel para paginación multinivel
     int entradas[cantidad_niveles];
     for (int nivel = 0; nivel < cantidad_niveles; nivel++) {
         int divisor = pow(entradas_por_tabla, cantidad_niveles - (nivel + 1));
@@ -88,12 +89,14 @@ int traducir_direccion(int direccion_logica, int* desplazamiento) {
     }
 
     int frame = 0;
+
+    // Buscar en la TLB
     if (tlb_habilitada() && tlb_buscar(nro_pagina, &frame)) {
         log_info(cpu_log, "PID: %d - TLB HIT - Página: %d", pid_ejecutando, nro_pagina);    
     } else {
         log_info(cpu_log, "PID: %d - TLB MISS - Página: %d", pid_ejecutando, nro_pagina);
 
-        // Enviar entradas de página a Memoria
+        // Pedir a Memoria el frame
         t_paquete* paquete = crear_paquete_op(SOLICITAR_FRAME_PARA_ENTRADAS);
         log_trace(cpu_log, "PID: %d - OBTENER MARCO - Página: %d", pid_ejecutando, nro_pagina);
         log_trace(cpu_log, "Serializando SOLICITAR_FRAME_PARA_ENTRADAS:");
@@ -128,10 +131,13 @@ int traducir_direccion(int direccion_logica, int* desplazamiento) {
             tlb_insertar(nro_pagina, frame);
         }
     }
-    
-    
-    return frame;
+
+    // Finalmente: dirección física = frame * tamaño_página + desplazamiento
+    return frame * tam_pagina + desplazamiento;
 }
+
+
+
 
 bool tlb_buscar(int pagina, int* frame_out) {
     for (int i = 0; i < list_size(tlb); i++) {

@@ -6,19 +6,47 @@ all:
 	make -C ./cpu
 	make -C ./kernel
 
-# /////////////////////// Ejecutar módulos desde el Makefile ///////////////////////
+# /////////////////////// Ejecutar módulos ///////////////////////
+.PHONY: run
+run:
+	@echo "Iniciando memoria..."
+	@./memoria/bin/memoria > memoria/memoria.log 2>&1 &
+
+	@echo "Iniciando kernel..."
+	@./kernel/bin/kernel PROCESO_INICIAL 128
+
+	@echo "Iniciando cpu..."
+	@./cpu/bin/cpu CPU1 > cpu/cpu.log 2>&1 &
+
+	@echo "Iniciando io..."
+	@./io/bin/io IMPRESORA > io/io.log 2>&1 &
+
+# /////////////////////// Detener todos los módulos ///////////////////////
+.PHONY: stop
+stop:
+	@echo "Deteniendo procesos..."
+	@pkill -f ./memoria/bin/memoria || true
+	@pkill -f ./cpu/bin/cpu || true
+	@pkill -f ./io/bin/io || true
+	@pkill -f ./kernel/bin/kernel || true
+	@echo "Todos los procesos fueron detenidos."
+
+# /////////////////////// Ejecutar módulos individualmente ///////////////////////
 .PHONY: kernel
 kernel:
-	cd kernel && ./bin/kernel
+	./kernel/bin/kernel PROCESO_INICIAL 128
+
 .PHONY: memoria
 memoria:
-	cd memoria && ./bin/memoria
+	./memoria/bin/memoria
+
 .PHONY: cpu
 cpu:
-	cd cpu && ./bin/cpu
+	./cpu/bin/cpu CPU1
+
 .PHONY: io
 io:
-	cd io && ./bin/io
+	./io/bin/io IMPRESORA
 
 # /////////////////////// Formatear saltos de línea: dos -> unix ///////////////////////
 dos2unix:

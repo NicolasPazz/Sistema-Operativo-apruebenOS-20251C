@@ -10,41 +10,43 @@ void func_noop() {
 }
 
 void func_write(char* direccion_logica_str, char* datos) {
-    int desplazamiento = 0;
     int direccion_logica = atoi(direccion_logica_str);
-    int frame = traducir_direccion(direccion_logica, &desplazamiento);
-    log_info(cpu_log, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %s", pid_ejecutando, frame, datos); 
-    if (cache_habilitada() && (buscar_pagina_en_cache(frame) != -1)) {
-        cache_modificar(frame, datos);
+    int direccion_fisica = traducir_direccion_fisica(direccion_logica);
+
+    log_info(cpu_log, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %s",
+             pid_ejecutando, direccion_fisica, datos); 
+
+    int pagina = direccion_fisica / cfg_memoria->TAM_PAGINA;
+
+    if (cache_habilitada() && (buscar_pagina_en_cache(pagina) != -1)) {
+        cache_modificar(pagina, datos);
     } else if (cache_habilitada()) {
-        //solicitar_pagina_a_memoria(frame); paquete y pedirle por medio de op code VER
+        // Simula pedir página a Memoria (para llenar caché)
         t_paquete* paquete = crear_paquete_op(PEDIR_PAGINA_OP);
-        agregar_entero_a_paquete(paquete, frame);
+        agregar_entero_a_paquete(paquete, pagina);
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
 
-        int pagina;
-        recibir_entero(fd_memoria, &pagina);
-        cache_escribir(pagina, datos);   
-        log_info(cpu_log, "PID: %d - Cache Miss - Pagina: %d", pid_ejecutando, frame);   
+        int tamanio_buffer;
+        char* contenido = recibir_buffer(&tamanio_buffer, fd_memoria);
+        cache_escribir(pagina, contenido);
+        free(contenido);
+
+        log_info(cpu_log, "PID: %d - Cache Miss - Pagina: %d", pid_ejecutando, pagina);   
     } else {
         t_paquete* paquete = crear_paquete_op(WRITE_OP);
-        agregar_entero_a_paquete(paquete, frame);
-        agregar_entero_a_paquete(paquete, desplazamiento);
-        agregar_a_paquete(paquete, datos, strlen(datos)+1); //cambie agregar_string_a_paquete por agregar_a_paquete
+        agregar_entero_a_paquete(paquete, direccion_fisica);
+        agregar_a_paquete(paquete, datos, strlen(datos)+1);  // contenido
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
     }
-
 }
 
-void func_read(char* direccion, char* tamanio) {
-    int desplazamiento = 0;
-    int size = atoi(tamanio);
-    int direccion_logica = atoi(direccion);
 
-    int frame = traducir_direccion(direccion_logica, &desplazamiento);
-    int direccion_fisica = frame * cfg_memoria->TAM_PAGINA + desplazamiento;
+void func_read(char* direccion, char* tamanio) {
+    int direccion_logica = atoi(direccion);
+    int direccion_fisica = traducir_direccion_fisica(direccion_logica);
+    int size = atoi(tamanio);
 
     t_paquete *paquete = crear_paquete_op(READ_OP);
     agregar_entero_a_paquete(paquete, direccion_fisica);
@@ -53,7 +55,6 @@ void func_read(char* direccion, char* tamanio) {
     enviar_paquete(paquete, fd_memoria);
     eliminar_paquete(paquete);
 
-    // Recibir el buffer
     int respuesta_size = 0;
     char* contenido = recibir_buffer(&respuesta_size, fd_memoria);
 
@@ -107,7 +108,7 @@ void func_init_proc(t_instruccion* instruccion) {
     
     log_trace(cpu_log, "[SYSCALL] ✓ INIT_PROC enviado a Kernel - Continuando ejecución del proceso");
 
-    // NO establecer seguir_ejecutando = 0 para continuar con la siguiente instrucción
+    
 }
 
 void func_dump_memory() {
