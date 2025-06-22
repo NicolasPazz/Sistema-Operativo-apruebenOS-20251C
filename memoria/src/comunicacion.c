@@ -218,8 +218,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             // ========== CARGA DE INSTRUCCIONES ==========
             if (resultado == MEMORIA_OK) {
                 
-                char* path_completo = strdup(nombre_proceso);
-                log_debug(logger, "EMAAAA NOMBRE DEL PATH '%s'", nombre_proceso);
+                char* path_completo = string_from_format("%s%s", cfg->PATH_INSTRUCCIONES, nombre_proceso);
             
                 t_process_instructions* instrucciones = load_process_instructions(pid, path_completo);
                 if (instrucciones != NULL) {
