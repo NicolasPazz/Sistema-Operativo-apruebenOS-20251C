@@ -23,22 +23,22 @@ rm -f memoria/memoria.log kernel/kernel.log cpu/cpu.log io/io.log
 # INICIAR MEMORIA
 valgrind --tool=helgrind --log-file=memoria/memoria.helgrind ./memoria/bin/memoria &
 PID_MEMORIA=$!
-timeout 30 bash -c "tail -Fn0 memoria/memoria.log | grep -q 'Escuchando en puerto 8002. Esperando conexiones...'"
+sleep 10
 
 # INICIAR KERNEL
 valgrind --tool=helgrind --log-file=kernel/kernel.helgrind ./kernel/bin/kernel PROCESO_INICIAL 128 --action &
 PID_KERNEL=$!
-timeout 30 bash -c "tail -Fn0 kernel/kernel_config_debug.log | grep -q 'LOG_LEVEL: INFO'"
+sleep 10
 
 # INICIAR CPU
 valgrind --tool=helgrind --log-file=cpu/cpu.helgrind ./cpu/bin/cpu 1 &
 PID_CPU1=$!
-timeout 30 bash -c "tail -Fn0 memoria/memoria.log | grep -q '## CPU Conectado - FD del socket: '"
+sleep 10
 
 # INICIAR IO
 valgrind --tool=helgrind --log-file=io/io.helgrind ./io/bin/io teclado &
 PID_IO1=$!
-timeout 30 bash -c "tail -Fn0 io/io.log | grep -q 'Dispositivo IO teclado listo para recibir operaciones del Kernel'"
+sleep 10
 
 ############################
 # ESPERAR FINALIZACIÓN O TIMEOUT

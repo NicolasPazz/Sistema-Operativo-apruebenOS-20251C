@@ -15,6 +15,6 @@
  * @return true Si se recibieron los datos correctamente
  * @return false Si hubo un error al recibir los datos
  */
-bool recv_IO_from_CPU(int fd, char** nombre_IO, int* cant_tiempo);
+bool recv_IO_from_CPU(int fd, char** nombre_IO, int* cant_tiempo, int* PC);
 
 #endif /* IOKERNEL_H_ */

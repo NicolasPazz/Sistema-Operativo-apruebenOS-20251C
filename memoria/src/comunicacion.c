@@ -108,7 +108,7 @@ void procesar_conexion(void* void_args) {
         procesar_cod_ops(cop, cliente_socket);
     }
 
-    log_warning(logger, "El cliente (fd=%d) se desconectó de %s", cliente_socket, server_name);
+    log_debug(logger, "El cliente (fd=%d) se desconectó de %s", cliente_socket, server_name);
 
     if (cliente_socket == fd_kernel) {
         log_warning(logger, "Se desconectó el Kernel. Finalizando Memoria...");
@@ -241,10 +241,10 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             t_respuesta_memoria respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
             
             if (resultado == MEMORIA_OK) {
-                log_info(logger, "Enviando respuesta OK a cliente (fd=%d) - Proceso %d creado exitosamente", 
+                log_debug(logger, "Enviando respuesta OK a cliente (fd=%d) - Proceso %d creado exitosamente", 
                          cliente_socket, pid);
             } else {
-                log_info(logger, "Enviando respuesta ERROR a cliente (fd=%d) - Falló creación del proceso %d", 
+                log_debug(logger, "Enviando respuesta ERROR a cliente (fd=%d) - Falló creación del proceso %d", 
                          cliente_socket, pid);
             }
             
@@ -264,7 +264,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             
             // Enviar respuesta
             t_respuesta_memoria respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
-            log_info(logger, "Enviando respuesta %s a cliente (fd=%d)", 
+            log_debug(logger, "Enviando respuesta %s a cliente (fd=%d)", 
                     (respuesta == OK) ? "OK" : "ERROR", cliente_socket);
                 send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
             break;
@@ -287,7 +287,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             
             // Enviar respuesta
                 t_respuesta_memoria respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
-                log_info(logger, "Enviando respuesta %s a cliente (fd=%d)", 
+                log_debug(logger, "Enviando respuesta %s a cliente (fd=%d)", 
                         (respuesta == OK) ? "OK" : "ERROR", cliente_socket);
                 send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
             break;

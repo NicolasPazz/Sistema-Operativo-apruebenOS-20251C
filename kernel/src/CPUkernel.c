@@ -26,26 +26,10 @@ cpu* get_cpu_from_fd(int fd) {
     return cpu_asociada;
 }
 
-cpu* buscar_cpu_por_fd(int fd) {
-    if (!lista_cpus) {
-        log_error(kernel_log, "buscar_cpu_por_fd: lista_cpus es NULL");
-        return NULL;
-    }
-
-    // Buscar la CPU por file descriptor
-    for (int i = 0; i < list_size(lista_cpus); i++) {
-        cpu* c = list_get(lista_cpus, i);
-        if (c && c->fd == fd) {
-            return c;
-        }
-    }
-
-    // No se encontró la CPU
-    log_warning(kernel_log, "buscar_cpu_por_fd: No se encontró CPU con fd %d", fd);
-    return NULL;
-}
-
 cpu* buscar_y_remover_cpu_por_fd(int fd) {
+    log_debug(kernel_log, "buscar_y_remover_cpu_por_fd: esperando mutex_lista_cpus para buscar y remover CPU por fd=%d", fd);
+    pthread_mutex_lock(&mutex_lista_cpus);
+    log_debug(kernel_log, "buscar_y_remover_cpu_por_fd: bloqueando mutex_lista_cpus para buscar y remover CPU por fd=%d", fd);
     if (!lista_cpus) {
         log_error(kernel_log, "buscar_y_remover_cpu_por_fd: lista_cpus es NULL");
         return NULL;
@@ -55,9 +39,12 @@ cpu* buscar_y_remover_cpu_por_fd(int fd) {
     for (int i = 0; i < list_size(lista_cpus); i++) {
         cpu* c = list_get(lista_cpus, i);
         if (c && c->fd == fd) {
-            return list_remove(lista_cpus, i);
+            cpu* cpu_removida = list_remove(lista_cpus, i);
+            pthread_mutex_unlock(&mutex_lista_cpus);
+            return cpu_removida;
         }
     }
+    pthread_mutex_unlock(&mutex_lista_cpus);
 
     // No se encontró la CPU
     log_warning(kernel_log, "buscar_y_remover_cpu_por_fd: No se encontró CPU con fd %d", fd);

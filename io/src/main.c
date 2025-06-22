@@ -71,9 +71,9 @@ int main(int argc, char* argv[]) {
             
 
             default:
-                log_warning(io_log, "Se recibió un op_code inesperado: %d", cop);
+                log_warning(io_log, "Se desconectó el Kernel. Finalizando IO...");
                 terminar_io();
-                exit(EXIT_FAILURE);
+                exit(EXIT_SUCCESS);
                 break;
         }
     }

@@ -307,7 +307,7 @@ void* hilo_servidor_dispatch(void* _) {
         pthread_mutex_unlock(&mutex_lista_cpus);
 
         sem_post(&sem_cpu_disponible);
-        log_debug(kernel_log, "hilo_servidor_dispatch: Semaforo CPU DISPONIBLE aumentado");
+        log_debug(kernel_log, "hilo_servidor_dispatch: Semaforo CPU DISPONIBLE aumentado por nueva CPU (fd=%d, ID=%d)", fd_cpu_dispatch, id_cpu);
 
         pthread_mutex_lock(&mutex_conexiones);
         conectado_cpu = true;
@@ -383,8 +383,9 @@ void* atender_cpu_dispatch(void* arg) {
             
                 char* nombre_IO = NULL;
                 int cant_tiempo;
+                int PC;
            
-                if (!recv_IO_from_CPU(fd_cpu_dispatch, &nombre_IO, &cant_tiempo)) {
+                if (!recv_IO_from_CPU(fd_cpu_dispatch, &nombre_IO, &cant_tiempo, &PC)) {
                     free(nombre_IO);
                     log_error(kernel_log, "Error al recibir la IO desde CPU");
                     break;
@@ -398,6 +399,8 @@ void* atender_cpu_dispatch(void* arg) {
                     free(nombre_IO);
                     break;
                 }
+
+                pcb_a_io->PC = PC;
 
                 pthread_mutex_lock(&mutex_lista_cpus);
                 cpu_actual->pid = -1;
@@ -450,7 +453,7 @@ void* atender_cpu_dispatch(void* arg) {
                 
                 // CAMBIO: Liberar CPU para que el planificador pueda usarla
                 sem_post(&sem_cpu_disponible);
-                log_debug(kernel_log, "EXIT: CPU liberada - Semáforo CPU DISPONIBLE aumentado");
+                log_debug(kernel_log, "EXIT: Semáforo CPU DISPONIBLE aumentado por CPU liberada");
                 
                 // Reactivar planificador si hay procesos en READY esperando
                 pthread_mutex_lock(&mutex_cola_ready);
@@ -474,7 +477,7 @@ void* atender_cpu_dispatch(void* arg) {
                     log_error(kernel_log, "DUMP_MEMORY_OP: No se encontró PCB para PID %d", pid);
                     break;
                 }
-                
+                // TODO: actualizar PC
                 // Llamar a la función DUMP_MEMORY
                 DUMP_MEMORY(pcb_dump);
                 break;
@@ -493,9 +496,7 @@ void* atender_cpu_dispatch(void* arg) {
     log_warning(kernel_log, "CPU Dispatch desconectada (fd=%d)", fd_cpu_dispatch);
     
     // Eliminar esta CPU de la lista de CPUs usando función centralizada
-    pthread_mutex_lock(&mutex_lista_cpus);
     cpu* cpu_eliminada = buscar_y_remover_cpu_por_fd(fd_cpu_dispatch);
-    pthread_mutex_unlock(&mutex_lista_cpus);
     
     if (cpu_eliminada) {
         free(cpu_eliminada);

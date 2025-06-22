@@ -9,6 +9,7 @@
 
         /////////////////////////////// Log y Config ///////////////////////////////
 t_log* iniciar_logger(char *file, char *process_name, bool is_active_console, t_log_level level) {
+    remove(file);
 	t_log* nuevo_logger = log_create(file, process_name,is_active_console,level);
 	if (nuevo_logger == NULL) {
 		perror("Error al crear el log");

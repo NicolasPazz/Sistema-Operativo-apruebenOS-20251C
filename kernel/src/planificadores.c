@@ -121,7 +121,10 @@ void dispatch(t_pcb* proceso_a_ejecutar) {
     log_trace(kernel_log, "=== DISPATCH INICIADO PARA PID %d ===", proceso_a_ejecutar->PID);
 
     // Buscar una CPU disponible (con pid = -1 indica que está libre)
+    log_debug(kernel_log, "Dispatch: esperando mutex_lista_cpus para buscar CPU disponible");
     pthread_mutex_lock(&mutex_lista_cpus);
+    log_debug(kernel_log, "Dispatch: bloqueando mutex_lista_cpus para buscar CPU disponible");
+    
     cpu* cpu_disponible = NULL;
     int total_cpus = list_size(lista_cpus);
     int cpus_dispatch = 0;

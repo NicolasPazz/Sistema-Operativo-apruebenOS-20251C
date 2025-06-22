@@ -79,6 +79,7 @@ void func_io(char* nombre_dispositivo, char* tiempo_str) {
     t_paquete* paquete = crear_paquete_op(IO_OP);
     agregar_a_paquete(paquete, nombre_dispositivo, strlen(nombre_dispositivo) + 1); // Agregar nombre del dispositivo
     agregar_entero_a_paquete(paquete, tiempo);                                      // Agregar tiempo
+    agregar_entero_a_paquete(paquete, pc);
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 

@@ -66,8 +66,10 @@ void* recibir_kernel_dispatch(void* arg) {
     while (noFinalizar != -1) {
         log_trace(cpu_log, "[DISPATCH] Esperando operación desde Kernel...");
         int cod_op = recibir_operacion(fd_kernel_dispatch);
-        log_trace(cpu_log, "[DISPATCH] Operación recibida desde Kernel: %d", cod_op);
-        
+        if(cod_op >= 0) {
+            (cpu_log, "[DISPATCH] Operación recibida desde Kernel: %d", cod_op);
+        }
+
         switch (cod_op) {
             case MENSAJE_OP:
                 log_trace(cpu_log, "[DISPATCH] Procesando MENSAJE_OP");
@@ -107,9 +109,9 @@ void* recibir_kernel_dispatch(void* arg) {
                 list_destroy(lista);
                 break;
             case -1:
-                log_error(cpu_log, "[DISPATCH] ✗ Desconexión de Kernel (Dispatch)");
-                close(fd_kernel_dispatch);
-                break;
+                log_warning(cpu_log, "Se desconectó el Kernel. Finalizando CPU...");
+                terminar_programa();
+                exit(EXIT_SUCCESS);
             default:
                 log_error(cpu_log, "[DISPATCH] ✗ Operación desconocida de Dispatch: %d", cod_op);
         }
@@ -122,8 +124,9 @@ void* recibir_kernel_interrupt(void* arg) {
         int cod_op = recibir_operacion(fd_kernel_interrupt);
         switch (cod_op) {
             case -1:
-                log_warning(cpu_log, "Se desconectó el Kernel (Dispatch). Finalizando CPU...");
+                log_warning(cpu_log, "Se desconectó el Kernel. Finalizando CPU...");
                 terminar_programa();
+                exit(EXIT_SUCCESS);
             case INTERRUPCION_OP:
                 // Recibir PID de la interrupción
                 recv(fd_kernel_interrupt, &pid_interrupt, sizeof(int), MSG_WAITALL);

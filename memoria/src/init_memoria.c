@@ -632,10 +632,11 @@ void cerrar_programa() {
     }
     
     if (logger) {
+        log_trace(logger, "## Programa de memoria finalizado correctamente");
+
         log_destroy(logger);
     }
     
-    log_trace(logger, "## Programa de memoria finalizado correctamente");
 }
 
 // ============================================================================

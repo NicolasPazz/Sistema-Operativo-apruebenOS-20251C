@@ -158,7 +158,6 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
     list_add(cola_destino, PCB);
     liberar_cola_por_estado(nuevo_estado_enum);
 
-    loguear_metricas_estado(PCB);
     switch(nuevo_estado_enum) {
         case NEW: sem_post(&sem_proceso_a_new); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a NEW aumentado"); break;
         case READY: sem_post(&sem_proceso_a_ready); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a READY aumentado"); break;
@@ -170,11 +169,12 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
                             log_debug(kernel_log, "cambiar_estado_pcb: Semaforo SUSP READY VACIA disminuido");
                             break;
         case SUSP_BLOCKED: sem_post(&sem_proceso_a_susp_blocked); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a SUSP BLOCKED aumentado"); break;
-        case EXIT_ESTADO: sem_post(&sem_proceso_a_exit); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a EXIT aumentado"); break;
+        case EXIT_ESTADO: loguear_metricas_estado(PCB); sem_post(&sem_proceso_a_exit); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a EXIT aumentado"); break;
         default: log_error(kernel_log, "nuevo_estado_enum: Error al pasar PCB de %s a %s", estado_to_string(estado_viejo), estado_to_string(nuevo_estado_enum));
                  terminar_kernel();
                  exit(EXIT_FAILURE);
     }
+    mostrar_colas_estados();
 }
 
 bool transicion_valida(Estados actual, Estados destino) {
@@ -289,7 +289,9 @@ t_pcb* obtener_pcb_por_pid(int pid) {
         log_error(kernel_log, "obtener_pcb_por_pid: cola_procesos es NULL");
         return NULL;
     }
-
+    log_debug(kernel_log, "obtener_pcb_por_pid: esperando mutex_cola_procesos para buscar PCB del proceso %d", pid);
+    pthread_mutex_lock(&mutex_cola_procesos);
+    log_debug(kernel_log, "obtener_pcb_por_pid: bloqueando mutex_cola_procesos para buscar PCB del proceso %d", pid);
     // Buscar el PCB en la cola de procesos
     for (int i = 0; i < list_size(cola_procesos); i++) {
         t_pcb* pcb = list_get(cola_procesos, i);
@@ -297,6 +299,8 @@ t_pcb* obtener_pcb_por_pid(int pid) {
             return pcb;
         }
     }
+
+    pthread_mutex_unlock(&mutex_cola_procesos);
 
     // No se encontró el PCB
     log_warning(kernel_log, "obtener_pcb_por_pid: No se encontró PCB con PID %d", pid);

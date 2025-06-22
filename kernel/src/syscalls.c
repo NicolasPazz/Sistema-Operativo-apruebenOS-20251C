@@ -191,25 +191,6 @@ io* buscar_io_por_fd(int fd) {
     return NULL;
 }
 
-io* buscar_y_remover_io_por_fd(int fd) {
-    if (!lista_ios) {
-        log_error(kernel_log, "buscar_y_remover_io_por_fd: lista_ios es NULL");
-        return NULL;
-    }
-
-    // Buscar y remover el dispositivo IO por file descriptor
-    for (int i = 0; i < list_size(lista_ios); i++) {
-        io* disp = list_get(lista_ios, i);
-        if (disp && disp->fd == fd) {
-            return list_remove(lista_ios, i);
-        }
-    }
-
-    // No se encontró el dispositivo
-    log_warning(kernel_log, "buscar_y_remover_io_por_fd: No se encontró IO con fd %d", fd);
-    return NULL;
-}
-
 io* buscar_io_por_nombre(char* nombre) {
     if (!lista_ios || !nombre) {
         log_error(kernel_log, "buscar_io_por_nombre: lista_ios o nombre es NULL");
@@ -333,12 +314,18 @@ void EXIT(t_pcb* pcb_a_finalizar) {
     log_info(kernel_log, "## (%d) - Finaliza el proceso", pcb_a_finalizar->PID);
     loguear_metricas_estado(pcb_a_finalizar);
 
-    // Eliminar de cola_exit, liberar pcb y cronometro
-    log_debug(kernel_log, "EXIT: esperando mutex_cola_exit para eliminar PCB PID=%d", pcb_a_finalizar->PID);
+    // Eliminar de cola_exit, cola procesos, liberar pcb y cronometro
+    log_debug(kernel_log, "EXIT: esperando mutex_cola_exit para eliminar de cola exit PCB PID=%d", pcb_a_finalizar->PID);
     pthread_mutex_lock(&mutex_cola_exit);
-    log_debug(kernel_log, "EXIT: bloqueando mutex_cola_exit para eliminar PCB PID=%d", pcb_a_finalizar->PID);
+    log_debug(kernel_log, "EXIT: bloqueando mutex_cola_exit para eliminar de cola exit PCB PID=%d", pcb_a_finalizar->PID);
     list_remove_element(cola_exit, pcb_a_finalizar);
     pthread_mutex_unlock(&mutex_cola_exit);
+
+    log_debug(kernel_log, "EXIT: esperando mutex_cola_exit para eliminar de cola procesos PCB PID=%d", pcb_a_finalizar->PID);
+    pthread_mutex_lock(&mutex_cola_procesos);
+    log_debug(kernel_log, "EXIT: bloqueando mutex_cola_exit para eliminar de cola procesos PCB PID=%d", pcb_a_finalizar->PID);
+    list_remove_element(cola_procesos, pcb_a_finalizar);
+    pthread_mutex_unlock(&mutex_cola_procesos);
 
     char* pid_key = string_itoa(pcb_a_finalizar->PID);
     dictionary_remove_and_destroy(tiempos_por_pid, pid_key, (void*) temporal_destroy);
@@ -349,23 +336,17 @@ void EXIT(t_pcb* pcb_a_finalizar) {
 
     // Notificar a planificador LP
     sem_post(&sem_finalizacion_de_proceso);
-}
 
-t_pcb_io* buscar_y_remover_pcb_io_por_dispositivo_y_pid(io* dispositivo, int pid) {
-    if (!dispositivo) {
-        log_error(kernel_log, "buscar_y_remover_pcb_io_por_dispositivo_y_pid: dispositivo es NULL");
-        return NULL;
+    // Finalizar kernel cuando no haya más procesos
+    log_debug(kernel_log, "EXIT: esperando mutex_cola_procesos para verificar si quedan procesos");
+    pthread_mutex_lock(&mutex_cola_procesos);
+    log_debug(kernel_log, "EXIT: bloqueando mutex_cola_procesos para verificar si quedan procesos");
+    if(list_size(cola_procesos) == 0) {
+        pthread_mutex_unlock(&mutex_cola_procesos);
+        mostrar_colas_estados();
+        log_info(kernel_log, "No quedan procesos en el sistema. Finalizando kernel...");
+        terminar_kernel();
+        exit(EXIT_SUCCESS);
     }
-
-    // Buscar manualmente el PCB bloqueado por esta IO con este PID
-    for (int i = 0; i < list_size(pcbs_esperando_io); i++) {
-        t_pcb_io* pcb_io_actual = list_get(pcbs_esperando_io, i);
-        if (pcb_io_actual->io == dispositivo && pcb_io_actual->pcb->PID == pid) {
-            return list_remove(pcbs_esperando_io, i);
-        }
-    }
-
-    // No se encontró el PCB
-    log_warning(kernel_log, "buscar_y_remover_pcb_io_por_dispositivo_y_pid: No se encontró PCB con PID %d para IO '%s'", pid, dispositivo->nombre);
-    return NULL;
+    pthread_mutex_unlock(&mutex_cola_procesos);
 }
