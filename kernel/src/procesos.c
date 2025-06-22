@@ -18,18 +18,23 @@ const char* estado_to_string(Estados estado) {
     }
 }
 
-void mostrar_pcb(t_pcb PCB) {
-    log_trace(kernel_log, "-*-*-*-*-*- PCB -*-*-*-*-*-\n");
-    log_trace(kernel_log, "PID: %u\n", PCB.PID);
-    log_trace(kernel_log, "PC: %u\n", PCB.PC);
-    mostrar_metrica("ME", PCB.ME);
-    mostrar_metrica("MT", PCB.MT);
-    log_trace(kernel_log, "Estado: %s\n", estado_to_string(PCB.Estado));
-    log_trace(kernel_log, "Tiempo inicio exec: %f\n", PCB.tiempo_inicio_exec);
-    log_trace(kernel_log, "Rafaga estimada: %.2f\n", PCB.estimacion_rafaga);
-    log_trace(kernel_log, "Path: %s\n", PCB.path);
-    log_trace(kernel_log, "Tamanio de memoria: %u\n", PCB.tamanio_memoria);
-    log_trace(kernel_log, "-*-*-*-*-*-*-*-*-*-*-*-*-*-\n");
+void mostrar_pcb(t_pcb* PCB) {
+    if (PCB == NULL) {
+        log_error(kernel_log, "mostrar_pcb: PCB es NULL");
+        return;
+    }
+
+    log_trace(kernel_log, "-*-*-*-*-*- PCB -*-*-*-*-*-");
+    log_trace(kernel_log, "PID: %d", PCB->PID);
+    log_trace(kernel_log, "PC: %d", PCB->PC);
+    mostrar_metrica("ME", PCB->ME);
+    mostrar_metrica("MT", PCB->MT);
+    log_trace(kernel_log, "Estado: %s", estado_to_string(PCB->Estado));
+    log_trace(kernel_log, "Tiempo inicio exec: %.3f", PCB->tiempo_inicio_exec);
+    log_trace(kernel_log, "Rafaga estimada: %.2f", PCB->estimacion_rafaga);
+    log_trace(kernel_log, "Path: %s", PCB->path ? PCB->path : "(null)");
+    log_trace(kernel_log, "Tamanio de memoria: %d", PCB->tamanio_memoria);
+    log_trace(kernel_log, "-*-*-*-*-*-*-*-*-*-*-*-*-*-");
 }
 
 void mostrar_metrica(const char* nombre, int* metrica) {
@@ -120,13 +125,12 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
         // Si pasa al Estado EXEC hay que actualizar el tiempo_inicio_exec
         if (nuevo_estado_enum == EXEC) {
             PCB->tiempo_inicio_exec = get_time();
-        } 
-        
-        // SJF
-        if (PCB->Estado == EXEC && nuevo_estado_enum == BLOCKED) {
-            // Cuando SALE de EXEC calculo la estimacion proxima
+        } else if (PCB->Estado == EXEC) {
+            // calculo la estimacion proxima
             double rafaga_real = get_time() - PCB->tiempo_inicio_exec;
             PCB->estimacion_rafaga = ALFA * rafaga_real + (1 - ALFA) * PCB->estimacion_rafaga;
+            // reiniciar el tiempo de inicio
+            PCB->tiempo_inicio_exec = 0;
         }
 
         if (PCB->Estado == SUSP_READY) {

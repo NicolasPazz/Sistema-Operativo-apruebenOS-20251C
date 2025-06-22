@@ -647,6 +647,7 @@ void* atender_io(void* arg) {
     }
 
     // Verificar si hay procesos encolados para dicha IO y enviarlo a la misma
+    log_debug(kernel_log, "IO correctamente conectada (fd=%d, nombre='%s'), verificando si hay procesos esperando", fd_io, dispositivo_io->nombre);
     verificar_procesos_bloqueados(dispositivo_io);
 
     log_trace(kernel_log, "Atendiendo IO '%s' (fd=%d)", dispositivo_io->nombre, fd_io);
@@ -661,7 +662,7 @@ void* atender_io(void* arg) {
                     continue;
                 }
 
-                log_trace(kernel_log, "IO '%s' finalizó para PID=%d", dispositivo_io->nombre, pid_finalizado);
+                log_debug(kernel_log, "IO '%s' finalizó para PID=%d, verificando si hay otros procesos esperando", dispositivo_io->nombre, pid_finalizado);
                 cambiar_estado_pcb(buscar_pcb(pid_finalizado), READY);
 
                 // Verificar si hay procesos encolados para dicha IO y enviarlo a la misma

@@ -8,9 +8,21 @@ estado_planificador estado_planificador_lp = STOP;
 /////////////////////////////// Planificador Corto Plazo ///////////////////////////////
 t_pcb* elegir_por_fifo() {
     log_trace(kernel_log, "PLANIFICANDO FIFO");
+    log_debug(kernel_log, "FIFO: esperando mutex_cola_ready para elegir proceso FIFO");
+    pthread_mutex_lock(&mutex_cola_ready);
+    log_debug(kernel_log, "FIFO: bloqueando mutex_cola_ready para elegir proceso FIFO");
 
     // Se elegira al siguiente proceso a ejecutar segun su orden de llegada a READY.
-    return (t_pcb*)list_get(cola_ready, 0);
+    if (list_is_empty(cola_ready)) {
+        pthread_mutex_unlock(&mutex_cola_ready);
+        log_error(kernel_log, "FIFO: cola_ready vacía");
+        terminar_kernel();
+        exit(EXIT_FAILURE);
+    }
+    t_pcb* pcb_fifo = (t_pcb*)list_get(cola_ready, 0);
+    pthread_mutex_unlock(&mutex_cola_ready);
+
+    return pcb_fifo;
 }
 
 void* menor_rafaga(void* a, void* b) {
@@ -28,14 +40,23 @@ void* menor_rafaga(void* a, void* b) {
 t_pcb* elegir_por_sjf() {
     log_trace(kernel_log, "PLANIFICANDO SJF (Shortest Job First)");
 
+    log_debug(kernel_log, "SJF: esperando mutex_cola_ready para elegir proceso con menor ráfaga");
+    pthread_mutex_lock(&mutex_cola_ready);
+    log_debug(kernel_log, "SJF: bloqueando mutex_cola_ready para elegir proceso con menor ráfaga");
     if (list_is_empty(cola_ready)) {
+        pthread_mutex_unlock(&mutex_cola_ready);
         log_error(kernel_log, "SJF: cola_ready vacía");
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
 
     log_debug(kernel_log, "SJF: buscando entre %d procesos con menor ráfaga en cola_ready", list_size(cola_ready));
+    for (int i = 0; i < list_size(cola_ready); i++) {
+        mostrar_pcb((t_pcb*)list_get(cola_ready, i));
+    }
+ 
     t_pcb* seleccionado = (t_pcb*)list_get_minimum(cola_ready, menor_rafaga);
+    pthread_mutex_unlock(&mutex_cola_ready);
 
     if (seleccionado) {
         log_debug(kernel_log, "SJF: Proceso elegido PID=%d con estimación=%.2f", 
@@ -48,73 +69,100 @@ t_pcb* elegir_por_sjf() {
 }
 
 t_pcb* elegir_por_srt() {
-    /*log_trace(kernel_log, "PLANIFICANDO SRT (Shortest Remaining Time)");
+    log_trace(kernel_log, "PLANIFICANDO SRT (Shortest Remaining Time)");
+
+    log_debug(kernel_log, "SRT: esperando mutex_cola_ready para elegir proceso con menor ráfaga restante");
+    pthread_mutex_lock(&mutex_cola_ready);
+    log_debug(kernel_log, "SRT: bloqueando mutex_cola_ready para elegir proceso con menor ráfaga");
 
     if (list_is_empty(cola_ready)) {
-        log_warning(kernel_log, "SRT: cola_ready vacía");
-        return NULL;
+        pthread_mutex_unlock(&mutex_cola_ready);
+        log_error(kernel_log, "SRT: cola_ready vacía");
+        terminar_kernel();
+        exit(EXIT_FAILURE);
     }
 
-    // Buscar el proceso en READY con menor estimación
-    t_pcb* candidato_ready = (t_pcb*)list_get_minimum(cola_ready, menor_rafaga);
-    if (!candidato_ready) return NULL;
+    // Buscar el proceso READY con menor ráfaga restante
+    t_pcb* candidato_ready = (t_pcb*)list_get_minimum(cola_ready, menor_rafaga_restante);
+    pthread_mutex_unlock(&mutex_cola_ready);
 
+    if (!candidato_ready) {
+        log_error(kernel_log, "SRT: No se pudo seleccionar un proceso READY");
+        terminar_kernel();
+        exit(EXIT_FAILURE);
+    }
+
+    log_debug(kernel_log, "SRT: esperando mutex_lista_cpus para buscar CPU disponible o con mayor ráfaga restante");
     pthread_mutex_lock(&mutex_lista_cpus);
+    log_debug(kernel_log, "SRT: bloqueando mutex_lista_cpus para buscar CPU disponible o con mayor ráfaga restante");
 
-    cpu* cpu_libre = NULL;
-    cpu* cpu_con_mayor_rafaga = NULL;
-    double max_rafaga = -1;
+    bool cpu_libre = false;
+    bool cpu_con_mayor_rafaga_restante = false;
+    double max_rafaga_restante = -1;
 
+    // Buscar CPUs disponibles y calcular cuál ejecuta el proceso con mayor ráfaga restante
     for (int i = 0; i < list_size(lista_cpus); i++) {
         cpu* c = list_get(lista_cpus, i);
-
         if (c->tipo_conexion != CPU_DISPATCH) continue;
 
+        // Verificar si la CPU está libre (pid = -1)
         if (c->pid == -1) {
-            cpu_libre = c;
-            break;  // hay una CPU libre, no hace falta desalojar
+            cpu_libre = true;
+            break; // hay una CPU libre
         }
 
+        // Si no está libre, buscar si al menos una tiene mayor ráfaga restante que candidato_ready
         t_pcb* pcb_exec = buscar_pcb(c->pid);
-        if (pcb_exec && pcb_exec->estimacion_rafaga > max_rafaga) {
-            max_rafaga = pcb_exec->estimacion_rafaga;
-            cpu_con_mayor_rafaga = c;
+        if (!pcb_exec) {
+            log_error(kernel_log, "SRT: Error al obtener PCB de la CPU con PID %d", c->pid);
+            terminar_kernel();
+            exit(EXIT_FAILURE);
+        }
+
+        if(menor_rafaga_restante((void*)pcb_exec, (void*)candidato_ready) == (void*)candidato_ready) {
+            // Esta CPU tiene un proceso con mayor ráfaga restante que el candidato
+            cpu_con_mayor_rafaga_restante = true;
+            break;
         }
     }
-
     pthread_mutex_unlock(&mutex_lista_cpus);
 
-    if (cpu_libre) {
-        log_trace(kernel_log, "SRT: Hay CPU libre, se asignará directamente el proceso con menor ráfaga");
+    // Si hay CPU libre o hay una CPU ejecutando un proceso con mayor ráfaga restante
+    if (cpu_libre || cpu_con_mayor_rafaga_restante) {
+        log_trace(kernel_log, "SRT: Hay CPU libre, se asignará directamente el proceso con menor ráfaga restante");
         return candidato_ready;
-    }
-
-    if (!cpu_con_mayor_rafaga) {
-        log_error(kernel_log, "SRT: No se encontró CPU ejecutando proceso válido");
+    } else {        // Si no hay CPU libre ni una ejecutando un proceso con mayor ráfaga restante
+        // TODO: replanificar cuando haya una cpu libre o entre un proceso en ready?
+        log_trace(kernel_log, "SRT: No hay CPU libre ni con mayor ráfaga restante que el proceso READY seleccionado");
         return NULL;
     }
+}
 
-    t_pcb* pcb_en_ejecucion = buscar_pcb(cpu_con_mayor_rafaga->pid);
-    if (!pcb_en_ejecucion) {
-        log_error(kernel_log, "SRT: Error al obtener PCB en ejecución");
-        return NULL;
+void* menor_rafaga_restante(void* a, void* b) {
+    t_pcb* pcb_a = (t_pcb*) a;
+    t_pcb* pcb_b = (t_pcb*) b;
+
+    // Calcular ráfaga restante
+    double restante_a;
+    double restante_b;
+
+    if(pcb_a->tiempo_inicio_exec > 0) {
+        restante_a = pcb_a->estimacion_rafaga - (get_time() - pcb_a->tiempo_inicio_exec);
+    } else {
+        restante_a = pcb_a->estimacion_rafaga;
+    }
+    if(pcb_b->tiempo_inicio_exec > 0) {
+        restante_b = pcb_b->estimacion_rafaga - (get_time() - pcb_b->tiempo_inicio_exec);
+    } else {
+        restante_b = pcb_b->estimacion_rafaga;
     }
 
-    if (candidato_ready->estimacion_rafaga < pcb_en_ejecucion->estimacion_rafaga) {
-        log_info(kernel_log, "SRT: Se requiere desalojo. PID %d (Ready) < PID %d (Exec)", 
-                 candidato_ready->PID, pcb_en_ejecucion->PID);
+    // Comparar ráfagas restantes
+    if (restante_a < restante_b) return pcb_a;
+    if (restante_b < restante_a) return pcb_b;
 
-        // Enviar interrupción a la CPU que ejecuta al proceso con mayor ráfaga
-        int fd_cpu_interrupt = obtener_fd_interrupt(cpu_con_mayor_rafaga->id); // o mapearlo por ID
-        op_code op = INTERRUPCION_OP;
-        send(fd_cpu_interrupt, &op, sizeof(op_code), 0);
-
-        // No se despacha inmediatamente. Esperamos que la CPU finalice y vuelva a planificar.
-        return NULL;
-    }
-
-    log_trace(kernel_log, "SRT: No hay preemption. Proceso READY tiene mayor o igual ráfaga");*/
-    return NULL;
+    // En caso de empate, devolver el primero que llegó (FIFO)
+    return pcb_a;
 }
 
 void dispatch(t_pcb* proceso_a_ejecutar) {
@@ -124,7 +172,7 @@ void dispatch(t_pcb* proceso_a_ejecutar) {
     log_debug(kernel_log, "Dispatch: esperando mutex_lista_cpus para buscar CPU disponible");
     pthread_mutex_lock(&mutex_lista_cpus);
     log_debug(kernel_log, "Dispatch: bloqueando mutex_lista_cpus para buscar CPU disponible");
-    
+
     cpu* cpu_disponible = NULL;
     int total_cpus = list_size(lista_cpus);
     int cpus_dispatch = 0;
@@ -150,10 +198,48 @@ void dispatch(t_pcb* proceso_a_ejecutar) {
     log_trace(kernel_log, "Dispatch: Total CPUs=%d, CPUs DISPATCH=%d, CPUs libres=%d", total_cpus, cpus_dispatch, cpus_libres);
 
     if (!cpu_disponible) {
-        pthread_mutex_unlock(&mutex_lista_cpus);
-        log_error(kernel_log, "Dispatch: ✗ No hay CPUs disponibles para ejecutar PID %d", proceso_a_ejecutar->PID);
-        // TODO: Manejar caso sin CPUs disponibles (ej: reencolar o retry)
-        return;
+        if(strcmp(ALGORITMO_CORTO_PLAZO, "SRT") == 0) {
+            // Buscar cpu con mayor ráfaga restante
+            double max_rafaga_restante = -1;
+
+            for (int i = 0; i < list_size(lista_cpus); i++) {
+                cpu* c = list_get(lista_cpus, i);
+                if (c->tipo_conexion != CPU_DISPATCH) continue;
+
+                t_pcb* pcb_exec = buscar_pcb(c->pid);
+                if (!pcb_exec) {
+                    log_error(kernel_log, "Error al obtener PCB de la CPU con PID %d", c->pid);
+                    terminar_kernel();
+                    exit(EXIT_FAILURE);
+                }
+                
+                double rafaga_restante;
+
+                if(pcb_exec->tiempo_inicio_exec > 0) {
+                    rafaga_restante = pcb_exec->estimacion_rafaga - (get_time() - pcb_exec->tiempo_inicio_exec);
+                } else {
+                    log_error(kernel_log, "Dispatch: Error al calcular ráfaga restante para PID %d (tiempo_inicio_exec no inicializado)", pcb_exec->PID);
+                    terminar_kernel();
+                    exit(EXIT_FAILURE);
+                }
+
+                if (rafaga_restante > max_rafaga_restante) {
+                    max_rafaga_restante = rafaga_restante;
+                    cpu_disponible = c;
+                }
+            }
+            // Desalojar
+            if(!interrupt(cpu_disponible, proceso_a_ejecutar)){
+                // TODO: replanificar cuando haya una cpu libre o entre un proceso en ready?
+                exit(EXIT_FAILURE);
+            }
+            // Continuar despachando el proceso a la CPU desalojada
+        } else {
+            pthread_mutex_unlock(&mutex_lista_cpus);
+            log_error(kernel_log, "Dispatch: ✗ No hay CPUs disponibles para ejecutar PID %d", proceso_a_ejecutar->PID);
+            terminar_kernel();
+            exit(EXIT_FAILURE);
+        }
     }
 
     // Marcar CPU como ocupada y guardar PID
@@ -174,6 +260,20 @@ void dispatch(t_pcb* proceso_a_ejecutar) {
 
     log_trace(kernel_log, "Dispatch: Proceso %d despachado a CPU %d (PC=%d)", 
               proceso_a_ejecutar->PID, cpu_disponible->id, proceso_a_ejecutar->PC);
+}
+
+bool interrupt(cpu* cpu_a_desalojar, t_pcb *proceso_a_ejecutar) {
+    log_trace(kernel_log, "Interrupción enviada a CPU %d (fd=%d) para desalojo", cpu_a_desalojar->id, cpu_a_desalojar->fd);
+    //int fd_interrupt = obtener_fd_interrupt(cpu_a_desalojar->id); // TODO: al conectarse una cpu, relacionar los fd dispatch e interrupt de alguna manera para usar aca
+    // Enviar op code y pid
+    // recibir respuesta
+        // es ok
+            // recibir pid y pc
+            // buscar pcb por pid
+            // actualizar pc
+            // retornar true
+        // es error
+            // retornar false
 }
 
 double get_time() {
@@ -337,7 +437,6 @@ void* planificador_corto_plazo(void* arg) {
         log_trace(kernel_log, "Planificador CP: ✓ Condiciones cumplidas - Iniciando planificación");
         t_pcb* proceso_elegido;
 
-        pthread_mutex_lock(&mutex_cola_ready);
         if (strcmp(ALGORITMO_CORTO_PLAZO, "FIFO") == 0) {
             proceso_elegido = elegir_por_fifo();
         } else if (strcmp(ALGORITMO_CORTO_PLAZO, "SJF") == 0) {
@@ -347,11 +446,9 @@ void* planificador_corto_plazo(void* arg) {
         }
         else {
             log_error(kernel_log, "iniciar_planificador_corto_plazo: Algoritmo no reconocido");
-            pthread_mutex_unlock(&mutex_cola_ready);
             terminar_kernel();
             exit(EXIT_FAILURE);
         }
-        pthread_mutex_unlock(&mutex_cola_ready);
 
         dispatch(proceso_elegido);
     }

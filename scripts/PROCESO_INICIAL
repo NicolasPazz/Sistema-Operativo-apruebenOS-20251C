@@ -1,4 +1,20 @@
 INIT_PROC test/script_io_basico_1 128
+INIT_PROC test/script_io_basico_2 128
+INIT_PROC test/script_io_basico_3 2
+IO teclado 100
 NOOP
 IO teclado 100
+NOOP
+IO teclado 100
+NOOP
+IO teclado 100
+NOOP
+IO teclado 100
+NOOP
+IO teclado 100
+NOOP
+IO teclado 100
+NOOP
+IO teclado 100
+IO TECLADO 25000
 EXIT

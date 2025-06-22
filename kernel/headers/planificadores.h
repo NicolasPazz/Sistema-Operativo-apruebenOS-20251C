@@ -47,7 +47,11 @@ t_pcb* elegir_por_sjf();
 
 t_pcb* elegir_por_srt();
 
+void* menor_rafaga_restante(void* a, void* b);
+
 void dispatch(t_pcb* proceso_a_ejecutar);
+
+bool interrupt(cpu* cpu_a_desalojar, t_pcb *proceso_a_ejecutar);
 
 double get_time();
 
