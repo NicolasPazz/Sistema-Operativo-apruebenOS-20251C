@@ -451,19 +451,9 @@ void* atender_cpu_dispatch(void* arg) {
                 cpu_actual->pid = -1; // Limpiar PID de la CPU
                 pthread_mutex_unlock(&mutex_lista_cpus);
                 
-                // CAMBIO: Liberar CPU para que el planificador pueda usarla
+                // Liberar CPU para que el planificador pueda usarla
                 sem_post(&sem_cpu_disponible);
                 log_debug(kernel_log, "EXIT: Semáforo CPU DISPONIBLE aumentado por CPU liberada");
-                
-                // Reactivar planificador si hay procesos en READY esperando
-                pthread_mutex_lock(&mutex_cola_ready);
-                bool hay_procesos_ready = !list_is_empty(cola_ready);
-                pthread_mutex_unlock(&mutex_cola_ready);
-                
-                if (hay_procesos_ready) {
-                    log_trace(kernel_log, "CPU liberada, reactivando planificador para procesos en READY");
-                    sem_post(&sem_proceso_a_ready);
-                }
                 
                 break;
 

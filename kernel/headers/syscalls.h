@@ -39,7 +39,7 @@ void enviar_dump_memory_a_memoria(t_pcb* pcb);
  * @param pid_finalizado: PID del proceso que finalizó la operación DUMP_MEMORY
  * @param respuesta: Respuesta de Memoria (OK o ERROR)
  */
-void fin_dump_memory(int pid_finalizado, t_respuesta_memoria respuesta);
+void fin_dump_memory(int pid_finalizado, t_respuesta respuesta);
 
 /**
  * @brief Hace uso de un dispositivo de IO

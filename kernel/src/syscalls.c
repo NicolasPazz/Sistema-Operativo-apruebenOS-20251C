@@ -35,12 +35,13 @@ void INIT_PROC(char* nombre_archivo, int tam_memoria) {
     eliminar_paquete(paquete);
     
     // Esperar respuesta de memoria
-    t_respuesta_memoria respuesta;
-    if (recv(fd_memoria, &respuesta, sizeof(t_respuesta_memoria), 0) <= 0) {
+    t_respuesta respuesta;
+    if (recv(fd_memoria, &respuesta, sizeof(t_respuesta), 0) <= 0) {
         log_error(kernel_log, "Error al recibir respuesta de memoria para INIT_PROC");
         free(nuevo_proceso->path);
         free(nuevo_proceso);
-        return;
+        terminar_kernel();
+        exit(EXIT_FAILURE);
     }
     
     // Procesar respuesta
@@ -52,6 +53,7 @@ void INIT_PROC(char* nombre_archivo, int tam_memoria) {
         log_error(kernel_log, "Error al crear proceso en memoria");
         free(nuevo_proceso->path);
         free(nuevo_proceso);
+        // TODO
     }
 }
 
@@ -87,8 +89,8 @@ void DUMP_MEMORY(t_pcb* pcb_dump) {
     log_trace(kernel_log, "DUMP_MEMORY_OP enviado a Memoria para PID=%d", pcb_dump->PID);
     
     // Esperar respuesta de memoria de forma síncrona
-    t_respuesta_memoria respuesta;
-    if (recv(fd_memoria, &respuesta, sizeof(t_respuesta_memoria), 0) <= 0) {
+    t_respuesta respuesta;
+    if (recv(fd_memoria, &respuesta, sizeof(t_respuesta), 0) <= 0) {
         log_error(kernel_log, "Error al recibir respuesta de memoria para DUMP_MEMORY PID %d", pcb_dump->PID);
         // Si falla la recepción, mandar el proceso a EXIT
         cambiar_estado_pcb(pcb_dump, EXIT_ESTADO);
@@ -291,8 +293,8 @@ void EXIT(t_pcb* pcb_a_finalizar) {
     }
 
     log_trace(kernel_log, "EXIT: Enviado FINALIZAR_PROC_OP a Memoria para PID %d. Esperando respuesta...", pcb_a_finalizar->PID);
-    t_respuesta_memoria confirmacion;
-    if (recv(fd_memoria, &confirmacion, sizeof(t_respuesta_memoria), 0) <= 0) {
+    t_respuesta confirmacion;
+    if (recv(fd_memoria, &confirmacion, sizeof(t_respuesta), 0) <= 0) {
         log_error(kernel_log, "EXIT: No se pudo recibir confirmación de Memoria para PID %d", pcb_a_finalizar->PID);
         terminar_kernel();
         exit(EXIT_FAILURE);

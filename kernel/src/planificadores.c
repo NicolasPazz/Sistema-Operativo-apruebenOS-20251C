@@ -264,16 +264,44 @@ void dispatch(t_pcb* proceso_a_ejecutar) {
 
 bool interrupt(cpu* cpu_a_desalojar, t_pcb *proceso_a_ejecutar) {
     log_trace(kernel_log, "Interrupción enviada a CPU %d (fd=%d) para desalojo", cpu_a_desalojar->id, cpu_a_desalojar->fd);
-    //int fd_interrupt = obtener_fd_interrupt(cpu_a_desalojar->id); // TODO: al conectarse una cpu, relacionar los fd dispatch e interrupt de alguna manera para usar aca
+    //int fd_interrupt = obtener_fd_interrupt(cpu_a_desalojar->id);
+
     // Enviar op code y pid
+    t_paquete* paquete = crear_paquete_op(INTERRUPCION_OP);
+    enviar_paquete(paquete, fd_interrupt);
+    eliminar_paquete(paquete);
+
     // recibir respuesta
-        // es ok
-            // recibir pid y pc
-            // buscar pcb por pid
-            // actualizar pc
-            // retornar true
-        // es error
-            // retornar false
+    t_respuesta respuesta;
+    if (recv(fd_memoria, &respuesta, sizeof(t_respuesta), 0) <= 0) {
+        log_error(kernel_log, "Error al recibir respuesta de interrupción de CPU %d", cpu_a_desalojar->id);
+        terminar_kernel();
+        exit(EXIT_FAILURE);
+    }
+    
+    // Procesar respuesta
+    if (respuesta == OK) {
+        int buffer_size;
+        void* buffer = recibir_buffer(&buffer_size, fd_interrupt);
+        if (!buffer) {
+            log_error(kernel_log, "Error al recibir buffer de interrupción de CPU %d", cpu_a_desalojar->id);
+            terminar_kernel();
+            exit(EXIT_FAILURE);
+        }
+    
+        int offset = 0;
+        if(leer_entero(buffer, &offset) == proceso_a_ejecutar->PID) {
+            log_trace(kernel_log, "Interrupción: Proceso %d desalojado de CPU %d", proceso_a_ejecutar->PID, cpu_a_desalojar->id);
+            proceso_a_ejecutar->PC = leer_entero(buffer, &offset);
+        } else {
+            log_error(kernel_log, "Interrupción: PID recibido no coincide con el proceso a desalojar (PID=%d)", proceso_a_ejecutar->PID);
+            free(buffer);
+            terminar_kernel();
+            exit(EXIT_FAILURE);
+        }
+        return true;
+    }
+    return false;
 }
 
 double get_time() {
@@ -418,7 +446,6 @@ void* gestionar_exit(void* arg) {
     return NULL;
 }
 
-// NUEVO: Planificador de corto plazo
 void* planificador_corto_plazo(void* arg) {
     log_trace(kernel_log, "=== PLANIFICADOR CP INICIADO ===");
     

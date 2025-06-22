@@ -188,11 +188,11 @@ void check_interrupt() {
         if (pid_ejecutando == pid_interrupt) {
             seguir_ejecutando = 0;
 
-            t_paquete* paquete_kernel = crear_paquete_op(INTERRUPCION_OP);
-            agregar_entero_a_paquete(paquete_kernel, pid_ejecutando);
-
-            enviar_paquete(paquete_kernel, fd_kernel_interrupt);
-            eliminar_paquete(paquete_kernel);
+            t_respuesta respuesta = OK;
+            // TODO: armar paquete con respuesta ok, pid y despues pc en ese orden
+        } else {
+            t_respuesta respuesta = ERROR;
+            send(fd_kernel_interrupt, &respuesta, sizeof(t_respuesta), 0);
         }
     }
 }

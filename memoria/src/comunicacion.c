@@ -160,8 +160,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 *((int*)(sistema_memoria->memoria_principal + direccion)) = valor;
             
             // Enviar respuesta de éxito
-                t_respuesta_memoria respuesta = OK;
-                send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+                t_respuesta respuesta = OK;
+                send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
             break;
         }
 
@@ -238,7 +238,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             list_destroy_and_destroy_elements(lista, free);
 
             // ========== ENVÍO DE RESPUESTA ==========
-            t_respuesta_memoria respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
+            t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
             
             if (resultado == MEMORIA_OK) {
                 log_debug(logger, "Enviando respuesta OK a cliente (fd=%d) - Proceso %d creado exitosamente", 
@@ -248,7 +248,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                          cliente_socket, pid);
             }
             
-            send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+            send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
             break;
         }
 
@@ -263,10 +263,10 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             t_resultado_memoria resultado = procesar_memory_dump(pid);
             
             // Enviar respuesta
-            t_respuesta_memoria respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
+            t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
             log_debug(logger, "Enviando respuesta %s a cliente (fd=%d)", 
                     (respuesta == OK) ? "OK" : "ERROR", cliente_socket);
-                send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+                send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
             break;
         }
 
@@ -286,10 +286,10 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 t_resultado_memoria resultado = finalizar_proceso_en_memoria(pid);
             
             // Enviar respuesta
-                t_respuesta_memoria respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
+                t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
                 log_debug(logger, "Enviando respuesta %s a cliente (fd=%d)", 
                         (respuesta == OK) ? "OK" : "ERROR", cliente_socket);
-                send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+                send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
             break;
         }
 
@@ -394,8 +394,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 bool resultado = acceso_espacio_usuario_escritura(pid, direccion_fisica, tamanio, datos);
                 
                 // Enviar respuesta
-                t_respuesta_memoria respuesta = resultado ? OK : ERROR;
-                send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+                t_respuesta respuesta = resultado ? OK : ERROR;
+                send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
                 
                 log_trace(logger, "Escritura en espacio de usuario %s - PID: %d", 
                          resultado ? "exitosa" : "fallida", pid);
@@ -408,8 +408,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                     free(datos);
                     log_trace(logger, "Lectura de espacio de usuario exitosa - PID: %d", pid);
                 } else {
-                    t_respuesta_memoria respuesta = ERROR;
-                    send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+                    t_respuesta respuesta = ERROR;
+                    send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
                     log_error(logger, "Error en lectura de espacio de usuario - PID: %d", pid);
                 }
             }
@@ -439,8 +439,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 log_trace(logger, "Página completa enviada - PID: %d, Dir: %d", pid, direccion_fisica);
             } else {
                 // Enviar error
-                t_respuesta_memoria respuesta = ERROR;
-                send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+                t_respuesta respuesta = ERROR;
+                send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
                 log_error(logger, "Error al leer página completa - PID: %d, Dir: %d", pid, direccion_fisica);
             }
             break;
@@ -467,8 +467,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             bool resultado = actualizar_pagina_completa(pid, direccion_fisica, contenido_pagina);
             
             // Enviar respuesta
-            t_respuesta_memoria respuesta = resultado ? OK : ERROR;
-            send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+            t_respuesta respuesta = resultado ? OK : ERROR;
+            send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
             
             log_trace(logger, "Actualización de página completa %s - PID: %d", 
                      resultado ? "exitosa" : "fallida", pid);
@@ -488,8 +488,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             bool hay_espacio = verificar_espacio_disponible(tamanio);
             
             // Enviar respuesta
-            t_respuesta_memoria respuesta = hay_espacio ? OK : ERROR;
-            send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+            t_respuesta respuesta = hay_espacio ? OK : ERROR;
+            send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
             
             log_trace(logger, "Respuesta de verificación de espacio: %s", 
                      hay_espacio ? "OK" : "ERROR");
@@ -507,8 +507,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             
             t_resultado_memoria resultado = suspender_proceso_en_memoria(pid);
             
-            t_respuesta_memoria respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
-            send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+            t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
+            send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
             
             log_info(logger, "Suspensión de proceso %s - PID: %d", 
                     (respuesta == OK) ? "exitosa" : "fallida", pid);
@@ -525,8 +525,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             
             t_resultado_memoria resultado = reanudar_proceso_en_memoria(pid);
             
-            t_respuesta_memoria respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
-            send(cliente_socket, &respuesta, sizeof(t_respuesta_memoria), 0);
+            t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
+            send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
             
             log_info(logger, "Des-suspensión de proceso %s - PID: %d", 
                     (respuesta == OK) ? "exitosa" : "fallida", pid);

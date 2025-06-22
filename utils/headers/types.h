@@ -96,7 +96,7 @@ typedef struct {
 typedef enum {
     OK,
 	ERROR
-} t_respuesta_memoria;
+} t_respuesta;
 
 // Instrucciones de CPU
 typedef struct{
