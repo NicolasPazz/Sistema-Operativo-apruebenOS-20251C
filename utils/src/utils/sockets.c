@@ -447,6 +447,13 @@ int leer_entero(char *buffer, int * desplazamiento) {
     return entero;
 }
 
+bool enviar_enteros(int socket, int* enteros, int cantidad) {
+    int total_bytes = cantidad * sizeof(int);
+    int enviados = send(socket, enteros, total_bytes, 0);
+    return enviados == total_bytes;
+}
+
+
         /////////////////////////////// Recepcion de paquete/mensaje ///////////////////////////////
 /**
  * @brief Recibe el código de operación enviado desde un socket.
@@ -625,6 +632,12 @@ t_list* recibir_2_enteros_sin_op(int socket) {
 
     free(buffer);
     return lista;
+}
+
+bool recibir_enteros(int socket, int* destino, int cantidad) {
+    int total_bytes = cantidad * sizeof(int);
+    int recibidos = recv(socket, destino, total_bytes, MSG_WAITALL);
+    return recibidos == total_bytes;
 }
 
 /*

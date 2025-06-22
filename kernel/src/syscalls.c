@@ -277,31 +277,18 @@ void bloquear_pcb_por_io(char* nombre_io, t_pcb* pcb, int tiempo_a_usar) {
 
 // Envía un proceso a un dispositivo IO
 void enviar_io(io* dispositivo, t_pcb* pcb, int tiempo_a_usar) {
-    // Marcar el dispositivo como ocupado
     dispositivo->estado = IO_OCUPADO;
     dispositivo->proceso_actual = pcb;
-    
-    // Enviar PID y tiempo a usar a la IO
-    op_code cod_op = IO_OP;
-    if (send(dispositivo->fd, &cod_op, sizeof(op_code), 0) <= 0) {
-        log_error(kernel_log, "Error al enviar IO_OP a IO '%s'", dispositivo->nombre);
+
+    int payload[2] = { pcb->PID, tiempo_a_usar };
+    if (!enviar_operacion(dispositivo->fd, IO_OP) ||
+        !enviar_enteros(dispositivo->fd, payload, 2)) {
+        log_error(kernel_log, "Error al enviar IO_OP + datos a IO");
         dispositivo->estado = IO_DISPONIBLE;
         cambiar_estado_pcb(pcb, EXIT_ESTADO);
         return;
     }
-    
-    // Enviar PID y tiempo
-    t_paquete* paquete = crear_paquete();
-    paquete->codigo_operacion = IO_OP;
-    
-    // Agregar PID y tiempo al paquete
-    agregar_a_paquete(paquete, &pcb->PID, sizeof(int));
-    agregar_a_paquete(paquete, &tiempo_a_usar, sizeof(int));
-    
-    // Enviar paquete
-    enviar_paquete(paquete, dispositivo->fd);
-    eliminar_paquete(paquete);
-    
+
     log_trace(kernel_log, "Enviado PID=%d a IO '%s' por %d ms", pcb->PID, dispositivo->nombre, tiempo_a_usar);
 }
 

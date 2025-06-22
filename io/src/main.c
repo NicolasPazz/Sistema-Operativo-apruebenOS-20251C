@@ -33,80 +33,47 @@ int main(int argc, char* argv[]) {
     log_trace(io_log, "Dispositivo IO %s listo para recibir operaciones del Kernel", nombre_io);
     
     // Bucle principal para atender operaciones del Kernel
-    bool continuar_ejecucion = true;
-    while (continuar_ejecucion) {
-        op_code cop;
-        int bytes_recibidos = recv(fd_kernel_io, &cop, sizeof(op_code), 0);
-        
-        // Verificar si el Kernel se desconectó
-        if (bytes_recibidos <= 0) {
-            if (bytes_recibidos == 0) {
-                log_warning(io_log, "El Kernel se desconectó correctamente. Finalizando dispositivo IO %s...", nombre_io);
-            } else {
-                log_error(io_log, "Error al recibir op_code del Kernel: %s. Finalizando dispositivo IO %s...", 
-                         strerror(errno), nombre_io);
-            }
-            continuar_ejecucion = false;
-            break;
-        }
-        
+    while (1) {
+
+        int cop = recibir_operacion(fd_kernel_io);
+
         log_trace(io_log, "Operación recibida del Kernel: %d", cop);
     
         switch (cop) {
             case IO_OP: {
                 log_trace(io_log, "Procesando operación IO_OP...");
-                
-                // Recibir y deserializar el PID y tiempo_io
-                int pid;
-                int tiempo_io;
-    
-                if (recv(fd_kernel_io, &pid, sizeof(int), 0) <= 0) {
-                    log_error(io_log, "Error al recibir PID desde el Kernel: %s", strerror(errno));
-                    continuar_ejecucion = false;
+            
+                int buffer[2];
+                if (!recibir_enteros(fd_kernel_io, buffer, 2)) {
+                    log_error(io_log, "Error al recibir datos de IO_OP");
                     break;
                 }
-    
-                if (recv(fd_kernel_io, &tiempo_io, sizeof(int), 0) <= 0) {
-                    log_error(io_log, "Error al recibir tiempo de IO desde el Kernel: %s", strerror(errno));
-                    continuar_ejecucion = false;
-                    break;
-                }
-    
-                t_pedido_io pedido;
-                pedido.pid = pid;
-                pedido.tiempo_io = tiempo_io;
-    
-                // Log obligatorio según consigna: Inicio de IO
-                log_info(io_log, "## PID: %d - Inicio de IO - Tiempo: %ld", pedido.pid, pedido.tiempo_io);
-                
-                // Simular la operación de I/O
-                log_trace(io_log, "Simulando operación de I/O para PID %d durante %ld unidades de tiempo...", 
-                         pedido.pid, pedido.tiempo_io);
-                sleep(pedido.tiempo_io);
-                
-                // Log obligatorio según consigna: Finalización de IO
-                log_info(io_log, "## PID: %d - Fin de IO", pedido.pid);
-    
-                // Notificar al Kernel que la operación finalizó
+                int pid = buffer[0];
+                int tiempo_io = buffer[1];
+            
+                log_debug(io_log, "PID recibido: %d | Tiempo de IO: %d", pid, tiempo_io);
+            
+                log_info(io_log, "## PID: %d - Inicio de IO - Tiempo: %d", pid, tiempo_io);
+                log_trace(io_log, "Simulando operación de I/O para PID %d durante %.3f milisegundos...", pid, (double)tiempo_io/1000);
+                usleep(tiempo_io);
+                log_info(io_log, "## PID: %d - Fin de IO", pid);
+            
                 op_code finalizado = IO_FINALIZADA_OP;
-                if (send(fd_kernel_io, &finalizado, sizeof(op_code), 0) <= 0) {
-                    log_error(io_log, "Error al enviar IO_FINALIZADA_OP al Kernel: %s", strerror(errno));
-                    continuar_ejecucion = false;
+                if (send(fd_kernel_io, &finalizado, sizeof(op_code), 0) <= 0 ||
+                    send(fd_kernel_io, &pid, sizeof(int), 0) <= 0) {
+                    log_error(io_log, "Error al notificar finalización de IO al Kernel: %s", strerror(errno));
                     break;
                 }
-    
-                int pid_finalizado = (int) pedido.pid;
-                if (send(fd_kernel_io, &pid_finalizado, sizeof(int), 0) <= 0) {
-                    log_error(io_log, "Error al enviar PID finalizado al Kernel: %s", strerror(errno));
-                    continuar_ejecucion = false;
-                    break;
-                }
-                
-                log_trace(io_log, "Notificación de finalización enviada al Kernel para PID %d", pedido.pid);
+            
+                log_trace(io_log, "Notificación de finalización enviada al Kernel para PID %d", pid);
                 break;
             }
+            
+
             default:
-                log_warning(io_log, "Se recibió un op_code inesperado: %d. Ignorando operación...", cop);
+                log_warning(io_log, "Se recibió un op_code inesperado: %d", cop);
+                terminar_io();
+                exit(EXIT_FAILURE);
                 break;
         }
     }

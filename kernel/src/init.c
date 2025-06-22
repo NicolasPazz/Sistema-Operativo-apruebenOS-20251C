@@ -753,27 +753,16 @@ void asignar_proceso(io* dispositivo, t_pcb_io* proceso) {
     dispositivo->proceso_actual = proceso->pcb;
     proceso->io = dispositivo;
     
-    // Enviar PID y tiempo a usar a la IO
-    op_code cod_op = IO_OP;
-    if (send(dispositivo->fd, &cod_op, sizeof(op_code), 0) <= 0) {
-        log_error(kernel_log, "Error al enviar IO_OP a IO '%s'", dispositivo->nombre);
+    // Preparar payload con PID y tiempo
+    int payload[2] = { proceso->pcb->PID, proceso->tiempo_a_usar };
+
+    // Enviar operación y datos
+    if (!enviar_operacion(dispositivo->fd, IO_OP) ||
+        !enviar_enteros(dispositivo->fd, payload, 2)) {
+        log_error(kernel_log, "Error al enviar IO_OP + datos a IO '%s'", dispositivo->nombre);
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
-    
-    // Enviar PID y tiempo
-    t_paquete* paquete = crear_paquete();
-    paquete->codigo_operacion = IO_OP;
-    
-    // Agregar PID y tiempo al paquete
-    agregar_a_paquete(paquete, &proceso->pcb->PID, sizeof(int));
-    agregar_a_paquete(paquete, &proceso->tiempo_a_usar, sizeof(int));
-    
-    // Enviar paquete
-    enviar_paquete(paquete, dispositivo->fd);
-    eliminar_paquete(paquete);
-
-    free(dispositivo);
     
     log_trace(kernel_log, "Enviado PID=%d a IO '%s' por %d ms", proceso->pcb->PID, dispositivo->nombre, proceso->tiempo_a_usar);
 }
