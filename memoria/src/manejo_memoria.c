@@ -891,38 +891,27 @@ int calcular_numero_pagina_desde_entradas(int* entradas, int cantidad_niveles, i
  * Procesa una solicitud de frame para entradas multinivel
  * Extrae los parámetros del paquete y calcula el marco correspondiente
  */
+
 int procesar_solicitud_frame_entradas(t_list* lista) {
     if (!lista || list_size(lista) < 2) {
-        log_error(logger, "Lista de parámetros inválida para solicitud de frame");
+        log_error(logger, "Solicitud inválida: se esperaban PID y número de página");
         return -1;
     }
-    
-    // CORREGIDO: recibir_contenido_paquete ya devuelve punteros a int
+
     int pid = *((int*)list_get(lista, 0));
-    int cantidad_niveles = *((int*)list_get(lista, 1));
-    
-    if (list_size(lista) < 2 + cantidad_niveles) {
-        log_error(logger, "PID: %d - Parámetros insuficientes para %d niveles (recibidos: %d)", 
-                  pid, cantidad_niveles, list_size(lista));
-        return -1;
+    int nro_pagina = *((int*)list_get(lista, 1));
+
+    log_trace(logger, "Solicitud de marco para página - PID: %d, Página lógica: %d", pid, nro_pagina);
+
+    int frame = acceso_tabla_paginas(pid, nro_pagina);
+
+    if (frame == -1) {
+        log_error(logger, "PID: %d - Página %d no mapeada. Marco no encontrado.", pid, nro_pagina);
+    } else {
+        log_trace(logger, "PID: %d - Página %d está en marco: %d", pid, nro_pagina, frame);
     }
-    
-    log_trace(logger, "Procesando solicitud de frame para entradas - PID: %d, Niveles: %d", pid, cantidad_niveles);
-    
-    // Extraer las entradas de cada nivel
-    int entradas[cantidad_niveles];
-    for (int i = 0; i < cantidad_niveles; i++) {
-        entradas[i] = *((int*)list_get(lista, i + 2));
-        log_trace(logger, "  Entrada[%d] = %d", i, entradas[i]);
-    }
-    
-    // Calcular número de página usando función dedicada
-    int numero_pagina = calcular_numero_pagina_desde_entradas(entradas, cantidad_niveles, cfg->ENTRADAS_POR_TABLA);
-    
-    log_trace(logger, "Página calculada: %d para PID: %d", numero_pagina, pid);
-    
-    // Realizar acceso a tabla de páginas usando función existente
-    return acceso_tabla_paginas(pid, numero_pagina);
+
+    return frame;
 }
 
 

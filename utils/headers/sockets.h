@@ -71,6 +71,8 @@ t_paquete* crear_paquete(void);
 t_paquete* crear_paquete_op(op_code codop);
 void agregar_a_paquete(t_paquete* paquete, void* valor, int tamanio);
 void agregar_entero_a_paquete(t_paquete *paquete, int numero);
+void agregar_entero_con_tamanio_a_paquete(t_paquete *paquete, int numero);
+void agregar_string_a_paquete(t_paquete* paquete, char* cadena);
 void* serializar_paquete(t_paquete* paquete, int bytes);
 void eliminar_paquete(t_paquete* paquete);
 

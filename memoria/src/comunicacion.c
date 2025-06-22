@@ -159,7 +159,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             
             // Para el Check 2, simulamos la escritura
             log_info(logger, "## PID: %d - Escritura - Dir. Física: %d - Tamaño: %ld", 
-                     pid, direccion_fisica, sizeof(int));
+                        pid, direccion_fisica, sizeof(int));
             
             // Actualizar métrica
             actualizar_metricas(pid, "MEMORY_WRITE");
@@ -175,7 +175,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             list_destroy_and_destroy_elements(lista, free);
             break;
         }
-
+            
+            
         case READ_OP: {
             log_trace(logger, "READ_OP recibido");
 
@@ -379,6 +380,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             // Recibir parámetros del paquete
             t_list* lista = recibir_contenido_paquete(cliente_socket);
             
+            
             // Procesar solicitud usando función dedicada
             int numero_marco = procesar_solicitud_frame_entradas(lista);
             
@@ -394,6 +396,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             
             list_destroy_and_destroy_elements(lista, free);
             break;
+
+            
         }
 
         case ACCESO_TABLA_PAGINAS_OP: {

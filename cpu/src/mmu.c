@@ -84,7 +84,9 @@ int traducir_direccion_fisica(int direccion_logica) {
     // Calcular entradas de cada nivel para paginación multinivel
     int entradas[cantidad_niveles];
     for (int nivel = 0; nivel < cantidad_niveles; nivel++) {
-        int divisor = pow(entradas_por_tabla, cantidad_niveles - (nivel + 1));
+        int divisor = 1;
+        for (int j = 0; j < cantidad_niveles - (nivel + 1); j++)
+            divisor *= entradas_por_tabla;
         entradas[nivel] = (nro_pagina / divisor) % entradas_por_tabla;
     }
 
@@ -96,25 +98,13 @@ int traducir_direccion_fisica(int direccion_logica) {
     } else {
         log_info(cpu_log, "PID: %d - TLB MISS - Página: %d", pid_ejecutando, nro_pagina);
 
-        // Pedir a Memoria el frame
+        // Nueva operación: solo se envía PID y nro_pagina
         t_paquete* paquete = crear_paquete_op(SOLICITAR_FRAME_PARA_ENTRADAS);
-        log_trace(cpu_log, "PID: %d - OBTENER MARCO - Página: %d", pid_ejecutando, nro_pagina);
-        log_trace(cpu_log, "Serializando SOLICITAR_FRAME_PARA_ENTRADAS:");
-        log_trace(cpu_log, "  PID: %d", pid_ejecutando);
-        log_trace(cpu_log, "  Cant. niveles: %d", cantidad_niveles);
-
-        agregar_entero_a_paquete(paquete, pid_ejecutando);
-        agregar_entero_a_paquete(paquete, cantidad_niveles);
-
-        for (int i = 0; i < cantidad_niveles; i++) {
-            log_trace(cpu_log, "  Entrada[%d] = %d", i, entradas[i]);
-            agregar_entero_a_paquete(paquete, entradas[i]);
-        }
-
+        agregar_entero_con_tamanio_a_paquete(paquete, pid_ejecutando);
+        agregar_entero_con_tamanio_a_paquete(paquete, nro_pagina);
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
 
-        // Recibir frame
         if (recv(fd_memoria, &frame, sizeof(int), MSG_WAITALL) != sizeof(int)) {
             log_error(cpu_log, "PID: %d - Error al recibir marco desde Memoria", pid_ejecutando);
             exit(EXIT_FAILURE);
@@ -132,7 +122,6 @@ int traducir_direccion_fisica(int direccion_logica) {
         }
     }
 
-    // Finalmente: dirección física = frame * tamaño_página + desplazamiento
     return frame * tam_pagina + desplazamiento;
 }
 

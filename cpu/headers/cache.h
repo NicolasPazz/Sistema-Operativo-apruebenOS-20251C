@@ -31,5 +31,6 @@ void liberar_cache();
 bool cache_habilitada();
 void cache_modificar(int frame, char* datos);
 void cache_escribir(int frame, char* datos);
+char* cache_leer(int numero_pagina);
 
 #endif

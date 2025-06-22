@@ -411,6 +411,25 @@ void agregar_entero_a_paquete(t_paquete *paquete, int numero) {
     paquete->buffer->size += sizeof(int);
 }
 
+void agregar_string_a_paquete(t_paquete* paquete, char* cadena) {
+    int longitud = strlen(cadena) + 1;
+    agregar_a_paquete(paquete, cadena, longitud);
+}
+
+void agregar_entero_con_tamanio_a_paquete(t_paquete *paquete, int numero) {
+    int param_size = sizeof(int);
+
+    // Reservar espacio y agregar primero el tamaño
+    paquete->buffer->stream = realloc(paquete->buffer->stream, paquete->buffer->size + sizeof(int) + param_size);
+
+    memcpy(paquete->buffer->stream + paquete->buffer->size, &param_size, sizeof(int));
+    paquete->buffer->size += sizeof(int);
+
+    // Luego el valor
+    memcpy(paquete->buffer->stream + paquete->buffer->size, &numero, param_size);
+    paquete->buffer->size += param_size;
+}
+
 bool enviar_operacion(int socket, op_code operacion) {
     int op = operacion;
     int bytes_enviados = send(socket, &op, sizeof(op), 0);
@@ -489,23 +508,31 @@ op_code recibir_operacion(int socket_cliente) {
  * @return void* Puntero al buffer recibido, debe liberarse manualmente.
  */
 void* recibir_buffer(int* size, int socket_cliente) {
-    void * buffer;
+    if (recv(socket_cliente, size, sizeof(int), MSG_WAITALL) != sizeof(int)) {
+        perror("Error al recibir tamaño de buffer");
+        exit(EXIT_FAILURE);
+    }
 
-    // Leer el tamaño del buffer (2do int en el paquete)
-    if (recv(socket_cliente, size, sizeof(int), MSG_WAITALL) != sizeof(int)) exit(EXIT_FAILURE);
-    buffer = malloc(*size);
-    if (buffer == NULL) {
+    if (*size <= 0) {
+        fprintf(stderr, "recibir_buffer: Tamaño inválido recibido: %d\n", *size);
+        return NULL;  // ← importante devolver NULL si size es 0 o negativo
+    }
+
+    void* buffer = malloc(*size);
+    if (!buffer) {
         perror("Error al asignar memoria");
         exit(EXIT_FAILURE);
     }
 
     if (recv(socket_cliente, buffer, *size, MSG_WAITALL) != *size) {
         free(buffer);
+        perror("Error al recibir contenido del buffer");
         exit(EXIT_FAILURE);
     }
 
     return buffer;
 }
+
 
 /**
  * @brief Recibe un mensaje de texto y lo muestra por log.

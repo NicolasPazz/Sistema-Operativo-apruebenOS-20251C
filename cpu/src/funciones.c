@@ -9,46 +9,76 @@ void func_noop() {
     log_debug(cpu_log, "PID: %d - Acción: NOOP", pid_ejecutando);
 }
 
+//primero se consuta a la cache y despues tlb
 void func_write(char* direccion_logica_str, char* datos) {
     int direccion_logica = atoi(direccion_logica_str);
-    int direccion_fisica = traducir_direccion_fisica(direccion_logica);
+    int tam_pagina = cfg_memoria->TAM_PAGINA;
+    int nro_pagina = direccion_logica / tam_pagina;
 
-    log_info(cpu_log, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %s",
-             pid_ejecutando, direccion_fisica, datos); 
+    // 1. CACHE
+    if (cache_habilitada()) {
+        int pos = buscar_pagina_en_cache(nro_pagina);
+        if (pos != -1) {
+            cache_modificar(nro_pagina, datos);
+            log_info(cpu_log, "PID: %d - Cache HIT - Pagina: %d - Escritura directa en caché", pid_ejecutando, nro_pagina);
+            return;
+        }
 
-    int pagina = direccion_fisica / cfg_memoria->TAM_PAGINA;
+        // Cache MISS - pedir contenido a Memoria para llenar caché
+        int direccion_fisica = traducir_direccion_fisica(direccion_logica);
 
-    if (cache_habilitada() && (buscar_pagina_en_cache(pagina) != -1)) {
-        cache_modificar(pagina, datos);
-    } else if (cache_habilitada()) {
-        // Simula pedir página a Memoria usando LEER_PAGINA_COMPLETA_OP
         t_paquete* paquete = crear_paquete_op(LEER_PAGINA_COMPLETA_OP);
-        agregar_entero_a_paquete(paquete, pid_ejecutando);  // PID
-        agregar_entero_a_paquete(paquete, direccion_fisica & ~(cfg_memoria->TAM_PAGINA - 1)); // Dirección base de la página
+        agregar_entero_a_paquete(paquete, pid_ejecutando);
+        int direccion_base = direccion_fisica & ~(cfg_memoria->TAM_PAGINA - 1);
+        agregar_entero_a_paquete(paquete, direccion_base);
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
 
         int tamanio_buffer;
         char* contenido = recibir_buffer(&tamanio_buffer, fd_memoria);
-        cache_escribir(pagina, contenido);
+        cache_escribir(nro_pagina, contenido);
         free(contenido);
 
-        log_info(cpu_log, "PID: %d - Cache Miss - Pagina: %d", pid_ejecutando, pagina);   
-    } else {
-        t_paquete* paquete = crear_paquete_op(WRITE_OP);
-        agregar_entero_a_paquete(paquete, pid_ejecutando);      // Agregar PID
-        agregar_entero_a_paquete(paquete, direccion_fisica);    // Agregar dirección física  
-        agregar_a_paquete(paquete, datos, strlen(datos)+1);     // Agregar contenido
-        enviar_paquete(paquete, fd_memoria);
-        eliminar_paquete(paquete);
+        log_info(cpu_log, "PID: %d - Cache MISS - Pagina: %d", pid_ejecutando, nro_pagina);
     }
+
+    //ahora si traducir
+    int direccion_fisica = traducir_direccion_fisica(direccion_logica);
+
+    t_paquete* paquete = crear_paquete_op(WRITE_OP);
+    //agregar_entero_a_paquete(paquete, pid_ejecutando);
+    agregar_entero_con_tamanio_a_paquete(paquete, pid_ejecutando);
+    //agregar_entero_a_paquete(paquete, direccion_fisica);
+    agregar_entero_con_tamanio_a_paquete(paquete, direccion_fisica);
+    agregar_string_a_paquete(paquete, datos);
+    enviar_paquete(paquete, fd_memoria);
+    eliminar_paquete(paquete);
+
+    log_info(cpu_log, "PID: %d - WRITE - Dir Fisica: %d - Valor: %s", pid_ejecutando, direccion_fisica, datos);
 }
 
 
-void func_read(char* direccion, char* tamanio) {
-    int direccion_logica = atoi(direccion);
+void func_read(char* direccion_str, char* tamanio_str) {
+    int direccion_logica = atoi(direccion_str);
+    int tam_pagina = cfg_memoria->TAM_PAGINA;
+    int nro_pagina = direccion_logica / tam_pagina;
+    int size = atoi(tamanio_str);
+
+    // 1. CACHE
+    if (cache_habilitada()) {
+        int pos = buscar_pagina_en_cache(nro_pagina);
+        if (pos != -1) {
+            char* contenido = cache_leer(nro_pagina); // Asume malloc interno
+            log_info(cpu_log, "PID: %d - Cache HIT - Pagina: %d - Valor: %s", pid_ejecutando, nro_pagina, contenido);
+            printf("PID: %d - Contenido leído (cache): %s\n", pid_ejecutando, contenido);
+            free(contenido);
+            return;
+        }
+        log_info(cpu_log, "PID: %d - Cache MISS - Pagina: %d", pid_ejecutando, nro_pagina);
+    }
+
+    // 2. TRADUCCIÓN Y LECTURA EN MEMORIA
     int direccion_fisica = traducir_direccion_fisica(direccion_logica);
-    int size = atoi(tamanio);
 
     t_paquete *paquete = crear_paquete_op(READ_OP);
     agregar_entero_a_paquete(paquete, direccion_fisica);
@@ -60,17 +90,14 @@ void func_read(char* direccion, char* tamanio) {
     int respuesta_size = 0;
     char* contenido = recibir_buffer(&respuesta_size, fd_memoria);
 
-    log_info(cpu_log, 
-        "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %s", 
-        pid_ejecutando, direccion_fisica, contenido);
-
+    log_info(cpu_log, "PID: %d - READ - Dir Fisica: %d - Valor: %s", pid_ejecutando, direccion_fisica, contenido);
     printf("PID: %d - Contenido leído: %s\n", pid_ejecutando, contenido);
     free(contenido);
 }
 
 void func_goto(char* valor) {
     pc = atoi(valor);
-    // deberiamos crear un paquete y mandarselo a kernel con este nuevo valor o no es necesario?
+    
 }
 
 void func_io(char* nombre_dispositivo, char* tiempo_str) {

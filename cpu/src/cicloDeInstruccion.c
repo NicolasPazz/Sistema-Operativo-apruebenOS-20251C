@@ -13,18 +13,18 @@ int pc = 0;                    // Program Counter inicial
 void ejecutar_ciclo_instruccion() {
     seguir_ejecutando = 1;
     log_trace(cpu_log, "[CICLO] ▶ Iniciando ciclo de instrucción para PID: %d", pid_ejecutando);
-    
+
     while (seguir_ejecutando == 1) {
         log_trace(cpu_log, "[CICLO] ═══ NUEVO CICLO DE INSTRUCCIÓN ═══");
         log_trace(cpu_log, "[CICLO] PID: %d | PC: %d | Seguir: %d", pid_ejecutando, pc, seguir_ejecutando);
-        
+
         // FETCH
         t_instruccion* instruccion = fetch();
         if (instruccion == NULL) {
             log_error(cpu_log, "[CICLO] ✗ Error al obtener instrucción, finalizando ciclo");
             break;
         }
-        
+
         // DECODE
         op_code tipo_instruccion = decode(instruccion->parametros1);
         if (tipo_instruccion == -1) {
@@ -32,34 +32,35 @@ void ejecutar_ciclo_instruccion() {
             liberar_instruccion(instruccion);
             break;
         }
-        
-        // Actualizar PC (excepto para GOTO)
+
+        // EXECUTE (primero)
+        log_trace(cpu_log, "[CICLO] ▶ Ejecutando instrucción...");
+        execute(tipo_instruccion, instruccion);
+
+        // Luego del execute, incrementar PC solo si no fue GOTO
         if (tipo_instruccion != GOTO_OP) {
             pc++;
             log_trace(cpu_log, "[CICLO] PC incrementado a: %d", pc);
         } else {
             log_trace(cpu_log, "[CICLO] PC no incrementado (instrucción GOTO)");
         }
-        
-        // EXECUTE
-        log_trace(cpu_log, "[CICLO] ▶ Ejecutando instrucción...");
-        execute(tipo_instruccion, instruccion);
-        
+
         // Liberar la memoria de la instrucción
         liberar_instruccion(instruccion);
         log_trace(cpu_log, "[CICLO] ✓ Instrucción liberada de memoria");
-        
+
         // CHECK INTERRUPT
         if (seguir_ejecutando) {
             log_trace(cpu_log, "[CICLO] Verificando interrupciones...");
             check_interrupt();
         }
-        
+
         log_trace(cpu_log, "[CICLO] ═══ FIN CICLO ═══ (Seguir: %d)", seguir_ejecutando);
     }
-    
+
     log_trace(cpu_log, "[CICLO] ◼ Ciclo de instrucción finalizado para PID: %d", pid_ejecutando);
 }
+
 
 // fetch
 t_instruccion* fetch() {
@@ -186,11 +187,16 @@ void check_interrupt() {
         if (pid_ejecutando == pid_interrupt) {
             seguir_ejecutando = 0;
 
-            t_respuesta respuesta = OK;
-            // TODO: armar paquete con respuesta ok, pid y despues pc en ese orden
+            t_paquete* paquete = crear_paquete_op(OK);
+            agregar_entero_a_paquete(paquete, pid_ejecutando);  // PID
+            agregar_entero_a_paquete(paquete, pc);              // PC
+
+            enviar_paquete(paquete, fd_kernel_interrupt);
+            eliminar_paquete(paquete);
         } else {
-            t_respuesta respuesta = ERROR;
-            send(fd_kernel_interrupt, &respuesta, sizeof(t_respuesta), 0);
+            t_paquete* paquete_error = crear_paquete_op(ERROR);
+            enviar_paquete(paquete_error, fd_kernel_interrupt);
+            eliminar_paquete(paquete_error);
         }
     }
 }

@@ -211,3 +211,24 @@ void cache_escribir(int frame, char* datos) {
     cache->entradas[entrada_index].bit_referencia = 1;
     log_info(cpu_log, "PID: %d - Cache Add - Pagina: %d", pid_ejecutando, frame);
 }
+
+char* cache_leer(int numero_pagina) {
+    int indice = buscar_pagina_en_cache(numero_pagina);
+    if (indice == -1) {
+        log_warning(cpu_log, "PID: %d - Cache Leer - Página %d no encontrada en caché", pid_ejecutando, numero_pagina);
+        return NULL;
+    }
+
+    if (cache->entradas[indice].contenido == NULL) {
+        log_warning(cpu_log, "PID: %d - Cache Leer - Contenido nulo en entrada de página %d", pid_ejecutando, numero_pagina);
+        return NULL;
+    }
+
+    // Devolvemos una copia del contenido para que el caller pueda hacer free
+    char* copia = strdup(cache->entradas[indice].contenido);
+    if (copia == NULL) {
+        log_error(cpu_log, "PID: %d - Error al duplicar contenido de caché para página %d", pid_ejecutando, numero_pagina);
+        return NULL;
+    }
+    return copia;
+}
