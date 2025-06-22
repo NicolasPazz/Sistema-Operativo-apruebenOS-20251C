@@ -508,31 +508,23 @@ op_code recibir_operacion(int socket_cliente) {
  * @return void* Puntero al buffer recibido, debe liberarse manualmente.
  */
 void* recibir_buffer(int* size, int socket_cliente) {
-    if (recv(socket_cliente, size, sizeof(int), MSG_WAITALL) != sizeof(int)) {
-        perror("Error al recibir tamaño de buffer");
-        exit(EXIT_FAILURE);
-    }
+    void * buffer;
 
-    if (*size <= 0) {
-        fprintf(stderr, "recibir_buffer: Tamaño inválido recibido: %d\n", *size);
-        return NULL;  // ← importante devolver NULL si size es 0 o negativo
-    }
-
-    void* buffer = malloc(*size);
-    if (!buffer) {
+    // Leer el tamaño del buffer (2do int en el paquete)
+    if (recv(socket_cliente, size, sizeof(int), MSG_WAITALL) != sizeof(int)) exit(EXIT_FAILURE);
+    buffer = malloc(*size);
+    if (buffer == NULL) {
         perror("Error al asignar memoria");
         exit(EXIT_FAILURE);
     }
 
     if (recv(socket_cliente, buffer, *size, MSG_WAITALL) != *size) {
         free(buffer);
-        perror("Error al recibir contenido del buffer");
         exit(EXIT_FAILURE);
     }
 
     return buffer;
 }
-
 
 /**
  * @brief Recibe un mensaje de texto y lo muestra por log.
