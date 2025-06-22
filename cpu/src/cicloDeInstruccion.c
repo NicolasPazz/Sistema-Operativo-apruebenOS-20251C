@@ -74,10 +74,8 @@ t_instruccion* fetch() {
 
     log_trace(cpu_log, "[FETCH] ✓ Solicitud enviada a memoria - PID: %d, PC: %d", pid_ejecutando, pc);
 
-    // Recibir el código de operación primero
-    int codigo = recibir_operacion(fd_memoria);
-    log_trace(cpu_log, "[FETCH] Código de operación recibido desde memoria: %d", codigo);
-
+    // CAMBIO: Memoria ahora envía solo el buffer de datos, no un paquete con op_code
+    // Por lo tanto, NO necesitamos recibir_operacion()
     t_instruccion* instruccion = recibir_instruccion(fd_memoria);
     
     if (instruccion != NULL) {

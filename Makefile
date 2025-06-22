@@ -8,28 +8,34 @@ all:
 
 # /////////////////////// Ejecutar módulos ///////////////////////
 .PHONY: run
-run:
+run: clean all
+	@echo "Limpiando logs..."
+	@find . -type f -name "*.log" -exec rm -f {} +
+
 	@echo "Iniciando memoria..."
 	@./memoria/bin/memoria > memoria/memoria.log 2>&1 &
 
-	@echo "Iniciando kernel..."
+	@sleep 1
+
+	@echo "Iniciando kernel (en primer plano)..."
+	@bash levantar_modulos.sh &   # Levanta CPU e IO en background
 	@./kernel/bin/kernel PROCESO_INICIAL 128
-
-	@echo "Iniciando cpu..."
-	@./cpu/bin/cpu CPU1 > cpu/cpu.log 2>&1 &
-
-	@echo "Iniciando io..."
-	@./io/bin/io IMPRESORA > io/io.log 2>&1 &
 
 # /////////////////////// Detener todos los módulos ///////////////////////
 .PHONY: stop
 stop:
-	@echo "Deteniendo procesos..."
+	@echo "Deteniendo procesos por nombre..."
 	@pkill -f ./memoria/bin/memoria || true
 	@pkill -f ./cpu/bin/cpu || true
 	@pkill -f ./io/bin/io || true
 	@pkill -f ./kernel/bin/kernel || true
-	@echo "Todos los procesos fueron detenidos."
+
+	@echo "Forzando cierre de puertos usados (8000-8004)..."
+	@for port in 8000 8001 8002 8003 8004; do \
+		fuser -k $$port/tcp 2>/dev/null || true; \
+	done
+
+	@echo "Todos los procesos y puertos fueron liberados."
 
 # /////////////////////// Ejecutar módulos individualmente ///////////////////////
 .PHONY: kernel
@@ -54,6 +60,8 @@ dos2unix:
 
 # /////////////////////// Eliminar archivos de compilación ///////////////////////
 clean:
+	@echo "Limpiando archivos de dump (.dmp)..."
+	@find . -type f -name "*.dmp" -exec rm -f {} + || true
 	make clean -C ./utils
 	make clean -C ./io
 	make clean -C ./memoria

@@ -47,10 +47,9 @@ void destruir_administrador_marcos(t_administrador_marcos* admin);
 int asignar_marco_libre(int pid, int numero_pagina);
 
 /**
- * @brief Libera un marco específico y lo devuelve al pool
- * 
+ * @brief Libera un marco específico
  * @param numero_frame Número del marco a liberar
- * @return MEMORIA_OK si se liberó correctamente, error en caso contrario
+ * @return Resultado de la operación
  */
 t_resultado_memoria liberar_marco(int numero_frame);
 
@@ -195,6 +194,15 @@ t_entrada_tabla* crear_entrada_tabla_si_no_existe(t_estructura_paginas* estructu
  */
 void calcular_indices_jerarquia(int numero_pagina, int entradas_por_tabla, 
                                 int cantidad_niveles, int* indices);
+
+/**
+ * @brief Configura una entrada de página con un marco específico
+ * @param estructura Estructura de páginas del proceso
+ * @param numero_pagina Número de página
+ * @param numero_frame Número de marco
+ * @return Resultado de la operación
+ */
+t_resultado_memoria configurar_entrada_pagina(t_estructura_paginas* estructura, int numero_pagina, int numero_frame);
 
 // ============================================================================
 // FUNCIONES DE ACCESO A MEMORIA FÍSICA
@@ -482,17 +490,6 @@ void aplicar_retardo_swap(void);
  */
 void* leer_pagina(int dir_fisica);
 
-/**
- * @brief Función legacy para asignación de frames
- * @deprecated Usar asignar_marco_libre en su lugar
- */
-int asignar_frame_libre(int pid, int numero_pagina);
-
-/**
- * @brief Función legacy para liberación de frames
- * @deprecated Usar liberar_marco en su lugar
- */
-void liberar_frame(int numero_frame);
 
 // ============================================================================
 // FUNCIONES DE INICIALIZACIÓN Y FINALIZACIÓN
@@ -569,5 +566,21 @@ bool verificar_espacio_disponible(int tamanio);
  * @param cliente_socket Socket de comunicación con la CPU
  */
 void enviar_instruccion_a_cpu(int pid, int pc, int cliente_socket);
+
+/**
+ * @brief Función inversa de calcular_indices_multinivel
+ * @param entradas Array con las entradas de cada nivel
+ * @param cantidad_niveles Cantidad de niveles de paginación
+ * @param entradas_por_tabla Entradas por cada tabla
+ * @return Número de página calculado
+ */
+int calcular_numero_pagina_desde_entradas(int* entradas, int cantidad_niveles, int entradas_por_tabla);
+
+/**
+ * @brief Procesa una solicitud de frame para entradas multinivel
+ * @param lista Lista con los parámetros del paquete (PID, niveles, entradas...)
+ * @return Número de marco asignado o -1 si hay error
+ */
+int procesar_solicitud_frame_entradas(t_list* lista);
 
 #endif

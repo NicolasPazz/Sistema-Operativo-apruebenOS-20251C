@@ -218,7 +218,7 @@ int asignar_marco_libre(int pid, int numero_pagina) {
         return -1;
     }
     
-    // Obtener el primer marco libre (O(1))
+    // Obtener el primer marco libre
     int* frame_num_ptr = (int*)list_remove(admin->lista_frames_libres, 0);
     int numero_frame = *frame_num_ptr;
     free(frame_num_ptr);

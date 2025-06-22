@@ -144,46 +144,74 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         case WRITE_OP: {
             log_trace(logger, "WRITE_OP recibido");
 
-            // Recibir parámetros (PID, dirección y valor)
-                int pid, direccion, valor;
-                recv_data(cliente_socket, &pid, sizeof(int));
-                recv_data(cliente_socket, &direccion, sizeof(int));
-                recv_data(cliente_socket, &valor, sizeof(int));
+            // CAMBIO: CPU envía [pid][direccion_fisica][datos_string]
+            // Recibir parámetros usando recibir_contenido_paquete
+            t_list* lista = recibir_contenido_paquete(cliente_socket);
+            
+            // CPU envía: pid (int), direccion_fisica (int), datos (string)
+            int* pid_ptr = (int*)list_get(lista, 0);
+            int* direccion_ptr = (int*)list_get(lista, 1);
+            char* datos_str = (char*)list_get(lista, 2);
+            
+            int pid = *pid_ptr;
+            int direccion_fisica = *direccion_ptr;
+            int valor = atoi(datos_str); // Convertir string a int
             
             // Para el Check 2, simulamos la escritura
-                log_info(logger, "## PID: %d - Escritura - Dir. Física: %d - Tamaño: %ld", pid, direccion, sizeof(int));
+            log_info(logger, "## PID: %d - Escritura - Dir. Física: %d - Tamaño: %ld", 
+                     pid, direccion_fisica, sizeof(int));
             
             // Actualizar métrica
-                actualizar_metricas(pid, "MEMORY_WRITE");
+            actualizar_metricas(pid, "MEMORY_WRITE");
             
             // Simular escritura en memoria
-                *((int*)(sistema_memoria->memoria_principal + direccion)) = valor;
+            *((int*)(sistema_memoria->memoria_principal + direccion_fisica)) = valor;
             
             // Enviar respuesta de éxito
-                t_respuesta respuesta = OK;
-                send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
+            t_respuesta respuesta = OK;
+            send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
+            
+            // Liberar memoria
+            list_destroy_and_destroy_elements(lista, free);
             break;
         }
 
         case READ_OP: {
             log_trace(logger, "READ_OP recibido");
 
-            // Recibir parámetros (PID y dirección)
-                int pid, direccion;
-                recv_data(cliente_socket, &pid, sizeof(int));
-                recv_data(cliente_socket, &direccion, sizeof(int));
+            // CAMBIO: CPU envía [direccion_fisica][size][pid] 
+            // Recibir parámetros usando recibir_contenido_paquete  
+            t_list* lista = recibir_contenido_paquete(cliente_socket);
+            
+            // CPU envía: direccion_fisica (int), size (int), pid (int)
+            int* direccion_ptr = (int*)list_get(lista, 0);
+            int* size_ptr = (int*)list_get(lista, 1);
+            int* pid_ptr = (int*)list_get(lista, 2);
+            
+            int direccion_fisica = *direccion_ptr;
+            int size = *size_ptr;
+            int pid = *pid_ptr;
             
             // Para el checkpoint 2, simulamos la lectura
-                log_info(logger, "## PID: %d - Lectura - Dir. Física: %d - Tamaño: %ld", pid, direccion, sizeof(int));
+            log_info(logger, "## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d", 
+                     pid, direccion_fisica, size);
             
             // Actualizar métrica
-                actualizar_metricas(pid, "MEMORY_READ");
+            actualizar_metricas(pid, "MEMORY_READ");
             
             // Simular lectura de memoria
-                int valor = *((int*)(sistema_memoria->memoria_principal + direccion));
+            int valor = *((int*)(sistema_memoria->memoria_principal + direccion_fisica));
             
-            // Enviar el valor leído
-                send_data(cliente_socket, &valor, sizeof(int));
+            // Enviar el valor leído como string (CPU espera recibir_buffer)
+            char valor_str[32];
+            snprintf(valor_str, sizeof(valor_str), "%d", valor);
+            
+            int buffer_size = strlen(valor_str) + 1;
+            send(cliente_socket, &buffer_size, sizeof(int), 0);
+            send(cliente_socket, valor_str, buffer_size, 0);
+            
+            // Liberar memoria
+            list_destroy_and_destroy_elements(lista, free);
             break;
         }
 
@@ -218,7 +246,9 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             // ========== CARGA DE INSTRUCCIONES ==========
             if (resultado == MEMORIA_OK) {
                 
+                // Construir el path completo usando PATH_INSTRUCCIONES de la configuración
                 char* path_completo = string_from_format("%s%s", cfg->PATH_INSTRUCCIONES, nombre_proceso);
+                log_debug(logger, "NOMBRE DEL PATH '%s'", path_completo);
             
                 t_process_instructions* instrucciones = load_process_instructions(pid, path_completo);
                 if (instrucciones != NULL) {
@@ -342,6 +372,29 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         // ============================================================================
         // HANDLERS PARA LOS 4 TIPOS DE ACCESO ESPECÍFICOS DE LA CONSIGNA
         // ============================================================================
+
+        case SOLICITAR_FRAME_PARA_ENTRADAS: {
+            log_trace(logger, "SOLICITAR_FRAME_PARA_ENTRADAS recibido");
+
+            // Recibir parámetros del paquete
+            t_list* lista = recibir_contenido_paquete(cliente_socket);
+            
+            // Procesar solicitud usando función dedicada
+            int numero_marco = procesar_solicitud_frame_entradas(lista);
+            
+            // Enviar respuesta
+            if (numero_marco != -1) {
+                send_data(cliente_socket, &numero_marco, sizeof(int));
+                log_trace(logger, "Marco enviado exitosamente");
+            } else {
+                int error = -1;
+                send_data(cliente_socket, &error, sizeof(int));
+                log_error(logger, "Error en solicitud de frame");
+            }
+            
+            list_destroy_and_destroy_elements(lista, free);
+            break;
+        }
 
         case ACCESO_TABLA_PAGINAS_OP: {
             log_trace(logger, "ACCESO_TABLA_PAGINAS_OP recibido");
@@ -530,21 +583,11 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             
             log_info(logger, "Des-suspensión de proceso %s - PID: %d", 
                     (respuesta == OK) ? "exitosa" : "fallida", pid);
-
-        case SOLICITAR_FRAME_PARA_ENTRADAS: {
-            log_error(logger, "SOLICITAR_FRAME_PARA_ENTRADAS recibido");
-        
-            // TODO: hago esto para poder seguir ejecutando mientras no este implementado
-            while(1) {
-                sleep(1000);
-            }
-            
             break;
         }
 
         default:
             log_error(logger, "Codigo de operacion desconocido recibido del cliente %d: %d", cliente_socket, cop);
             break;
-        }
     }
 }

@@ -421,9 +421,20 @@ bool enviar_operacion(int socket, op_code operacion) {
 char* leer_string(char* buffer, int* desplazamiento) {
     int tamanio = leer_entero(buffer, desplazamiento);
 
-    if (tamanio <= 0 || tamanio > MAX_STRING_SIZE) {
+    if (tamanio < 0 || tamanio > MAX_STRING_SIZE) {
         fprintf(stderr, "leer_string: Tamaño inválido (%d)\n", tamanio);
         exit(EXIT_FAILURE);
+    }
+    
+    // Manejar string vacío
+    if (tamanio == 0) {
+        char* palabra = malloc(1);
+        if (!palabra) {
+            perror("leer_string: Error al asignar memoria");
+            exit(EXIT_FAILURE);
+        }
+        palabra[0] = '\0';
+        return palabra;
     }
     
     char* palabra = malloc(tamanio + 1);

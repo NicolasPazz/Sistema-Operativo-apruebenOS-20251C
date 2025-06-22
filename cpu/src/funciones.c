@@ -21,9 +21,10 @@ void func_write(char* direccion_logica_str, char* datos) {
     if (cache_habilitada() && (buscar_pagina_en_cache(pagina) != -1)) {
         cache_modificar(pagina, datos);
     } else if (cache_habilitada()) {
-        // Simula pedir página a Memoria (para llenar caché)
-        t_paquete* paquete = crear_paquete_op(PEDIR_PAGINA_OP);
-        agregar_entero_a_paquete(paquete, pagina);
+        // Simula pedir página a Memoria usando LEER_PAGINA_COMPLETA_OP
+        t_paquete* paquete = crear_paquete_op(LEER_PAGINA_COMPLETA_OP);
+        agregar_entero_a_paquete(paquete, pid_ejecutando);  // PID
+        agregar_entero_a_paquete(paquete, direccion_fisica & ~(cfg_memoria->TAM_PAGINA - 1)); // Dirección base de la página
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
 
@@ -35,8 +36,9 @@ void func_write(char* direccion_logica_str, char* datos) {
         log_info(cpu_log, "PID: %d - Cache Miss - Pagina: %d", pid_ejecutando, pagina);   
     } else {
         t_paquete* paquete = crear_paquete_op(WRITE_OP);
-        agregar_entero_a_paquete(paquete, direccion_fisica);
-        agregar_a_paquete(paquete, datos, strlen(datos)+1);  // contenido
+        agregar_entero_a_paquete(paquete, pid_ejecutando);      // Agregar PID
+        agregar_entero_a_paquete(paquete, direccion_fisica);    // Agregar dirección física  
+        agregar_a_paquete(paquete, datos, strlen(datos)+1);     // Agregar contenido
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
     }

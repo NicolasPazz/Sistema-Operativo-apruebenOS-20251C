@@ -12,6 +12,7 @@
 
 #include "init_memoria.h"
 #include "interfaz_memoria.h"
+#include "manejo_memoria.h"
 
 /////////////////////////////// Declaracion de variables globales ///////////////////////////////
 extern t_log* logger;
