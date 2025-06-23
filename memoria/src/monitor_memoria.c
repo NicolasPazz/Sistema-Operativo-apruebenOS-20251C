@@ -109,7 +109,8 @@ int calcular_tamanio_buffer_instruccion(char* p1, char* p2, char* p3) {
     int len2 = p2 ? strlen(p2) : 0;
     int len3 = p3 ? strlen(p3) : 0;
     
-    return sizeof(int) + len1 + sizeof(int) + len2 + sizeof(int) + len3;
+    return sizeof(int) + len1 + sizeof(int) + len2 + sizeof(int) + len3 + sizeof(int);
+
 }
 
 void* crear_buffer_instruccion(char* p1, char* p2, char* p3, int* size_out) {
@@ -171,7 +172,6 @@ void procesar_y_enviar_instruccion_valida(int pid, int pc, t_instruccion* instru
                                            instruccion->parametros2, 
                                            instruccion->parametros3, 
                                            &size);
-    
     if (buffer) {
         // Enviar buffer
         if (!enviar_buffer_a_socket(cliente_socket, buffer, size)) {

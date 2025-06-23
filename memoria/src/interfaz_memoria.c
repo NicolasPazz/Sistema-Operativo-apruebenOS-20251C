@@ -119,18 +119,24 @@ t_process_instructions* load_process_instructions(int pid, char* instructions_fi
             }
         } 
         else if (strcmp(token, "READ") == 0) {
-            // READ <dir>
+            // READ <dir> <tam>
             instruction->tipo = READ_OP;
             free(instruction->instruccion_base.parametros1);
             instruction->instruccion_base.parametros1 = strdup("READ");
-            
+        
             char* param1 = strtok(NULL, " ");
-            
+            char* param2 = strtok(NULL, " ");
+        
             if (param1) {
                 free(instruction->instruccion_base.parametros2);
                 instruction->instruccion_base.parametros2 = strdup(param1);
             }
-        } 
+        
+            if (param2) {
+                free(instruction->instruccion_base.parametros3);
+                instruction->instruccion_base.parametros3 = strdup(param2);
+            }
+        }
         else if (strcmp(token, "GOTO") == 0) {
             // GOTO <dir>
             instruction->tipo = GOTO_OP;
@@ -268,6 +274,7 @@ t_instruccion* get_instruction(int pid, int pc) {
     result->parametros1 = strdup(extended_instr->instruccion_base.parametros1);
     result->parametros2 = strdup(extended_instr->instruccion_base.parametros2);
     result->parametros3 = strdup(extended_instr->instruccion_base.parametros3);
+
     
     return result;
 }

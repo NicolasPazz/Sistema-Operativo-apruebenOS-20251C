@@ -79,19 +79,19 @@ void func_read(char* direccion_str, char* tamanio_str) {
 
     // 2. TRADUCCIÓN Y LECTURA EN MEMORIA
     int direccion_fisica = traducir_direccion_fisica(direccion_logica);
-
     t_paquete *paquete = crear_paquete_op(READ_OP);
-    agregar_entero_a_paquete(paquete, direccion_fisica);
-    agregar_entero_a_paquete(paquete, size);
-    agregar_entero_a_paquete(paquete, pid_ejecutando);
+    agregar_entero_con_tamanio_a_paquete(paquete, direccion_fisica);
+    agregar_entero_con_tamanio_a_paquete(paquete, size);
+    agregar_entero_con_tamanio_a_paquete(paquete, pid_ejecutando);
+    // agregar_entero_a_paquete(paquete, direccion_fisica);
+    // agregar_entero_a_paquete(paquete, size);
+    // agregar_entero_a_paquete(paquete, pid_ejecutando);
     enviar_paquete(paquete, fd_memoria);
     eliminar_paquete(paquete);
-
     int respuesta_size = 0;
     char* contenido = recibir_buffer(&respuesta_size, fd_memoria);
 
     log_info(cpu_log, "PID: %d - READ - Dir Fisica: %d - Valor: %s", pid_ejecutando, direccion_fisica, contenido);
-    printf("PID: %d - Contenido leído: %s\n", pid_ejecutando, contenido);
     free(contenido);
 }
 
@@ -171,6 +171,7 @@ t_instruccion* recibir_instruccion(int conexion) {
 
     // Recibir el buffer del paquete
     buffer = recibir_buffer(&size, conexion);
+    
     
     if (buffer == NULL || size <= 0) {
         log_error(cpu_log, "[MEMORIA->CPU] Error al recibir buffer de instrucción - Buffer: %p, Size: %d", buffer, size);

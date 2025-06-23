@@ -143,39 +143,38 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
 
         case WRITE_OP: {
             log_trace(logger, "WRITE_OP recibido");
-
-            // CAMBIO: CPU envía [pid][direccion_fisica][datos_string]
+        
+            // CPU envía: pid (int), direccion_fisica (int), datos (string)
             // Recibir parámetros usando recibir_contenido_paquete
             t_list* lista = recibir_contenido_paquete(cliente_socket);
-            
+        
             // CPU envía: pid (int), direccion_fisica (int), datos (string)
             int* pid_ptr = (int*)list_get(lista, 0);
             int* direccion_ptr = (int*)list_get(lista, 1);
             char* datos_str = (char*)list_get(lista, 2);
-            
+        
             int pid = *pid_ptr;
             int direccion_fisica = *direccion_ptr;
-            int valor = atoi(datos_str); // Convertir string a int
-            
-            // Para el Check 2, simulamos la escritura
-            log_info(logger, "## PID: %d - Escritura - Dir. Física: %d - Tamaño: %ld", 
-                        pid, direccion_fisica, sizeof(int));
-            
-            // Actualizar métrica
+        
+            // Log de la operación
+            log_info(logger, "## PID: %d - Escritura - Dir. Física: %d - Dato: '%s' - Tamaño: %ld", 
+                        pid, direccion_fisica, datos_str, strlen(datos_str));
+        
+            // Actualizar métricas
             actualizar_metricas(pid, "MEMORY_WRITE");
-            
-            // Simular escritura en memoria
-            *((int*)(sistema_memoria->memoria_principal + direccion_fisica)) = valor;
-            
+        
+            // Escritura como string (copia byte a byte)
+            strcpy((char*)(sistema_memoria->memoria_principal + direccion_fisica), datos_str);
+
+        
             // Enviar respuesta de éxito
             t_respuesta respuesta = OK;
             send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
-            
+        
             // Liberar memoria
             list_destroy_and_destroy_elements(lista, free);
             break;
         }
-            
             
         case READ_OP: {
             log_trace(logger, "READ_OP recibido");
