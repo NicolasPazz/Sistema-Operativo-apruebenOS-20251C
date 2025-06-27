@@ -31,8 +31,8 @@ int main(int argc, char* argv[]) {
     }
     iniciar_logger_memoria();
     
-    log_info(logger, "=== INICIANDO SISTEMA DE MEMORIA ===");
-    log_info(logger, "Configuración cargada - TAM_MEMORIA: %d, TAM_PAGINA: %d, NIVELES: %d, ENTRADAS_POR_TABLA: %d", 
+    log_info(logger, AZUL("=== INICIANDO SISTEMA DE MEMORIA ==="));
+    log_debug(logger, "Configuración cargada - TAM_MEMORIA: %d, TAM_PAGINA: %d, NIVELES: %d, ENTRADAS_POR_TABLA: %d", 
              cfg->TAM_MEMORIA, cfg->TAM_PAGINA, cfg->CANTIDAD_NIVELES, cfg->ENTRADAS_POR_TABLA);
 
     // Inicializar el sistema completo de memoria con paginación multinivel
@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    log_trace(logger, "=== SERVIDOR DE MEMORIA INICIADO ===");
+    log_info(logger, AZUL("=== SERVIDOR DE MEMORIA INICIADO ==="));
     log_trace(logger, "Escuchando en puerto %d. Esperando conexiones...", cfg->PUERTO_ESCUCHA);
 
   

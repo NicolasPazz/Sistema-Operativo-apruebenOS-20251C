@@ -123,16 +123,13 @@ void imprimir_metricas_proceso(int pid) {
     
     pthread_mutex_lock(&metricas->mutex_metricas);
     
-    // Formato EXACTO según consigna:
-    // "Acc.T.Pag: <ATP>; Inst.Sol.: <Inst.Sol.>; SWAP: <SWAP>; Mem.Prin.: <Mem.Prin.>; Lec.Mem.: <Lec.Mem.>; Esc.Mem.: <Esc.Mem.>"
-    log_info(logger, "\033[38;2;75;75;75m\033[48;2;179;236;111m## PID: %d - Proceso Destruido - Métricas - Acc.T.Pag: %d; Inst.Sol.: %d; SWAP: %d; Mem.Prin.: %d; Lec.Mem.: %d; Esc.Mem.: %d\033[0m",
-             pid,
-             metricas->accesos_tabla_paginas,
-             metricas->instrucciones_solicitadas,
-             metricas->bajadas_swap,
-             metricas->subidas_memoria_principal,
-             metricas->lecturas_memoria,
-             metricas->escrituras_memoria);
+    log_info(logger, VERDE("## PID: %d - Proceso Destruido - Métricas finales:"), pid);
+    log_info(logger, "    "AZUL("Acc.T.Pag:")"      "VERDE("%d"), metricas->accesos_tabla_paginas);
+    log_info(logger, "    "AZUL("Inst.Sol.:")"      "VERDE("%d"), metricas->instrucciones_solicitadas);
+    log_info(logger, "    "AZUL("SWAP:")"           "VERDE("%d"), metricas->bajadas_swap);
+    log_info(logger, "    "AZUL("Mem.Prin.:")"      "VERDE("%d"), metricas->subidas_memoria_principal);
+    log_info(logger, "    "AZUL("Lec.Mem.:")"       "VERDE("%d"), metricas->lecturas_memoria);
+    log_info(logger, "    "AZUL("Esc.Mem.:")"       "VERDE("%d"), metricas->escrituras_memoria);
     
     pthread_mutex_unlock(&metricas->mutex_metricas);
 }

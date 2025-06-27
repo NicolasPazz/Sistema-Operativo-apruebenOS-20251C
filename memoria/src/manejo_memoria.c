@@ -197,7 +197,7 @@ t_resultado_memoria crear_proceso_en_memoria(int pid, int tamanio, char* nombre_
     }
 
     // ========== LOG OBLIGATORIO DE CREACIÓN ==========
-    log_info(logger, "\033[38;2;179;236;111m## PID: %d - Proceso Creado - Tamaño: %d\033[0m", pid, tamanio);
+    log_info(logger, VERDE("## PID: %d - Proceso Creado - Tamaño: %d"), pid, tamanio);
     
     log_debug(logger, "PID: %d - Proceso creado exitosamente:", pid);
     log_debug(logger, "   - Páginas totales: %d", paginas_necesarias);
@@ -731,7 +731,7 @@ void* acceso_espacio_usuario_lectura(int pid, int direccion_fisica, int tamanio)
     int* pag = list_get(paginas_bloqueadas, 0);
     desbloquear_marco_por_pagina(pid, *pag, "LECTURA_ESPACIO_USUARIO");
     
-    log_info(logger, "\033[38;2;179;236;111m## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d\033[0m", 
+    log_info(logger, VERDE("## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d"), 
              pid, direccion_fisica, tamanio);
     
     return valor_leido;
@@ -793,7 +793,7 @@ bool acceso_espacio_usuario_escritura(int pid, int direccion_fisica, int tamanio
     int* pag = list_get(paginas_bloqueadas, 0);
     desbloquear_marco_por_pagina(pid, *pag, "ESCRITURA_ESPACIO_USUARIO");
     
-    log_info(logger, "\033[38;2;75;75;75m\033[48;2;179;236;111m## PID: %d - Escritura - Dir. Física: %d - Tamaño: %d\033[0m", 
+    log_info(logger, VERDE("## PID: %d - Escritura - Dir. Física: %d - Tamaño: %d"), 
              pid, direccion_fisica, tamanio);
     
     return true;

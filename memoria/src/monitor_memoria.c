@@ -83,7 +83,7 @@ void log_instruccion_obtenida(int pid, int pc, t_instruccion* instruccion) {
             string_append_with_format(&args_log, " %s", instruccion->parametros3);
         }
     }
-    log_info(logger, "\033[38;2;179;236;111m## PID: %d - Obtener instrucción: %d - Instrucción: %s%s\033[0m", 
+    log_info(logger, VERDE("## PID: %d - Obtener instrucción: %d - Instrucción: %s%s"), 
              pid, pc, instruccion->parametros1, args_log);
     free(args_log);
 }
@@ -353,7 +353,7 @@ t_entrada_tabla* buscar_entrada_tabla(t_estructura_paginas* estructura, int nume
 // ============== FUNCIONES DE PROCESAMIENTO DE MEMORIA ==============
 
 t_resultado_memoria procesar_memory_dump(int pid) {
-    log_info(logger, "\033[38;2;75;75;75m\033[48;2;179;236;111m## PID: %d - Memory Dump solicitado\033[0m", pid);
+    log_info(logger, VERDE("## PID: %d - Memory Dump solicitado"), pid);
     
     // Verificar que el proceso existe
     if (!proceso_existe(pid)) {
@@ -376,7 +376,7 @@ t_resultado_memoria procesar_memory_dump(int pid) {
     char* nombre_archivo = string_from_format("%s%d-%s.dmp", cfg->DUMP_PATH, pid, timestamp);
     
     // Crear archivo dump
-    FILE* archivo_dump = fopen(nombre_archivo, "wb");
+    FILE* archivo_dump = fopen(nombre_archivo, "wt");
     if (!archivo_dump) {
         log_error(logger, "PID: %d - Error al crear archivo dump: %s", pid, nombre_archivo);
         free(nombre_archivo);
@@ -469,23 +469,21 @@ t_resultado_memoria asignar_marcos_proceso(int pid) {
 
 void enviar_instruccion_a_cpu(int fd, int pid, int pc, char* p1, char* p2, char* p3) {
     log_trace(logger, "[PEDIR_INSTRUCCION] Iniciando envío de instrucción a CPU...");
-    
-    // Normalizar parámetros (NULL -> string vacío)
+
     char* param1 = p1 ? p1 : "";
     char* param2 = p2 ? p2 : "";
     char* param3 = p3 ? p3 : "";
-    
-    // Crear paquete con los 3 strings
-    t_paquete* paquete = crear_paquete();
+
+    // Log de los parámetros que se envían
+    log_info(logger, COLOR1("[PEDIR_INSTRUCCION]")" Enviando a CPU -> param1: '%s', param2: '%s', param3: '%s'", param1, param2, param3);
+
+    t_paquete* paquete = crear_paquete_op(INSTRUCCION_A_CPU_OP);
     agregar_string_a_paquete(paquete, param1);
     agregar_string_a_paquete(paquete, param2);
     agregar_string_a_paquete(paquete, param3);
-    
-    // Enviar paquete (sin op_code, solo contenido)
-    enviar_buffer_a_socket(fd, paquete->buffer->stream, paquete->buffer->size);
-    
-    // Liberar paquete
+
+    enviar_paquete(paquete, fd);
     eliminar_paquete(paquete);
-    
+
     log_trace(logger, "[PEDIR_INSTRUCCION] ✓ Instrucción enviada - PID: %d, PC: %d, Socket: %d", pid, pc, fd);
 } 
