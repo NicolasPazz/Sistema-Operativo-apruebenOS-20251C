@@ -94,9 +94,9 @@ int traducir_direccion_fisica(int direccion_logica) {
 
     // Buscar en la TLB
     if (tlb_habilitada() && tlb_buscar(nro_pagina, &frame)) {
-        log_info(cpu_log, "\033[38;2;179;236;111mPID: %d - TLB HIT - Página: %d\033[0m", pid_ejecutando, nro_pagina);    
+        log_info(cpu_log, VERDE("PID: %d - TLB HIT - Página: %d"), pid_ejecutando, nro_pagina);    
     } else {
-        log_info(cpu_log, "\033[38;2;179;236;111mPID: %d - TLB MISS - Página: %d\033[0m", pid_ejecutando, nro_pagina);
+        log_info(cpu_log, VERDE("PID: %d - TLB MISS - Página: %d"), pid_ejecutando, nro_pagina);
 
         // Nueva operación: solo se envía PID y nro_pagina
         t_paquete* paquete = crear_paquete_op(SOLICITAR_FRAME_PARA_PAGINA);
@@ -115,7 +115,7 @@ int traducir_direccion_fisica(int direccion_logica) {
             exit(EXIT_FAILURE);
         }
 
-        log_info(cpu_log, "\033[38;2;179;236;111mPID: %d - OBTENER MARCO - Página: %d - Marco: %d\033[0m", pid_ejecutando, nro_pagina, frame);
+        log_info(cpu_log, VERDE("PID: %d - OBTENER MARCO - Página: %d - Marco: %d"), pid_ejecutando, nro_pagina, frame);
 
         if (tlb_habilitada()) {
             tlb_insertar(nro_pagina, frame);

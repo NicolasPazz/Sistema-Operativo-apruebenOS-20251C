@@ -6,7 +6,7 @@
 
 void func_noop() {
     //No hace nada, solo se usa para el log
-    log_debug(cpu_log, "\033[38;2;179;236;111m## PID: %d - Acción: NOOP\033[0m", pid_ejecutando);
+    log_debug(cpu_log, "## PID: %d - Acción: NOOP", pid_ejecutando);
 }
 
 // Primero se consuta a la cache y despues tlb
@@ -20,7 +20,7 @@ void func_write(char* direccion_logica_str, char* datos) {
         int pos = buscar_pagina_en_cache(nro_pagina);
         if (pos != -1) {
             cache_modificar(nro_pagina, datos);
-            log_info(cpu_log, "\033[38;2;179;236;111mPID: %d - Cache HIT - Pagina: %d - Escritura directa en cache\033[0m", pid_ejecutando, nro_pagina);
+            log_info(cpu_log, VERDE("PID: %d - Cache HIT - Pagina: %d - Escritura directa en cache"), pid_ejecutando, nro_pagina);
             return;
         }
 
@@ -39,7 +39,7 @@ void func_write(char* direccion_logica_str, char* datos) {
         cache_escribir(nro_pagina, contenido);
         free(contenido);
 
-        log_info(cpu_log, "\033[38;2;179;236;111mPID: %d - Cache MISS - Pagina: %d\033[0m", pid_ejecutando, nro_pagina);
+        log_info(cpu_log, VERDE("PID: %d - Cache MISS - Pagina: %d"), pid_ejecutando, nro_pagina);
     }
 
     //ahora si traducir
@@ -53,7 +53,7 @@ void func_write(char* direccion_logica_str, char* datos) {
     enviar_paquete(paquete, fd_memoria);
     eliminar_paquete(paquete);
 
-    log_info(cpu_log, "\033[38;2;179;236;111mPID: %d - WRITE - Dir Fisica: %d - Valor: %s\033[0m", pid_ejecutando, direccion_fisica, datos);
+    log_info(cpu_log, VERDE("PID: %d - WRITE - Dir Fisica: %d - Valor: %s"), pid_ejecutando, direccion_fisica, datos);
 }
 
 
@@ -68,12 +68,12 @@ void func_read(char* direccion_str, char* tamanio_str) {
         int pos = buscar_pagina_en_cache(nro_pagina);
         if (pos != -1) {
             char* contenido = cache_leer(nro_pagina); // Asume malloc interno
-            log_info(cpu_log, "\033[38;2;179;236;111mPID: %d - Cache HIT - Pagina: %d - Valor: %s\033[0m", pid_ejecutando, nro_pagina, contenido);
+            log_info(cpu_log, VERDE("PID: %d - Cache HIT - Pagina: %d - Valor: %s"), pid_ejecutando, nro_pagina, contenido);
             printf("PID: %d - Contenido leído (cache): %s\n", pid_ejecutando, contenido);
             free(contenido);
             return;
         }
-        log_info(cpu_log, "\033[38;2;179;236;111mPID: %d - Cache MISS - Pagina: %d\033[0m", pid_ejecutando, nro_pagina);
+        log_info(cpu_log, VERDE("PID: %d - Cache MISS - Pagina: %d"), pid_ejecutando, nro_pagina);
     }
 
     // 2. TRADUCCIÓN Y LECTURA EN MEMORIA
@@ -88,28 +88,29 @@ void func_read(char* direccion_str, char* tamanio_str) {
     int respuesta_size = 0;
     char* contenido = recibir_buffer(&respuesta_size, fd_memoria);
 
-    log_info(cpu_log, "\033[38;2;179;236;111mPID: %d - READ - Dir Fisica: %d - Valor: %s\033[0m", pid_ejecutando, direccion_fisica, contenido);
+    log_info(cpu_log, VERDE("PID: %d - READ - Dir Fisica: %d - Valor: %s"), pid_ejecutando, direccion_fisica, contenido);
     free(contenido);
 }
 
 void func_goto(char* valor) {
     pc = atoi(valor);
-    
 }
 
 void func_io(char* nombre_dispositivo, char* tiempo_str) {
     int tiempo = atoi(tiempo_str);  // Convertir tiempo de string a int
     
-    log_info(cpu_log, "\033[38;2;181;54;10m[SYSCALL]\033[0m Ejecutando IO - Dispositivo: '%s', Tiempo: %d", nombre_dispositivo, tiempo);
+    log_info(cpu_log, ROJO("[SYSCALL]")VERDE(" Ejecutando IO - Dispositivo: '%s', Tiempo: %d"), nombre_dispositivo, tiempo);
     
+    pc++; // Al PC le sumo 1 porque sino cuando vuelve de IO repite la misma instruccion IO y quedan en bucle los 4 modulos
+
     t_paquete* paquete = crear_paquete_op(IO_OP);
     agregar_a_paquete(paquete, nombre_dispositivo, strlen(nombre_dispositivo) + 1); // Agregar nombre del dispositivo
     agregar_entero_a_paquete(paquete, tiempo);                                      // Agregar tiempo
-    agregar_entero_a_paquete(paquete, pc);
+    agregar_entero_a_paquete(paquete, pc);                                          // Agregar pc
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 
-    log_info(cpu_log, "\033[38;2;181;54;10m[SYSCALL]\033[0m IO enviado a Kernel - Finalizando ejecución del proceso actual");
+    log_info(cpu_log, ROJO("[SYSCALL]")" IO enviado a Kernel - Finalizando ejecución del proceso actual");
     seguir_ejecutando = 0;
 }
 
@@ -123,37 +124,35 @@ void func_init_proc(t_instruccion* instruccion) {
         return;
     }
     
-    log_trace(cpu_log, "[SYSCALL] ▶ Ejecutando INIT_PROC - Archivo: '%s', Tamaño: %d", path, size);
+    log_trace(cpu_log, "Ejecutando INIT_PROC - Archivo: '%s', Tamaño: %d", path, size);
     log_trace(cpu_log, "[SYSCALL] Enviando INIT_PROC_OP a Kernel...");
 
-    t_paquete* paquete = crear_paquete_op(INIT_PROC_OP);    // Agrega op code
+    t_paquete* paquete = crear_paquete_op(INIT_PROC_OP);
     agregar_a_paquete(paquete, path, strlen(path)+1);   // Agrega longitud de path y path
-    agregar_entero_a_paquete(paquete, size);    // Agrega memory size
+    agregar_entero_a_paquete(paquete, size);    // Agrega el tamaño del proceso
 
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
     
-    log_trace(cpu_log, "[SYSCALL] ✓ INIT_PROC enviado a Kernel - Continuando ejecución del proceso");
-
-    
+    log_info(cpu_log, ROJO("[SYSCALL]")" INIT_PROC enviado a Kernel - Continuando ejecución del proceso");
 }
 
 void func_dump_memory() {
+
+    // Pedirle a Kernel que ejecute el DUMP por ser una SYSCALL
     t_paquete* paquete = crear_paquete_op(DUMP_MEMORY_OP);
     agregar_entero_a_paquete(paquete,pid_ejecutando);
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 
-    log_trace(cpu_log, "[SYSCALL] ✓ DUMP_MEMORY enviado a Kernel - Continuando ejecución del proceso");
-
-    // NO establecer seguir_ejecutando = 0 para continuar con la siguiente instrucción
+    log_info(cpu_log, ROJO("[SYSCALL]")" DUMP_MEMORY enviado a Kernel - Finalizando ejecución del proceso");
+    seguir_ejecutando = 0; // El Dump frena la ejecución porque bloquea por un tiempo o pasa a exit el proceso en caso de error
 }
 
 void func_exit() {
     int op = EXIT_OP;
     send(fd_kernel_dispatch, &op, sizeof(int), 0);
-
-    log_trace(cpu_log, "[SYSCALL] ✓ EXIT enviado a Kernel - Finalizando ejecución del proceso");
+    log_info(cpu_log, ROJO("[SYSCALL]")" EXIT enviado a Kernel - Finalizando ejecución del proceso");
 
     seguir_ejecutando = 0; // Solo EXIT debe terminar la ejecución
 }
@@ -161,39 +160,40 @@ void func_exit() {
 t_instruccion* recibir_instruccion_desde_memoria() {
     log_trace(cpu_log, "[MEMORIA->CPU] Iniciando recepción de instrucción desde memoria...");
 
-    // Memoria envía solo el buffer (sin op_code), entonces recibimos directamente
-    int size = 0;
-    void* buffer = recibir_buffer(&size, fd_memoria);
-    
-    if (!buffer || size <= 0) {
-        log_error(cpu_log, "[MEMORIA->CPU] Error al recibir buffer de instrucción - Buffer: %p, Size: %d", buffer, size);
+    op_code cod_op = recibir_operacion(fd_memoria);
+    if (cod_op != INSTRUCCION_A_CPU_OP) {
+        log_error(cpu_log, "[MEMORIA->CPU] Op_code inesperado: %d", cod_op);
         return NULL;
     }
-    
-    log_trace(cpu_log, "[MEMORIA->CPU] Buffer recibido exitosamente - Tamaño: %d bytes", size);
-    
-    // Crear nueva instrucción
+
+    t_list* lista = recibir_contenido_paquete(fd_memoria);
+    if (!lista || list_size(lista) < 3) {
+        log_error(cpu_log, "[MEMORIA->CPU] Error al recibir paquete de instrucción");
+        if (lista) list_destroy_and_destroy_elements(lista, free);
+        return NULL;
+    }
+
+    log_info(cpu_log, COLOR1("[MEMORIA->CPU]")" Recibido de Memoria -> param1: '%s', param2: '%s', param3: '%s'",
+        (char*)list_get(lista, 0),
+        (char*)list_get(lista, 1),
+        (char*)list_get(lista, 2));
+
     t_instruccion* instruccion_nueva = malloc(sizeof(t_instruccion));
     if (!instruccion_nueva) {
         log_error(cpu_log, "[MEMORIA->CPU] Error al asignar memoria para instrucción");
-        free(buffer);
+        list_destroy_and_destroy_elements(lista, free);
         return NULL;
     }
-    
-    // Deserializar manualmente del buffer (compatible con agregar_string_a_paquete)
-    int offset = 0;
-    
-    // Extraer los 3 strings usando el formato de paquetes
-    instruccion_nueva->parametros1 = leer_string(buffer, &offset);
-    instruccion_nueva->parametros2 = leer_string(buffer, &offset);
-    instruccion_nueva->parametros3 = leer_string(buffer, &offset);
-    
-    // DEBUGGING: Mostrar instrucción recibida
+
+    instruccion_nueva->parametros1 = strdup((char*)list_get(lista, 0));
+    instruccion_nueva->parametros2 = strdup((char*)list_get(lista, 1));
+    instruccion_nueva->parametros3 = strdup((char*)list_get(lista, 2));
+
     log_trace(cpu_log, "[MEMORIA->CPU] ✓ INSTRUCCIÓN RECIBIDA: '%s' | Param2: '%s' | Param3: '%s'", 
-             instruccion_nueva->parametros1 ? instruccion_nueva->parametros1 : "NULL",
-             instruccion_nueva->parametros2 ? instruccion_nueva->parametros2 : "NULL", 
-             instruccion_nueva->parametros3 ? instruccion_nueva->parametros3 : "NULL");
-    
-    free(buffer);
+        instruccion_nueva->parametros1 ? instruccion_nueva->parametros1 : "NULL",
+        instruccion_nueva->parametros2 ? instruccion_nueva->parametros2 : "NULL", 
+        instruccion_nueva->parametros3 ? instruccion_nueva->parametros3 : "NULL");
+
+    list_destroy_and_destroy_elements(lista, free);
     return instruccion_nueva;
 }

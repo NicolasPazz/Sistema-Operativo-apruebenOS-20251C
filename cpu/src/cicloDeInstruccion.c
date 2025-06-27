@@ -8,7 +8,7 @@ int seguir_ejecutando = 0;     // No ejecutar hasta recibir EXEC_OP
 int pid_ejecutando = -1;       // PID inválido por defecto
 int pid_interrupt = -1;        // PID inválido por defecto  
 int hay_interrupcion = 0;      // Sin interrupción inicialmente
-int pc = 0;                    // Program Counter inicial
+int pc = 1;                    // Program Counter inicial (Lo dejo en 1 para que el valor coincida con la línea de los archivos de pseudocódigo)
 
 void ejecutar_ciclo_instruccion() {
     seguir_ejecutando = 1;
@@ -64,15 +64,13 @@ void ejecutar_ciclo_instruccion() {
 
 // fetch
 t_instruccion* fetch() {
-    log_info(cpu_log, "\033[38;2;179;236;111m## PID: %d - FETCH - Program Counter: %d\033[0m", pid_ejecutando, pc);
+    log_info(cpu_log, VERDE("## PID: %d - FETCH - Program Counter: %d"), pid_ejecutando, pc);
 
-    // DEBUGGING: Verificar estado de la conexión antes de enviar
-    log_trace(cpu_log, "[FETCH] Verificando estado de conexión con memoria (fd=%d)...", fd_memoria);
-    
+    // Enviar Paquete OP a Memoria
     log_trace(cpu_log, "[FETCH] Enviando solicitud PEDIR_INSTRUCCION_OP a memoria...");
     t_paquete* paquete = crear_paquete_op(PEDIR_INSTRUCCION_OP);
-    agregar_entero_a_paquete(paquete, pid_ejecutando);  // CAMBIO: PID primero
-    agregar_entero_a_paquete(paquete, pc);              // CAMBIO: PC segundo
+    agregar_entero_a_paquete(paquete, pid_ejecutando);  //PID primero
+    agregar_entero_a_paquete(paquete, pc);              //PC segundo
     
     // DEBUGGING: Enviar paquete (función void, no devuelve valor)
     enviar_paquete(paquete, fd_memoria);
@@ -144,7 +142,7 @@ void execute(op_code tipo_instruccion, t_instruccion* instruccion) {
         }
     }
     
-    log_info(cpu_log, "\033[38;2;179;236;111m## PID: %d - Ejecutando: %s - %s\033[0m", 
+    log_info(cpu_log, VERDE("## PID: %d - Ejecutando: %s - %s"), 
              pid_ejecutando, 
              instruccion->parametros1, 
              strlen(params_str) > 0 ? params_str : "");
