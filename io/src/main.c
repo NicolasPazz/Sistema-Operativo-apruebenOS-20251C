@@ -25,12 +25,12 @@ int main(int argc, char* argv[]) {
     iniciar_config_io();
     iniciar_logger_io();
 
-    log_trace(io_log, "=== Iniciando dispositivo IO: %s ===", nombre_io);
+    log_info(io_log, AZUL("=== Iniciando dispositivo IO: %s ==="), nombre_io);
     log_trace(io_log, "Configuración cargada - IP_KERNEL: %s, PUERTO_KERNEL: %s", IP_KERNEL, PUERTO_KERNEL);
 
     iniciar_conexiones_io(nombre_io);
     
-    log_trace(io_log, "Dispositivo IO %s listo para recibir operaciones del Kernel", nombre_io);
+    log_info(io_log, "Dispositivo IO %s listo para recibir operaciones del Kernel", nombre_io);
     
     // Bucle principal para atender operaciones del Kernel
     while (1) {
@@ -42,34 +42,39 @@ int main(int argc, char* argv[]) {
         switch (cop) {
             case IO_OP: {
                 log_trace(io_log, "Procesando operación IO_OP...");
-            
-                int buffer[2];
-                if (!recibir_enteros(fd_kernel_io, buffer, 2)) {
-                    log_error(io_log, "Error al recibir datos de IO_OP");
+
+                // ========== RECIBIR PARÁMETROS DESDE KERNEL ==========
+                t_list* parametros_io = recibir_contenido_paquete(fd_kernel_io);
+                if (!parametros_io || list_size(parametros_io) < 2) {
+                    log_error(io_log, "Error al recibir paquete de IO_OP");
+                    if (parametros_io) list_destroy_and_destroy_elements(parametros_io, free);
                     break;
                 }
-                int pid = buffer[0];
-                int tiempo_io = buffer[1];
-            
-                log_debug(io_log, "PID recibido: %d | Tiempo de IO: %d", pid, tiempo_io);
-            
-                log_info(io_log, "\033[38;2;179;236;111m## PID: %d - Inicio de IO - Tiempo: %d\033[0m", pid, tiempo_io);
+
+                // nombre_io, tiempo_io y pid
+                char* nombre_io = (char*)list_get(parametros_io, 0);
+                int tiempo_io = *(int*)list_get(parametros_io, 1);
+                int pid = *(int*)list_get(parametros_io, 2);
+
+                log_debug(io_log, "PID recibido: %d | Tiempo de IO: %d | Dispositivo: %s", pid, tiempo_io, nombre_io);
+
+                log_info(io_log, VERDE("## PID: %d - Inicio de IO - Tiempo: %d"), pid, tiempo_io);
                 log_trace(io_log, "Simulando operación de I/O para PID %d durante %.3f milisegundos...", pid, (double)tiempo_io/1000);
-                usleep(tiempo_io);
-                log_info(io_log, "\033[38;2;179;236;111m## PID: %d - Fin de IO\033[0m", pid);
+                usleep(tiempo_io); // 1.000.000	en usleep es 1 Segundo
+                log_info(io_log, VERDE("## PID: %d - Fin de IO"), pid);
             
                 op_code finalizado = IO_FINALIZADA_OP;
                 if (send(fd_kernel_io, &finalizado, sizeof(op_code), 0) <= 0 ||
                     send(fd_kernel_io, &pid, sizeof(int), 0) <= 0) {
                     log_error(io_log, "Error al notificar finalización de IO al Kernel: %s", strerror(errno));
+                    list_destroy_and_destroy_elements(parametros_io, free);
                     break;
                 }
             
                 log_trace(io_log, "Notificación de finalización enviada al Kernel para PID %d", pid);
+                list_destroy_and_destroy_elements(parametros_io, free);
                 break;
             }
-            
-
             default:
                 log_warning(io_log, "Se desconectó el Kernel. Finalizando IO...");
                 terminar_io();
