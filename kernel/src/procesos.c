@@ -95,7 +95,7 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
             exit(EXIT_FAILURE);
         }
 
-        log_info(kernel_log, "## (%u) Pasa del estado %s al estado %s",
+        log_info(kernel_log, "\033[38;2;179;236;111m## (%u) Pasa del estado %s al estado %s\033[0m",
                 PCB->PID,
                 estado_to_string(PCB->Estado),
                 estado_to_string(nuevo_estado_enum));
@@ -285,7 +285,7 @@ void loguear_metricas_estado(t_pcb* pcb) {
         if (i < 6) offset += snprintf(buffer + offset, sizeof(buffer) - offset, ", ");
     }
 
-    log_info(kernel_log, "%s", buffer);
+    log_info(kernel_log, "\033[38;2;179;236;111m%s\033[0m", buffer);
 }
 
 t_pcb* obtener_pcb_por_pid(int pid) {

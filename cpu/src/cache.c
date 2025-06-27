@@ -42,7 +42,7 @@ int buscar_pagina_en_cache ( int numero_pagina) {
         return -1;
     for (int i = 0; i < cache->cantidad_entradas; i++) {
         if (cache->entradas[i].numero_pagina == numero_pagina) {
-            log_info(cpu_log, "PID: %d - Cache Hit - Pagina: %d", pid_ejecutando, numero_pagina);
+            log_info(cpu_log, "\033[38;2;179;236;111mPID: %d - Cache Hit - Pagina: %d\033[0m", pid_ejecutando, numero_pagina);
             if (strcmp(cache->algoritmo_reemplazo,"CLOCK") == 0 || strcmp(cache->algoritmo_reemplazo, "CLOCK-M") == 0) {
                 cache->entradas[i].bit_referencia = 1; // actualizamos el bit de referencia
             }
@@ -116,7 +116,7 @@ void desalojar_proceso_cache() {
                 }
             }
 
-            log_info(cpu_log, "PID: %d - Memory Update - Página: %d - Frame: %d", pid_ejecutando, pagina, frameC);
+            log_info(cpu_log, "\033[38;2;179;236;111mPID: %d - Memory Update - Página: %d - Frame: %d\033[0m", pid_ejecutando, pagina, frameC);
 
             // escribir_pagina_en_memoria(pagina, frame, cache->entradas[i].contenido);
         }
@@ -209,7 +209,7 @@ void cache_escribir(int frame, char* datos) {
     cache->entradas[entrada_index].contenido = datos;
     cache->entradas[entrada_index].modificado = false;
     cache->entradas[entrada_index].bit_referencia = 1;
-    log_info(cpu_log, "PID: %d - Cache Add - Pagina: %d", pid_ejecutando, frame);
+    log_info(cpu_log, "\033[38;2;179;236;111mPID: %d - Cache Add - Pagina: %d\033[0m", pid_ejecutando, frame);
 }
 
 char* cache_leer(int numero_pagina) {

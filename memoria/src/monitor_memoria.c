@@ -3,6 +3,7 @@
 #include "../headers/init_memoria.h"
 #include "../headers/interfaz_memoria.h"
 #include "../headers/manejo_memoria.h"
+#include "../headers/bloqueo_paginas.h"
 #include <commons/log.h>
 #include <commons/string.h>
 #include <string.h>
@@ -82,7 +83,7 @@ void log_instruccion_obtenida(int pid, int pc, t_instruccion* instruccion) {
             string_append_with_format(&args_log, " %s", instruccion->parametros3);
         }
     }
-    log_info(logger, "## PID: %d - Obtener instrucción: %d - Instrucción: %s%s", 
+    log_info(logger, "\033[38;2;179;236;111m## PID: %d - Obtener instrucción: %d - Instrucción: %s%s\033[0m", 
              pid, pc, instruccion->parametros1, args_log);
     free(args_log);
 }
@@ -109,8 +110,8 @@ int calcular_tamanio_buffer_instruccion(char* p1, char* p2, char* p3) {
     int len2 = p2 ? strlen(p2) : 0;
     int len3 = p3 ? strlen(p3) : 0;
     
-    return sizeof(int) + len1 + sizeof(int) + len2 + sizeof(int) + len3 + sizeof(int);
-
+    // Formato: [int len1][contenido1][int len2][contenido2][int len3][contenido3]
+    return sizeof(int) + len1 + sizeof(int) + len2 + sizeof(int) + len3;
 }
 
 void* crear_buffer_instruccion(char* p1, char* p2, char* p3, int* size_out) {
@@ -147,17 +148,36 @@ void* crear_buffer_error_instruccion(int* size_out) {
 // ============== FUNCIONES DE COMUNICACIÓN DE RED ==============
 
 bool enviar_buffer_a_socket(int cliente_socket, void* buffer, int size) {
-    // Enviar tamaño del buffer
-    if (send(cliente_socket, &size, sizeof(int), 0) <= 0) {
-        log_error(logger, "Error al enviar tamaño de buffer al socket %d", cliente_socket);
+    // DEBUGGING: Verificar parámetros de entrada
+    log_trace(logger, "[ENVIAR_BUFFER] Iniciando envío - Socket: %d, Buffer: %p, Size: %d", cliente_socket, buffer, size);
+    
+    if (!buffer || size <= 0) {
+        log_error(logger, "[ENVIAR_BUFFER] Parámetros inválidos - Buffer: %p, Size: %d", buffer, size);
         return false;
     }
     
-    // Enviar contenido del buffer
-    if (send(cliente_socket, buffer, size, 0) <= 0) {
-        log_error(logger, "Error al enviar buffer al socket %d", cliente_socket);
+    // Enviar tamaño del buffer
+    log_trace(logger, "[ENVIAR_BUFFER] Enviando tamaño del buffer: %d bytes", size);
+    int bytes_size_enviados = send(cliente_socket, &size, sizeof(int), 0);
+    if (bytes_size_enviados <= 0) {
+        log_error(logger, "[ENVIAR_BUFFER] Error al enviar tamaño de buffer al socket %d - bytes enviados: %d, errno: %s", 
+                  cliente_socket, bytes_size_enviados, strerror(errno));
         return false;
     }
+    log_trace(logger, "[ENVIAR_BUFFER] ✓ Tamaño enviado exitosamente - %d bytes", bytes_size_enviados);
+    
+    // Enviar contenido del buffer
+    log_trace(logger, "[ENVIAR_BUFFER] Enviando contenido del buffer: %d bytes", size);
+    int bytes_buffer_enviados = send(cliente_socket, buffer, size, 0);
+    if (bytes_buffer_enviados <= 0) {
+        log_error(logger, "[ENVIAR_BUFFER] Error al enviar buffer al socket %d - bytes enviados: %d, errno: %s", 
+                  cliente_socket, bytes_buffer_enviados, strerror(errno));
+        return false;
+    }
+    log_trace(logger, "[ENVIAR_BUFFER] ✓ Buffer enviado exitosamente - %d bytes", bytes_buffer_enviados);
+    
+    log_trace(logger, "[ENVIAR_BUFFER] ✓ Envío completado exitosamente - Total: %d bytes", 
+              bytes_size_enviados + bytes_buffer_enviados);
     
     return true;
 }
@@ -240,6 +260,9 @@ t_tabla_paginas* crear_tabla_paginas(int nivel) {
         return NULL;
     }
     
+    log_trace(logger, "Tabla de páginas nivel %d creada con %d entradas", 
+              nivel, cfg->ENTRADAS_POR_TABLA);
+    
     return tabla;
 }
 
@@ -303,8 +326,8 @@ t_entrada_tabla* buscar_entrada_tabla(t_estructura_paginas* estructura, int nume
     }
 
     int indices[estructura->cantidad_niveles];
-    calcular_indices_multinivel(numero_pagina, estructura->entradas_por_tabla, 
-                             estructura->cantidad_niveles, indices);
+    calcular_indices_multinivel(numero_pagina, estructura->cantidad_niveles, 
+                             estructura->entradas_por_tabla, indices);
 
     t_tabla_paginas* tabla_actual = estructura->tabla_raiz;
     t_entrada_tabla* entrada = NULL;
@@ -330,7 +353,7 @@ t_entrada_tabla* buscar_entrada_tabla(t_estructura_paginas* estructura, int nume
 // ============== FUNCIONES DE PROCESAMIENTO DE MEMORIA ==============
 
 t_resultado_memoria procesar_memory_dump(int pid) {
-    log_info(logger, "## PID: %d - Memory Dump solicitado", pid);
+    log_info(logger, "\033[38;2;75;75;75m\033[48;2;179;236;111m## PID: %d - Memory Dump solicitado\033[0m", pid);
     
     // Verificar que el proceso existe
     if (!proceso_existe(pid)) {
@@ -390,7 +413,6 @@ t_resultado_memoria procesar_memory_dump(int pid) {
         
         bytes_escritos_total += bytes_escritos;
     }
-    
     fclose(archivo_dump);
     
     // Logs finales
@@ -445,18 +467,25 @@ t_resultado_memoria asignar_marcos_proceso(int pid) {
     return MEMORIA_OK;
 }
 
-void enviar_instruccion_a_cpu(int pid, int pc, int cliente_socket) {
-    // Obtener la instrucción
-    t_instruccion* instruccion = get_instruction(pid, pc);
+void enviar_instruccion_a_cpu(int fd, int pid, int pc, char* p1, char* p2, char* p3) {
+    log_trace(logger, "[PEDIR_INSTRUCCION] Iniciando envío de instrucción a CPU...");
     
-    if (instruccion != NULL) {
-        // Procesar y enviar instrucción válida
-        procesar_y_enviar_instruccion_valida(pid, pc, instruccion, cliente_socket);
-        
-        // Liberar la instrucción obtenida
-        liberar_instruccion(instruccion);
-    } else {
-        // Procesar y enviar error
-        procesar_y_enviar_error_instruccion(pid, pc, cliente_socket);
-    }
+    // Normalizar parámetros (NULL -> string vacío)
+    char* param1 = p1 ? p1 : "";
+    char* param2 = p2 ? p2 : "";
+    char* param3 = p3 ? p3 : "";
+    
+    // Crear paquete con los 3 strings
+    t_paquete* paquete = crear_paquete();
+    agregar_string_a_paquete(paquete, param1);
+    agregar_string_a_paquete(paquete, param2);
+    agregar_string_a_paquete(paquete, param3);
+    
+    // Enviar paquete (sin op_code, solo contenido)
+    enviar_buffer_a_socket(fd, paquete->buffer->stream, paquete->buffer->size);
+    
+    // Liberar paquete
+    eliminar_paquete(paquete);
+    
+    log_trace(logger, "[PEDIR_INSTRUCCION] ✓ Instrucción enviada - PID: %d, PC: %d, Socket: %d", pid, pc, fd);
 } 

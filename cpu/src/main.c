@@ -72,22 +72,22 @@ void* recibir_kernel_dispatch(void* arg) {
 
         switch (cod_op) {
             case MENSAJE_OP:
-                log_trace(cpu_log, "[DISPATCH] Procesando MENSAJE_OP");
+                log_trace(cpu_log, "\033[38;2;181;54;10m[DISPATCH]\033[0m MENSAJE_OP recibido desde Kernel");
 			    recibir_mensaje(fd_kernel_dispatch, cpu_log);
 			    break;
             case EXEC_OP:
-                log_trace(cpu_log, "[DISPATCH] ✓ EXEC_OP recibido desde Kernel - Iniciando ejecución");
+                log_trace(cpu_log, "\033[38;2;181;54;10m[DISPATCH]\033[0m EXEC_OP recibido desde Kernel");
                 
                 // Recibir PC y PID usando la función correcta para enteros
                 t_list* lista = recibir_2_enteros_sin_op(fd_kernel_dispatch);
                 if (lista == NULL) {
-                    log_error(cpu_log, "[DISPATCH] ✗ Error al recibir paquete EXEC_OP");
+                    log_error(cpu_log, "\033[38;2;181;54;10m[DISPATCH]\033[0m Error al recibir paquete EXEC_OP");
                     break;
                 }
 
                 // Verificar que la lista tenga los elementos necesarios
                 if (list_size(lista) < 2) {
-                    log_error(cpu_log, "[DISPATCH] ✗ Paquete EXEC_OP incompleto - Faltan datos");
+                    log_error(cpu_log, "\033[38;2;181;54;10m[DISPATCH]\033[0m Paquete EXEC_OP incompleto - Faltan datos");
                     list_destroy(lista);
                     break;
                 }
@@ -96,12 +96,12 @@ void* recibir_kernel_dispatch(void* arg) {
                 pc = (int)(uintptr_t)list_get(lista, 0);         // Primer elemento = PC
                 pid_ejecutando = (int)(uintptr_t)list_get(lista, 1);  // Segundo elemento = PID
                 
-                log_trace(cpu_log, "[DISPATCH] ✓ Proceso asignado - PID: %d, PC inicial: %d", pid_ejecutando, pc);
-                log_trace(cpu_log, "[DISPATCH] ▶ Iniciando ejecución del proceso...");
+                log_trace(cpu_log, "\033[38;2;181;54;10m[DISPATCH]\033[0m Proceso asignado - PID: %d, PC inicial: %d", pid_ejecutando, pc);
+                log_trace(cpu_log, "\033[38;2;181;54;10m[DISPATCH]\033[0m Iniciando ejecución del proceso...");
                 
                 ejecutar_ciclo_instruccion();
                 
-                log_trace(cpu_log, "[DISPATCH] ◼ Ejecución del proceso PID %d finalizada", pid_ejecutando);
+                log_trace(cpu_log, "\033[38;2;181;54;10m[DISPATCH]\033[0m Ejecución del proceso PID %d finalizada", pid_ejecutando);
                 // Resetear variables después de la ejecución
                 pid_ejecutando = -1;
                 pc = 0;
@@ -130,7 +130,7 @@ void* recibir_kernel_interrupt(void* arg) {
             case INTERRUPCION_OP:
                 // Recibir PID de la interrupción
                 recv(fd_kernel_interrupt, &pid_interrupt, sizeof(int), MSG_WAITALL);
-                log_info(cpu_log, "## Llega interrupción al puerto Interrupt");
+                log_info(cpu_log, "\033[38;2;179;236;111m## Llega interrupción al puerto Interrupt\033[0m");
                 
                 hay_interrupcion = 1;
                 break;

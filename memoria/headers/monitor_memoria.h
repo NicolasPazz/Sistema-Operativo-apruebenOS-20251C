@@ -180,10 +180,13 @@ t_resultado_memoria asignar_marcos_proceso(int pid);
 
 /**
  * @brief Envía una instrucción a la CPU
+ * @param cliente_socket Socket del cliente
  * @param pid PID del proceso
  * @param pc Program Counter
- * @param cliente_socket Socket del cliente
+ * @param p1 Primer parámetro de la instrucción
+ * @param p2 Segundo parámetro de la instrucción  
+ * @param p3 Tercer parámetro de la instrucción
  */
-void enviar_instruccion_a_cpu(int pid, int pc, int cliente_socket);
+void enviar_instruccion_a_cpu(int cliente_socket, int pid, int pc, char* p1, char* p2, char* p3);
 
 #endif // MONITOR_MEMORIA_H 

@@ -3,6 +3,7 @@
 #include "../headers/manejo_memoria.h"
 #include "../headers/metricas.h"
 #include "../headers/manejo_swap.h"
+#include "../headers/bloqueo_paginas.h"
 #include <commons/log.h>
 #include <commons/string.h>
 #include <string.h>
@@ -21,20 +22,11 @@ void destruir_tabla_paginas_recursiva(t_tabla_paginas* tabla);
 // FUNCIONES DE INICIALIZACIÓN PRINCIPAL
 // ============================================================================
 
-void iniciar_logger_memoria() {
-    logger = iniciar_logger("memoria/memoria.log", MODULENAME, 1, LOG_LEVEL_TRACE);
-    if (logger == NULL) {
-        printf("Error al iniciar memoria logs\n");
-    } else {
-        log_trace(logger, "Memoria logs iniciados correctamente!");
-    }
-}
-
 int cargar_configuracion(char* path) {
     t_config* cfg_file = config_create(path);
 
     if (cfg_file == NULL) {
-        log_error(logger, "No se encontro el archivo de configuracion: %s", path);
+        printf("No se encontro el archivo de configuracion: %s\n", path);
         return 0;
     }
 
@@ -54,14 +46,14 @@ int cargar_configuracion(char* path) {
     };
 
     if (!config_has_all_properties(cfg_file, properties)) {
-        log_error(logger, "Propiedades faltantes en el archivo de configuracion");
+        printf("Propiedades faltantes en el archivo de configuracion\n");
         config_destroy(cfg_file);
         return 0;
     }
 
     cfg = malloc(sizeof(t_config_memoria));
     if (cfg == NULL) {
-        log_error(logger, "Error al asignar memoria para la configuracion");
+        printf("Error al asignar memoria para la configuracion\n");
         config_destroy(cfg_file);
         return 0;
     }
@@ -78,10 +70,20 @@ int cargar_configuracion(char* path) {
     cfg->DUMP_PATH = strdup(config_get_string_value(cfg_file, "DUMP_PATH"));
     cfg->PATH_INSTRUCCIONES = strdup(config_get_string_value(cfg_file, "PATH_INSTRUCCIONES"));
 
-    log_trace(logger, "Archivo de configuracion cargado correctamente");
+    printf("Archivo de configuracion cargado correctamente\n");
     config_destroy(cfg_file);
 
     return 1;
+}
+
+void iniciar_logger_memoria() {
+    // Inicializar logger con configuración por defecto hasta cargar la configuración real
+    logger = iniciar_logger("memoria.log", MODULENAME, 1, log_level_from_string(cfg->LOG_LEVEL));
+    if (logger == NULL) {
+        printf("Error al iniciar memoria logs\n");
+    } else {
+        log_trace(logger, "Memoria logs iniciados correctamente con configuracion temporal!");
+    }
 }
 
 // ============================================================================
@@ -669,7 +671,7 @@ void destruir_tabla_paginas_recursiva(t_tabla_paginas* tabla) {
             }
         }
     }
-    
+
     // Liberar memoria de las entradas y la tabla
     free(tabla->entradas);
     free(tabla);

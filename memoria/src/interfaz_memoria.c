@@ -264,17 +264,11 @@ t_instruccion* get_instruction(int pid, int pc) {
     
     t_extended_instruccion* extended_instr = list_get(process_inst->instructions, pc);
     
-    // Loguear la instrucción obtenida (formato requerido)
-    char* instr_str = instruction_to_string(extended_instr, pc);
-    // log_info(logger, "## PID: %d - Obtener instrucción: %d - Instrucción: %s", pid, pc, instr_str);
-    free(instr_str);
-    
     // Devolvemos una copia de la instrucción base que será liberada por el llamador
     t_instruccion* result = malloc(sizeof(t_instruccion));
     result->parametros1 = strdup(extended_instr->instruccion_base.parametros1);
     result->parametros2 = strdup(extended_instr->instruccion_base.parametros2);
     result->parametros3 = strdup(extended_instr->instruccion_base.parametros3);
-
     
     return result;
 }
@@ -316,41 +310,3 @@ void memory_destroy() {
         log_trace(logger, "Lista de procesos en memoria destruida correctamente");
     }
 }
-
-// Para el checkpoint 2: Devuelve un valor fijo de memoria disponible (mock)
-int get_available_memory() {
-    // Requisito para Checkpoint 2: Devuelve un valor fijo de espacio libre (mock)
-    // En una implementación real, calcularíamos la memoria disponible basada en las asignaciones actuales
-    // Para simplificar, asumimos que la mitad de la memoria siempre está disponible
-    int memoria_disponible = cfg->TAM_MEMORIA / 2;
-    
-    log_trace(logger, "Espacio disponible en memoria (mock): %d bytes", memoria_disponible);
-    
-    return memoria_disponible;
-}
-
-/*
- * FUNCIONES COMENTADAS - ESTAS FUNCIONES ESTÁN DUPLICADAS
- * La implementación principal está en manejo_memoria.c
- * Comentadas para evitar logs duplicados de métricas
- */
-
-/*
-// Inicializa un proceso en memoria (mock para checkpoint 2)
-int initialize_process(int pid, int size) {
-    // Esta función está duplicada - la implementación principal está en manejo_memoria.c
-    return 0;
-}
-
-// Finaliza un proceso y libera sus recursos
-void finalize_process(int pid) {
-    // Esta función está duplicada - la implementación principal está en manejo_memoria.c
-    // IMPORTANTE: Los logs de métricas se manejan en finalizar_proceso_en_memoria()
-}
-
-// Obtiene la información de un proceso
-t_proceso_memoria* get_process_info(int pid) {
-    // Esta función está duplicada - usar obtener_proceso() de manejo_memoria.c
-    return NULL;
-}
-*/

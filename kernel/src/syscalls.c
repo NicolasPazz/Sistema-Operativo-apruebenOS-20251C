@@ -48,12 +48,13 @@ void INIT_PROC(char* nombre_archivo, int tam_memoria) {
     if (respuesta == OK) {
         log_trace(kernel_log, "INIT_PROC: proceso nuevo a la cola NEW");
         cambiar_estado_pcb(nuevo_proceso, NEW);  
-        log_info(kernel_log, "## (%d) Se crea el proceso - Estado: NEW", nuevo_proceso->PID);
+        log_info(kernel_log, "\033[38;2;179;236;111m## (%d) Se crea el proceso - Estado: NEW\033[0m", nuevo_proceso->PID);
     } else {
         log_error(kernel_log, "Error al crear proceso en memoria");
         free(nuevo_proceso->path);
         free(nuevo_proceso);
-        // TODO
+        // Error al crear el proceso en memoria, no se puede continuar
+        log_error(kernel_log, "No se pudo inicializar el proceso PID %d en memoria", nuevo_proceso->PID);
     }
 }
 
@@ -63,9 +64,6 @@ void DUMP_MEMORY(t_pcb* pcb_dump) {
         log_error(kernel_log, "DUMP_MEMORY: PCB nulo");
         return;
     }
-    
-    log_info(kernel_log, "## (%d) - Solicitó syscall: DUMP_MEMORY", pcb_dump->PID);
-    
     // Cambiar estado del proceso a BLOCKED
     cambiar_estado_pcb(pcb_dump, BLOCKED);
     
@@ -139,7 +137,7 @@ void IO(char* nombre_io, int tiempo_a_usar, t_pcb* pcb_a_io) {
 
     // En caso de que sí exista al menos una instancia de IO, aun si la misma se encuentre ocupada, el kernel deberá pasar el proceso al estado BLOCKED y agregarlo a la cola de bloqueados por la IO solicitada. 
 
-    log_info(kernel_log, "## (%d) - Bloqueado por IO: %s", pcb_a_io->PID, nombre_io);
+    log_info(kernel_log, "\033[38;2;179;236;111m## (%d) - Bloqueado por IO: %s\033[0m", pcb_a_io->PID, nombre_io);
     log_debug(kernel_log, "## (%d) - Bloqueado por IO: %s (tiempo: %d ms)", pcb_a_io->PID, nombre_io, tiempo_a_usar);  
 
     cambiar_estado_pcb(pcb_a_io, BLOCKED);
@@ -313,7 +311,7 @@ void EXIT(t_pcb* pcb_a_finalizar) {
     }
 
     // Logs
-    log_info(kernel_log, "## (%d) - Finaliza el proceso", pcb_a_finalizar->PID);
+    log_info(kernel_log, "\033[38;2;179;236;111m## (%d) - Finaliza el proceso\033[0m", pcb_a_finalizar->PID);
     loguear_metricas_estado(pcb_a_finalizar);
 
     // Eliminar de cola_exit, cola procesos, liberar pcb y cronometro

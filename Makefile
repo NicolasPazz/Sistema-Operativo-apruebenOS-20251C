@@ -12,12 +12,12 @@ run: clean all
 	@echo "Limpiando logs..."
 	@find . -type f -name "*.log" -exec rm -f {} +
 
-	@echo "Iniciando memoria..."
+	@echo -e "\033[38;2;179;236;111mIniciando memoria...\033[38;2;179;236;111m"
 	@./memoria/bin/memoria > memoria/memoria.log 2>&1 &
 
 	@sleep 1
 
-	@echo "Iniciando kernel (en primer plano)..."
+	@echo -e "\033[38;2;179;236;111mIniciando kernel (en primer plano)...\033[38;2;179;236;111m"
 	@bash levantar_modulos.sh &   # Levanta CPU e IO en background
 	@./kernel/bin/kernel PROCESO_INICIAL 128
 

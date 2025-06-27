@@ -3,6 +3,7 @@
 #include "../headers/init_memoria.h"
 #include "../headers/metricas.h"
 #include "../headers/manejo_memoria.h"
+#include "../headers/bloqueo_paginas.h"
 #include <commons/log.h>
 #include <commons/string.h>
 #include <stdio.h>
@@ -236,65 +237,90 @@ int reanudar_proceso_suspendido(int pid) {
 // ============================================================================
 
 int escribir_pagina_proceso_swap(int pid, int numero_pagina, void* contenido) {
-    if (contenido == NULL) {
-        log_error(logger, "PID: %d - Contenido nulo para escribir página %d", pid, numero_pagina);
+    // BLOQUEAR PÁGINA PARA OPERACIÓN DE SWAP
+    if (!bloquear_marco_por_pagina(pid, numero_pagina, "ESCRITURA_SWAP")) {
+        log_error(logger, "PID: %d - No se pudo bloquear página %d para escritura en SWAP", pid, numero_pagina);
         return 0;
     }
     
     pthread_mutex_lock(&sistema_memoria->admin_swap->mutex_swap);
     
-    // Buscar posición libre en SWAP
-    int posicion_libre = -1;
-    for (int i = 0; i < sistema_memoria->admin_swap->cantidad_paginas_swap; i++) {
-        if (!sistema_memoria->admin_swap->entradas[i].ocupado) {
-            posicion_libre = i;
-            break;
-        }
-    }
+    // Buffer temporal para la página
+    char buffer_pagina[4096];  // Buffer suficiente para cualquier tamaño de página
     
-    if (posicion_libre == -1) {
-        log_error(logger, "PID: %d - No hay espacio libre en SWAP para página %d", pid, numero_pagina);
+    // Obtener el marco físico donde está la página - Buscar en la estructura del proceso
+    char pid_str[16];
+    sprintf(pid_str, "%d", pid);
+    t_proceso_memoria* proceso = dictionary_get(sistema_memoria->procesos, pid_str);
+    
+    if (!proceso || !proceso->estructura_paginas) {
+        log_error(logger, "PID: %d - Proceso no encontrado para escribir página %d", pid, numero_pagina);
+        desbloquear_marco_por_pagina(pid, numero_pagina, "ESCRITURA_SWAP");
         pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
         return 0;
     }
     
-    // Calcular offset en el archivo SWAP
-    off_t offset = posicion_libre * cfg->TAM_PAGINA;
-    
-    // Posicionarse en el offset correcto
-    if (lseek(sistema_memoria->admin_swap->fd_swap, offset, SEEK_SET) == -1) {
-        log_error(logger, "PID: %d - Error al posicionarse en SWAP para página %d", pid, numero_pagina);
+    // Buscar la entrada de tabla para obtener el marco físico
+    t_entrada_tabla* entrada = buscar_entrada_tabla(proceso->estructura_paginas, numero_pagina);
+    if (!entrada || !entrada->presente) {
+        log_error(logger, "PID: %d - Página %d no está presente en memoria", pid, numero_pagina);
+        desbloquear_marco_por_pagina(pid, numero_pagina, "ESCRITURA_SWAP");
         pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
         return 0;
     }
     
-    // Escribir contenido en el archivo SWAP
-    if (write(sistema_memoria->admin_swap->fd_swap, contenido, cfg->TAM_PAGINA) != cfg->TAM_PAGINA) {
-        log_error(logger, "PID: %d - Error al escribir página %d en SWAP", pid, numero_pagina);
+    int numero_marco = entrada->numero_frame;
+    
+    // Validar que el marco tiene el tamaño correcto
+    if (cfg->TAM_PAGINA > sizeof(buffer_pagina)) {
+        log_error(logger, "Tamaño de página (%d) excede el buffer (%d)", cfg->TAM_PAGINA, (int)sizeof(buffer_pagina));
+        desbloquear_marco_por_pagina(pid, numero_pagina, "ESCRITURA_SWAP");
         pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
         return 0;
     }
     
-    // Actualizar entrada de SWAP
-    sistema_memoria->admin_swap->entradas[posicion_libre].ocupado = true;
-    sistema_memoria->admin_swap->entradas[posicion_libre].pid_propietario = pid;
-    sistema_memoria->admin_swap->entradas[posicion_libre].numero_pagina = numero_pagina;
+    // Copiar contenido de la página al buffer
+    void* direccion_pagina = sistema_memoria->memoria_principal + (numero_marco * cfg->TAM_PAGINA);
+    memcpy(buffer_pagina, direccion_pagina, cfg->TAM_PAGINA);
     
-    // Actualizar contador
-    sistema_memoria->admin_swap->paginas_libres_swap--;
+    // Escribir buffer al archivo SWAP usando write() en lugar de fwrite()
+    ssize_t bytes_escritos = write(sistema_memoria->admin_swap->fd_swap, buffer_pagina, cfg->TAM_PAGINA);
+    if (bytes_escritos != cfg->TAM_PAGINA) {
+        log_error(logger, "Error al escribir página a SWAP: solo se escribieron %zd de %d bytes", 
+                  bytes_escritos, cfg->TAM_PAGINA);
+        desbloquear_marco_por_pagina(pid, numero_pagina, "ESCRITURA_SWAP");
+        pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
+        return 0;
+    }
+    
+    // Actualizar información de SWAP
+    entrada->presente = false;  // Ya no está en memoria principal
+    entrada->timestamp_acceso = time(NULL);
+    
+    // Incrementar métrica SOLO si la operación fue exitosa
+    incrementar_bajadas_swap(pid);
+    
+    log_trace(logger, "PID: %d - Página %d escrita en SWAP en posición %ld", 
+              pid, numero_pagina, (long)lseek(sistema_memoria->admin_swap->fd_swap, 0, SEEK_CUR));
+    
+    // DESBLOQUEAR PÁGINA AL FINALIZAR
+    desbloquear_marco_por_pagina(pid, numero_pagina, "ESCRITURA_SWAP");
     
     pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
     
     // Aplicar retardo de SWAP
     aplicar_retardo_swap();
     
-    log_trace(logger, "PID: %d - Página %d escrita en SWAP posición %d", 
-              pid, numero_pagina, posicion_libre);
-    
     return 1;
 }
 
 void* leer_pagina_proceso_swap(int pid, int numero_pagina) {
+    // BLOQUEAR PÁGINA PARA OPERACIÓN DE SWAP
+    if (!bloquear_marco_por_pagina(pid, numero_pagina, "LECTURA_SWAP")) {
+        log_error(logger, "PID: %d - No se pudo bloquear página %d para lectura desde SWAP", pid, numero_pagina);
+        return NULL;
+    }
+    
     pthread_mutex_lock(&sistema_memoria->admin_swap->mutex_swap);
     
     // Buscar la página en SWAP
@@ -311,6 +337,7 @@ void* leer_pagina_proceso_swap(int pid, int numero_pagina) {
     if (posicion_swap == -1) {
         log_error(logger, "PID: %d - Página %d no encontrada en SWAP", pid, numero_pagina);
         pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
+        desbloquear_marco_por_pagina(pid, numero_pagina, "LECTURA_SWAP");
         return NULL;
     }
     
@@ -319,6 +346,7 @@ void* leer_pagina_proceso_swap(int pid, int numero_pagina) {
     if (contenido == NULL) {
         log_error(logger, "PID: %d - Error al asignar memoria para leer página %d", pid, numero_pagina);
         pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
+        desbloquear_marco_por_pagina(pid, numero_pagina, "LECTURA_SWAP");
         return NULL;
     }
     
@@ -329,6 +357,7 @@ void* leer_pagina_proceso_swap(int pid, int numero_pagina) {
         log_error(logger, "PID: %d - Error al posicionarse en SWAP para leer página %d", pid, numero_pagina);
         free(contenido);
         pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
+        desbloquear_marco_por_pagina(pid, numero_pagina, "LECTURA_SWAP");
         return NULL;
     }
     
@@ -336,13 +365,20 @@ void* leer_pagina_proceso_swap(int pid, int numero_pagina) {
         log_error(logger, "PID: %d - Error al leer página %d desde SWAP", pid, numero_pagina);
         free(contenido);
         pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
+        desbloquear_marco_por_pagina(pid, numero_pagina, "LECTURA_SWAP");
         return NULL;
     }
+    
+    // Incrementar métrica de subidas desde SWAP
+    incrementar_subidas_memoria_principal(pid);
     
     pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
     
     // Aplicar retardo de SWAP
     aplicar_retardo_swap();
+    
+    // DESBLOQUEAR PÁGINA AL FINALIZAR
+    desbloquear_marco_por_pagina(pid, numero_pagina, "LECTURA_SWAP");
     
     log_trace(logger, "PID: %d - Página %d leída desde SWAP posición %d", 
               pid, numero_pagina, posicion_swap);

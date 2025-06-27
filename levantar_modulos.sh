@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Esperar a que el kernel esté escuchando en el puerto 8001
-echo "Esperando que el kernel esté disponible en el puerto 8001..."
+echo -e "\033[38;2;179;236;111mEsperando que el kernel esté disponible en el puerto 8001...\033[0m"
 while ! nc -z localhost 8001; do
   sleep 0.5
 done
 
-echo "Iniciando CPU..."
+echo -e "\033[38;2;179;236;111mIniciando CPU...\033[0m"
 ./cpu/bin/cpu CPU1 > cpu/cpu.log 2>&1 &
 
-echo "Iniciando IO..."
+echo -e "\033[38;2;179;236;111mIniciando IO...\033[0m"
 ./io/bin/io IMPRESORA > io/io.log 2>&1 &

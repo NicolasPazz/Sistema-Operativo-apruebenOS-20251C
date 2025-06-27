@@ -2,6 +2,7 @@
 #include "../headers/estructuras.h"
 #include "../headers/init_memoria.h"
 #include "../headers/manejo_memoria.h"
+#include "../headers/monitor_memoria.h"
 #include "../headers/manejo_swap.h"
 #include "../headers/metricas.h"
 #include "../headers/interfaz_memoria.h"
@@ -87,12 +88,12 @@ void procesar_conexion(void* void_args) {
     }
     switch (handshake) {
         case HANDSHAKE_MEMORIA_KERNEL:
-            log_info(logger, "## Kernel Conectado - FD del socket: %d", cliente_socket);
+            log_info(logger, "\033[38;2;179;236;111m## Kernel Conectado - FD del socket: %d\033[0m", cliente_socket);
             fd_kernel = cliente_socket;
             break;
 
         case HANDSHAKE_MEMORIA_CPU:
-            log_trace(logger, "## CPU Conectado - FD del socket: %d", cliente_socket);
+            log_info(logger, "\033[38;2;179;236;111m## CPU Conectado - FD del socket: %d\033[0m", cliente_socket);
             fd_cpu = cliente_socket;
             break;
 
@@ -121,116 +122,20 @@ void procesar_conexion(void* void_args) {
 
 void procesar_cod_ops(op_code cop, int cliente_socket) {
     switch (cop) {
-        case MENSAJE_OP:
-            log_trace(logger, "MENSAJE_OP recibido");
-        
-            // Recibir un Mensaje char* y loguearlo
-                char* mensaje;
-                recv_string(cliente_socket, &mensaje);
-                log_trace(logger, "Mensaje recibido: %s", mensaje);
-                free(mensaje);
-            break;
-
-        case PAQUETE_OP:
-            log_trace(logger, "PAQUETE_OP recibido");
-            // No implementado para el checkpoint 2
-            break;
-
-        case NOOP_OP:
-            log_trace(logger, "NOOP_OP recibido");
-            // No implementado para el checkpoint 2
-            break;
-
         case WRITE_OP: {
-            log_trace(logger, "WRITE_OP recibido");
-        
-            // CPU envía: pid (int), direccion_fisica (int), datos (string)
-            // Recibir parámetros usando recibir_contenido_paquete
-            t_list* lista = recibir_contenido_paquete(cliente_socket);
-        
-            // CPU envía: pid (int), direccion_fisica (int), datos (string)
-            int* pid_ptr = (int*)list_get(lista, 0);
-            int* direccion_ptr = (int*)list_get(lista, 1);
-            char* datos_str = (char*)list_get(lista, 2);
-        
-            int pid = *pid_ptr;
-            int direccion_fisica = *direccion_ptr;
-        
-            // Log de la operación
-            log_info(logger, "## PID: %d - Escritura - Dir. Física: %d - Dato: '%s' - Tamaño: %ld", 
-                        pid, direccion_fisica, datos_str, strlen(datos_str));
-        
-            // Actualizar métricas
-            actualizar_metricas(pid, "MEMORY_WRITE");
-        
-            // Escritura como string (copia byte a byte)
-            strcpy((char*)(sistema_memoria->memoria_principal + direccion_fisica), datos_str);
-
-        
-            // Enviar respuesta de éxito
-            t_respuesta respuesta = OK;
-            send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
-        
-            // Liberar memoria
-            list_destroy_and_destroy_elements(lista, free);
+            log_trace(logger, "\033[38;2;234;213;51mWRITE_OP recibido\033[0m");
+            procesar_write_op(cliente_socket);
             break;
         }
-            
         case READ_OP: {
-            log_trace(logger, "READ_OP recibido");
-
-            // CAMBIO: CPU envía [direccion_fisica][size][pid] 
-            // Recibir parámetros usando recibir_contenido_paquete  
-            t_list* lista = recibir_contenido_paquete(cliente_socket);
-            
-            // CPU envía: direccion_fisica (int), size (int), pid (int)
-            int* direccion_ptr = (int*)list_get(lista, 0);
-            int* size_ptr = (int*)list_get(lista, 1);
-            int* pid_ptr = (int*)list_get(lista, 2);
-            
-            int direccion_fisica = *direccion_ptr;
-            int size = *size_ptr;
-            int pid = *pid_ptr;
-            
-            // Para el checkpoint 2, simulamos la lectura
-            log_info(logger, "## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d", 
-                     pid, direccion_fisica, size);
-            
-            // Actualizar métrica
-            actualizar_metricas(pid, "MEMORY_READ");
-            
-            // Simular lectura de memoria
-            int valor = *((int*)(sistema_memoria->memoria_principal + direccion_fisica));
-            
-            // Enviar el valor leído como string (CPU espera recibir_buffer)
-            char valor_str[32];
-            snprintf(valor_str, sizeof(valor_str), "%d", valor);
-            
-            int buffer_size = strlen(valor_str) + 1;
-            send(cliente_socket, &buffer_size, sizeof(int), 0);
-            send(cliente_socket, valor_str, buffer_size, 0);
-            
-            // Liberar memoria
-            list_destroy_and_destroy_elements(lista, free);
+            log_trace(logger, "\033[38;2;234;213;51mREAD_OP recibido\033[0m");
+            procesar_read_op(cliente_socket);
             break;
         }
-
-        case GOTO_OP:
-            log_trace(logger, "GOTO_OP recibido");
-
-            // No implementado para el checkpoint 2
-            break;
-
-        case IO_OP:
-            log_trace(logger, "IO_OP recibido");
-
-            // No implementado para el checkpoint 2
-            break;
-
         case INIT_PROC_OP: {
-            log_trace(logger, "INIT_PROC_OP recibido");
+            log_trace(logger, "\033[38;2;234;213;51mINIT_PROC_OP recibido\033[0m");
 
-            // ========== RECEPCIÓN DE PARÁMETROS ==========
+            // ========== RECIBIR PARÁMETROS ==========
             t_list* lista = recibir_contenido_paquete(cliente_socket);
             
             int pid = *(int*)list_get(lista, 0);
@@ -281,9 +186,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
             break;
         }
-
         case DUMP_MEMORY_OP: {
-            log_trace(logger, "DUMP_MEMORY_OP recibido");
+            log_trace(logger, "\033[38;2;234;213;51mDUMP_MEMORY_OP recibido\033[0m");
 
             // Recibir PID
                 int pid;
@@ -294,14 +198,12 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             
             // Enviar respuesta
             t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
-            log_debug(logger, "Enviando respuesta %s a cliente (fd=%d)", 
-                    (respuesta == OK) ? "OK" : "ERROR", cliente_socket);
-                send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
+            log_debug(logger, "Enviando respuesta %s a cliente (fd=%d)", (respuesta == OK) ? "OK" : "ERROR", cliente_socket);
+            send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
             break;
         }
-
         case FINALIZAR_PROC_OP: {
-            log_debug(logger, "FINALIZAR_PROC_OP recibido");
+            log_debug(logger, "\033[38;2;234;213;51mFINALIZAR_PROC_OP recibido\033[0m");
 
             // Recibir PID
                 int pid;
@@ -322,37 +224,61 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
             break;
         }
-
-        case EXEC_OP:
-            log_trace(logger, "EXEC_OP recibido");
-
-            // No implementado para el checkpoint 2
-            break;
-
-        case INTERRUPCION_OP:
-            log_trace(logger, "INTERRUPCION_OP recibido");
-
-            // No implementado para el checkpoint 2
-            break;
-
         case PEDIR_INSTRUCCION_OP: {
-            log_trace(logger, "PEDIR_INSTRUCCION_OP recibido");
+            log_trace(logger, "\033[38;2;234;213;51mPEDIR_INSTRUCCION_OP recibido\033[0m");
+
+            // DEBUGGING: Verificar estado del socket antes de procesar
+            log_trace(logger, "[PEDIR_INSTRUCCION] Cliente socket: %d", cliente_socket);
 
             // Recibir PID y PC desde paquete (para coincidir con CPU)
             t_list* lista = recibir_2_enteros_sin_op(cliente_socket);
+            if (!lista) {
+                log_error(logger, "[PEDIR_INSTRUCCION] Error al recibir parámetros del paquete - socket: %d", cliente_socket);
+                return;
+            }
+            
+            if (list_size(lista) < 2) {
+                log_error(logger, "[PEDIR_INSTRUCCION] Parámetros insuficientes recibidos - socket: %d", cliente_socket);
+                list_destroy(lista);
+                return;
+            }
+            
             int pid = (int)(intptr_t)list_get(lista, 0);  // PID primero
             int pc = (int)(intptr_t)list_get(lista, 1);   // PC segundo
             list_destroy(lista);
             
-            log_trace(logger, "Instrucción solicitada - PID: %d, PC: %d", pid, pc);
+            log_trace(logger, "Instrucción solicitada - PID: %d, PC: %d - Socket: %d", pid, pc, cliente_socket);
         
-            // Obtener y enviar la instrucción
-            enviar_instruccion_a_cpu(pid, pc, cliente_socket);
+            // DEBUGGING: Verificar antes de enviar la instrucción
+            log_trace(logger, "[PEDIR_INSTRUCCION] Iniciando envío de instrucción a CPU...");
+            
+            // Obtener la instrucción
+            t_instruccion* instruccion = get_instruction(pid, pc);
+            
+            if (instruccion != NULL) {
+                // Log obligatorio
+                log_instruccion_obtenida(pid, pc, instruccion);
+                
+                // Enviar instrucción usando paquetes
+                enviar_instruccion_a_cpu(cliente_socket, pid, pc,
+                                       instruccion->parametros1, 
+                                       instruccion->parametros2, 
+                                       instruccion->parametros3);
+                
+                // Liberar la instrucción obtenida
+                liberar_instruccion(instruccion);
+            } else {
+                // Enviar error usando paquetes (strings vacíos)
+                enviar_instruccion_a_cpu(cliente_socket, pid, pc, "", "", "");
+                log_error(logger, "[PEDIR_INSTRUCCION] Error: instrucción no encontrada - PID: %d, PC: %d", pid, pc);
+            }
+            
+            // DEBUGGING: Confirmar que el envío se completó
+            log_trace(logger, "[PEDIR_INSTRUCCION] ✓ Instrucción enviada - PID: %d, PC: %d, Socket: %d", pid, pc, cliente_socket);
             break;
         }
-
         case PEDIR_CONFIG_CPU_OP: {
-            log_trace(logger, "PEDIR_CONFIG_CPU_OP recibido");
+            log_trace(logger, "\033[38;2;234;213;51mPEDIR_CONFIG_CPU_OP recibido\033[0m");
 
             // Enviar la configuración necesaria para la CPU
                 int entradas_por_tabla = cfg->ENTRADAS_POR_TABLA;
@@ -370,18 +296,15 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         }
 
         // ============================================================================
-        // HANDLERS PARA LOS 4 TIPOS DE ACCESO ESPECÍFICOS DE LA CONSIGNA
+        // HANDLERS PARA LOS 4 TIPOS DE ACCESO ESPECÍFICOS DE MEMORIA
         // ============================================================================
-
-        case SOLICITAR_FRAME_PARA_ENTRADAS: {
-            log_trace(logger, "SOLICITAR_FRAME_PARA_ENTRADAS recibido");
+        case SOLICITAR_FRAME_PARA_PAGINA: {
+            log_trace(logger, "\033[38;2;234;213;51mSOLICITAR_FRAME_PARA_PAGINA recibido\033[0m");
 
             // Recibir parámetros del paquete
             t_list* lista = recibir_contenido_paquete(cliente_socket);
             
-            
-            // Procesar solicitud usando función dedicada
-            int numero_marco = procesar_solicitud_frame_entradas(lista);
+            int numero_marco = procesar_solicitud_frame_para_pagina(lista);
             
             // Enviar respuesta
             if (numero_marco != -1) {
@@ -395,12 +318,9 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             
             list_destroy_and_destroy_elements(lista, free);
             break;
-
-            
         }
-
         case ACCESO_TABLA_PAGINAS_OP: {
-            log_trace(logger, "ACCESO_TABLA_PAGINAS_OP recibido");
+            log_trace(logger, "\033[38;2;234;213;51mACCESO_TABLA_PAGINAS_OP recibido\033[0m");
 
             // Recibir parámetros: PID y número de página
             t_list* lista = recibir_2_enteros_sin_op(cliente_socket);
@@ -424,9 +344,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             }
             break;
         }
-
         case ACCESO_ESPACIO_USUARIO_OP: {
-            log_trace(logger, "ACCESO_ESPACIO_USUARIO_OP recibido");
+            log_trace(logger, "\033[38;2;234;213;51mACCESO_ESPACIO_USUARIO_OP recibido\033[0m");
 
             // Recibir parámetros del paquete
             t_list* lista = recibir_contenido_paquete(cliente_socket);
@@ -473,9 +392,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             list_destroy_and_destroy_elements(lista, free);
             break;
         }
-
         case LEER_PAGINA_COMPLETA_OP: {
-            log_trace(logger, "LEER_PAGINA_COMPLETA_OP recibido");
+            log_trace(logger, "\033[38;2;234;213;51mLEER_PAGINA_COMPLETA_OP recibido\033[0m");
 
             // Recibir parámetros: PID y dirección física
             t_list* lista = recibir_2_enteros_sin_op(cliente_socket);
@@ -501,9 +419,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             }
             break;
         }
-
         case ACTUALIZAR_PAGINA_COMPLETA_OP: {
-            log_trace(logger, "ACTUALIZAR_PAGINA_COMPLETA_OP recibido");
+            log_trace(logger, "\033[38;2;234;213;51mACTUALIZAR_PAGINA_COMPLETA_OP recibido\033[0m");
 
             // Recibir parámetros del paquete
             t_list* lista = recibir_contenido_paquete(cliente_socket);
@@ -532,9 +449,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             list_destroy_and_destroy_elements(lista, free);
             break;
         }
-
         case CHECK_MEMORY_SPACE_OP: {
-            log_trace(logger, "CHECK_MEMORY_SPACE_OP recibido");
+            log_trace(logger, "\033[38;2;234;213;51mCHECK_MEMORY_SPACE_OP recibido\033[0m");
 
             // Recibir tamaño solicitado
             int tamanio;
@@ -551,9 +467,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                      hay_espacio ? "OK" : "ERROR");
             break;
         }
-
         case SUSPENDER_PROCESO_OP: {
-            log_trace(logger, "SUSPENDER_PROCESO_OP recibido");
+            log_trace(logger, "\033[38;2;234;213;51mSUSPENDER_PROCESO_OP recibido\033[0m");
 
             // Recibir PID del proceso a suspender
             int pid;
@@ -570,9 +485,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                     (respuesta == OK) ? "exitosa" : "fallida", pid);
             break;
         }
-
         case DESUSPENDER_PROCESO_OP: {
-            log_trace(logger, "DESUSPENDER_PROCESO_OP recibido");
+            log_trace(logger, "\033[38;2;234;213;51mDESUSPENDER_PROCESO_OP recibido\033[0m");
 
             int pid;
             recv_data(cliente_socket, &pid, sizeof(int));
@@ -588,9 +502,69 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                     (respuesta == OK) ? "exitosa" : "fallida", pid);
             break;
         }
-
-        default:
+        default: { 
             log_error(logger, "Codigo de operacion desconocido recibido del cliente %d: %d", cliente_socket, cop);
             break;
+        }
     }
+}
+
+void procesar_write_op(int cliente_socket) {
+    t_list* lista = recibir_contenido_paquete(cliente_socket);
+    
+    if (list_size(lista) != 3) {
+        log_error(logger, "WRITE_OP: Se esperaban 3 parámetros pero se recibieron %d", list_size(lista));
+        list_destroy_and_destroy_elements(lista, free);
+        return;
+    }
+    
+    int pid = *(int*)list_get(lista, 0);
+    int direccion_fisica = *(int*)list_get(lista, 1);
+    char* datos_str = (char*)list_get(lista, 2);
+
+    log_info(logger, "\033[38;2;179;236;111m## PID: %d - Escritura - Dir. Física: %d - Tamaño: %ld\033[0m", 
+                pid, direccion_fisica, strlen(datos_str));
+
+    actualizar_metricas(pid, "MEMORY_WRITE");
+
+    strcpy((char*)(sistema_memoria->memoria_principal + direccion_fisica), datos_str);
+
+    t_respuesta respuesta = OK;
+    send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
+
+    // Liberar memoria
+    list_destroy_and_destroy_elements(lista, free);
+}
+
+void procesar_read_op(int cliente_socket) {
+    t_list* lista = recibir_contenido_paquete(cliente_socket);
+    
+    if (list_size(lista) != 3) {
+        log_error(logger, "READ_OP: Se esperaban 3 parámetros pero se recibieron %d", list_size(lista));
+        list_destroy_and_destroy_elements(lista, free);
+        return;
+    }
+    
+    // CPU envía: direccion_fisica (int con prefijo), size (int con prefijo), pid (int con prefijo)
+    int direccion_fisica = *(int*)list_get(lista, 0);
+    int size = *(int*)list_get(lista, 1);
+    int pid = *(int*)list_get(lista, 2);
+
+    log_info(logger, "\033[38;2;179;236;111m## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d\033[0m", 
+                pid, direccion_fisica, size);
+
+    actualizar_metricas(pid, "MEMORY_READ");
+
+    // Leer datos de memoria
+    char* datos_leidos = malloc(size + 1);
+    memcpy(datos_leidos, sistema_memoria->memoria_principal + direccion_fisica, size);
+    datos_leidos[size] = '\0'; // Null terminator
+
+    int buffer_size = size + 1;
+    if (!enviar_buffer_a_socket(cliente_socket, datos_leidos, buffer_size)) {
+        log_error(logger, "Error al enviar datos leídos - PID: %d", pid);
+    }
+
+    free(datos_leidos);
+    list_destroy_and_destroy_elements(lista, free);
 }

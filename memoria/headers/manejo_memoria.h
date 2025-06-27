@@ -480,16 +480,6 @@ void aplicar_retardo_memoria(void);
  */
 void aplicar_retardo_swap(void);
 
-// ============================================================================
-// FUNCIONES LEGACY (COMPATIBILIDAD CON CHECKPOINT 2)
-// ============================================================================
-
-/**
- * @brief Función legacy para compatibilidad con checkpoint 2
- * @deprecated Usar leer_memoria_fisica en su lugar
- */
-void* leer_pagina(int dir_fisica);
-
 
 // ============================================================================
 // FUNCIONES DE INICIALIZACIÓN Y FINALIZACIÓN
@@ -558,14 +548,7 @@ t_resultado_memoria procesar_memory_dump(int pid);
  */
 bool verificar_espacio_disponible(int tamanio);
 
-/**
- * @brief Obtiene una instrucción y la envía formateada a la CPU
- * 
- * @param pid PID del proceso
- * @param pc Program Counter
- * @param cliente_socket Socket de comunicación con la CPU
- */
-void enviar_instruccion_a_cpu(int pid, int pc, int cliente_socket);
+
 
 /**
  * @brief Función inversa de calcular_indices_multinivel
@@ -581,6 +564,6 @@ int calcular_numero_pagina_desde_entradas(int* entradas, int cantidad_niveles, i
  * @param lista Lista con los parámetros del paquete (PID, niveles, entradas...)
  * @return Número de marco asignado o -1 si hay error
  */
-int procesar_solicitud_frame_entradas(t_list* lista);
+int procesar_solicitud_frame_para_pagina(t_list* lista);
 
 #endif

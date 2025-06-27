@@ -6,6 +6,7 @@
 #include "../headers/manejo_swap.h"
 #include "../headers/utils.h"
 #include "../headers/monitor_memoria.h"
+#include "../headers/bloqueo_paginas.h"
 #include <commons/log.h>
 #include <commons/string.h>
 #include <string.h>
@@ -17,8 +18,28 @@ extern t_sistema_memoria* sistema_memoria;
 extern t_log* logger;
 extern t_config_memoria* cfg;
 
-// Declaraciones de funciones internas
+// Declaraciones de funciones auxiliares internas
 static void liberar_marcos_proceso(int pid);
+
+/**
+ * @brief Busca la entrada de tabla correspondiente a una página específica
+ * Función auxiliar para navegación en jerarquía multinivel
+ */
+static t_entrada_tabla* _buscar_entrada_pagina(int pid, int numero_pagina) {
+    if (!proceso_existe(pid)) {
+        return NULL;
+    }
+    
+    char* pid_str = string_itoa(pid);
+    t_estructura_paginas* estructura = dictionary_get(sistema_memoria->estructuras_paginas, pid_str);
+    free(pid_str);
+    
+    if (!estructura || !estructura->tabla_raiz) {
+        return NULL;
+    }
+    
+    return buscar_entrada_tabla(estructura, numero_pagina);
+}
 
 // ============================================================================
 // FUNCIONES DE GESTIÓN DE PROCESOS EN MEMORIA
@@ -176,7 +197,7 @@ t_resultado_memoria crear_proceso_en_memoria(int pid, int tamanio, char* nombre_
     }
 
     // ========== LOG OBLIGATORIO DE CREACIÓN ==========
-    log_info(logger, "## PID: %d - Proceso Creado - Tamaño: %d", pid, tamanio);
+    log_info(logger, "\033[38;2;179;236;111m## PID: %d - Proceso Creado - Tamaño: %d\033[0m", pid, tamanio);
     
     log_debug(logger, "PID: %d - Proceso creado exitosamente:", pid);
     log_debug(logger, "   - Páginas totales: %d", paginas_necesarias);
@@ -500,8 +521,8 @@ int acceso_tabla_paginas(int pid, int numero_pagina) {
     
     // Calcular índices para navegación multinivel
     int indices[estructura->cantidad_niveles];
-    calcular_indices_multinivel(numero_pagina, estructura->entradas_por_tabla, 
-                             estructura->cantidad_niveles, indices);
+    calcular_indices_multinivel(numero_pagina, estructura->cantidad_niveles, 
+                             estructura->entradas_por_tabla, indices);
     
     // Navegar nivel por nivel desde la raíz hasta la hoja
     t_tabla_paginas* tabla_actual = estructura->tabla_raiz;
@@ -636,32 +657,84 @@ void* acceso_espacio_usuario_lectura(int pid, int direccion_fisica, int tamanio)
         return NULL;
     }
     
-    // Validar que el proceso existe
     if (!proceso_existe(pid)) {
         log_error(logger, "PID: %d - Proceso no existe para lectura", pid);
         return NULL;
     }
     
-    // Incrementar métrica de lecturas usando función estándar
+    t_list* paginas_bloqueadas = NULL;
+    
+    // Proteger página con bloqueo para lectura
+    if (bloquear_marco_por_pagina(pid, direccion_fisica / cfg->TAM_PAGINA, "LECTURA_ESPACIO_USUARIO")) {
+        paginas_bloqueadas = list_create();
+        int* pag = malloc(sizeof(int));
+        *pag = direccion_fisica / cfg->TAM_PAGINA;
+        list_add(paginas_bloqueadas, pag);
+    } else {
+        log_warning(logger, "PID: %d - No se pudo bloquear página %d para lectura", pid, direccion_fisica / cfg->TAM_PAGINA);
+        return NULL;
+    }
+    
+    // Obtener el número de marco físico correspondiente a la página
+    int numero_pagina = direccion_fisica / cfg->TAM_PAGINA;
+    int numero_marco = acceso_tabla_paginas(pid, numero_pagina);
+    if (numero_marco == -1) {
+        int* pag = list_get(paginas_bloqueadas, 0);
+        desbloquear_marco_por_pagina(pid, *pag, "LECTURA_ESPACIO_USUARIO");
+        list_destroy_and_destroy_elements(paginas_bloqueadas, free);
+        log_error(logger, "PID: %d - No se pudo obtener marco para página %d", pid, numero_pagina);
+        return NULL;
+    }
+    
+    // Leer el contenido completo del marco
+    void* dato_leido = malloc(cfg->TAM_PAGINA);
+    if (!dato_leido) {
+        int* pag = list_get(paginas_bloqueadas, 0);
+        desbloquear_marco_por_pagina(pid, *pag, "LECTURA_ESPACIO_USUARIO");
+        list_destroy_and_destroy_elements(paginas_bloqueadas, free);
+        log_error(logger, "Error al asignar memoria para leer marco %d", numero_marco);
+        return NULL;
+    }
+    
+    if (!leer_contenido_marco(numero_marco, dato_leido)) {
+        free(dato_leido);
+        int* pag = list_get(paginas_bloqueadas, 0);
+        desbloquear_marco_por_pagina(pid, *pag, "LECTURA_ESPACIO_USUARIO");
+        list_destroy_and_destroy_elements(paginas_bloqueadas, free);
+        log_error(logger, "PID: %d - Error al leer contenido del marco %d", pid, numero_marco);
+        return NULL;
+    }
+    
+    // Incrementar métrica de lecturas de memoria
     incrementar_lecturas_memoria(pid);
     
     // Aplicar retardo de acceso a memoria
     usleep(cfg->RETARDO_MEMORIA * 1000);
     
-    // Reservar memoria para el resultado
-    void* resultado = malloc(tamanio);
-    if (resultado == NULL) {
-        log_error(logger, "PID: %d - Error al reservar memoria para lectura", pid);
+    // Obtener datos específicos con offset dentro de la página
+    int offset_en_pagina = direccion_fisica % cfg->TAM_PAGINA;
+    char* valor_leido = malloc(tamanio + 1);
+    if (!valor_leido) {
+        free(dato_leido);
+        int* pag = list_get(paginas_bloqueadas, 0);
+        desbloquear_marco_por_pagina(pid, *pag, "LECTURA_ESPACIO_USUARIO");
+        list_destroy_and_destroy_elements(paginas_bloqueadas, free);
+        log_error(logger, "Error al asignar memoria para valor leído");
         return NULL;
     }
     
-    // Copiar datos desde el espacio de usuario
-    memcpy(resultado, sistema_memoria->memoria_principal + direccion_fisica, tamanio);
+    memcpy(valor_leido, (char*)dato_leido + offset_en_pagina, tamanio);
+    valor_leido[tamanio] = '\0';
     
-    log_info(logger, "## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d", 
+    // Liberar recursos
+    free(dato_leido);
+    int* pag = list_get(paginas_bloqueadas, 0);
+    desbloquear_marco_por_pagina(pid, *pag, "LECTURA_ESPACIO_USUARIO");
+    
+    log_info(logger, "\033[38;2;179;236;111m## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d\033[0m", 
              pid, direccion_fisica, tamanio);
     
-    return resultado;
+    return valor_leido;
 }
 
 /**
@@ -692,16 +765,35 @@ bool acceso_espacio_usuario_escritura(int pid, int direccion_fisica, int tamanio
         return false;
     }
     
-    // Incrementar métrica de escrituras usando función estándar
-    incrementar_escrituras_memoria(pid);
+    // Variable para mantener páginas bloqueadas
+    t_list* paginas_bloqueadas = NULL;
     
-    // Aplicar retardo de acceso a memoria
-    usleep(cfg->RETARDO_MEMORIA * 1000);
+    // Proteger página con bloqueo para escritura
+    if (bloquear_marco_por_pagina(pid, direccion_fisica / cfg->TAM_PAGINA, "ESCRITURA_ESPACIO_USUARIO")) {
+        paginas_bloqueadas = list_create();
+        int* pag = malloc(sizeof(int));
+        *pag = direccion_fisica / cfg->TAM_PAGINA;
+        list_add(paginas_bloqueadas, pag);
+    } else {
+        log_warning(logger, "PID: %d - No se pudo bloquear página %d para escritura", pid, direccion_fisica / cfg->TAM_PAGINA);
+        return false;
+    }
     
     // Escribir datos en el espacio de usuario
     memcpy(sistema_memoria->memoria_principal + direccion_fisica, datos, tamanio);
     
-    log_info(logger, "## PID: %d - Escritura - Dir. Física: %d - Tamaño: %d", 
+    // MARCAR PÁGINA COMO MODIFICADA (DIRTY BIT)
+    t_entrada_tabla* entrada = _buscar_entrada_pagina(pid, direccion_fisica / cfg->TAM_PAGINA);
+    if (entrada) {
+        entrada->modificado = true;
+        log_trace(logger, "PID: %d - Página %d marcada como modificada (dirty bit)", pid, direccion_fisica / cfg->TAM_PAGINA);
+    }
+    
+    // Liberar recursos
+    int* pag = list_get(paginas_bloqueadas, 0);
+    desbloquear_marco_por_pagina(pid, *pag, "ESCRITURA_ESPACIO_USUARIO");
+    
+    log_info(logger, "\033[38;2;75;75;75m\033[48;2;179;236;111m## PID: %d - Escritura - Dir. Física: %d - Tamaño: %d\033[0m", 
              pid, direccion_fisica, tamanio);
     
     return true;
@@ -736,6 +828,19 @@ void* leer_pagina_completa(int pid, int direccion_fisica) {
         return NULL;
     }
     
+    t_list* paginas_bloqueadas = NULL;
+    
+    // Proteger página con bloqueo para lectura
+    if (bloquear_marco_por_pagina(pid, direccion_fisica / cfg->TAM_PAGINA, "LECTURA_PAGINA_COMPLETA")) {
+        paginas_bloqueadas = list_create();
+        int* pag = malloc(sizeof(int));
+        *pag = direccion_fisica / cfg->TAM_PAGINA;
+        list_add(paginas_bloqueadas, pag);
+    } else {
+        log_error(logger, "PID: %d - No se pudo bloquear página %d para lectura completa", pid, direccion_fisica / cfg->TAM_PAGINA);
+        return NULL;
+    }
+    
     // Incrementar métrica de lecturas usando función estándar
     incrementar_lecturas_memoria(pid);
     
@@ -746,11 +851,18 @@ void* leer_pagina_completa(int pid, int direccion_fisica) {
     void* pagina_completa = malloc(cfg->TAM_PAGINA);
     if (pagina_completa == NULL) {
         log_error(logger, "PID: %d - Error al reservar memoria para página completa", pid);
+        int* pag = list_get(paginas_bloqueadas, 0);
+        desbloquear_marco_por_pagina(pid, *pag, "LECTURA_PAGINA_COMPLETA");
+        list_destroy_and_destroy_elements(paginas_bloqueadas, free);
         return NULL;
     }
     
     // Copiar página completa desde el espacio de usuario
     memcpy(pagina_completa, sistema_memoria->memoria_principal + direccion_fisica, cfg->TAM_PAGINA);
+    
+    // Liberar recursos
+    int* pag = list_get(paginas_bloqueadas, 0);
+    desbloquear_marco_por_pagina(pid, *pag, "LECTURA_PAGINA_COMPLETA");
     
     log_trace(logger, "PID: %d - Página completa leída desde dirección física %d", pid, direccion_fisica);
     
@@ -792,6 +904,19 @@ bool actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido_p
         return false;
     }
     
+    t_list* paginas_bloqueadas = NULL;
+    
+    // Proteger página con bloqueo para escritura
+    if (bloquear_marco_por_pagina(pid, direccion_fisica / cfg->TAM_PAGINA, "ESCRITURA_PAGINA_COMPLETA")) {
+        paginas_bloqueadas = list_create();
+        int* pag = malloc(sizeof(int));
+        *pag = direccion_fisica / cfg->TAM_PAGINA;
+        list_add(paginas_bloqueadas, pag);
+    } else {
+        log_error(logger, "PID: %d - No se pudo bloquear página %d para escritura completa", pid, direccion_fisica / cfg->TAM_PAGINA);
+        return false;
+    }
+    
     // Incrementar métrica de escrituras usando función estándar
     incrementar_escrituras_memoria(pid);
     
@@ -800,6 +925,17 @@ bool actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido_p
     
     // Escribir página completa en el espacio de usuario
     memcpy(sistema_memoria->memoria_principal + direccion_fisica, contenido_pagina, cfg->TAM_PAGINA);
+    
+    // MARCAR LA PÁGINA COMO MODIFICADA (DIRTY BIT)
+    t_entrada_tabla* entrada = _buscar_entrada_pagina(pid, direccion_fisica / cfg->TAM_PAGINA);
+    if (entrada) {
+        entrada->modificado = true;
+        log_trace(logger, "PID: %d - Página %d marcada como modificada (dirty bit)", pid, direccion_fisica / cfg->TAM_PAGINA);
+    }
+    
+    // Liberar recursos
+    int* pag = list_get(paginas_bloqueadas, 0);
+    desbloquear_marco_por_pagina(pid, *pag, "ESCRITURA_PAGINA_COMPLETA");
     
     log_trace(logger, "PID: %d - Página completa actualizada en dirección física %d", pid, direccion_fisica);
     
@@ -840,8 +976,8 @@ t_entrada_tabla* crear_entrada_tabla_si_no_existe(t_estructura_paginas* estructu
     }
 
     int indices[estructura->cantidad_niveles];
-    calcular_indices_multinivel(numero_pagina, estructura->entradas_por_tabla, 
-                             estructura->cantidad_niveles, indices);
+    calcular_indices_multinivel(numero_pagina, estructura->cantidad_niveles, 
+                             estructura->entradas_por_tabla, indices);
 
     t_tabla_paginas* tabla_actual = estructura->tabla_raiz;
     t_entrada_tabla* entrada = NULL;
@@ -891,8 +1027,7 @@ int calcular_numero_pagina_desde_entradas(int* entradas, int cantidad_niveles, i
  * Procesa una solicitud de frame para entradas multinivel
  * Extrae los parámetros del paquete y calcula el marco correspondiente
  */
-
-int procesar_solicitud_frame_entradas(t_list* lista) {
+int procesar_solicitud_frame_para_pagina(t_list* lista) {
     if (!lista || list_size(lista) < 2) {
         log_error(logger, "Solicitud inválida: se esperaban PID y número de página");
         return -1;

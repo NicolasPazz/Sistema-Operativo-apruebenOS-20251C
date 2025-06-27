@@ -20,7 +20,6 @@ int main(int argc, char* argv[]) {
     }
 
     iniciar_sincronizacion_kernel();
-    iniciar_logger_kernel_debug();
     iniciar_config_kernel();
     iniciar_logger_kernel();
     iniciar_estados_kernel();
@@ -41,7 +40,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
     pthread_detach(hilo_dispatch);
-    //log_trace(kernel_log, "Hilo de servidor Dispatch creado correctamente");
+    log_info(kernel_log, "Hilo de servidor Dispatch creado correctamente");
 
     // Servidor de CPU (Interrupt)
     pthread_t hilo_interrupt;
@@ -51,7 +50,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
     pthread_detach(hilo_interrupt);
-    //log_trace(kernel_log, "Hilo de servidor Interrupt creado correctamente");
+    log_info(kernel_log, "Hilo de servidor Interrupt creado correctamente");
 
     // Cliente de Memoria
     pthread_t hilo_memoria;
@@ -61,7 +60,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
     pthread_detach(hilo_memoria);
-    //log_trace(kernel_log, "Hilo cliente de Memoria creado correctamente");
+    log_info(kernel_log, "Hilo cliente de Memoria creado correctamente");
 
     // Servidor de IO
     pthread_t hilo_io;
@@ -71,10 +70,10 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
     pthread_detach(hilo_io);
-    //log_trace(kernel_log, "Hilo de servidor IO creado correctamente");
+    log_info(kernel_log, "Hilo de servidor IO creado correctamente");
 
     //////////////////////////// Esperar conexiones minimas ////////////////////////////
-    log_trace(kernel_log, "Esperando conexion con al menos una CPU, una IO y Memoria...");
+    log_info(kernel_log, "Esperando conexion con al menos una CPU, una IO y Memoria...");
 
     while (true) {
         pthread_mutex_lock(&mutex_conexiones);
@@ -83,13 +82,13 @@ int main(int argc, char* argv[]) {
         sleep(1);
     }
 
-    log_trace(kernel_log, "CPU, IO y Memoria conectados. Continuando ejecucion");
+    log_info(kernel_log, "CPU, IO y Memoria conectados. Continuando ejecucion");
     
     //////////////////////////// Primer proceso ////////////////////////////
     printf("\n\n\n");
     mostrar_colas_estados();
     
-    log_trace(kernel_log, "Creando proceso inicial:  Archivo: %s, Tamanio: %d", archivo_pseudocodigo, tamanio_proceso);
+    log_info(kernel_log, "Creando proceso inicial:  Archivo: %s, Tamanio: %d", archivo_pseudocodigo, tamanio_proceso);
     INIT_PROC(archivo_pseudocodigo, tamanio_proceso);
     
     mostrar_colas_estados();    
@@ -112,7 +111,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    log_debug(kernel_log, "Kernel ejecutandose. Presione Ctrl+C para terminar.\n");
+    log_info(kernel_log, "Kernel ejecutandose. Presione Ctrl+C para terminar.\n");
 
     activar_planificador_largo_plazo();
 

@@ -41,4 +41,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket);
 int iniciar_conexiones_memoria(char* puerto, t_log* logger);
 int server_escuchar(char* server_name, int server_socket);
 
+// Funciones para manejar operaciones específicas
+void procesar_write_op(int cliente_socket);
+void procesar_read_op(int cliente_socket);
+
 #endif 

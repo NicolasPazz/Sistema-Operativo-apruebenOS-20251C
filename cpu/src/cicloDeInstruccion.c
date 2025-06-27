@@ -64,25 +64,35 @@ void ejecutar_ciclo_instruccion() {
 
 // fetch
 t_instruccion* fetch() {
-    log_info(cpu_log, "## PID: %d - FETCH - Program Counter: %d", pid_ejecutando, pc);
+    log_info(cpu_log, "\033[38;2;179;236;111m## PID: %d - FETCH - Program Counter: %d\033[0m", pid_ejecutando, pc);
 
+    // DEBUGGING: Verificar estado de la conexión antes de enviar
+    log_trace(cpu_log, "[FETCH] Verificando estado de conexión con memoria (fd=%d)...", fd_memoria);
+    
     log_trace(cpu_log, "[FETCH] Enviando solicitud PEDIR_INSTRUCCION_OP a memoria...");
     t_paquete* paquete = crear_paquete_op(PEDIR_INSTRUCCION_OP);
     agregar_entero_a_paquete(paquete, pid_ejecutando);  // CAMBIO: PID primero
     agregar_entero_a_paquete(paquete, pc);              // CAMBIO: PC segundo
+    
+    // DEBUGGING: Enviar paquete (función void, no devuelve valor)
     enviar_paquete(paquete, fd_memoria);
+    log_trace(cpu_log, "[FETCH] ✓ Paquete enviado a memoria - PID: %d, PC: %d", pid_ejecutando, pc);
+    
     eliminar_paquete(paquete);
 
-    log_trace(cpu_log, "[FETCH] ✓ Solicitud enviada a memoria - PID: %d, PC: %d", pid_ejecutando, pc);
-
+    // DEBUGGING: Agregar timeout o verificación de estado de socket antes de recibir
+    log_trace(cpu_log, "[FETCH] Intentando recibir instrucción desde memoria...");
+    
     // CAMBIO: Memoria ahora envía solo el buffer de datos, no un paquete con op_code
     // Por lo tanto, NO necesitamos recibir_operacion()
-    t_instruccion* instruccion = recibir_instruccion(fd_memoria);
+    t_instruccion* instruccion = recibir_instruccion_desde_memoria();
     
     if (instruccion != NULL) {
         log_trace(cpu_log, "[FETCH] ✓ Instrucción obtenida exitosamente desde memoria");
     } else {
         log_error(cpu_log, "[FETCH] ✗ Error al recibir instrucción desde memoria");
+        // DEBUGGING: Agregar información adicional sobre el estado del socket
+        log_error(cpu_log, "[FETCH] Estado del socket fd_memoria: %d", fd_memoria);
     }
 
     return instruccion;
@@ -134,7 +144,7 @@ void execute(op_code tipo_instruccion, t_instruccion* instruccion) {
         }
     }
     
-    log_info(cpu_log, "## PID: %d - Ejecutando: %s - %s", 
+    log_info(cpu_log, "\033[38;2;179;236;111m## PID: %d - Ejecutando: %s - %s\033[0m", 
              pid_ejecutando, 
              instruccion->parametros1, 
              strlen(params_str) > 0 ? params_str : "");

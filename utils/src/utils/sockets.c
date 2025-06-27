@@ -8,7 +8,7 @@
 #include "../headers/sockets.h"
 
         /////////////////////////////// Log y Config ///////////////////////////////
-t_log* iniciar_logger(char *file, char *process_name, bool is_active_console, t_log_level level) {
+    t_log* iniciar_logger(char *file, char *process_name, bool is_active_console, t_log_level level) {
     remove(file);
 	t_log* nuevo_logger = log_create(file, process_name,is_active_console,level);
 	if (nuevo_logger == NULL) {
@@ -186,7 +186,7 @@ void liberar_conexion(int socket_cliente) {
 bool validar_handshake(int fd, handshake_code esperado, t_log* log) {
     int recibido;
     if (recv(fd, &recibido, sizeof(int), MSG_WAITALL) != sizeof(int)) {
-        log_error(log, "Error recibiendo handshake (fd=%d): %s", fd, strerror(errno));
+        //log_error(log, "Error recibiendo handshake (fd=%d): %s", fd, strerror(errno));
         return false;
     }
 

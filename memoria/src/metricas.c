@@ -125,7 +125,7 @@ void imprimir_metricas_proceso(int pid) {
     
     // Formato EXACTO según consigna:
     // "Acc.T.Pag: <ATP>; Inst.Sol.: <Inst.Sol.>; SWAP: <SWAP>; Mem.Prin.: <Mem.Prin.>; Lec.Mem.: <Lec.Mem.>; Esc.Mem.: <Esc.Mem.>"
-    log_info(logger, "## PID: %d - Proceso Destruido - Métricas - Acc.T.Pag: %d; Inst.Sol.: %d; SWAP: %d; Mem.Prin.: %d; Lec.Mem.: %d; Esc.Mem.: %d",
+    log_info(logger, "\033[38;2;75;75;75m\033[48;2;179;236;111m## PID: %d - Proceso Destruido - Métricas - Acc.T.Pag: %d; Inst.Sol.: %d; SWAP: %d; Mem.Prin.: %d; Lec.Mem.: %d; Esc.Mem.: %d\033[0m",
              pid,
              metricas->accesos_tabla_paginas,
              metricas->instrucciones_solicitadas,

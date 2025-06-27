@@ -53,10 +53,10 @@ int main(int argc, char* argv[]) {
             
                 log_debug(io_log, "PID recibido: %d | Tiempo de IO: %d", pid, tiempo_io);
             
-                log_info(io_log, "## PID: %d - Inicio de IO - Tiempo: %d", pid, tiempo_io);
+                log_info(io_log, "\033[38;2;179;236;111m## PID: %d - Inicio de IO - Tiempo: %d\033[0m", pid, tiempo_io);
                 log_trace(io_log, "Simulando operación de I/O para PID %d durante %.3f milisegundos...", pid, (double)tiempo_io/1000);
                 usleep(tiempo_io);
-                log_info(io_log, "## PID: %d - Fin de IO", pid);
+                log_info(io_log, "\033[38;2;179;236;111m## PID: %d - Fin de IO\033[0m", pid);
             
                 op_code finalizado = IO_FINALIZADA_OP;
                 if (send(fd_kernel_io, &finalizado, sizeof(op_code), 0) <= 0 ||

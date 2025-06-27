@@ -6,7 +6,6 @@
 /////////////////////////////// Declaracion de variables globales ///////////////////////////////
 // Logger
 t_log* kernel_log;
-t_log* kernel_log_debug;
 
 // Hashmap de cronometros por PCB
 t_dictionary* tiempos_por_pid;
@@ -102,31 +101,26 @@ void iniciar_config_kernel() {
     if (!IP_MEMORIA || !PUERTO_MEMORIA || !PUERTO_ESCUCHA_DISPATCH || !PUERTO_ESCUCHA_INTERRUPT ||
         !PUERTO_ESCUCHA_IO || !ALGORITMO_CORTO_PLAZO || !ALGORITMO_INGRESO_A_READY ||
         !ALFA || !ESTIMACION_INICIAL || !TIEMPO_SUSPENSION || !LOG_LEVEL) {
-        log_error(kernel_log_debug, "iniciar_config_kernel: Faltan campos obligatorios en kernel.config");
+        printf("iniciar_config_kernel: Faltan campos obligatorios en kernel.config");
         exit(EXIT_FAILURE);
     } else {
-        log_trace(kernel_log_debug, "IP_MEMORIA: %s", IP_MEMORIA);
-        log_trace(kernel_log_debug, "PUERTO_MEMORIA: %s", PUERTO_MEMORIA);
-        log_trace(kernel_log_debug, "PUERTO_ESCUCHA_DISPATCH: %s", PUERTO_ESCUCHA_DISPATCH);
-        log_trace(kernel_log_debug, "PUERTO_ESCUCHA_INTERRUPT: %s", PUERTO_ESCUCHA_INTERRUPT);
-        log_trace(kernel_log_debug, "PUERTO_ESCUCHA_IO: %s", PUERTO_ESCUCHA_IO);
-        log_trace(kernel_log_debug, "ALGORITMO_CORTO_PLAZO: %s", ALGORITMO_CORTO_PLAZO);
-        log_trace(kernel_log_debug, "ALGORITMO_INGRESO_A_READY: %s", ALGORITMO_INGRESO_A_READY);
-        log_trace(kernel_log_debug, "ALFA: %.2f", ALFA);
-        log_trace(kernel_log_debug, "ESTIMACION_INICIAL: %.2f", ESTIMACION_INICIAL);
-        log_trace(kernel_log_debug, "TIEMPO_SUSPENSION: %s", TIEMPO_SUSPENSION);
-        log_trace(kernel_log_debug, "LOG_LEVEL: %s", LOG_LEVEL);
+        printf("IP_MEMORIA: %s", IP_MEMORIA);
+        printf("PUERTO_MEMORIA: %s", PUERTO_MEMORIA);
+        printf("PUERTO_ESCUCHA_DISPATCH: %s", PUERTO_ESCUCHA_DISPATCH);
+        printf("PUERTO_ESCUCHA_INTERRUPT: %s", PUERTO_ESCUCHA_INTERRUPT);
+        printf("PUERTO_ESCUCHA_IO: %s", PUERTO_ESCUCHA_IO);
+        printf("ALGORITMO_CORTO_PLAZO: %s", ALGORITMO_CORTO_PLAZO);
+        printf("ALGORITMO_INGRESO_A_READY: %s", ALGORITMO_INGRESO_A_READY);
+        printf("ALFA: %.2f", ALFA);
+        printf("ESTIMACION_INICIAL: %.2f", ESTIMACION_INICIAL);
+        printf("TIEMPO_SUSPENSION: %s", TIEMPO_SUSPENSION);
+        printf("LOG_LEVEL: %s", LOG_LEVEL);
     }
 }
 
 void iniciar_logger_kernel() {
     kernel_log = iniciar_logger("kernel/kernel.log", "KERNEL", 1, log_level_from_string(LOG_LEVEL));
     log_trace(kernel_log, "Kernel log iniciado correctamente!");
-}
-
-void iniciar_logger_kernel_debug() {
-    kernel_log_debug = iniciar_logger("kernel/kernel_config_debug.log", "KERNEL", 1, LOG_LEVEL_TRACE);
-    log_trace(kernel_log_debug, "Kernel log de debug iniciado correctamente!");
 }
 
 void iniciar_estados_kernel() { 
@@ -186,7 +180,6 @@ void iniciar_diccionario_archivos_por_pcb() {
 
 void terminar_kernel() {
     log_destroy(kernel_log);
-    log_destroy(kernel_log_debug);
     config_destroy(kernel_config);
 
     list_destroy(cola_new);
@@ -349,7 +342,7 @@ void* atender_cpu_dispatch(void* arg) {
 
         switch (cop) {
             case INIT_PROC_OP: {
-                log_info(kernel_log, "## (%d) Solicitó syscall: INIT_PROC", pid);
+                log_info(kernel_log, "\033[38;2;179;236;111m## (%d) Solicitó syscall: INIT_PROC\033[0m", pid);
                 log_trace(kernel_log, "INIT_PROC_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
             
                 // Recibir buffer
@@ -378,7 +371,7 @@ void* atender_cpu_dispatch(void* arg) {
             }
 
             case IO_OP: {
-                log_info(kernel_log, "## (%d) Solicitó syscall: IO", pid);
+                log_info(kernel_log, "\033[38;2;179;236;111m## (%d) Solicitó syscall: IO\033[0m", pid);
                 log_trace(kernel_log, "IO_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
             
                 char* nombre_IO = NULL;
@@ -421,7 +414,7 @@ void* atender_cpu_dispatch(void* arg) {
             }            
 
             case EXIT_OP:
-                log_info(kernel_log, "## (%d) Solicitó syscall: EXIT", pid);
+                log_info(kernel_log, "\033[38;2;179;236;111m## (%d) Solicitó syscall: EXIT\033[0m", pid);
                 log_trace(kernel_log, "EXIT_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
 
                 // Obtener PID del proceso que está ejecutando esta CPU
@@ -458,7 +451,7 @@ void* atender_cpu_dispatch(void* arg) {
                 break;
 
             case DUMP_MEMORY_OP:
-                log_info(kernel_log, "## (%d) Solicitó syscall: DUMP_MEMORY", pid);
+                log_info(kernel_log, "\033[38;2;179;236;111m## (%d) Solicitó syscall: DUMP_MEMORY\033[0m", pid);
                 log_trace(kernel_log, "DUMP_MEMORY_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
                 
                 // Obtener el PCB del proceso
