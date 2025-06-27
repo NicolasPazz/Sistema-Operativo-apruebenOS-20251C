@@ -1,0 +1,4 @@
+NOOP
+NOOP
+WRITE 1000 segfault
+EXIT

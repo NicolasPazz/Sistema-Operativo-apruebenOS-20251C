@@ -286,7 +286,3 @@ void FINALIZAR_PROC_OP_mock() {
     scanf("%d", &pid);
     FINALIZAR_PROC(pid);
 }
-
-void SEND_PSEUDOCOD_FILE_mock() {
-    log_trace(mock_log, "## Ejecutando SEND_PSEUDOCOD_FILE_mock");
-}

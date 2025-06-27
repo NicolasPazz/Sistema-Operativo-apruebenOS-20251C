@@ -78,7 +78,7 @@ int iniciar_servidor(char *puerto, t_log* logger, char* msj_server) {
 	}
 
 	freeaddrinfo(servinfo);
-	log_trace(logger, "%s escuchando en puerto %s", msj_server, puerto);
+	log_info(logger, AZUL("[Servidor]")VERDE(" %s")" escuchando en puerto"VERDE(" %s"), msj_server, puerto);
 
 	return socket_servidor;
 }
@@ -406,9 +406,11 @@ t_paquete* crear_paquete_op(op_code codop) {
  * @param numero Valor entero (4 bytes) que se agregará al final del buffer.
  */
 void agregar_entero_a_paquete(t_paquete *paquete, int numero) {
-    paquete->buffer->stream = realloc(paquete->buffer->stream, paquete->buffer->size + sizeof(int));
-    memcpy(paquete->buffer->stream + paquete->buffer->size, &numero, sizeof(int));
-    paquete->buffer->size += sizeof(int);
+    int tamanio = sizeof(int);
+    paquete->buffer->stream = realloc(paquete->buffer->stream, paquete->buffer->size + sizeof(int) + tamanio);
+    memcpy(paquete->buffer->stream + paquete->buffer->size, &tamanio, sizeof(int));
+    memcpy(paquete->buffer->stream + paquete->buffer->size + sizeof(int), &numero, tamanio);
+    paquete->buffer->size += sizeof(int) + tamanio;
 }
 
 void agregar_string_a_paquete(t_paquete* paquete, char* cadena) {
@@ -670,73 +672,3 @@ bool recibir_enteros(int socket, int* destino, int cantidad) {
     int recibidos = recv(socket, destino, total_bytes, MSG_WAITALL);
     return recibidos == total_bytes;
 }
-
-/*
-// WARNING: posible leak usando esta funcion (reserva memoria y no la libera), siempre liberar los mallocs despues de usar
-t_list* recibir_4_enteros(int socket) {
-	int entero1;
-	int entero2;
-	int entero3;
-	int entero4;
-	
-
-	int size = 0;
-    char *buffer;
-    int desp = 0;
-	t_list* lista = list_create();
-
-    buffer = recibir_buffer(&size, socket);
-
-	entero1 = leer_entero(buffer,&desp);
-	entero2 = leer_entero(buffer,&desp);
-	entero3 = leer_entero(buffer,&desp);
-	entero4 = leer_entero(buffer,&desp);
-
-	list_add(lista, (void *)(uintptr_t)entero1);
-	list_add(lista, (void *)(uintptr_t)entero2);
-	list_add(lista, (void *)(uintptr_t)entero3);
-	list_add(lista, (void *)(uintptr_t)entero4);
-	
-
-	free(buffer);
-	return lista;
-}
-
-int recibir_entero(int socket)
-{
-
-    int size = 0;
-    char *buffer;
-    int desp = 0;
-
-    buffer = recibir_buffer(&size, socket);
-    int entero = leer_entero(buffer, &desp);
-    
-    free(buffer);
-    return entero;
-}
-
-// WARNING: posible leak usando esta funcion (reserva memoria y no la libera), siempre liberar los mallocs despues de usar
-t_list* recibir_2_enteros(int socket) {
-	int entero1;
-	int entero2;
-	
-
-	int size = 0;
-    char *buffer;
-    int desp = 0;
-	t_list* lista = list_create();
-
-    buffer = recibir_buffer(&size, socket);
-
-	entero1 = leer_entero(buffer,&desp);
-	entero2 = leer_entero(buffer,&desp);
-
-	list_add(lista, (void *)(uintptr_t)entero1);
-	list_add(lista, (void *)(uintptr_t)entero2);	
-
-	free(buffer);
-	return lista;
-}
-
-*/

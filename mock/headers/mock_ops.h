@@ -21,7 +21,6 @@ void PEDIR_CONFIG_CPU_OP_mock(void);
 void IO_FINALIZADA_OP_mock(void);
 void FINALIZAR_PROC_OP_mock(void);
 void DEBUGGER_mock(void);
-void SEND_PSEUDOCOD_FILE_mock(void);
 void NOOP_OP_mock(void);
 void WRITE_OP_mock(void);
 void READ_OP_mock(void);
