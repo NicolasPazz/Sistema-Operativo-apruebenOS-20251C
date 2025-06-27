@@ -265,7 +265,7 @@ void* hilo_cliente_memoria(void* _) {
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 void* hilo_servidor_dispatch(void* _) {
-    fd_dispatch = iniciar_servidor(PUERTO_ESCUCHA_DISPATCH, kernel_log, "Servidor Kernel Dispatch");
+    fd_dispatch = iniciar_servidor(PUERTO_ESCUCHA_DISPATCH, kernel_log, "Kernel Dispatch");
 
     while (1) {
         int fd_cpu_dispatch = esperar_cliente(fd_dispatch, kernel_log);
@@ -306,7 +306,7 @@ void* hilo_servidor_dispatch(void* _) {
         conectado_cpu = true;
         pthread_mutex_unlock(&mutex_conexiones);
 
-        log_trace(kernel_log, "HANDSHAKE_CPU_KERNEL_DISPATCH: CPU conectada exitosamente a Dispatch (fd=%d), ID=%d", nueva_cpu->fd, nueva_cpu->id);
+        log_info(kernel_log, "HANDSHAKE_CPU_KERNEL_DISPATCH: CPU conectada exitosamente a Dispatch (fd=%d), ID=%d", nueva_cpu->fd, nueva_cpu->id);
 
         int* arg = malloc(sizeof(int));
         *arg = fd_cpu_dispatch;
@@ -342,57 +342,56 @@ void* atender_cpu_dispatch(void* arg) {
 
         switch (cop) {
             case INIT_PROC_OP: {
-                log_info(kernel_log, "\033[38;2;179;236;111m## (%d) Solicitó syscall: INIT_PROC\033[0m", pid);
+                log_info(kernel_log, VERDE("## (PID: %d) Solicitó syscall: ")ROJO("INIT_PROC"), pid);
                 log_trace(kernel_log, "INIT_PROC_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
             
-                // Recibir buffer
-                int buffer_size;
-                void* buffer = recibir_buffer(&buffer_size, fd_cpu_dispatch);
-                if (!buffer) {
-                    log_error(kernel_log, "Error al recibir buffer en INIT_PROC_OP");
+                // ========== RECIBIR PARÁMETROS ==========
+                t_list* parametros_init_proc = recibir_contenido_paquete(fd_cpu_dispatch);
+                if (!parametros_init_proc) {
+                    log_error(kernel_log, "Error al recibir parámetros para INIT_PROC_OP desde CPU Dispatch");
                     break;
                 }
 
-                // Serializar path y size
-                int offset = 0;
-                char* path = leer_string(buffer, &offset);
-                int size = leer_entero(buffer, &offset);            
-
-                // Mantener el path completo en lugar de extraer solo el nombre
-                char* nombre = strdup(path); // Hacer una copia del path completo
-
+                // Nombre y size
+                char* nombre = (char*)list_get(parametros_init_proc, 0);
+                int size = *(int*)list_get(parametros_init_proc, 1);
+                log_trace(kernel_log, "Proceso: %s Size: %d recibido de CPU Dispatch (fd=%d)", nombre, size, fd_cpu_dispatch);   
                 log_debug(kernel_log, "atender_cpu_dispatch: Iniciando nuevo proceso con nombre de archivo '%s' y size %d", nombre, size);
+                
+                // ========== EJECUTAR SYSCALL ==========
                 INIT_PROC(nombre, size);
-            
-                free(path);
-                free(nombre); // Liberar la copia del nombre
-                free(buffer);
+
+                // Liberar memoria
+                list_destroy_and_destroy_elements(parametros_init_proc, free);
                 break;
             }
 
             case IO_OP: {
-                log_info(kernel_log, "\033[38;2;179;236;111m## (%d) Solicitó syscall: IO\033[0m", pid);
+                log_info(kernel_log, VERDE("## (PID: %d) Solicitó syscall: ")ROJO("IO"), pid);
                 log_trace(kernel_log, "IO_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
-            
-                char* nombre_IO = NULL;
-                int cant_tiempo;
-                int PC;
-           
-                if (!recv_IO_from_CPU(fd_cpu_dispatch, &nombre_IO, &cant_tiempo, &PC)) {
-                    free(nombre_IO);
-                    log_error(kernel_log, "Error al recibir la IO desde CPU");
-                    break;
-                }
-            
-                log_trace(kernel_log, "Se recibió correctamente la IO '%s' con tiempo=%d", nombre_IO, cant_tiempo);
-            
-                t_pcb* pcb_a_io = buscar_pcb(pid);
-                if (!pcb_a_io) {
-                    log_error(kernel_log, "No se encontró PCB para PID=%d", pid);
-                    free(nombre_IO);
+
+                // ========== RECIBIR PARÁMETROS ==========
+                t_list* parametros_io = recibir_contenido_paquete(fd_cpu_dispatch);
+                if (!parametros_io) {
+                    log_error(kernel_log, "Error al recibir parámetros para IO_OP desde CPU Dispatch");
                     break;
                 }
 
+                // Nombre IO, Tiempo a usar y PC
+                char* nombre_IO = (char*)list_get(parametros_io, 0);
+                int cant_tiempo = *(int*)list_get(parametros_io, 1);
+                int PC = *(int*)list_get(parametros_io, 2);
+            
+                log_info(kernel_log, "Recibida de CPU Dispatch IO '%s' con tiempo=%d", nombre_IO, cant_tiempo);
+
+                // Buscar Proceso PCB para mandarlo a IO y bloquearlo
+                t_pcb* pcb_a_io = buscar_pcb(pid);
+                if (!pcb_a_io) {
+                    log_error(kernel_log, "No se encontró PCB para PID=%d", pid);
+                    list_destroy_and_destroy_elements(parametros_io, free);
+                    break;
+                }
+                // Actualizar el PC con el que me dijo CPU
                 pcb_a_io->PC = PC;
 
                 pthread_mutex_lock(&mutex_lista_cpus);
@@ -403,18 +402,17 @@ void* atender_cpu_dispatch(void* arg) {
                 sem_post(&sem_cpu_disponible);
 
                 log_debug(kernel_log, "atender_cpu_dispatch: Semaforo CPU DISPONIBLE aumentado por IO");
-            
                 log_trace(kernel_log, "Procesando solicitud de IO '%s' por %d ms para PID=%d", nombre_IO, cant_tiempo, pcb_a_io->PID);
     
+                // ========== EJECUTAR SYSCALL ==========
                 IO(nombre_IO, cant_tiempo, pcb_a_io);
 
-                free(nombre_IO);
-
-              break;
+                list_destroy_and_destroy_elements(parametros_io,free);
+                break;
             }            
 
             case EXIT_OP:
-                log_info(kernel_log, "\033[38;2;179;236;111m## (%d) Solicitó syscall: EXIT\033[0m", pid);
+                log_info(kernel_log, VERDE("## (PID: %d) Solicitó syscall: ")ROJO("EXIT"), pid);
                 log_trace(kernel_log, "EXIT_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
 
                 // Obtener PID del proceso que está ejecutando esta CPU
@@ -451,22 +449,28 @@ void* atender_cpu_dispatch(void* arg) {
                 break;
 
             case DUMP_MEMORY_OP:
-                log_info(kernel_log, "\033[38;2;179;236;111m## (%d) Solicitó syscall: DUMP_MEMORY\033[0m", pid);
+                log_info(kernel_log, VERDE("## (PID: %d) Solicitó syscall: ")ROJO("DUMP_MEMORY"), pid);
                 log_trace(kernel_log, "DUMP_MEMORY_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
                 
+                // ========== RECIBIR PARÁMETROS ==========
+                t_list* parametros_dump = recibir_contenido_paquete(fd_cpu_dispatch);
+                int PID = *(int*)list_get(parametros_dump, 0);
+
                 // Obtener el PCB del proceso
-                t_pcb* pcb_dump = obtener_pcb_por_pid(pid);
+                t_pcb* pcb_dump = buscar_pcb(PID);
                 if (!pcb_dump) {
-                    log_error(kernel_log, "DUMP_MEMORY_OP: No se encontró PCB para PID %d", pid);
+                    log_error(kernel_log, "DUMP_MEMORY_OP: No se encontró PCB para PID %d", PID);
                     break;
                 }
-                // TODO: actualizar PC
-                // Llamar a la función DUMP_MEMORY
+
+                // ========== EJECUTAR SYSCALL ==========
                 DUMP_MEMORY(pcb_dump);
+
+                list_destroy_and_destroy_elements(parametros_dump, free);
                 break;
                 
             default:
-                log_error(kernel_log, "(%d) Código op desconocido recibido de Dispatch fd %d: %d", pid, fd_cpu_dispatch, cop);
+                log_error(kernel_log, "(PID: %d) Código op desconocido recibido de Dispatch fd %d: %d", pid, fd_cpu_dispatch, cop);
                 break;
         }
 
@@ -494,7 +498,7 @@ void* atender_cpu_dispatch(void* arg) {
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 void* hilo_servidor_interrupt(void* _) {
-    fd_interrupt = iniciar_servidor(PUERTO_ESCUCHA_INTERRUPT, kernel_log, "Servidor Kernel Interrupt");
+    fd_interrupt = iniciar_servidor(PUERTO_ESCUCHA_INTERRUPT, kernel_log, "Kernel Interrupt");
 
     while (1) {
         int fd_cpu_interrupt = esperar_cliente(fd_interrupt, kernel_log);
@@ -566,7 +570,7 @@ void* atender_cpu_interrupt(void* arg) {
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 void* hilo_servidor_io(void* _) {
-    fd_kernel_io = iniciar_servidor(PUERTO_ESCUCHA_IO, kernel_log, "Servidor Kernel IO");
+    fd_kernel_io = iniciar_servidor(PUERTO_ESCUCHA_IO, kernel_log, "Kernel IO");
 
     while (1) {
         int fd_io = esperar_cliente(fd_kernel_io, kernel_log);
@@ -733,22 +737,19 @@ t_pcb_io* obtener_pcb_esperando_io(char* nombre_io) {
 }
 
 void asignar_proceso(io* dispositivo, t_pcb_io* proceso) {
-    // Marcar el dispositivo como ocupado
     dispositivo->estado = IO_OCUPADO;
     dispositivo->proceso_actual = proceso->pcb;
     proceso->io = dispositivo;
-    
-    // Preparar payload con PID y tiempo
-    int payload[2] = { proceso->pcb->PID, proceso->tiempo_a_usar };
 
-    // Enviar operación y datos
-    if (!enviar_operacion(dispositivo->fd, IO_OP) ||
-        !enviar_enteros(dispositivo->fd, payload, 2)) {
-        log_error(kernel_log, "Error al enviar IO_OP + datos a IO '%s'", dispositivo->nombre);
-        terminar_kernel();
-        exit(EXIT_FAILURE);
-    }
-    
+    // Crear paquete serializado
+    t_paquete* paquete = crear_paquete_op(IO_OP);
+    agregar_a_paquete(paquete, dispositivo->nombre, strlen(dispositivo->nombre) + 1); // nombre de la IO
+    agregar_entero_a_paquete(paquete, proceso->tiempo_a_usar); // tiempo
+    agregar_entero_a_paquete(paquete, proceso->pcb->PID); // pid
+
+    enviar_paquete(paquete, dispositivo->fd);
+    eliminar_paquete(paquete);
+
     log_trace(kernel_log, "Enviado PID=%d a IO '%s' por %d ms", proceso->pcb->PID, dispositivo->nombre, proceso->tiempo_a_usar);
 }
 

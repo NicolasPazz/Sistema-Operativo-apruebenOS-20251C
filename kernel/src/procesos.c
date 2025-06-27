@@ -95,7 +95,7 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
             exit(EXIT_FAILURE);
         }
 
-        log_info(kernel_log, "\033[38;2;179;236;111m## (%u) Pasa del estado %s al estado %s\033[0m",
+        log_info(kernel_log, VERDE("## (PID: %u) Pasa del estado ")AZUL("%s")VERDE(" al estado ")AZUL("%s"),
                 PCB->PID,
                 estado_to_string(PCB->Estado),
                 estado_to_string(nuevo_estado_enum));
@@ -273,61 +273,14 @@ void liberar_cola_por_estado(Estados estado) {
 void loguear_metricas_estado(t_pcb* pcb) {
     if (!pcb) return;
 
-    log_trace(kernel_log, "Logueando métricas de estado para el PCB con PID %d", pcb->PID);
-
-    char buffer[512];
-    int offset = snprintf(buffer, sizeof(buffer), "## (%d) - Métricas de estado: ", pcb->PID);
+    log_info(kernel_log, VERDE("## (PID: %d) - Métricas finales :"), pcb->PID);
 
     for (int i = 0; i < 7; i++) {
-        offset += snprintf(buffer + offset, sizeof(buffer) - offset,
-            "%s (%u) (%u)", estado_to_string((Estados)i), pcb->ME[i], pcb->MT[i]);
-
-        if (i < 6) offset += snprintf(buffer + offset, sizeof(buffer) - offset, ", ");
+        const char* nombre_estado = estado_to_string((Estados)i);
+        unsigned veces = pcb->ME[i];
+        unsigned tiempo = pcb->MT[i];
+        log_info(kernel_log, "    "AZUL("%-12s")" Veces: "VERDE("%-2u")" | Tiempo: "VERDE("%-6u ms"), nombre_estado, veces, tiempo);
     }
-
-    log_info(kernel_log, "\033[38;2;179;236;111m%s\033[0m", buffer);
-}
-
-t_pcb* obtener_pcb_por_pid(int pid) {
-    if (!cola_procesos) {
-        log_error(kernel_log, "obtener_pcb_por_pid: cola_procesos es NULL");
-        return NULL;
-    }
-    log_debug(kernel_log, "obtener_pcb_por_pid: esperando mutex_cola_procesos para buscar PCB del proceso %d", pid);
-    pthread_mutex_lock(&mutex_cola_procesos);
-    log_debug(kernel_log, "obtener_pcb_por_pid: bloqueando mutex_cola_procesos para buscar PCB del proceso %d", pid);
-    // Buscar el PCB en la cola de procesos
-    for (int i = 0; i < list_size(cola_procesos); i++) {
-        t_pcb* pcb = list_get(cola_procesos, i);
-        if (pcb && pcb->PID == pid) {
-            return pcb;
-        }
-    }
-
-    pthread_mutex_unlock(&mutex_cola_procesos);
-
-    // No se encontró el PCB
-    log_warning(kernel_log, "obtener_pcb_por_pid: No se encontró PCB con PID %d", pid);
-    return NULL;
-}
-
-t_pcb* buscar_y_remover_pcb_por_pid(t_list* cola, int pid) {
-    if (!cola) {
-        log_error(kernel_log, "buscar_y_remover_pcb_por_pid: cola es NULL");
-        return NULL;
-    }
-
-    // Buscar y remover el PCB de la cola específica
-    for (int i = 0; i < list_size(cola); i++) {
-        t_pcb* pcb = list_get(cola, i);
-        if (pcb && pcb->PID == pid) {
-            return list_remove(cola, i);
-        }
-    }
-
-    // No se encontró el PCB
-    log_warning(kernel_log, "buscar_y_remover_pcb_por_pid: No se encontró PCB con PID %d en la cola", pid);
-    return NULL;
 }
 
 t_pcb* buscar_pcb(int pid) {
@@ -354,4 +307,23 @@ t_pcb* buscar_pcb(int pid) {
     }
 
     return resultado;
+}
+
+t_pcb* buscar_y_remover_pcb_por_pid(t_list* cola, int pid) {
+    if (!cola) {
+        log_error(kernel_log, "buscar_y_remover_pcb_por_pid: cola es NULL");
+        return NULL;
+    }
+
+    // Buscar y remover el PCB de la cola específica
+    for (int i = 0; i < list_size(cola); i++) {
+        t_pcb* pcb = list_get(cola, i);
+        if (pcb && pcb->PID == pid) {
+            return list_remove(cola, i);
+        }
+    }
+
+    // No se encontró el PCB
+    log_warning(kernel_log, "buscar_y_remover_pcb_por_pid: No se encontró PCB con PID %d en la cola", pid);
+    return NULL;
 }
