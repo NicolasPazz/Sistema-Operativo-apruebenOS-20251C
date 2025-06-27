@@ -138,10 +138,13 @@ void func_init_proc(t_instruccion* instruccion) {
 }
 
 void func_dump_memory() {
+    
+    pc++; //INCREMENTAR PC ANTES DE ENVIAR SYSCALL (igual que en func_io)
 
     // Pedirle a Kernel que ejecute el DUMP por ser una SYSCALL
     t_paquete* paquete = crear_paquete_op(DUMP_MEMORY_OP);
-    agregar_entero_a_paquete(paquete,pid_ejecutando);
+    agregar_entero_a_paquete(paquete, pid_ejecutando);
+    agregar_entero_a_paquete(paquete, pc);  // ✅ ENVIAR PC ACTUALIZADO (igual que en func_io)
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 

@@ -21,6 +21,13 @@ run: clean all
 	@bash levantar_modulos.sh &   # Levanta CPU e IO en background
 	@./kernel/bin/kernel PROCESO_INICIAL 128
 
+# /////////////////////// Limpiar ANSI codes de los logs ///////////////////////
+.PHONY: logs
+logs:
+	@echo "Eliminando códigos ANSI de los logs..."
+	@find . -type f -name "*.log" -exec sed -i 's/\x1B\[[0-9;]*[0-9;]*m//g' {} +
+	@echo "Listo. Logs limpios."
+
 # /////////////////////// Detener todos los módulos ///////////////////////
 .PHONY: stop
 stop:

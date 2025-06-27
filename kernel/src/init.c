@@ -454,14 +454,38 @@ void* atender_cpu_dispatch(void* arg) {
                 
                 // ========== RECIBIR PARÁMETROS ==========
                 t_list* parametros_dump = recibir_contenido_paquete(fd_cpu_dispatch);
+                if (!parametros_dump || list_size(parametros_dump) < 2) {
+                    log_error(kernel_log, "DUMP_MEMORY_OP: Error al recibir parámetros desde CPU Dispatch. Esperados: 2, recibidos: %d", 
+                              parametros_dump ? list_size(parametros_dump) : 0);
+                    if (parametros_dump) list_destroy_and_destroy_elements(parametros_dump, free);
+                    break;
+                }
+
                 int PID = *(int*)list_get(parametros_dump, 0);
+                int PC_actualizado = *(int*)list_get(parametros_dump, 1);  // ✅ RECIBIR PC ACTUALIZADO
 
                 // Obtener el PCB del proceso
                 t_pcb* pcb_dump = buscar_pcb(PID);
                 if (!pcb_dump) {
                     log_error(kernel_log, "DUMP_MEMORY_OP: No se encontró PCB para PID %d", PID);
+                    list_destroy_and_destroy_elements(parametros_dump, free);
                     break;
                 }
+
+                // ✅ ACTUALIZAR PC DEL PCB (igual que en IO_OP)
+                pcb_dump->PC = PC_actualizado;
+                log_trace(kernel_log, "DUMP_MEMORY: PC actualizado para PID %d: %d", PID, PC_actualizado);
+
+                // ========== LIBERAR CPU (IGUAL QUE EXIT E IO) ==========
+                // Limpiar PID de la CPU asociada
+                pthread_mutex_lock(&mutex_lista_cpus);
+                cpu_actual->pid = -1; // Limpiar PID de la CPU
+                cpu_actual->instruccion_actual = -1; // Limpiar instrucción actual
+                pthread_mutex_unlock(&mutex_lista_cpus);
+                
+                // Liberar CPU para que el planificador pueda usarla
+                sem_post(&sem_cpu_disponible);
+                log_debug(kernel_log, "DUMP_MEMORY: Semáforo CPU DISPONIBLE aumentado por CPU liberada");
 
                 // ========== EJECUTAR SYSCALL ==========
                 DUMP_MEMORY(pcb_dump);
