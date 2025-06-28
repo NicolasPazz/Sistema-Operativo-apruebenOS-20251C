@@ -9,5 +9,6 @@ done
 echo -e "\033[38;2;179;236;111mIniciando CPU...\033[0m"
 ./cpu/bin/cpu CPU1 > cpu/cpu.log 2>&1 &
 
-echo -e "\033[38;2;179;236;111mIniciando IO...\033[0m"
-./io/bin/io IMPRESORA > io/io.log 2>&1 &
+echo -e "\033[38;2;179;236;111mIniciando dispositivos IO...\033[0m"
+./io/bin/io impresora > io/io.log 2>&1 &
+./io/bin/io teclado > io/io.log 2>&1 &

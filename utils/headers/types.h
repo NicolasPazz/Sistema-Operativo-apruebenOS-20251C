@@ -27,7 +27,6 @@ typedef enum {
 	READ_OP, 
 	GOTO_OP,
 	PEDIR_PAGINA_OP,
-	SOLICITAR_FRAME_PARA_PAGINA,
 
 	// Ciclo de Instrucciones CPU
 	PEDIR_INSTRUCCION_OP, // Fetch
@@ -43,7 +42,7 @@ typedef enum {
 	DEBUGGER,
 
 	// Operaciones adicionales de memoria
-	ACCESO_TABLA_PAGINAS_OP,      // Acceso a tabla de páginas - devuelve número de marco
+	ACCESO_TABLA_PAGINAS_OP,      // Acceso a tabla de páginas - devuelve el Frame de un PID y su Pagina
 	ACCESO_ESPACIO_USUARIO_OP,    // Acceso a espacio de usuario - lectura/escritura
 	LEER_PAGINA_COMPLETA_OP,      // Leer página completa desde dirección física
 	ACTUALIZAR_PAGINA_COMPLETA_OP, // Actualizar página completa en dirección física
