@@ -231,14 +231,22 @@ void destruir_proceso(t_proceso_memoria* proceso) {
     if (proceso->estructura_paginas) {
         destruir_tabla_paginas_recursiva(proceso->estructura_paginas->tabla_raiz);
         free(proceso->estructura_paginas);
+        proceso->estructura_paginas = NULL;
     }
 
     if (proceso->metricas) {
         destruir_metricas_proceso(proceso->metricas);
+        proceso->metricas = NULL;
     }
 
     if (proceso->nombre_archivo) {
         free(proceso->nombre_archivo);
+        proceso->nombre_archivo = NULL;
+    }
+
+    if (proceso->instrucciones) {
+        list_destroy_and_destroy_elements(proceso->instrucciones, free);
+        proceso->instrucciones = NULL;
     }
 
     free(proceso);
@@ -272,25 +280,6 @@ t_resultado_memoria finalizar_proceso_en_memoria(int pid) {
     log_debug(logger, "FINALIZAR_PROC: Liberando marcos para PID %d", pid);
     liberar_marcos_proceso(pid);
     log_debug(logger, "FINALIZAR_PROC: Marcos liberados para PID %d", pid);
-    
-    // Liberar estructuras del proceso
-    log_debug(logger, "FINALIZAR_PROC: Liberando estructuras para PID %d", pid);
-    if (proceso->instrucciones) {
-        list_destroy_and_destroy_elements(proceso->instrucciones, free);
-        log_debug(logger, "FINALIZAR_PROC: Instrucciones liberadas para PID %d", pid);
-    }
-    
-    if (proceso->estructura_paginas) {
-        log_debug(logger, "FINALIZAR_PROC: Destruyendo estructura de páginas para PID %d", pid);
-        destruir_estructura_paginas(proceso->estructura_paginas);
-        log_debug(logger, "FINALIZAR_PROC: Estructura de páginas destruida para PID %d", pid);
-    }
-    
-    if (proceso->metricas) {
-        log_debug(logger, "FINALIZAR_PROC: Destruyendo métricas para PID %d", pid);
-        destruir_metricas_proceso(proceso->metricas);
-        log_debug(logger, "FINALIZAR_PROC: Métricas destruidas para PID %d", pid);
-    }
     
     // Actualizar estadísticas del sistema
     log_debug(logger, "FINALIZAR_PROC: Actualizando estadísticas del sistema para PID %d", pid);
