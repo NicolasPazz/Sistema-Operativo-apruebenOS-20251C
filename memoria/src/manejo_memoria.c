@@ -306,7 +306,7 @@ t_resultado_memoria finalizar_proceso_en_memoria(int pid) {
     dictionary_remove(sistema_memoria->process_instructions, pid_str);
     
     log_debug(logger, "FINALIZAR_PROC: Liberando proceso para PID %d", pid);
-    free(proceso);
+    destruir_proceso(proceso);
     
     pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
     
@@ -806,6 +806,7 @@ void* acceso_espacio_usuario_lectura(int pid, int direccion_fisica, int tamanio)
     free(dato_leido);
     int* pag = list_get(paginas_bloqueadas, 0);
     desbloquear_marco_por_pagina(pid, *pag, "LECTURA_ESPACIO_USUARIO");
+    list_destroy_and_destroy_elements(paginas_bloqueadas, free);
     
     log_info(logger, VERDE("## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d"), 
              pid, direccion_fisica, tamanio);
@@ -868,6 +869,7 @@ bool acceso_espacio_usuario_escritura(int pid, int direccion_fisica, int tamanio
     // Liberar recursos
     int* pag = list_get(paginas_bloqueadas, 0);
     desbloquear_marco_por_pagina(pid, *pag, "ESCRITURA_ESPACIO_USUARIO");
+    list_destroy_and_destroy_elements(paginas_bloqueadas, free);
     
     log_info(logger, VERDE("## PID: %d - Escritura - Dir. Física: %d - Tamaño: %d"), 
              pid, direccion_fisica, tamanio);
@@ -949,6 +951,7 @@ void* leer_pagina_completa(int pid, int direccion_base_pagina) {
     // Liberar recursos
     int* pag = list_get(paginas_bloqueadas, 0);
     desbloquear_marco_por_pagina(pid, *pag, "LECTURA_PAGINA_COMPLETA");
+    list_destroy_and_destroy_elements(paginas_bloqueadas, free);
     
     log_trace(logger, "PID: %d - Página completa leída desde dirección base %d", pid, direccion_base_pagina);
     
@@ -1032,6 +1035,7 @@ bool actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido_p
     // Liberar recursos
     int* pag = list_get(paginas_bloqueadas, 0);
     desbloquear_marco_por_pagina(pid, *pag, "ESCRITURA_PAGINA_COMPLETA");
+    list_destroy_and_destroy_elements(paginas_bloqueadas, free);
     
     log_trace(logger, "PID: %d - Página completa actualizada en dirección física %d", pid, direccion_fisica);
     

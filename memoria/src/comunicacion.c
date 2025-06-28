@@ -235,7 +235,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             }
             if (list_size(parametros_pedir_instruccion) < 2) {
                 log_error(logger, "[PEDIR_INSTRUCCION] Parámetros insuficientes recibidos - socket: %d", cliente_socket);
-                list_destroy(parametros_pedir_instruccion);
+                list_destroy_and_destroy_elements(parametros_pedir_instruccion, free);
                 return;
             }
             
