@@ -71,15 +71,11 @@ t_pcb* elegir_por_sjf() {
 t_pcb* elegir_por_srt() {
     log_trace(kernel_log, "PLANIFICANDO SRT (Shortest Remaining Time)");
 
-    log_debug(kernel_log, "SRT: esperando mutex_cola_ready para elegir proceso con menor ráfaga restante");
     pthread_mutex_lock(&mutex_cola_ready);
-    log_debug(kernel_log, "SRT: bloqueando mutex_cola_ready para elegir proceso con menor ráfaga");
-
     if (list_is_empty(cola_ready)) {
         pthread_mutex_unlock(&mutex_cola_ready);
-        log_error(kernel_log, "SRT: cola_ready vacía");
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        log_warning(kernel_log, "SRT: cola_ready vacía, no hay proceso para planificar");
+        return NULL;
     }
 
     // Buscar el proceso READY con menor ráfaga restante
@@ -87,20 +83,15 @@ t_pcb* elegir_por_srt() {
     pthread_mutex_unlock(&mutex_cola_ready);
 
     if (!candidato_ready) {
-        log_error(kernel_log, "SRT: No se pudo seleccionar un proceso READY");
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        log_warning(kernel_log, "SRT: No se pudo seleccionar un proceso READY");
+        return NULL;
     }
 
-    log_debug(kernel_log, "SRT: esperando mutex_lista_cpus para buscar CPU disponible o con mayor ráfaga restante");
     pthread_mutex_lock(&mutex_lista_cpus);
-    log_debug(kernel_log, "SRT: bloqueando mutex_lista_cpus para buscar CPU disponible o con mayor ráfaga restante");
 
     bool cpu_libre = false;
     bool cpu_con_mayor_rafaga_restante = false;
-    double max_rafaga_restante = -1;
 
-    // Buscar CPUs disponibles y calcular cuál ejecuta el proceso con mayor ráfaga restante
     for (int i = 0; i < list_size(lista_cpus); i++) {
         cpu* c = list_get(lista_cpus, i);
         if (c->tipo_conexion != CPU_DISPATCH) continue;
@@ -114,9 +105,8 @@ t_pcb* elegir_por_srt() {
         // Si no está libre, buscar si al menos una tiene mayor ráfaga restante que candidato_ready
         t_pcb* pcb_exec = buscar_pcb(c->pid);
         if (!pcb_exec) {
-            log_error(kernel_log, "SRT: Error al obtener PCB de la CPU con PID %d", c->pid);
-            terminar_kernel();
-            exit(EXIT_FAILURE);
+            log_warning(kernel_log, "SRT: No se encontró PCB de la CPU con PID %d (puede haber terminado)", c->pid);
+            continue;
         }
 
         if(menor_rafaga_restante((void*)pcb_exec, (void*)candidato_ready) == (void*)candidato_ready) {
@@ -127,17 +117,15 @@ t_pcb* elegir_por_srt() {
     }
     pthread_mutex_unlock(&mutex_lista_cpus);
 
-    // Si hay CPU libre o hay una CPU ejecutando un proceso con mayor ráfaga restante
     if (cpu_libre || cpu_con_mayor_rafaga_restante) {
-        log_trace(kernel_log, "SRT: Hay CPU libre, se asignará directamente el proceso con menor ráfaga restante");
+        log_trace(kernel_log, "SRT: Hay CPU libre o con mayor ráfaga restante, proceso seleccionado PID=%d", candidato_ready->PID);
         return candidato_ready;
-    } else {        // Si no hay CPU libre ni una ejecutando un proceso con mayor ráfaga restante
-        // TODO: replanificar cuando haya una cpu libre o entre un proceso en ready?
-        log_trace(kernel_log, "SRT: No hay CPU libre ni con mayor ráfaga restante que el proceso READY seleccionado");
+    } else {
+        log_trace(kernel_log, "SRT: No hay CPU libre ni una con mayor ráfaga restante. El proceso queda esperando en READY.");
+        // No se elimina ni termina el proceso, solo se devuelve NULL para que el planificador espere.
         return NULL;
     }
 }
-
 void* menor_rafaga_restante(void* a, void* b) {
     t_pcb* pcb_a = (t_pcb*) a;
     t_pcb* pcb_b = (t_pcb*) b;
