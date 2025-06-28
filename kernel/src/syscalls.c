@@ -91,6 +91,10 @@ void DUMP_MEMORY(t_pcb* pcb_dump) {
         // Si la operación fue exitosa, desbloquear el proceso (pasa a READY)
         cambiar_estado_pcb(pcb_dump, READY);
         log_info(kernel_log, "## (PID: %d) finalizó DUMP_MEMORY exitosamente y pasa a READY", pcb_dump->PID);
+        
+        // ✅ Asegurar que el proceso se replanifique inmediatamente
+        // Esto es importante para que el proceso continúe ejecutándose después del dump
+        log_trace(kernel_log, "DUMP_MEMORY: Proceso %d listo para continuar ejecución", pcb_dump->PID);
     } else {
         // Si hubo error, enviar el proceso a EXIT
         cambiar_estado_pcb(pcb_dump, EXIT_ESTADO);
