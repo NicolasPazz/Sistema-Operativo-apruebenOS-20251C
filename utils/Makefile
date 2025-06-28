@@ -76,7 +76,10 @@ test: $(TEST)
 clean:
 	-rm -rfv $(dir $(TEST) $(OBJS) $(OUT))
 	-rm -fv *.dmp
-	-for dir in $(SHARED_LIBPATHS) $(STATIC_LIBPATHS); do $(MAKE) -C $$dir clean; done
+	# Solo hacer clean en dependencias si no estamos siendo llamados desde otro módulo
+	@if [ "$(MAKECMDGOALS)" = "clean" ] && [ "$(MAKELEVEL)" -eq 0 ]; then \
+		for dir in $(SHARED_LIBPATHS) $(STATIC_LIBPATHS); do $(MAKE) -C $$dir clean; done; \
+	fi
 
 $(OUT): $(OBJS) | $(dir $(OUT))
 	$(call compile_out)

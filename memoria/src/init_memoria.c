@@ -560,32 +560,12 @@ void finalizar_sistema_memoria(void) {
 
     // Liberar administrador de marcos
     if (sistema_memoria->admin_marcos) {
-        if (sistema_memoria->admin_marcos->frames) {
-            free(sistema_memoria->admin_marcos->frames);
-        }
-        if (sistema_memoria->admin_marcos->bitmap_frames) {
-            bitarray_destroy(sistema_memoria->admin_marcos->bitmap_frames);
-        }
-        if (sistema_memoria->admin_marcos->lista_frames_libres) {
-            list_destroy_and_destroy_elements(sistema_memoria->admin_marcos->lista_frames_libres, free);
-        }
-        pthread_mutex_destroy(&sistema_memoria->admin_marcos->mutex_frames);
-        free(sistema_memoria->admin_marcos);
+        destruir_administrador_marcos(sistema_memoria->admin_marcos);
     }
 
     // Liberar administrador de SWAP
     if (sistema_memoria->admin_swap) {
-        if (sistema_memoria->admin_swap->path_archivo) {
-            free(sistema_memoria->admin_swap->path_archivo);
-        }
-        if (sistema_memoria->admin_swap->entradas) {
-            free(sistema_memoria->admin_swap->entradas);
-        }
-        if (sistema_memoria->admin_swap->posiciones_libres) {
-            list_destroy(sistema_memoria->admin_swap->posiciones_libres);
-        }
-        pthread_mutex_destroy(&sistema_memoria->admin_swap->mutex_swap);
-        free(sistema_memoria->admin_swap);
+        destruir_administrador_swap(sistema_memoria->admin_swap);
     }
 
     // Liberar diccionarios

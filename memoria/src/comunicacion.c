@@ -30,7 +30,7 @@ typedef struct {
 } t_procesar_conexion_args;
 
 // Declaración de funciones internas
-void* leer_pagina_completa(int pid, int direccion_fisica);
+void* leer_pagina_completa(int pid, int direccion_base_pagina);
 
 int iniciar_conexiones_memoria(char* PUERTO_ESCUCHA, t_log* logger_param) {
     if (logger_param == NULL) {
@@ -202,23 +202,26 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         case FINALIZAR_PROC_OP: {
             log_debug(logger, "FINALIZAR_PROC_OP recibido");
 
-            // Recibir PID
-                int pid;
-                if (recv_data(cliente_socket, &pid, sizeof(int)) <= 0) {
-                    log_error(logger, "Error al recibir PID para FINALIZAR_PROC_OP");
-                    return;
-                }                
+            // Recibir PID directamente con recv (como lo envía el Kernel)
+            int pid;
+            if (recv(cliente_socket, &pid, sizeof(int), 0) <= 0) {
+                log_error(logger, "Error al recibir PID para FINALIZAR_PROC_OP");
+                return;
+            }                
             
-                log_trace(logger, "Finalización de proceso solicitada - PID: %d", pid);
+            log_trace(logger, "Finalización de proceso solicitada - PID: %d", pid);
             
             // Finalizar el proceso usando la función principal que maneja métricas
-                t_resultado_memoria resultado = finalizar_proceso_en_memoria(pid);
+            log_debug(logger, "FINALIZAR_PROC_OP: Llamando a finalizar_proceso_en_memoria para PID %d", pid);
+            t_resultado_memoria resultado = finalizar_proceso_en_memoria(pid);
+            log_debug(logger, "FINALIZAR_PROC_OP: finalizar_proceso_en_memoria retornó %d para PID %d", resultado, pid);
             
             // Enviar respuesta
-                t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
-                log_debug(logger, "Enviando respuesta %s a cliente (fd=%d)", 
-                        (respuesta == OK) ? "OK" : "ERROR", cliente_socket);
-                send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
+            t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
+            log_debug(logger, "FINALIZAR_PROC_OP: Preparando envío de respuesta %s a cliente (fd=%d)", 
+                    (respuesta == OK) ? "OK" : "ERROR", cliente_socket);
+            send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
+            log_debug(logger, "FINALIZAR_PROC_OP: Respuesta enviada exitosamente");
             break;
         }
         case PEDIR_INSTRUCCION_OP: {
@@ -232,7 +235,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             }
             if (list_size(parametros_pedir_instruccion) < 2) {
                 log_error(logger, "[PEDIR_INSTRUCCION] Parámetros insuficientes recibidos - socket: %d", cliente_socket);
-                list_destroy(parametros_pedir_instruccion);
+                list_destroy_and_destroy_elements(parametros_pedir_instruccion, free);
                 return;
             }
             
@@ -286,35 +289,14 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         // ============================================================================
         // HANDLERS PARA LOS 4 TIPOS DE ACCESO ESPECÍFICOS DE MEMORIA
         // ============================================================================
-        case SOLICITAR_FRAME_PARA_PAGINA: {
-            log_trace(logger, "SOLICITAR_FRAME_PARA_PAGINA recibido");
-
-            // Recibir parámetros del paquete
-            t_list* lista = recibir_contenido_paquete(cliente_socket);
-            
-            int numero_marco = procesar_solicitud_frame_para_pagina(lista);
-            
-            // Enviar respuesta
-            if (numero_marco != -1) {
-                send_data(cliente_socket, &numero_marco, sizeof(int));
-                log_trace(logger, "Marco enviado exitosamente");
-            } else {
-                int error = -1;
-                send_data(cliente_socket, &error, sizeof(int));
-                log_error(logger, "Error en solicitud de frame");
-            }
-            
-            list_destroy_and_destroy_elements(lista, free);
-            break;
-        }
         case ACCESO_TABLA_PAGINAS_OP: {
             log_trace(logger, "ACCESO_TABLA_PAGINAS_OP recibido");
 
             // Recibir parámetros: PID y número de página
-            t_list* lista = recibir_2_enteros_sin_op(cliente_socket);
-            int pid = (int)(intptr_t)list_get(lista, 0);
-            int numero_pagina = (int)(intptr_t)list_get(lista, 1);
-            list_destroy(lista);
+            t_list* lista = recibir_contenido_paquete(cliente_socket);
+            int pid = *(int*)list_get(lista, 0);
+            int numero_pagina = *(int*)list_get(lista, 1);
+            list_destroy_and_destroy_elements(lista, free);
             
             log_trace(logger, "Acceso a tabla de páginas - PID: %d, Página: %d", pid, numero_pagina);
             
@@ -323,11 +305,17 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             
             // Enviar respuesta
             if (numero_marco != -1) {
-                send_data(cliente_socket, &numero_marco, sizeof(int));
+                t_paquete* paquete_respuesta = crear_paquete_op(PAQUETE_OP);
+                agregar_entero_a_paquete(paquete_respuesta, numero_marco);
+                enviar_paquete(paquete_respuesta, cliente_socket);
+                eliminar_paquete(paquete_respuesta);
                 log_trace(logger, "Marco %d enviado para PID: %d, Página: %d", numero_marco, pid, numero_pagina);
             } else {
+                t_paquete* paquete_respuesta = crear_paquete_op(PAQUETE_OP);
                 int error = -1;
-                send_data(cliente_socket, &error, sizeof(int));
+                agregar_entero_a_paquete(paquete_respuesta, error);
+                enviar_paquete(paquete_respuesta, cliente_socket);
+                eliminar_paquete(paquete_respuesta);
                 log_error(logger, "Error en acceso a tabla de páginas - PID: %d, Página: %d", pid, numero_pagina);
             }
             break;
@@ -383,27 +371,39 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         case LEER_PAGINA_COMPLETA_OP: {
             log_trace(logger, "LEER_PAGINA_COMPLETA_OP recibido");
 
-            // Recibir parámetros: PID y dirección física
-            t_list* lista = recibir_2_enteros_sin_op(cliente_socket);
-            int pid = (int)(intptr_t)list_get(lista, 0);
-            int direccion_fisica = (int)(intptr_t)list_get(lista, 1);
-            list_destroy(lista);
+            // Recibir parámetros del paquete: PID y dirección base de página
+            t_list* lista = recibir_contenido_paquete(cliente_socket);
+            if (lista == NULL || list_size(lista) < 2) {
+                log_error(logger, "LEER_PAGINA_COMPLETA_OP: Parámetros insuficientes");
+                if (lista) list_destroy_and_destroy_elements(lista, free);
+                return;
+            }
             
-            log_trace(logger, "Leer página completa - PID: %d, Dir. Física: %d", pid, direccion_fisica);
+            int pid = *(int*)list_get(lista, 0);
+            int direccion_base_pagina = *(int*)list_get(lista, 1);
+            list_destroy_and_destroy_elements(lista, free);
+            
+            log_trace(logger, "Leer página completa - PID: %d, Dir. Base Página: %d", pid, direccion_base_pagina);
             
             // Leer página completa
-            void* pagina_completa = leer_pagina_completa(pid, direccion_fisica);
+            void* pagina_completa = leer_pagina_completa(pid, direccion_base_pagina);
             
             if (pagina_completa != NULL) {
-                // Enviar página completa
-                send_data(cliente_socket, pagina_completa, cfg->TAM_PAGINA);
+                // Enviar página completa como paquete
+                t_paquete* paquete_respuesta = crear_paquete_op(PAQUETE_OP);
+                agregar_a_paquete(paquete_respuesta, pagina_completa, cfg->TAM_PAGINA);
+                enviar_paquete(paquete_respuesta, cliente_socket);
+                eliminar_paquete(paquete_respuesta);
                 free(pagina_completa);
-                log_trace(logger, "Página completa enviada - PID: %d, Dir: %d", pid, direccion_fisica);
+                log_trace(logger, "Página completa enviada como paquete - PID: %d, Dir: %d", pid, direccion_base_pagina);
             } else {
-                // Enviar error
-                t_respuesta respuesta = ERROR;
-                send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
-                log_error(logger, "Error al leer página completa - PID: %d, Dir: %d", pid, direccion_fisica);
+                // Enviar error como paquete
+                t_paquete* paquete_respuesta = crear_paquete_op(PAQUETE_OP);
+                int error = -1;
+                agregar_entero_a_paquete(paquete_respuesta, error);
+                enviar_paquete(paquete_respuesta, cliente_socket);
+                eliminar_paquete(paquete_respuesta);
+                log_error(logger, "Error al leer página completa - PID: %d, Dir: %d", pid, direccion_base_pagina);
             }
             break;
         }

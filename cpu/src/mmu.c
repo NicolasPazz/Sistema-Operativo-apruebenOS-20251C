@@ -99,16 +99,33 @@ int traducir_direccion_fisica(int direccion_logica) {
         log_info(cpu_log, VERDE("PID: %d - TLB MISS - Página: %d"), pid_ejecutando, nro_pagina);
 
         // Nueva operación: solo se envía PID y nro_pagina
-        t_paquete* paquete = crear_paquete_op(SOLICITAR_FRAME_PARA_PAGINA);
-        agregar_entero_con_tamanio_a_paquete(paquete, pid_ejecutando);
-        agregar_entero_con_tamanio_a_paquete(paquete, nro_pagina);
+        t_paquete* paquete = crear_paquete_op(ACCESO_TABLA_PAGINAS_OP);
+        agregar_entero_a_paquete(paquete, pid_ejecutando);
+        agregar_entero_a_paquete(paquete, nro_pagina);
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
 
-        if (recv(fd_memoria, &frame, sizeof(int), MSG_WAITALL) != sizeof(int)) {
-            log_error(cpu_log, "PID: %d - Error al recibir marco desde Memoria", pid_ejecutando);
+        // Recibir respuesta como paquete
+        op_code codigo_operacion;
+        if (recv(fd_memoria, &codigo_operacion, sizeof(op_code), MSG_WAITALL) != sizeof(op_code)) {
+            log_error(cpu_log, "PID: %d - Error al recibir op_code de respuesta desde Memoria", pid_ejecutando);
             exit(EXIT_FAILURE);
         }
+        
+        if (codigo_operacion != PAQUETE_OP) {
+            log_error(cpu_log, "PID: %d - Op_code inesperado en respuesta: %d (esperaba PAQUETE_OP)", 
+                     pid_ejecutando, codigo_operacion);
+            exit(EXIT_FAILURE);
+        }
+        
+        t_list* lista_respuesta = recibir_contenido_paquete(fd_memoria);
+        if (lista_respuesta == NULL || list_size(lista_respuesta) < 1) {
+            log_error(cpu_log, "PID: %d - Error al recibir respuesta de marco desde Memoria", pid_ejecutando);
+            exit(EXIT_FAILURE);
+        }
+        
+        frame = *(int*)list_get(lista_respuesta, 0);
+        list_destroy_and_destroy_elements(lista_respuesta, free);
 
         if (frame == -1) {
             log_error(cpu_log, "PID: %d - Error al traducir dirección: Marco no encontrado", pid_ejecutando);
@@ -124,9 +141,6 @@ int traducir_direccion_fisica(int direccion_logica) {
 
     return frame * tam_pagina + desplazamiento;
 }
-
-
-
 
 bool tlb_buscar(int pagina, int* frame_out) {
     for (int i = 0; i < list_size(tlb); i++) {

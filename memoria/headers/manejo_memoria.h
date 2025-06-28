@@ -511,8 +511,8 @@ int acceso_tabla_paginas(int pid, int numero_pagina);
 void* acceso_espacio_usuario_lectura(int pid, int direccion_fisica, int tamanio);
 bool acceso_espacio_usuario_escritura(int pid, int direccion_fisica, int tamanio, void* datos);
 
-// 3. Leer página completa desde dirección física - IMPLEMENTADA COMO leer_pagina_marco
-// void* leer_pagina_completa(int pid, int direccion_fisica); // ELIMINADA - usar leer_pagina_marco
+// 3. Leer página completa desde dirección base de página
+void* leer_pagina_completa(int pid, int direccion_base_pagina);
 
 // 4. Actualizar página completa en dirección física
 bool actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido_pagina);
@@ -558,12 +558,5 @@ bool verificar_espacio_disponible(int tamanio);
  * @return Número de página calculado
  */
 int calcular_numero_pagina_desde_entradas(int* entradas, int cantidad_niveles, int entradas_por_tabla);
-
-/**
- * @brief Procesa una solicitud de frame para entradas multinivel
- * @param lista Lista con los parámetros del paquete (PID, niveles, entradas...)
- * @return Número de marco asignado o -1 si hay error
- */
-int procesar_solicitud_frame_para_pagina(t_list* lista);
 
 #endif

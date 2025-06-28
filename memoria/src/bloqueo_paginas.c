@@ -283,6 +283,31 @@ static int obtener_numero_marco_de_pagina(int pid, int numero_pagina) {
     return entrada->numero_frame;
 }
 
+/**
+ * @brief Obtiene el número de página de un proceso que está mapeada a un marco específico
+ */
+int obtener_numero_pagina_de_marco(int pid, int numero_marco) {
+    char* pid_str = string_itoa(pid);
+    t_estructura_paginas* estructura = dictionary_get(sistema_memoria->estructuras_paginas, pid_str);
+    free(pid_str);
+    
+    if (!estructura) {
+        log_error(logger, "PID: %d - No se encontró estructura de páginas", pid);
+        return -1;
+    }
+    
+    // Buscar la página que está mapeada al marco
+    for (int pag = 0; pag < estructura->paginas_totales; pag++) {
+        t_entrada_tabla* entrada = buscar_entrada_tabla(estructura, pag);
+        if (entrada && entrada->presente && entrada->numero_frame == numero_marco) {
+            return pag;
+        }
+    }
+    
+    log_error(logger, "PID: %d - No se encontró página mapeada al marco %d", pid, numero_marco);
+    return -1;
+}
+
 bool bloquear_marco_por_pagina(int pid, int numero_pagina, const char* operacion) {
     log_trace(logger, "PID: %d - Intentando bloquear marco de página %d para: %s", 
               pid, numero_pagina, operacion ? operacion : "OPERACION_DESCONOCIDA");
