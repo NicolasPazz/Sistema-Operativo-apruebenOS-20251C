@@ -2,8 +2,10 @@
 #define MAIN_H_
 #include "sockets.h"
 
-t_log* log_cpu;
-
+extern t_log* log_cpu;
+extern pthread_mutex_t mutex_estado_proceso;
+extern pthread_mutex_t mutex_tlb;
+extern pthread_mutex_t mutex_cache;
 void iterator(char* value);
 void* recibir_kernel_dispatch(void* arg);    
 void* recibir_kernel_interrupt(void* arg);

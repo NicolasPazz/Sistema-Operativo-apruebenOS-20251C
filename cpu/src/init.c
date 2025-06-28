@@ -79,9 +79,9 @@ void* conectar_cpu_memoria() {
     }
 
     int entradas_pt, tam_pagina, niveles;
-    recv(fd_memoria, &entradas_pt, sizeof(int), MSG_WAITALL);
-    recv(fd_memoria, &tam_pagina,  sizeof(int), MSG_WAITALL);
-    recv(fd_memoria, &niveles,     sizeof(int), MSG_WAITALL);
+    recv(fd_memoria, &entradas_pt, sizeof(int), MSG_WAITALL); // aca puede haber que usar paquete
+    recv(fd_memoria, &tam_pagina,  sizeof(int), MSG_WAITALL); // aca podriamos usar paquete
+    recv(fd_memoria, &niveles,     sizeof(int), MSG_WAITALL); // same
 
     /* ────────────── 3. guardar en cfg_memoria ────────────── */
     cfg_memoria = malloc(sizeof(t_config_memoria));

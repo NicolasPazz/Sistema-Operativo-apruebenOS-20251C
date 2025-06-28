@@ -3,7 +3,7 @@
 #include "../headers/mmu.h"
 #include "../headers/funciones.h"
 #include <commons/string.h>
-
+#include "../headers/main.h"
 int seguir_ejecutando = 0;     // No ejecutar hasta recibir EXEC_OP
 int pid_ejecutando = -1;       // PID inválido por defecto
 int pid_interrupt = -1;        // PID inválido por defecto  
@@ -11,7 +11,9 @@ int hay_interrupcion = 0;      // Sin interrupción inicialmente
 int pc = 1;                    // Program Counter inicial (Lo dejo en 1 para que el valor coincida con la línea de los archivos de pseudocódigo)
 
 void ejecutar_ciclo_instruccion() {
+    pthread_mutex_lock(&mutex_estado_proceso);
     seguir_ejecutando = 1;
+    pthread_mutex_unlock(&mutex_estado_proceso);
     log_trace(cpu_log, "[CICLO] ▶ Iniciando ciclo de instrucción para PID: %d", pid_ejecutando);
 
     while (seguir_ejecutando == 1) {
@@ -98,7 +100,7 @@ t_instruccion* fetch() {
 
 // decode
 op_code decode(char* nombre_instruccion) {
-    log_trace(cpu_log, "[DECODE] Decodificando instrucción: '%s'", nombre_instruccion);
+    log_trace(cpu_log, "[DECODE] Decodificando instrucción: '%s'", nombre_instruccion ? nombre_instruccion : "NULL");
     
     op_code resultado = -1;
     
@@ -190,23 +192,25 @@ void execute(op_code tipo_instruccion, t_instruccion* instruccion) {
 }
 
 void check_interrupt() {
+    pthread_mutex_lock(&mutex_estado_proceso);
     if (hay_interrupcion) {
         hay_interrupcion = 0;
         if (pid_ejecutando == pid_interrupt) {
             seguir_ejecutando = 0;
+            pthread_mutex_unlock(&mutex_estado_proceso);
 
             t_paquete* paquete = crear_paquete_op(OK);
-            agregar_entero_a_paquete(paquete, pid_ejecutando);  // PID
-            agregar_entero_a_paquete(paquete, pc);              // PC
+            pthread_mutex_lock(&mutex_estado_proceso);
+            agregar_entero_a_paquete(paquete, pid_ejecutando);
+            agregar_entero_a_paquete(paquete, pc);
+            pthread_mutex_unlock(&mutex_estado_proceso);
 
             enviar_paquete(paquete, fd_kernel_interrupt);
             eliminar_paquete(paquete);
-        } else {
-            t_paquete* paquete_error = crear_paquete_op(ERROR);
-            enviar_paquete(paquete_error, fd_kernel_interrupt);
-            eliminar_paquete(paquete_error);
+            return;
         }
     }
+    pthread_mutex_unlock(&mutex_estado_proceso);
 }
 
 // liberamos memoria

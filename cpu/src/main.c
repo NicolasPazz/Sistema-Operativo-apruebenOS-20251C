@@ -3,8 +3,11 @@
 #include "../headers/cicloDeInstruccion.h"
 #include "../headers/mmu.h"
 #include <signal.h>
-
+t_log* log_cpu;
 pthread_t hilo_dispatch, hilo_interrupt, hilo_memoria;
+pthread_mutex_t mutex_estado_proceso = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_tlb = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_cache = PTHREAD_MUTEX_INITIALIZER;
 
 // Manejador de señales para terminación limpia
 void signal_handler(int sig) {
@@ -30,7 +33,7 @@ int main(int argc, char* argv[]) {
     iniciar_logger_cpu();
     inicializar_mmu();
 
-    log_info(cpu_log, AZUL("=== Iniciando CPU: %s ==="), numero_cpu);
+    log_info(cpu_log, AZUL("=== Iniciando CPU: %d ==="), numero_cpu);
 
     conectar_kernel_dispatch();
     send(fd_kernel_dispatch, &numero_cpu, sizeof(int), 0);
@@ -90,9 +93,10 @@ void* recibir_kernel_dispatch(void* arg) {
                     list_destroy_and_destroy_elements(lista, free);
                     break;
                 }
-
+                pthread_mutex_lock(&mutex_estado_proceso);
                 pc = *(int*)list_get(lista, 0);         // Primer elemento = PC
                 pid_ejecutando = *(int*)list_get(lista, 1);  // Segundo elemento = PID
+                pthread_mutex_unlock(&mutex_estado_proceso);
                 
                 log_trace(cpu_log, AZUL("[DISPATCH]") " Proceso asignado - PID: %d, PC inicial: %d", pid_ejecutando, pc);
                 log_trace(cpu_log, AZUL("[DISPATCH]") " Iniciando ejecución del proceso...");
@@ -101,8 +105,10 @@ void* recibir_kernel_dispatch(void* arg) {
                 
                 log_trace(cpu_log, "[DISPATCH] Ejecución del proceso PID %d finalizada", pid_ejecutando);
                 // Resetear variables después de la ejecución
+                pthread_mutex_lock(&mutex_estado_proceso);
                 pid_ejecutando = -1;
                 pc = 0;
+                pthread_mutex_unlock(&mutex_estado_proceso);
                 
                 list_destroy_and_destroy_elements(lista, free);
                 break;
@@ -129,8 +135,9 @@ void* recibir_kernel_interrupt(void* arg) {
                 // Recibir PID de la interrupción
                 recv(fd_kernel_interrupt, &pid_interrupt, sizeof(int), MSG_WAITALL);
                 log_info(cpu_log, VERDE("## Llega interrupción al puerto Interrupt"));
-                
+                pthread_mutex_lock(&mutex_estado_proceso);
                 hay_interrupcion = 1;
+                pthread_mutex_unlock(&mutex_estado_proceso);
                 break;
             default:
                 log_error(cpu_log, "Operacion desconocida de Interrupt: %d", cod_op);

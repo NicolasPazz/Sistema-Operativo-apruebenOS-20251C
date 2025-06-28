@@ -5,6 +5,7 @@
 #include "../headers/cicloDeInstruccion.h"
 #include "../../memoria/headers/init_memoria.h"
 #include <time.h>
+#include "../headers/main.h"
 
 t_cache_paginas* cache = NULL;
 t_list* tlb = NULL;
@@ -92,8 +93,13 @@ int traducir_direccion_fisica(int direccion_logica) {
 
     int frame = 0;
 
-    // Buscar en la TLB
-    if (tlb_habilitada() && tlb_buscar(nro_pagina, &frame)) {
+    bool hit = false;
+    if (tlb_habilitada()) {
+        pthread_mutex_lock(&mutex_tlb);
+        hit = tlb_buscar(nro_pagina, &frame);
+        pthread_mutex_unlock(&mutex_tlb);
+    }
+    if (tlb_habilitada() && hit) {
         log_info(cpu_log, VERDE("PID: %d - TLB HIT - Página: %d"), pid_ejecutando, nro_pagina);    
     } else {
         log_info(cpu_log, VERDE("PID: %d - TLB MISS - Página: %d"), pid_ejecutando, nro_pagina);
@@ -118,10 +124,11 @@ int traducir_direccion_fisica(int direccion_logica) {
         log_info(cpu_log, VERDE("PID: %d - OBTENER MARCO - Página: %d - Marco: %d"), pid_ejecutando, nro_pagina, frame);
 
         if (tlb_habilitada()) {
+            pthread_mutex_lock(&mutex_tlb);
             tlb_insertar(nro_pagina, frame);
+            pthread_mutex_unlock(&mutex_tlb);
         }
     }
-
     return frame * tam_pagina + desplazamiento;
 }
 

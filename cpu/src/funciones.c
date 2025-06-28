@@ -3,6 +3,7 @@
 #include "../headers/mmu.h"
 #include "../headers/cache.h"
 #include "../../utils/headers/sockets.h"
+#include "../headers/main.h"
 
 void func_noop() {
     //No hace nada, solo se usa para el log
@@ -93,7 +94,9 @@ void func_read(char* direccion_str, char* tamanio_str) {
 }
 
 void func_goto(char* valor) {
+    pthread_mutex_lock(&mutex_estado_proceso);
     pc = atoi(valor);
+    pthread_mutex_unlock(&mutex_estado_proceso);
 }
 
 void func_io(char* nombre_dispositivo, char* tiempo_str) {
