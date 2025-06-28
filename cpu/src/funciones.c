@@ -30,15 +30,33 @@ void func_write(char* direccion_logica_str, char* datos) {
 
         t_paquete* paquete = crear_paquete_op(LEER_PAGINA_COMPLETA_OP);
         agregar_entero_a_paquete(paquete, pid_ejecutando);
-        int direccion_base = direccion_fisica & ~(cfg_memoria->TAM_PAGINA - 1);
-        agregar_entero_a_paquete(paquete, direccion_base);
+        int direccion_base_pagina = direccion_fisica & ~(cfg_memoria->TAM_PAGINA - 1);
+        agregar_entero_a_paquete(paquete, direccion_base_pagina);
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
 
-        int tamanio_buffer;
-        char* contenido = recibir_buffer(&tamanio_buffer, fd_memoria);
+        // Recibir respuesta como paquete
+        op_code codigo_operacion;
+        if (recv(fd_memoria, &codigo_operacion, sizeof(op_code), MSG_WAITALL) != sizeof(op_code)) {
+            log_error(cpu_log, "PID: %d - Error al recibir op_code de respuesta desde Memoria", pid_ejecutando);
+            exit(EXIT_FAILURE);
+        }
+        
+        if (codigo_operacion != PAQUETE_OP) {
+            log_error(cpu_log, "PID: %d - Op_code inesperado en respuesta: %d (esperaba PAQUETE_OP)", 
+                     pid_ejecutando, codigo_operacion);
+            exit(EXIT_FAILURE);
+        }
+        
+        t_list* lista_respuesta = recibir_contenido_paquete(fd_memoria);
+        if (lista_respuesta == NULL || list_size(lista_respuesta) < 1) {
+            log_error(cpu_log, "PID: %d - Error al recibir respuesta de página desde Memoria", pid_ejecutando);
+            exit(EXIT_FAILURE);
+        }
+        
+        char* contenido = (char*)list_get(lista_respuesta, 0);
         cache_escribir(nro_pagina, contenido);
-        free(contenido);
+        list_destroy_and_destroy_elements(lista_respuesta, free);
 
         log_info(cpu_log, VERDE("PID: %d - Cache MISS - Pagina: %d"), pid_ejecutando, nro_pagina);
     }
@@ -53,6 +71,18 @@ void func_write(char* direccion_logica_str, char* datos) {
     agregar_a_paquete(paquete, datos, strlen(datos) + 1);
     enviar_paquete(paquete, fd_memoria);
     eliminar_paquete(paquete);
+
+    // Recibir respuesta de Memoria
+    t_respuesta respuesta;
+    if (recv(fd_memoria, &respuesta, sizeof(t_respuesta), MSG_WAITALL) != sizeof(t_respuesta)) {
+        log_error(cpu_log, "PID: %d - Error al recibir respuesta de WRITE desde Memoria", pid_ejecutando);
+        exit(EXIT_FAILURE);
+    }
+    
+    if (respuesta != OK) {
+        log_error(cpu_log, "PID: %d - Error en escritura de memoria: %d", pid_ejecutando, respuesta);
+        exit(EXIT_FAILURE);
+    }
 
     log_info(cpu_log, VERDE("PID: %d - WRITE - Dir Fisica: %d - Valor: %s"), pid_ejecutando, direccion_fisica, datos);
 }

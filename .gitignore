@@ -76,6 +76,7 @@ dkms.conf
 bin/
 obj/
 *.log
+*.dmp
 *.valgrind
 *.helgrind
 

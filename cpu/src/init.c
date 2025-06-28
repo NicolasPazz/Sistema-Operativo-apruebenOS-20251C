@@ -35,13 +35,14 @@ void leer_config_cpu() {
     RETARDO_CACHE = config_get_string_value(cpu_config, "RETARDO_CACHE");
     LOG_LEVEL = config_get_string_value(cpu_config, "LOG_LEVEL");
 
-    if (IP_MEMORIA && PUERTO_MEMORIA &&
+    // === AGREGAR ESTE CHEQUEO ===
+    if (!(IP_MEMORIA && PUERTO_MEMORIA &&
         IP_KERNEL && PUERTO_KERNEL_DISPATCH && PUERTO_KERNEL_INTERRUPT &&
         ENTRADAS_TLB && REEMPLAZO_TLB &&
         ENTRADAS_CACHE && REEMPLAZO_CACHE &&
-        RETARDO_CACHE && LOG_LEVEL) {
-    } else {
-        printf("Error al leer cpu.config\n");
+        RETARDO_CACHE && LOG_LEVEL)) {
+        printf("Error al leer cpu.config: algún valor es NULL\n");
+        exit(EXIT_FAILURE); // O log_error y exit
     }
 }
 

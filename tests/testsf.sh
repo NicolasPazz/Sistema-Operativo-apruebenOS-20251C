@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Cambiar al directorio raíz del proyecto
+cd "$(dirname "$0")/.."
+
 # Limitar RAM a 512 MB por proceso
 ulimit -v $((512 * 1024))
 

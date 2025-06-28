@@ -98,7 +98,6 @@ t_pcb* elegir_por_srt() {
 
     bool cpu_libre = false;
     bool cpu_con_mayor_rafaga_restante = false;
-    double max_rafaga_restante = -1;
 
     // Buscar CPUs disponibles y calcular cuál ejecuta el proceso con mayor ráfaga restante
     for (int i = 0; i < list_size(lista_cpus); i++) {

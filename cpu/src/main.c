@@ -107,9 +107,8 @@ void* recibir_kernel_dispatch(void* arg) {
                 // Resetear variables después de la ejecución
                 pthread_mutex_lock(&mutex_estado_proceso);
                 pid_ejecutando = -1;
-                pc = 0;
+                pc = 1;
                 pthread_mutex_unlock(&mutex_estado_proceso);
-                
                 list_destroy_and_destroy_elements(lista, free);
                 break;
             case -1:
