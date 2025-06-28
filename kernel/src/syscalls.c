@@ -23,7 +23,7 @@ void INIT_PROC(char* nombre_archivo, int tam_memoria) {
     nuevo_proceso->Estado = INIT;
     nuevo_proceso->tamanio_memoria = tam_memoria;
     nuevo_proceso->path = strdup(nombre_archivo);
-    nuevo_proceso->PC = 0;  // Inicializar PC a 0
+    nuevo_proceso->PC = 1;  // Inicializar PC a 1
     nuevo_proceso->estimacion_rafaga = ESTIMACION_INICIAL;
     
     // Comunicarse con memoria para inicializar el proceso
