@@ -83,6 +83,14 @@ bool desbloquear_marco_por_pagina(int pid, int numero_pagina, const char* operac
 bool marco_pagina_esta_bloqueado(int pid, int numero_pagina);
 
 /**
+ * @brief Obtiene el número de página de un proceso que está mapeada a un marco específico
+ * @param pid PID del proceso
+ * @param numero_marco Número del marco físico
+ * @return Número de página mapeada al marco, -1 si no se encuentra
+ */
+int obtener_numero_pagina_de_marco(int pid, int numero_marco);
+
+/**
  * @brief Obtiene el thread que tiene bloqueado un marco
  * @param numero_frame Número del marco físico
  * @return Thread ID del bloqueador, 0 si no está bloqueado

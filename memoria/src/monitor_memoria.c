@@ -70,7 +70,7 @@ void calcular_indices_multinivel(int numero_pagina, int cantidad_niveles, int en
         int divisor = 1;
         for (int j = 0; j < cantidad_niveles - (nivel + 1); j++)
             divisor *= entradas_por_tabla;
-        indices[cantidad_niveles - nivel - 1] = (numero_pagina / divisor) % entradas_por_tabla;
+        indices[nivel] = (numero_pagina / divisor) % entradas_por_tabla;
     }
     log_debug(logger, "calcular_indices_multinivel: num_pag=%d indices=[%d,%d,%d]", 
         numero_pagina, indices[0], indices[1], indices[2]); // ajusta cantidad_niveles según tu config

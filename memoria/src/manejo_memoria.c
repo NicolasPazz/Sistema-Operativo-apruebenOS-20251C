@@ -264,40 +264,54 @@ t_resultado_memoria finalizar_proceso_en_memoria(int pid) {
     }
     
     // Imprimir métricas antes de finalizar
+    log_debug(logger, "FINALIZAR_PROC: Imprimiendo métricas para PID %d", pid);
     imprimir_metricas_proceso(pid);
+    log_debug(logger, "FINALIZAR_PROC: Métricas impresas para PID %d", pid);
     
     // Liberar todos los marcos físicos del proceso
+    log_debug(logger, "FINALIZAR_PROC: Liberando marcos para PID %d", pid);
     liberar_marcos_proceso(pid);
+    log_debug(logger, "FINALIZAR_PROC: Marcos liberados para PID %d", pid);
     
     // Liberar estructuras del proceso
+    log_debug(logger, "FINALIZAR_PROC: Liberando estructuras para PID %d", pid);
     if (proceso->instrucciones) {
         list_destroy_and_destroy_elements(proceso->instrucciones, free);
+        log_debug(logger, "FINALIZAR_PROC: Instrucciones liberadas para PID %d", pid);
     }
     
     if (proceso->estructura_paginas) {
+        log_debug(logger, "FINALIZAR_PROC: Destruyendo estructura de páginas para PID %d", pid);
         destruir_estructura_paginas(proceso->estructura_paginas);
+        log_debug(logger, "FINALIZAR_PROC: Estructura de páginas destruida para PID %d", pid);
     }
     
     if (proceso->metricas) {
+        log_debug(logger, "FINALIZAR_PROC: Destruyendo métricas para PID %d", pid);
         destruir_metricas_proceso(proceso->metricas);
+        log_debug(logger, "FINALIZAR_PROC: Métricas destruidas para PID %d", pid);
     }
     
     // Actualizar estadísticas del sistema
+    log_debug(logger, "FINALIZAR_PROC: Actualizando estadísticas del sistema para PID %d", pid);
     sistema_memoria->procesos_activos--;
     sistema_memoria->memoria_utilizada -= proceso->tamanio;
     sistema_memoria->total_liberaciones_memoria++;
     
     // Remover del diccionario y liberar
+    log_debug(logger, "FINALIZAR_PROC: Removiendo de diccionarios para PID %d", pid);
     dictionary_remove(sistema_memoria->procesos, pid_str);
     dictionary_remove(sistema_memoria->estructuras_paginas, pid_str);
     dictionary_remove(sistema_memoria->metricas_procesos, pid_str);
     dictionary_remove(sistema_memoria->process_instructions, pid_str);
     
+    log_debug(logger, "FINALIZAR_PROC: Liberando proceso para PID %d", pid);
     free(proceso);
     
     pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
     
     log_trace(logger, "## PID: %d - Finaliza el proceso", pid);
+    log_debug(logger, "FINALIZAR_PROC: Retornando MEMORIA_OK para PID %d", pid);
     return MEMORIA_OK;
 }
 
@@ -622,22 +636,84 @@ t_resultado_memoria escribir_memoria_fisica(uint32_t direccion_fisica, void* dat
 // FUNCIONES DE UTILIDAD
 // ============================================================================
 
+/**
+ * @brief Libera un marco sin adquirir el mutex (versión interna)
+ * @param numero_frame Número del marco a liberar
+ * @return Resultado de la operación
+ */
+static t_resultado_memoria liberar_marco_interno(int numero_frame) {
+    if (!sistema_memoria || !sistema_memoria->admin_marcos) {
+        log_error(logger, "Sistema de memoria no inicializado");
+        return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
+    }
+    
+    t_administrador_marcos* admin = sistema_memoria->admin_marcos;
+    
+    if (numero_frame < 0 || numero_frame >= admin->cantidad_total_frames) {
+        log_error(logger, "Número de frame inválido: %d", numero_frame);
+        return MEMORIA_ERROR_DIRECCION_INVALIDA;
+    }
+    
+    t_frame* frame = &admin->frames[numero_frame];
+    
+    if (!frame->ocupado) {
+        log_warning(logger, "Intento de liberar frame ya libre: %d", numero_frame);
+        return MEMORIA_ERROR_DIRECCION_INVALIDA;
+    }
+    
+    int pid_anterior = frame->pid_propietario;
+    int pagina_anterior = frame->numero_pagina;
+    
+    // Limpiar el frame
+    frame->ocupado = false;
+    frame->pid_propietario = -1;
+    frame->numero_pagina = -1;
+    frame->timestamp_asignacion = 0;
+    
+    // Limpiar contenido del frame (opcional, para debugging)
+    memset(frame->contenido, 0, sistema_memoria->tam_pagina);
+    
+    // Actualizar bitmap (marcar como libre)
+    bitarray_clean_bit(admin->bitmap_frames, numero_frame);
+    
+    // Agregar a lista de frames libres
+    int* frame_num = malloc(sizeof(int));
+    *frame_num = numero_frame;
+    list_add(admin->lista_frames_libres, frame_num);
+    
+    // Actualizar contadores
+    admin->frames_libres++;
+    admin->frames_ocupados--;
+    admin->total_liberaciones++;
+    
+    log_trace(logger, "## Marco liberado - Frame: %d (era PID: %d, Página: %d)", numero_frame, pid_anterior, pagina_anterior);
+    return MEMORIA_OK;
+}
+
 static void liberar_marcos_proceso(int pid) {
     if (!sistema_memoria || !sistema_memoria->admin_marcos) {
         log_error(logger, "liberar_marcos_proceso: Sistema de memoria no inicializado");
         return;
     }
 
+    log_debug(logger, "LIBERAR_MARCOS: Iniciando liberación de marcos para PID %d", pid);
     pthread_mutex_lock(&sistema_memoria->admin_marcos->mutex_frames);
+    log_debug(logger, "LIBERAR_MARCOS: Mutex adquirido para PID %d", pid);
 
+    int marcos_liberados = 0;
     for (int i = 0; i < sistema_memoria->admin_marcos->cantidad_total_frames; i++) {
         t_frame* frame = &sistema_memoria->admin_marcos->frames[i];
         if (frame->ocupado && frame->pid_propietario == pid) {
-            liberar_marco(i);
+            log_debug(logger, "LIBERAR_MARCOS: Liberando marco %d para PID %d", i, pid);
+            liberar_marco_interno(i);
+            marcos_liberados++;
+            log_debug(logger, "LIBERAR_MARCOS: Marco %d liberado para PID %d", i, pid);
         }
     }
 
+    log_debug(logger, "LIBERAR_MARCOS: Total de marcos liberados para PID %d: %d", pid, marcos_liberados);
     pthread_mutex_unlock(&sistema_memoria->admin_marcos->mutex_frames);
+    log_debug(logger, "LIBERAR_MARCOS: Mutex liberado para PID %d", pid);
 }
 
 void* acceso_espacio_usuario_lectura(int pid, int direccion_fisica, int tamanio) {
@@ -805,20 +881,20 @@ bool acceso_espacio_usuario_escritura(int pid, int direccion_fisica, int tamanio
  * enviado como dirección física dentro de la Memoria de Usuario, que deberá 
  * coincidir con la posición del byte 0 de la página.
  */
-void* leer_pagina_completa(int pid, int direccion_fisica) {
-    log_info(logger, "PID: %d - Leer página completa - Dir. Física: %d", pid, direccion_fisica);
+void* leer_pagina_completa(int pid, int direccion_base_pagina) {
+    log_info(logger, "PID: %d - Leer página completa - Dir. Base Página: %d", pid, direccion_base_pagina);
     
     // Validar que la dirección coincide con el byte 0 de una página
-    if (direccion_fisica % cfg->TAM_PAGINA != 0) {
-        log_error(logger, "PID: %d - Dirección física %d no coincide con byte 0 de página (TAM_PAGINA=%d)", 
-                 pid, direccion_fisica, cfg->TAM_PAGINA);
+    if (direccion_base_pagina % cfg->TAM_PAGINA != 0) {
+        log_error(logger, "PID: %d - Dirección base %d no coincide con byte 0 de página (TAM_PAGINA=%d)", 
+                 pid, direccion_base_pagina, cfg->TAM_PAGINA);
         return NULL;
     }
     
     // Validar que la dirección está dentro del espacio de memoria
-    if (direccion_fisica + cfg->TAM_PAGINA > cfg->TAM_MEMORIA) {
+    if (direccion_base_pagina + cfg->TAM_PAGINA > cfg->TAM_MEMORIA) {
         log_error(logger, "PID: %d - Página fuera de rango: %d + %d > %d", 
-                 pid, direccion_fisica, cfg->TAM_PAGINA, cfg->TAM_MEMORIA);
+                 pid, direccion_base_pagina, cfg->TAM_PAGINA, cfg->TAM_MEMORIA);
         return NULL;
     }
     
@@ -830,14 +906,24 @@ void* leer_pagina_completa(int pid, int direccion_fisica) {
     
     t_list* paginas_bloqueadas = NULL;
     
+    // Calcular el número de marco desde la dirección base física
+    int numero_marco = direccion_base_pagina / cfg->TAM_PAGINA;
+    
+    // Obtener el número de página que está mapeada a este marco
+    int numero_pagina = obtener_numero_pagina_de_marco(pid, numero_marco);
+    if (numero_pagina == -1) {
+        log_error(logger, "PID: %d - No se encontró página mapeada al marco %d", pid, numero_marco);
+        return NULL;
+    }
+    
     // Proteger página con bloqueo para lectura
-    if (bloquear_marco_por_pagina(pid, direccion_fisica / cfg->TAM_PAGINA, "LECTURA_PAGINA_COMPLETA")) {
+    if (bloquear_marco_por_pagina(pid, numero_pagina, "LECTURA_PAGINA_COMPLETA")) {
         paginas_bloqueadas = list_create();
         int* pag = malloc(sizeof(int));
-        *pag = direccion_fisica / cfg->TAM_PAGINA;
+        *pag = numero_pagina;
         list_add(paginas_bloqueadas, pag);
     } else {
-        log_error(logger, "PID: %d - No se pudo bloquear página %d para lectura completa", pid, direccion_fisica / cfg->TAM_PAGINA);
+        log_error(logger, "PID: %d - No se pudo bloquear página %d para lectura completa", pid, numero_pagina);
         return NULL;
     }
     
@@ -858,13 +944,13 @@ void* leer_pagina_completa(int pid, int direccion_fisica) {
     }
     
     // Copiar página completa desde el espacio de usuario
-    memcpy(pagina_completa, sistema_memoria->memoria_principal + direccion_fisica, cfg->TAM_PAGINA);
+    memcpy(pagina_completa, sistema_memoria->memoria_principal + direccion_base_pagina, cfg->TAM_PAGINA);
     
     // Liberar recursos
     int* pag = list_get(paginas_bloqueadas, 0);
     desbloquear_marco_por_pagina(pid, *pag, "LECTURA_PAGINA_COMPLETA");
     
-    log_trace(logger, "PID: %d - Página completa leída desde dirección física %d", pid, direccion_fisica);
+    log_trace(logger, "PID: %d - Página completa leída desde dirección base %d", pid, direccion_base_pagina);
     
     return pagina_completa;
 }
@@ -906,14 +992,24 @@ bool actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido_p
     
     t_list* paginas_bloqueadas = NULL;
     
+    // Calcular el número de marco desde la dirección física
+    int numero_marco = direccion_fisica / cfg->TAM_PAGINA;
+    
+    // Obtener el número de página que está mapeada a este marco
+    int numero_pagina = obtener_numero_pagina_de_marco(pid, numero_marco);
+    if (numero_pagina == -1) {
+        log_error(logger, "PID: %d - No se encontró página mapeada al marco %d", pid, numero_marco);
+        return false;
+    }
+    
     // Proteger página con bloqueo para escritura
-    if (bloquear_marco_por_pagina(pid, direccion_fisica / cfg->TAM_PAGINA, "ESCRITURA_PAGINA_COMPLETA")) {
+    if (bloquear_marco_por_pagina(pid, numero_pagina, "ESCRITURA_PAGINA_COMPLETA")) {
         paginas_bloqueadas = list_create();
         int* pag = malloc(sizeof(int));
-        *pag = direccion_fisica / cfg->TAM_PAGINA;
+        *pag = numero_pagina;
         list_add(paginas_bloqueadas, pag);
     } else {
-        log_error(logger, "PID: %d - No se pudo bloquear página %d para escritura completa", pid, direccion_fisica / cfg->TAM_PAGINA);
+        log_error(logger, "PID: %d - No se pudo bloquear página %d para escritura completa", pid, numero_pagina);
         return false;
     }
     
@@ -927,10 +1023,10 @@ bool actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido_p
     memcpy(sistema_memoria->memoria_principal + direccion_fisica, contenido_pagina, cfg->TAM_PAGINA);
     
     // MARCAR LA PÁGINA COMO MODIFICADA (DIRTY BIT)
-    t_entrada_tabla* entrada = _buscar_entrada_pagina(pid, direccion_fisica / cfg->TAM_PAGINA);
+    t_entrada_tabla* entrada = _buscar_entrada_pagina(pid, numero_pagina);
     if (entrada) {
         entrada->modificado = true;
-        log_trace(logger, "PID: %d - Página %d marcada como modificada (dirty bit)", pid, direccion_fisica / cfg->TAM_PAGINA);
+        log_trace(logger, "PID: %d - Página %d marcada como modificada (dirty bit)", pid, numero_pagina);
     }
     
     // Liberar recursos
@@ -1021,32 +1117,6 @@ int calcular_numero_pagina_desde_entradas(int* entradas, int cantidad_niveles, i
     }
     
     return numero_pagina;
-}
-
-/**
- * Procesa una solicitud de frame para entradas multinivel
- * Extrae los parámetros del paquete y calcula el marco correspondiente
- */
-int procesar_solicitud_frame_para_pagina(t_list* lista) {
-    if (!lista || list_size(lista) < 2) {
-        log_error(logger, "Solicitud inválida: se esperaban PID y número de página");
-        return -1;
-    }
-
-    int pid = *((int*)list_get(lista, 0));
-    int nro_pagina = *((int*)list_get(lista, 1));
-
-    log_trace(logger, "Solicitud de marco para página - PID: %d, Página lógica: %d", pid, nro_pagina);
-
-    int frame = acceso_tabla_paginas(pid, nro_pagina);
-
-    if (frame == -1) {
-        log_error(logger, "PID: %d - Página %d no mapeada. Marco no encontrado.", pid, nro_pagina);
-    } else {
-        log_trace(logger, "PID: %d - Página %d está en marco: %d", pid, nro_pagina, frame);
-    }
-
-    return frame;
 }
 
 
