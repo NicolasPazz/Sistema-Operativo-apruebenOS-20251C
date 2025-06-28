@@ -102,7 +102,7 @@ void* recibir_kernel_dispatch(void* arg) {
                 log_trace(cpu_log, "[DISPATCH] Ejecución del proceso PID %d finalizada", pid_ejecutando);
                 // Resetear variables después de la ejecución
                 pid_ejecutando = -1;
-                pc = 0;
+                pc = 1;
                 
                 list_destroy_and_destroy_elements(lista, free);
                 break;
