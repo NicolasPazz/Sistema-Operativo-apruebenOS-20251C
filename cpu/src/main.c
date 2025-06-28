@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
     iniciar_logger_cpu();
     inicializar_mmu();
 
-    log_info(cpu_log, AZUL("=== Iniciando CPU: %s ==="), numero_cpu);
+    log_info(cpu_log, AZUL("=== Iniciando CPU: %d ==="), numero_cpu);
 
     conectar_kernel_dispatch();
     send(fd_kernel_dispatch, &numero_cpu, sizeof(int), 0);
