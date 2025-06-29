@@ -78,7 +78,7 @@ int iniciar_servidor(char *puerto, t_log* logger, char* msj_server) {
 	}
 
 	freeaddrinfo(servinfo);
-	log_info(logger, AZUL("[Servidor]")VERDE(" %s")" escuchando en puerto"VERDE(" %s"), msj_server, puerto);
+	log_trace(logger, AZUL("[Servidor]")VERDE(" %s")" escuchando en puerto"VERDE(" %s"), msj_server, puerto);
 
 	return socket_servidor;
 }

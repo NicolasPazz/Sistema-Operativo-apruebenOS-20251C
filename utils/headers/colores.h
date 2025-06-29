@@ -3,7 +3,7 @@
 // Colors en formato RGB con ANSI
 #define ANSI_COLOR_RESET   "\033[0m"
 #define ANSI_COLOR_ROJO    "\033[38;2;192;31;38m"
-#define ANSI_COLOR_VERDE   "\033[38;2;145;193;67m"
+#define ANSI_COLOR_VERDE   "\033[38;2;179;236;111m"
 #define ANSI_COLOR_AZUL    "\033[38;2;108;182;182m"
 #define ANSI_COLOR1    "\033[38;2;239;228;77m"
 
