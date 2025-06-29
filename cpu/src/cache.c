@@ -45,7 +45,7 @@ int buscar_pagina_en_cache(int numero_pagina) {
     }
     for (int i = 0; i < cache->cantidad_entradas; i++) {
         if (cache->entradas[i].numero_pagina == numero_pagina) {
-            log_info(cpu_log, VERDE("PID: %d - Cache Hit - Pagina: %d"), pid_ejecutando, numero_pagina);
+            log_info(cpu_log, VERDE("(PID: %d) - Cache Hit - Pagina: %d"), pid_ejecutando, numero_pagina);
             if (strcmp(cache->algoritmo_reemplazo,"CLOCK") == 0 || strcmp(cache->algoritmo_reemplazo, "CLOCK-M") == 0) {
                 cache->entradas[i].bit_referencia = 1;
             }
@@ -111,7 +111,7 @@ void desalojar_proceso_cache() {
     pthread_mutex_lock(&mutex_cache);
     if (!cache_habilitada(cache)) {
         pthread_mutex_unlock(&mutex_cache);
-        log_error(cpu_log, "Cache deshabilitada");
+        log_trace(cpu_log, "Cache deshabilitada");
         return;
     }
 
@@ -129,7 +129,7 @@ void desalojar_proceso_cache() {
                 }
             }
 
-            log_info(cpu_log, VERDE("PID: %d - Memory Update - Página: %d - Frame: %d"), pid_ejecutando, pagina, frameC);
+            log_info(cpu_log, VERDE("(PID: %d) - Memory Update - Página: %d - Frame: %d"), pid_ejecutando, pagina, frameC);
 
             // escribir_pagina_en_memoria(pagina, frame, cache->entradas[i].contenido);
         }
@@ -234,7 +234,7 @@ void cache_escribir(int frame, char* datos) {
     cache->entradas[entrada_index].contenido = datos;
     cache->entradas[entrada_index].modificado = false;
     cache->entradas[entrada_index].bit_referencia = 1;
-    log_info(cpu_log, VERDE("PID: %d - Cache Add - Pagina: %d"), pid_ejecutando, frame);
+    log_info(cpu_log, VERDE("(PID: %d) - Cache Add - Pagina: %d"), pid_ejecutando, frame);
     pthread_mutex_unlock(&mutex_cache);
 }
 

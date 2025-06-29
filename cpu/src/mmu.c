@@ -100,9 +100,9 @@ int traducir_direccion_fisica(int direccion_logica) {
         pthread_mutex_unlock(&mutex_tlb);
     }
     if (tlb_habilitada() && hit) {
-        log_info(cpu_log, VERDE("PID: %d - TLB HIT - Página: %d"), pid_ejecutando, nro_pagina);    
+        log_info(cpu_log, VERDE("(PID: %d) - TLB HIT - Página: %d"), pid_ejecutando, nro_pagina);    
     } else {
-        log_info(cpu_log, VERDE("PID: %d - TLB MISS - Página: %d"), pid_ejecutando, nro_pagina);
+        log_info(cpu_log, ROJO("(PID: %d) - TLB MISS - Página: %d"), pid_ejecutando, nro_pagina);
 
         // Nueva operación: solo se envía PID y nro_pagina
         t_paquete* paquete = crear_paquete_op(ACCESO_TABLA_PAGINAS_OP);
@@ -138,7 +138,7 @@ int traducir_direccion_fisica(int direccion_logica) {
             exit(EXIT_FAILURE);
         }
 
-        log_info(cpu_log, VERDE("PID: %d - OBTENER MARCO - Página: %d - Marco: %d"), pid_ejecutando, nro_pagina, frame);
+        log_info(cpu_log, VERDE("(PID: %d) - OBTENER MARCO - Página: %d - Marco: %d"), pid_ejecutando, nro_pagina, frame);
 
         if (tlb_habilitada()) {
             pthread_mutex_lock(&mutex_tlb);
@@ -211,4 +211,29 @@ long timestamp_actual() {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
+void desalojar_proceso_tlb() {
+    pthread_mutex_lock(&mutex_tlb);
+    if (!tlb_habilitada()) {
+        pthread_mutex_unlock(&mutex_tlb);
+        log_trace(cpu_log, "TLB deshabilitada");
+        return;
+    }
+
+    log_trace(cpu_log, "Limpiando TLB para proceso %d", pid_ejecutando);
+    
+    // Limpiar todas las entradas de la TLB
+    for (int i = 0; i < list_size(tlb); i++) {
+        entrada_tlb_t* entrada = list_get(tlb, i);
+        if (entrada) {
+            free(entrada);
+        }
+    }
+    
+    // Vaciar la lista
+    list_clean(tlb);
+    
+    log_trace(cpu_log, "TLB limpiada exitosamente para proceso %d", pid_ejecutando);
+    pthread_mutex_unlock(&mutex_tlb);
 }

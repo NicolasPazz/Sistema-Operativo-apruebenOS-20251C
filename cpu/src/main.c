@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
     iniciar_logger_cpu();
     inicializar_mmu();
 
-    log_info(cpu_log, AZUL("=== Iniciando CPU: %d ==="), numero_cpu);
+    log_trace(cpu_log, AZUL("=== Iniciando CPU: %d ==="), numero_cpu);
 
     conectar_kernel_dispatch();
     send(fd_kernel_dispatch, &numero_cpu, sizeof(int), 0);
@@ -66,12 +66,11 @@ int main(int argc, char* argv[]) {
 void* recibir_kernel_dispatch(void* arg) {
     log_trace(cpu_log, "[DISPATCH] Hilo de recepción de Kernel Dispatch iniciado");
     int noFinalizar = 0;
+    int cod_op;
     while (noFinalizar != -1) {
-        log_info(cpu_log, AZUL("[DISPATCH]")" Esperando operación desde Kernel...");
-        int cod_op = recibir_operacion(fd_kernel_dispatch);
-        if(cod_op >= 0) {
-            log_info(cpu_log, AZUL("[DISPATCH]")" Operación recibida desde Kernel: %d", cod_op);
-        }
+        log_trace(cpu_log, AZUL("[DISPATCH]")" Esperando operación desde Kernel...");
+        cod_op = recibir_operacion(fd_kernel_dispatch);
+        log_trace(cpu_log, AZUL("[DISPATCH]")" Operación recibida desde Kernel: %d", cod_op);
 
         switch (cod_op) {
             case MENSAJE_OP:

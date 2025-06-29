@@ -6,7 +6,6 @@
 #include "../headers/main.h"
 
 void func_noop() {
-    //No hace nada, solo se usa para el log
     log_debug(cpu_log, "## PID: %d - Acción: NOOP", pid_ejecutando);
 }
 
@@ -20,20 +19,48 @@ void func_write(char* direccion_logica_str, char* datos) {
     if (cache_habilitada()) {
         int pos = buscar_pagina_en_cache(nro_pagina);
         if (pos != -1) {
-            cache_modificar(nro_pagina, datos);
-            log_info(cpu_log, VERDE("PID: %d - Cache HIT - Pagina: %d - Escritura directa en cache"), pid_ejecutando, nro_pagina);
+            char* contenido = cache_leer(nro_pagina); // Asume malloc interno
+            log_info(cpu_log, VERDE("(PID: %d) - Cache HIT - Pagina: %d - Valor: %s"), pid_ejecutando, nro_pagina, contenido);
+            log_trace("PID: %d - Contenido leído (cache): %s\n", pid_ejecutando, contenido);
+            free(contenido);
             return;
         }
+        log_info(cpu_log, ROJO("(PID: %d) - Cache MISS - Pagina: %d"), pid_ejecutando, nro_pagina);
+        }
 
-        // Cache MISS - pedir contenido a Memoria para llenar caché
+    // 2. TRADUCCIÓN Y ESCRITURA EN MEMORIA
         int direccion_fisica = traducir_direccion_fisica(direccion_logica);
 
-        t_paquete* paquete = crear_paquete_op(LEER_PAGINA_COMPLETA_OP);
-        agregar_entero_a_paquete(paquete, pid_ejecutando);
+    t_paquete* paquete = crear_paquete_op(WRITE_OP);
+    agregar_a_paquete(paquete, &pid_ejecutando, sizeof(int));
+    agregar_a_paquete(paquete, &direccion_fisica, sizeof(int));
+    agregar_a_paquete(paquete, datos, strlen(datos) + 1);
+    enviar_paquete(paquete, fd_memoria);
+    eliminar_paquete(paquete);
+
+    // Recibir respuesta de Memoria
+    t_respuesta respuesta;
+    if (recv(fd_memoria, &respuesta, sizeof(t_respuesta), MSG_WAITALL) != sizeof(t_respuesta)) {
+        log_error(cpu_log, "PID: %d - Error al recibir respuesta de WRITE desde Memoria", pid_ejecutando);
+        exit(EXIT_FAILURE);
+    }
+    
+    if (respuesta != OK) {
+        log_error(cpu_log, "PID: %d - Error en escritura de memoria: %d", pid_ejecutando, respuesta);
+        exit(EXIT_FAILURE);
+    }
+
+    log_info(cpu_log, VERDE("(PID: %d) - WRITE - Dir Fisica: %d - Valor: %s"), pid_ejecutando, direccion_fisica, datos);
+
+    // 3. Si hay caché habilitada y fue Cache MISS, cargar la página actualizada
+    if (cache_habilitada()) {
+        // Cargar página completa actualizada desde memoria
+        t_paquete* paquete_pagina = crear_paquete_op(LEER_PAGINA_COMPLETA_OP);
+        agregar_entero_a_paquete(paquete_pagina, pid_ejecutando);
         int direccion_base_pagina = direccion_fisica & ~(cfg_memoria->TAM_PAGINA - 1);
-        agregar_entero_a_paquete(paquete, direccion_base_pagina);
-        enviar_paquete(paquete, fd_memoria);
-        eliminar_paquete(paquete);
+        agregar_entero_a_paquete(paquete_pagina, direccion_base_pagina);
+        enviar_paquete(paquete_pagina, fd_memoria);
+        eliminar_paquete(paquete_pagina);
 
         // Recibir respuesta como paquete
         op_code codigo_operacion;
@@ -57,70 +84,95 @@ void func_write(char* direccion_logica_str, char* datos) {
         char* contenido = (char*)list_get(lista_respuesta, 0);
         cache_escribir(nro_pagina, contenido);
         list_destroy_and_destroy_elements(lista_respuesta, free);
-
-        log_info(cpu_log, VERDE("PID: %d - Cache MISS - Pagina: %d"), pid_ejecutando, nro_pagina);
     }
-
-    //ahora si traducir
-    int direccion_fisica = traducir_direccion_fisica(direccion_logica);
-
-    t_paquete* paquete = crear_paquete_op(WRITE_OP);
-    // Usar agregar_a_paquete para consistencia con recibir_contenido_paquete
-    agregar_a_paquete(paquete, &pid_ejecutando, sizeof(int));
-    agregar_a_paquete(paquete, &direccion_fisica, sizeof(int));
-    agregar_a_paquete(paquete, datos, strlen(datos) + 1);
-    enviar_paquete(paquete, fd_memoria);
-    eliminar_paquete(paquete);
-
-    // Recibir respuesta de Memoria
-    t_respuesta respuesta;
-    if (recv(fd_memoria, &respuesta, sizeof(t_respuesta), MSG_WAITALL) != sizeof(t_respuesta)) {
-        log_error(cpu_log, "PID: %d - Error al recibir respuesta de WRITE desde Memoria", pid_ejecutando);
-        exit(EXIT_FAILURE);
-    }
-    
-    if (respuesta != OK) {
-        log_error(cpu_log, "PID: %d - Error en escritura de memoria: %d", pid_ejecutando, respuesta);
-        exit(EXIT_FAILURE);
-    }
-
-    log_info(cpu_log, VERDE("PID: %d - WRITE - Dir Fisica: %d - Valor: %s"), pid_ejecutando, direccion_fisica, datos);
 }
 
-
-void func_read(char* direccion_str, char* tamanio_str) {
-    int direccion_logica = atoi(direccion_str);
+void func_read(char* direccion_logica_str, char* tam_str) {
+    int direccion_logica = atoi(direccion_logica_str);
+    int tam = atoi(tam_str);
     int tam_pagina = cfg_memoria->TAM_PAGINA;
     int nro_pagina = direccion_logica / tam_pagina;
-    int size = atoi(tamanio_str);
 
     // 1. CACHE
     if (cache_habilitada()) {
         int pos = buscar_pagina_en_cache(nro_pagina);
         if (pos != -1) {
             char* contenido = cache_leer(nro_pagina); // Asume malloc interno
-            log_info(cpu_log, VERDE("PID: %d - Cache HIT - Pagina: %d - Valor: %s"), pid_ejecutando, nro_pagina, contenido);
-            printf("PID: %d - Contenido leído (cache): %s\n", pid_ejecutando, contenido);
+            log_info(cpu_log, VERDE("(PID: %d) - Cache HIT - Pagina: %d - Valor: %s"), pid_ejecutando, nro_pagina, contenido);
+            log_trace("PID: %d - Contenido leído (cache): %s\n", pid_ejecutando, contenido);
             free(contenido);
             return;
         }
-        log_info(cpu_log, VERDE("PID: %d - Cache MISS - Pagina: %d"), pid_ejecutando, nro_pagina);
+        log_info(cpu_log, ROJO("(PID: %d) - Cache MISS - Pagina: %d"), pid_ejecutando, nro_pagina);
     }
 
-    // 2. TRADUCCIÓN Y LECTURA EN MEMORIA
+    // 2. TRADUCCIÓN Y LECTURA DE MEMORIA
     int direccion_fisica = traducir_direccion_fisica(direccion_logica);
-    t_paquete *paquete = crear_paquete_op(READ_OP);
-    // Usar agregar_a_paquete para consistencia con recibir_contenido_paquete
+
+    t_paquete* paquete = crear_paquete_op(READ_OP);
     agregar_a_paquete(paquete, &direccion_fisica, sizeof(int));
-    agregar_a_paquete(paquete, &size, sizeof(int));
+    agregar_a_paquete(paquete, &tam, sizeof(int));
     agregar_a_paquete(paquete, &pid_ejecutando, sizeof(int));
     enviar_paquete(paquete, fd_memoria);
     eliminar_paquete(paquete);
-    int respuesta_size = 0;
-    char* contenido = recibir_buffer(&respuesta_size, fd_memoria);
 
-    log_info(cpu_log, VERDE("PID: %d - READ - Dir Fisica: %d - Valor: %s"), pid_ejecutando, direccion_fisica, contenido);
-    free(contenido);
+    // Recibir respuesta como paquete
+    op_code codigo_operacion;
+    if (recv(fd_memoria, &codigo_operacion, sizeof(op_code), MSG_WAITALL) != sizeof(op_code)) {
+        log_error(cpu_log, "PID: %d - Error al recibir op_code de respuesta desde Memoria", pid_ejecutando);
+        exit(EXIT_FAILURE);
+    }
+    
+    if (codigo_operacion != PAQUETE_OP) {
+        log_error(cpu_log, "PID: %d - Op_code inesperado en respuesta: %d (esperaba PAQUETE_OP)", 
+                 pid_ejecutando, codigo_operacion);
+        exit(EXIT_FAILURE);
+    }
+    
+    t_list* lista_respuesta = recibir_contenido_paquete(fd_memoria);
+    if (lista_respuesta == NULL || list_size(lista_respuesta) < 1) {
+        log_error(cpu_log, "PID: %d - Error al recibir respuesta de READ desde Memoria", pid_ejecutando);
+        exit(EXIT_FAILURE);
+    }
+    
+    char* contenido = (char*)list_get(lista_respuesta, 0);
+    log_info(cpu_log, VERDE("(PID: %d) - READ - Dir Fisica: %d - Valor: %s"), pid_ejecutando, direccion_fisica, contenido);
+    log_trace("PID: %d - Contenido leído: %s\n", pid_ejecutando, contenido);
+    list_destroy_and_destroy_elements(lista_respuesta, free);
+
+    // 3. Si hay caché habilitada y fue Cache MISS, cargar la página
+    if (cache_habilitada()) {
+        // Cargar página completa desde memoria
+        t_paquete* paquete_pagina = crear_paquete_op(LEER_PAGINA_COMPLETA_OP);
+        agregar_entero_a_paquete(paquete_pagina, pid_ejecutando);
+        int direccion_base_pagina = direccion_fisica & ~(cfg_memoria->TAM_PAGINA - 1);
+        agregar_entero_a_paquete(paquete_pagina, direccion_base_pagina);
+        enviar_paquete(paquete_pagina, fd_memoria);
+        eliminar_paquete(paquete_pagina);
+
+        // Recibir respuesta como paquete
+        op_code codigo_operacion_pagina;
+        if (recv(fd_memoria, &codigo_operacion_pagina, sizeof(op_code), MSG_WAITALL) != sizeof(op_code)) {
+            log_error(cpu_log, "PID: %d - Error al recibir op_code de respuesta de página desde Memoria", pid_ejecutando);
+            exit(EXIT_FAILURE);
+        }
+        
+        if (codigo_operacion_pagina != PAQUETE_OP) {
+            log_error(cpu_log, "PID: %d - Op_code inesperado en respuesta de página: %d (esperaba PAQUETE_OP)", 
+                     pid_ejecutando, codigo_operacion_pagina);
+            exit(EXIT_FAILURE);
+        }
+        
+        t_list* lista_respuesta_pagina = recibir_contenido_paquete(fd_memoria);
+        if (lista_respuesta_pagina == NULL || list_size(lista_respuesta_pagina) < 1) {
+            log_error(cpu_log, "PID: %d - Error al recibir respuesta de página desde Memoria", pid_ejecutando);
+            exit(EXIT_FAILURE);
+        }
+        
+        char* contenido_pagina = (char*)list_get(lista_respuesta_pagina, 0);
+        cache_escribir(nro_pagina, contenido_pagina);
+        list_destroy_and_destroy_elements(lista_respuesta_pagina, free);
+    }
 }
 
 void func_goto(char* valor) {
@@ -132,7 +184,7 @@ void func_goto(char* valor) {
 void func_io(char* nombre_dispositivo, char* tiempo_str) {
     int tiempo = atoi(tiempo_str);  // Convertir tiempo de string a int
     
-    log_info(cpu_log, ROJO("[SYSCALL]")VERDE(" Ejecutando IO - Dispositivo: '%s', Tiempo: %d"), nombre_dispositivo, tiempo);
+    log_trace(cpu_log, ROJO("[SYSCALL]")VERDE(" Ejecutando IO - Dispositivo: '%s', Tiempo: %d"), nombre_dispositivo, tiempo);
     
     pc++; // Al PC le sumo 1 porque sino cuando vuelve de IO repite la misma instruccion IO y quedan en bucle los 4 modulos
 
@@ -143,7 +195,7 @@ void func_io(char* nombre_dispositivo, char* tiempo_str) {
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 
-    log_info(cpu_log, ROJO("[SYSCALL]")" IO enviado a Kernel - Finalizando ejecución del proceso actual");
+    log_trace(cpu_log, ROJO("[SYSCALL]")" IO enviado a Kernel - Finalizando ejecución del proceso actual");
     seguir_ejecutando = 0;
 }
 
@@ -167,7 +219,7 @@ void func_init_proc(t_instruccion* instruccion) {
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
     
-    log_info(cpu_log, ROJO("[SYSCALL]")" INIT_PROC enviado a Kernel - Continuando ejecución del proceso");
+    log_trace(cpu_log, ROJO("[SYSCALL]")" INIT_PROC enviado a Kernel - Continuando ejecución del proceso");
 }
 
 void func_dump_memory() {
@@ -181,14 +233,18 @@ void func_dump_memory() {
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 
-    log_info(cpu_log, ROJO("[SYSCALL]")" DUMP_MEMORY enviado a Kernel - Finalizando ejecución del proceso");
+    log_trace(cpu_log, ROJO("[SYSCALL]")" DUMP_MEMORY enviado a Kernel - Finalizando ejecución del proceso");
     seguir_ejecutando = 0; // El Dump frena la ejecución porque bloquea por un tiempo o pasa a exit el proceso en caso de error
 }
 
 void func_exit() {
+    // Limpiar TLB y cache antes de terminar el proceso
+    desalojar_proceso_tlb();
+    desalojar_proceso_cache();
+    
     int op = EXIT_OP;
     send(fd_kernel_dispatch, &op, sizeof(int), 0);
-    log_info(cpu_log, ROJO("[SYSCALL]")" EXIT enviado a Kernel - Finalizando ejecución del proceso");
+    log_trace(cpu_log, ROJO("[SYSCALL]")" EXIT enviado a Kernel - Finalizando ejecución del proceso");
 
     seguir_ejecutando = 0; // Solo EXIT debe terminar la ejecución
 }

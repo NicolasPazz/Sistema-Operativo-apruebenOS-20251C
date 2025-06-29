@@ -66,7 +66,7 @@ void ejecutar_ciclo_instruccion() {
 
 // fetch
 t_instruccion* fetch() {
-    log_info(cpu_log, VERDE("## PID: %d - FETCH - Program Counter: %d"), pid_ejecutando, pc);
+    log_info(cpu_log, VERDE("## (PID: %d) - ")ROJO("FETCH")VERDE(" - Program Counter: %d"), pid_ejecutando, pc);
 
     // Enviar Paquete OP a Memoria
     log_trace(cpu_log, "[FETCH] Enviando solicitud PEDIR_INSTRUCCION_OP a memoria...");
@@ -144,7 +144,7 @@ void execute(op_code tipo_instruccion, t_instruccion* instruccion) {
         }
     }
     
-    log_info(cpu_log, VERDE("## PID: %d - Ejecutando: %s - %s"), 
+    log_info(cpu_log, VERDE("(## PID: %d) - Ejecutando: ")ROJO("%s - %s"), 
              pid_ejecutando, 
              instruccion->parametros1, 
              strlen(params_str) > 0 ? params_str : "");
@@ -198,6 +198,10 @@ void check_interrupt() {
         if (pid_ejecutando == pid_interrupt) {
             seguir_ejecutando = 0;
             pthread_mutex_unlock(&mutex_estado_proceso);
+
+            // Limpiar TLB y cache antes de desalojar el proceso
+            desalojar_proceso_tlb();
+            desalojar_proceso_cache();
 
             t_paquete* paquete = crear_paquete_op(OK);
             pthread_mutex_lock(&mutex_estado_proceso);
