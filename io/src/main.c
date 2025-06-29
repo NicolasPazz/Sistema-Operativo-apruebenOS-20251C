@@ -25,12 +25,12 @@ int main(int argc, char* argv[]) {
     iniciar_config_io();
     iniciar_logger_io();
 
-    log_info(io_log, AZUL("=== Iniciando dispositivo IO: %s ==="), nombre_io);
+    log_trace(io_log, AZUL("=== Iniciando dispositivo IO: %s ==="), nombre_io);
     log_trace(io_log, "Configuración cargada - IP_KERNEL: %s, PUERTO_KERNEL: %s", IP_KERNEL, PUERTO_KERNEL);
 
     iniciar_conexiones_io(nombre_io);
     
-    log_info(io_log, "Dispositivo IO %s listo para recibir operaciones del Kernel", nombre_io);
+    log_trace(io_log, "Dispositivo IO %s listo para recibir operaciones del Kernel", nombre_io);
     
     // Bucle principal para atender operaciones del Kernel
     while (1) {
@@ -58,10 +58,10 @@ int main(int argc, char* argv[]) {
 
                 log_debug(io_log, "PID recibido: %d | Tiempo de IO: %d | Dispositivo: %s", pid, tiempo_io, nombre_io);
 
-                log_info(io_log, VERDE("## PID: %d - Inicio de IO - Tiempo: %d"), pid, tiempo_io);
+                log_info(io_log, VERDE("## (PID: %d) - Inicio de IO - Tiempo: %d"), pid, tiempo_io);
                 log_trace(io_log, "Simulando operación de I/O para PID %d durante %.3f milisegundos...", pid, (double)tiempo_io/1000);
                 usleep(tiempo_io); // 1.000.000	en usleep es 1 Segundo
-                log_info(io_log, VERDE("## PID: %d - Fin de IO"), pid);
+                log_info(io_log, VERDE("## (PID: %d) - Fin de IO"), pid);
             
                 op_code finalizado = IO_FINALIZADA_OP;
                 if (send(fd_kernel_io, &finalizado, sizeof(op_code), 0) <= 0 ||
