@@ -234,7 +234,7 @@ t_process_instructions* load_process_instructions(int pid, char* instructions_fi
 // Obtiene una instrucción específica para un proceso
 t_instruccion* get_instruction(int pid, int pc) {
     if (process_instructions_list == NULL) {
-        log_error(logger, "Lista de instrucciones no inicializada");
+        log_error(logger, "Lista de instrucciones del proceso (PID: %d) no inicializada", pid);
         return NULL;
     }
     
@@ -249,20 +249,24 @@ t_instruccion* get_instruction(int pid, int pc) {
     }
     
     if (process_inst == NULL) {
-        log_error(logger, "PID: %d - No se encontraron instrucciones para este proceso", pid);
+        log_error(logger, "(PID: %d) - No se encontraron instrucciones para este proceso", pid);
         return NULL;
     }
     
+    // Convertir PC de base 1 a base 0 (PC empieza en 1, pero las listas empiezan en 0)
+    int pc_index = pc - 1;
+    
     // Verificar que el PC sea válido
-    if (pc >= list_size(process_inst->instructions)) {
-        log_error(logger, "PID: %d - PC fuera de rango: %d", pid, pc);
+    if (pc_index < 0 || pc_index >= list_size(process_inst->instructions)) {
+        log_error(logger, "PID: %d - PC fuera de rango: %d (índice: %d, tamaño lista: %d)", 
+                 pid, pc, pc_index, list_size(process_inst->instructions));
         return NULL;
     }
     
     // Incrementar métrica de instrucciones solicitadas usando la función estándar
     incrementar_instrucciones_solicitadas(pid);
     
-    t_extended_instruccion* extended_instr = list_get(process_inst->instructions, pc);
+    t_extended_instruccion* extended_instr = list_get(process_inst->instructions, pc_index);
     
     // Devolvemos una copia de la instrucción base que será liberada por el llamador
     t_instruccion* result = malloc(sizeof(t_instruccion));

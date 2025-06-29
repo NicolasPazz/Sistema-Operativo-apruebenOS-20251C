@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
     }
     iniciar_logger_memoria();
     
-    log_info(logger, AZUL("=== INICIANDO SISTEMA DE MEMORIA ==="));
+    log_trace(logger, AZUL("=== INICIANDO SISTEMA DE MEMORIA ==="));
     log_debug(logger, "Configuración cargada - TAM_MEMORIA: %d, TAM_PAGINA: %d, NIVELES: %d, ENTRADAS_POR_TABLA: %d", 
              cfg->TAM_MEMORIA, cfg->TAM_PAGINA, cfg->CANTIDAD_NIVELES, cfg->ENTRADAS_POR_TABLA);
 
@@ -42,19 +42,19 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    log_info(logger, "Sistema de memoria inicializado correctamente:");
-    log_info(logger, "- Memoria principal: %d bytes (%d frames de %d bytes)", 
+    log_trace(logger, "Sistema de memoria inicializado correctamente:");
+    log_trace(logger, "- Memoria principal: %d bytes (%d frames de %d bytes)", 
              cfg->TAM_MEMORIA, 
              sistema_memoria->admin_marcos->cantidad_total_frames, 
              cfg->TAM_PAGINA);
-    log_info(logger, "- Sistema SWAP: %d bytes (%d páginas) en %s", 
+    log_trace(logger, "- Sistema SWAP: %d bytes (%d páginas) en %s", 
              sistema_memoria->admin_swap->tamanio_swap,
              sistema_memoria->admin_swap->cantidad_paginas_swap,
              cfg->PATH_SWAPFILE);
-    log_info(logger, "- Paginación: %d niveles con %d entradas por tabla", 
+    log_trace(logger, "- Paginación: %d niveles con %d entradas por tabla", 
              cfg->CANTIDAD_NIVELES, cfg->ENTRADAS_POR_TABLA);
 
-    log_info(logger, "Todas las estructuras inicializadas correctamente");
+    log_trace(logger, "Todas las estructuras inicializadas correctamente");
 
     // Iniciar servidor de memoria
     char* puerto = string_itoa(cfg->PUERTO_ESCUCHA);
@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    log_info(logger, AZUL("=== SERVIDOR DE MEMORIA INICIADO ==="));
+    log_trace(logger, AZUL("=== SERVIDOR DE MEMORIA INICIADO ==="));
     log_trace(logger, "Escuchando en puerto %d. Esperando conexiones...", cfg->PUERTO_ESCUCHA);
 
   

@@ -86,7 +86,7 @@ void log_instruccion_obtenida(int pid, int pc, t_instruccion* instruccion) {
             string_append_with_format(&args_log, " %s", instruccion->parametros3);
         }
     }
-    log_info(logger, VERDE("## PID: %d - Obtener instrucción: %d - Instrucción: %s%s"), 
+    log_info(logger, VERDE("## (PID: %d) - Obtener instrucción: %d - Instrucción: %s%s"), 
              pid, pc, instruccion->parametros1, args_log);
     free(args_log);
 }
@@ -356,7 +356,7 @@ t_entrada_tabla* buscar_entrada_tabla(t_estructura_paginas* estructura, int nume
 // ============== FUNCIONES DE PROCESAMIENTO DE MEMORIA ==============
 
 t_resultado_memoria procesar_memory_dump(int pid) {
-    log_info(logger, VERDE("## PID: %d - Memory Dump solicitado"), pid);
+    log_info(logger, VERDE("## (PID: %d) - Memory Dump solicitado"), pid);
     
     // Verificar que el proceso existe
     if (!proceso_existe(pid)) {

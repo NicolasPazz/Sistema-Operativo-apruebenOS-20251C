@@ -70,7 +70,7 @@ int cargar_configuracion(char* path) {
     cfg->DUMP_PATH = strdup(config_get_string_value(cfg_file, "DUMP_PATH"));
     cfg->PATH_INSTRUCCIONES = strdup(config_get_string_value(cfg_file, "PATH_INSTRUCCIONES"));
 
-    printf("Archivo de configuracion cargado correctamente\n");
+    //printf("Archivo de configuracion cargado correctamente\n");
     config_destroy(cfg_file);
 
     return 1;

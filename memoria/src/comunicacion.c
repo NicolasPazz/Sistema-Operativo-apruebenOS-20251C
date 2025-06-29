@@ -93,7 +93,7 @@ void procesar_conexion(void* void_args) {
             break;
 
         case HANDSHAKE_MEMORIA_CPU:
-            log_info(logger, VERDE("## CPU Conectado - FD del socket: %d"), cliente_socket);
+            log_trace(logger, VERDE("## CPU Conectado - FD del socket: %d"), cliente_socket);
             fd_cpu = cliente_socket;
             break;
 
@@ -469,7 +469,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
             send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
             
-            log_info(logger, "Suspensión de proceso %s - PID: %d", 
+            log_trace(logger, "Suspensión de proceso %s - PID: %d",
                     (respuesta == OK) ? "exitosa" : "fallida", pid);
             break;
         }
@@ -486,7 +486,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
             send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
             
-            log_info(logger, "Des-suspensión de proceso %s - PID: %d", 
+            log_trace(logger, "Des-suspensión de proceso %s - PID: %d",
                     (respuesta == OK) ? "exitosa" : "fallida", pid);
             break;
         }
@@ -510,7 +510,7 @@ void procesar_write_op(int cliente_socket) {
     int direccion_fisica = *(int*)list_get(lista, 1);
     char* datos_str = (char*)list_get(lista, 2);
 
-    log_info(logger, VERDE("## PID: %d - Escritura - Dir. Física: %d - Tamaño: %ld"), 
+    log_trace(logger, VERDE("## PID: %d - Escritura - Dir. Física: %d - Tamaño: %ld"),
                 pid, direccion_fisica, strlen(datos_str));
 
     actualizar_metricas(pid, "MEMORY_WRITE");
@@ -538,7 +538,7 @@ void procesar_read_op(int cliente_socket) {
     int size = *(int*)list_get(lista, 1);
     int pid = *(int*)list_get(lista, 2);
 
-    log_info(logger, VERDE("## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d"), 
+    log_trace(logger, VERDE("## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d"),
                 pid, direccion_fisica, size);
 
     actualizar_metricas(pid, "MEMORY_READ");
@@ -548,10 +548,11 @@ void procesar_read_op(int cliente_socket) {
     memcpy(datos_leidos, sistema_memoria->memoria_principal + direccion_fisica, size);
     datos_leidos[size] = '\0'; // Null terminator
 
-    int buffer_size = size + 1;
-    if (!enviar_buffer_a_socket(cliente_socket, datos_leidos, buffer_size)) {
-        log_error(logger, "Error al enviar datos leídos - PID: %d", pid);
-    }
+    // Enviar respuesta como un string en un paquete 
+    t_paquete* paquete_respuesta = crear_paquete_op(PAQUETE_OP);
+    agregar_a_paquete(paquete_respuesta, datos_leidos, size + 1);
+    enviar_paquete(paquete_respuesta, cliente_socket);
+    eliminar_paquete(paquete_respuesta);
 
     free(datos_leidos);
     list_destroy_and_destroy_elements(lista, free);
