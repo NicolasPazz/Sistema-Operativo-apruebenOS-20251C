@@ -5,7 +5,7 @@ set -e
 cd "$(dirname "$0")/.."
 
 # Limitar RAM a 512 MB por proceso
-ulimit -v $((512 * 1024))
+#ulimit -v $((512 * 1024))
 
 # Matar procesos colgados de ejecuciones anteriores
 fuser -k 8001/tcp 2>/dev/null || true
