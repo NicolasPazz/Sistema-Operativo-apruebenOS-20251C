@@ -90,7 +90,7 @@ void DUMP_MEMORY(t_pcb* pcb_dump) {
     if (respuesta == OK) {
         // Si la operación fue exitosa, desbloquear el proceso (pasa a READY)
         cambiar_estado_pcb(pcb_dump, READY);
-        log_info(kernel_log, "## (PID: %d) finalizó DUMP_MEMORY exitosamente y pasa a READY", pcb_dump->PID);
+        log_trace(kernel_log, "## (PID: %d) finalizó DUMP_MEMORY exitosamente y pasa a READY", pcb_dump->PID);
         
         // ✅ Asegurar que el proceso se replanifique inmediatamente
         // Esto es importante para que el proceso continúe ejecutándose después del dump
@@ -98,7 +98,7 @@ void DUMP_MEMORY(t_pcb* pcb_dump) {
     } else {
         // Si hubo error, enviar el proceso a EXIT
         cambiar_estado_pcb(pcb_dump, EXIT_ESTADO);
-        log_info(kernel_log, "## (PID: %d) - Error en DUMP_MEMORY, proceso enviado a EXIT", pcb_dump->PID);
+        log_error(kernel_log, "## (PID: %d) - Error en DUMP_MEMORY, proceso enviado a EXIT", pcb_dump->PID);
     }
 }
 
@@ -198,16 +198,36 @@ void EXIT(t_pcb* pcb_a_finalizar) {
     // Notificar a planificador LP
     sem_post(&sem_finalizacion_de_proceso);
 
-    // Finalizar kernel cuando no haya más procesos
-    log_debug(kernel_log, "EXIT: esperando mutex_cola_procesos para verificar si quedan procesos");
+    // Verificar si no quedan procesos en el sistema
+    log_debug(kernel_log, "EXIT: verificando si quedan procesos en el sistema");
+    
+    pthread_mutex_lock(&mutex_cola_new);
+    pthread_mutex_lock(&mutex_cola_ready);
+    pthread_mutex_lock(&mutex_cola_running);
+    pthread_mutex_lock(&mutex_cola_blocked);
+    pthread_mutex_lock(&mutex_cola_susp_ready);
+    pthread_mutex_lock(&mutex_cola_susp_blocked);
     pthread_mutex_lock(&mutex_cola_procesos);
-    log_debug(kernel_log, "EXIT: bloqueando mutex_cola_procesos para verificar si quedan procesos");
-    if(list_size(cola_procesos) == 0) {
+    
+    int total_procesos = list_size(cola_new) + list_size(cola_ready) + 
+                        list_size(cola_running) + list_size(cola_blocked) + 
+                        list_size(cola_susp_ready) + list_size(cola_susp_blocked) + 
+                        list_size(cola_procesos);
+    
         pthread_mutex_unlock(&mutex_cola_procesos);
+    pthread_mutex_unlock(&mutex_cola_susp_blocked);
+    pthread_mutex_unlock(&mutex_cola_susp_ready);
+    pthread_mutex_unlock(&mutex_cola_blocked);
+    pthread_mutex_unlock(&mutex_cola_running);
+    pthread_mutex_unlock(&mutex_cola_ready);
+    pthread_mutex_unlock(&mutex_cola_new);
+    
+    log_trace(kernel_log, "EXIT: Total de procesos restantes en el sistema: %d", total_procesos);
+    
+    if(total_procesos == 0) {
         mostrar_colas_estados();
-        log_info(kernel_log, "No quedan procesos en el sistema. Finalizando kernel...");
+        log_info(kernel_log, "Todos los procesos han terminado. Finalizando kernel...");
         terminar_kernel();
         exit(EXIT_SUCCESS);
     }
-    pthread_mutex_unlock(&mutex_cola_procesos);
 }

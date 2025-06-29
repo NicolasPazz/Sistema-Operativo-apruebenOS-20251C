@@ -104,6 +104,7 @@ void iniciar_config_kernel() {
         printf("iniciar_config_kernel: Faltan campos obligatorios en kernel.config");
         exit(EXIT_FAILURE);
     } else {
+        /*
         printf("IP_MEMORIA: %s", IP_MEMORIA);
         printf("PUERTO_MEMORIA: %s", PUERTO_MEMORIA);
         printf("PUERTO_ESCUCHA_DISPATCH: %s", PUERTO_ESCUCHA_DISPATCH);
@@ -114,7 +115,7 @@ void iniciar_config_kernel() {
         printf("ALFA: %.2f", ALFA);
         printf("ESTIMACION_INICIAL: %.2f", ESTIMACION_INICIAL);
         printf("TIEMPO_SUSPENSION: %s", TIEMPO_SUSPENSION);
-        printf("LOG_LEVEL: %s", LOG_LEVEL);
+        printf("LOG_LEVEL: %s", LOG_LEVEL);*/
     }
 }
 
@@ -306,7 +307,7 @@ void* hilo_servidor_dispatch(void* _) {
         conectado_cpu = true;
         pthread_mutex_unlock(&mutex_conexiones);
 
-        log_info(kernel_log, "HANDSHAKE_CPU_KERNEL_DISPATCH: CPU conectada exitosamente a Dispatch (fd=%d), ID=%d", nueva_cpu->fd, nueva_cpu->id);
+        log_trace(kernel_log, "HANDSHAKE_CPU_KERNEL_DISPATCH: CPU conectada exitosamente a Dispatch (fd=%d), ID=%d", nueva_cpu->fd, nueva_cpu->id);
 
         int* arg = malloc(sizeof(int));
         *arg = fd_cpu_dispatch;
@@ -382,7 +383,7 @@ void* atender_cpu_dispatch(void* arg) {
                 int cant_tiempo = *(int*)list_get(parametros_io, 1);
                 int PC = *(int*)list_get(parametros_io, 2);
             
-                log_info(kernel_log, "Recibida de CPU Dispatch IO '%s' con tiempo=%d", nombre_IO, cant_tiempo);
+                log_trace(kernel_log, "Recibida de CPU Dispatch IO '%s' con tiempo=%d", nombre_IO, cant_tiempo);
 
                 // Buscar Proceso PCB para mandarlo a IO y bloquearlo
                 t_pcb* pcb_a_io = buscar_pcb(pid);
@@ -675,6 +676,7 @@ void* atender_io(void* arg) {
 
                 log_debug(kernel_log, "IO '%s' finalizó para PID=%d, verificando si hay otros procesos esperando", dispositivo_io->nombre, pid_finalizado);
                 cambiar_estado_pcb(buscar_pcb(pid_finalizado), READY);
+                log_info(kernel_log, "## (PID: %d) finalizó IO y pasa a READY", pid_finalizado);
 
                 // Verificar si hay procesos encolados para dicha IO y enviarlo a la misma
                 verificar_procesos_bloqueados(dispositivo_io);
