@@ -6,7 +6,6 @@
 /////////////////////////////// Declaracion de variables globales ///////////////////////////////
 // Logger
 t_log* kernel_log;
-t_log* kernel_log_debug;
 
 // Hashmap de cronometros por PCB
 t_dictionary* tiempos_por_pid;
@@ -102,31 +101,27 @@ void iniciar_config_kernel() {
     if (!IP_MEMORIA || !PUERTO_MEMORIA || !PUERTO_ESCUCHA_DISPATCH || !PUERTO_ESCUCHA_INTERRUPT ||
         !PUERTO_ESCUCHA_IO || !ALGORITMO_CORTO_PLAZO || !ALGORITMO_INGRESO_A_READY ||
         !ALFA || !ESTIMACION_INICIAL || !TIEMPO_SUSPENSION || !LOG_LEVEL) {
-        log_error(kernel_log_debug, "iniciar_config_kernel: Faltan campos obligatorios en kernel.config");
+        printf("iniciar_config_kernel: Faltan campos obligatorios en kernel.config");
         exit(EXIT_FAILURE);
     } else {
-        log_trace(kernel_log_debug, "IP_MEMORIA: %s", IP_MEMORIA);
-        log_trace(kernel_log_debug, "PUERTO_MEMORIA: %s", PUERTO_MEMORIA);
-        log_trace(kernel_log_debug, "PUERTO_ESCUCHA_DISPATCH: %s", PUERTO_ESCUCHA_DISPATCH);
-        log_trace(kernel_log_debug, "PUERTO_ESCUCHA_INTERRUPT: %s", PUERTO_ESCUCHA_INTERRUPT);
-        log_trace(kernel_log_debug, "PUERTO_ESCUCHA_IO: %s", PUERTO_ESCUCHA_IO);
-        log_trace(kernel_log_debug, "ALGORITMO_CORTO_PLAZO: %s", ALGORITMO_CORTO_PLAZO);
-        log_trace(kernel_log_debug, "ALGORITMO_INGRESO_A_READY: %s", ALGORITMO_INGRESO_A_READY);
-        log_trace(kernel_log_debug, "ALFA: %.2f", ALFA);
-        log_trace(kernel_log_debug, "ESTIMACION_INICIAL: %.2f", ESTIMACION_INICIAL);
-        log_trace(kernel_log_debug, "TIEMPO_SUSPENSION: %s", TIEMPO_SUSPENSION);
-        log_trace(kernel_log_debug, "LOG_LEVEL: %s", LOG_LEVEL);
+        /*
+        printf("IP_MEMORIA: %s", IP_MEMORIA);
+        printf("PUERTO_MEMORIA: %s", PUERTO_MEMORIA);
+        printf("PUERTO_ESCUCHA_DISPATCH: %s", PUERTO_ESCUCHA_DISPATCH);
+        printf("PUERTO_ESCUCHA_INTERRUPT: %s", PUERTO_ESCUCHA_INTERRUPT);
+        printf("PUERTO_ESCUCHA_IO: %s", PUERTO_ESCUCHA_IO);
+        printf("ALGORITMO_CORTO_PLAZO: %s", ALGORITMO_CORTO_PLAZO);
+        printf("ALGORITMO_INGRESO_A_READY: %s", ALGORITMO_INGRESO_A_READY);
+        printf("ALFA: %.2f", ALFA);
+        printf("ESTIMACION_INICIAL: %.2f", ESTIMACION_INICIAL);
+        printf("TIEMPO_SUSPENSION: %s", TIEMPO_SUSPENSION);
+        printf("LOG_LEVEL: %s", LOG_LEVEL);*/
     }
 }
 
 void iniciar_logger_kernel() {
     kernel_log = iniciar_logger("kernel/kernel.log", "KERNEL", 1, log_level_from_string(LOG_LEVEL));
     log_trace(kernel_log, "Kernel log iniciado correctamente!");
-}
-
-void iniciar_logger_kernel_debug() {
-    kernel_log_debug = iniciar_logger("kernel/kernel_config_debug.log", "KERNEL", 1, LOG_LEVEL_TRACE);
-    log_trace(kernel_log_debug, "Kernel log de debug iniciado correctamente!");
 }
 
 void iniciar_estados_kernel() { 
@@ -186,7 +181,6 @@ void iniciar_diccionario_archivos_por_pcb() {
 
 void terminar_kernel() {
     log_destroy(kernel_log);
-    log_destroy(kernel_log_debug);
     config_destroy(kernel_config);
 
     list_destroy(cola_new);
@@ -272,7 +266,7 @@ void* hilo_cliente_memoria(void* _) {
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 void* hilo_servidor_dispatch(void* _) {
-    fd_dispatch = iniciar_servidor(PUERTO_ESCUCHA_DISPATCH, kernel_log, "Servidor Kernel Dispatch");
+    fd_dispatch = iniciar_servidor(PUERTO_ESCUCHA_DISPATCH, kernel_log, "Kernel Dispatch");
 
     while (1) {
         int fd_cpu_dispatch = esperar_cliente(fd_dispatch, kernel_log);
@@ -307,7 +301,7 @@ void* hilo_servidor_dispatch(void* _) {
         pthread_mutex_unlock(&mutex_lista_cpus);
 
         sem_post(&sem_cpu_disponible);
-        log_debug(kernel_log, "hilo_servidor_dispatch: Semaforo CPU DISPONIBLE aumentado");
+        log_debug(kernel_log, "hilo_servidor_dispatch: Semaforo CPU DISPONIBLE aumentado por nueva CPU (fd=%d, ID=%d)", fd_cpu_dispatch, id_cpu);
 
         pthread_mutex_lock(&mutex_conexiones);
         conectado_cpu = true;
@@ -349,55 +343,57 @@ void* atender_cpu_dispatch(void* arg) {
 
         switch (cop) {
             case INIT_PROC_OP: {
-                log_info(kernel_log, "## (%d) Solicitó syscall: INIT_PROC", pid);
+                log_info(kernel_log, VERDE("## (PID: %d) Solicitó syscall: ")ROJO("INIT_PROC"), pid);
                 log_trace(kernel_log, "INIT_PROC_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
             
-                // Recibir buffer
-                int buffer_size;
-                void* buffer = recibir_buffer(&buffer_size, fd_cpu_dispatch);
-                if (!buffer) {
-                    log_error(kernel_log, "Error al recibir buffer en INIT_PROC_OP");
+                // ========== RECIBIR PARÁMETROS ==========
+                t_list* parametros_init_proc = recibir_contenido_paquete(fd_cpu_dispatch);
+                if (!parametros_init_proc) {
+                    log_error(kernel_log, "Error al recibir parámetros para INIT_PROC_OP desde CPU Dispatch");
                     break;
                 }
 
-                // Serializar path y size
-                int offset = 0;
-                char* path = leer_string(buffer, &offset);
-                int size = leer_entero(buffer, &offset);            
-
-                // Mantener el path completo en lugar de extraer solo el nombre
-                char* nombre = strdup(path); // Hacer una copia del path completo
-
+                // Nombre y size
+                char* nombre = (char*)list_get(parametros_init_proc, 0);
+                int size = *(int*)list_get(parametros_init_proc, 1);
+                log_trace(kernel_log, "Proceso: %s Size: %d recibido de CPU Dispatch (fd=%d)", nombre, size, fd_cpu_dispatch);   
                 log_debug(kernel_log, "atender_cpu_dispatch: Iniciando nuevo proceso con nombre de archivo '%s' y size %d", nombre, size);
+                
+                // ========== EJECUTAR SYSCALL ==========
                 INIT_PROC(nombre, size);
-            
-                free(path);
-                free(nombre); // Liberar la copia del nombre
-                free(buffer);
+
+                // Liberar memoria
+                list_destroy_and_destroy_elements(parametros_init_proc, free);
                 break;
             }
 
             case IO_OP: {
-                log_info(kernel_log, "## (%d) Solicitó syscall: IO", pid);
+                log_info(kernel_log, VERDE("## (PID: %d) Solicitó syscall: ")ROJO("IO"), pid);
                 log_trace(kernel_log, "IO_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
-            
-                char* nombre_IO = NULL;
-                int cant_tiempo;
-           
-                if (!recv_IO_from_CPU(fd_cpu_dispatch, &nombre_IO, &cant_tiempo)) {
-                    free(nombre_IO);
-                    log_error(kernel_log, "Error al recibir la IO desde CPU");
+
+                // ========== RECIBIR PARÁMETROS ==========
+                t_list* parametros_io = recibir_contenido_paquete(fd_cpu_dispatch);
+                if (!parametros_io) {
+                    log_error(kernel_log, "Error al recibir parámetros para IO_OP desde CPU Dispatch");
                     break;
                 }
+
+                // Nombre IO, Tiempo a usar y PC
+                char* nombre_IO = (char*)list_get(parametros_io, 0);
+                int cant_tiempo = *(int*)list_get(parametros_io, 1);
+                int PC = *(int*)list_get(parametros_io, 2);
             
-                log_trace(kernel_log, "Se recibió correctamente la IO '%s' con tiempo=%d", nombre_IO, cant_tiempo);
-            
+                log_trace(kernel_log, "Recibida de CPU Dispatch IO '%s' con tiempo=%d", nombre_IO, cant_tiempo);
+
+                // Buscar Proceso PCB para mandarlo a IO y bloquearlo
                 t_pcb* pcb_a_io = buscar_pcb(pid);
                 if (!pcb_a_io) {
                     log_error(kernel_log, "No se encontró PCB para PID=%d", pid);
-                    free(nombre_IO);
+                    list_destroy_and_destroy_elements(parametros_io, free);
                     break;
                 }
+                // Actualizar el PC con el que me dijo CPU
+                pcb_a_io->PC = PC;
 
                 pthread_mutex_lock(&mutex_lista_cpus);
                 cpu_actual->pid = -1;
@@ -407,18 +403,17 @@ void* atender_cpu_dispatch(void* arg) {
                 sem_post(&sem_cpu_disponible);
 
                 log_debug(kernel_log, "atender_cpu_dispatch: Semaforo CPU DISPONIBLE aumentado por IO");
-            
                 log_trace(kernel_log, "Procesando solicitud de IO '%s' por %d ms para PID=%d", nombre_IO, cant_tiempo, pcb_a_io->PID);
     
+                // ========== EJECUTAR SYSCALL ==========
                 IO(nombre_IO, cant_tiempo, pcb_a_io);
 
-                free(nombre_IO);
-
-              break;
+                list_destroy_and_destroy_elements(parametros_io,free);
+                break;
             }            
 
             case EXIT_OP:
-                log_info(kernel_log, "## (%d) Solicitó syscall: EXIT", pid);
+                log_info(kernel_log, VERDE("## (PID: %d) Solicitó syscall: ")ROJO("EXIT"), pid);
                 log_trace(kernel_log, "EXIT_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
 
                 // Obtener PID del proceso que está ejecutando esta CPU
@@ -448,39 +443,59 @@ void* atender_cpu_dispatch(void* arg) {
                 cpu_actual->pid = -1; // Limpiar PID de la CPU
                 pthread_mutex_unlock(&mutex_lista_cpus);
                 
-                // CAMBIO: Liberar CPU para que el planificador pueda usarla
+                // Liberar CPU para que el planificador pueda usarla
                 sem_post(&sem_cpu_disponible);
-                log_debug(kernel_log, "EXIT: CPU liberada - Semáforo CPU DISPONIBLE aumentado");
-                
-                // Reactivar planificador si hay procesos en READY esperando
-                pthread_mutex_lock(&mutex_cola_ready);
-                bool hay_procesos_ready = !list_is_empty(cola_ready);
-                pthread_mutex_unlock(&mutex_cola_ready);
-                
-                if (hay_procesos_ready) {
-                    log_trace(kernel_log, "CPU liberada, reactivando planificador para procesos en READY");
-                    sem_post(&sem_proceso_a_ready);
-                }
+                log_debug(kernel_log, "EXIT: Semáforo CPU DISPONIBLE aumentado por CPU liberada");
                 
                 break;
 
             case DUMP_MEMORY_OP:
-                log_info(kernel_log, "## (%d) Solicitó syscall: DUMP_MEMORY", pid);
+                log_info(kernel_log, VERDE("## (PID: %d) Solicitó syscall: ")ROJO("DUMP_MEMORY"), pid);
                 log_trace(kernel_log, "DUMP_MEMORY_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
                 
-                // Obtener el PCB del proceso
-                t_pcb* pcb_dump = obtener_pcb_por_pid(pid);
-                if (!pcb_dump) {
-                    log_error(kernel_log, "DUMP_MEMORY_OP: No se encontró PCB para PID %d", pid);
+                // ========== RECIBIR PARÁMETROS ==========
+                t_list* parametros_dump = recibir_contenido_paquete(fd_cpu_dispatch);
+                if (!parametros_dump || list_size(parametros_dump) < 2) {
+                    log_error(kernel_log, "DUMP_MEMORY_OP: Error al recibir parámetros desde CPU Dispatch. Esperados: 2, recibidos: %d", 
+                              parametros_dump ? list_size(parametros_dump) : 0);
+                    if (parametros_dump) list_destroy_and_destroy_elements(parametros_dump, free);
                     break;
                 }
+
+                int PID = *(int*)list_get(parametros_dump, 0);
+                int PC_actualizado = *(int*)list_get(parametros_dump, 1);  // ✅ RECIBIR PC ACTUALIZADO
+
+                // Obtener el PCB del proceso
+                t_pcb* pcb_dump = buscar_pcb(PID);
+                if (!pcb_dump) {
+                    log_error(kernel_log, "DUMP_MEMORY_OP: No se encontró PCB para PID %d", PID);
+                    list_destroy_and_destroy_elements(parametros_dump, free);
+                    break;
+                }
+
+                // ✅ ACTUALIZAR PC DEL PCB (igual que en IO_OP)
+                pcb_dump->PC = PC_actualizado;
+                log_trace(kernel_log, "DUMP_MEMORY: PC actualizado para PID %d: %d", PID, PC_actualizado);
+
+                // ========== LIBERAR CPU (IGUAL QUE EXIT E IO) ==========
+                // Limpiar PID de la CPU asociada
+                pthread_mutex_lock(&mutex_lista_cpus);
+                cpu_actual->pid = -1; // Limpiar PID de la CPU
+                cpu_actual->instruccion_actual = -1; // Limpiar instrucción actual
+                pthread_mutex_unlock(&mutex_lista_cpus);
                 
-                // Llamar a la función DUMP_MEMORY
+                // Liberar CPU para que el planificador pueda usarla
+                sem_post(&sem_cpu_disponible);
+                log_debug(kernel_log, "DUMP_MEMORY: Semáforo CPU DISPONIBLE aumentado por CPU liberada");
+
+                // ========== EJECUTAR SYSCALL ==========
                 DUMP_MEMORY(pcb_dump);
+
+                list_destroy_and_destroy_elements(parametros_dump, free);
                 break;
                 
             default:
-                log_error(kernel_log, "(%d) Código op desconocido recibido de Dispatch fd %d: %d", pid, fd_cpu_dispatch, cop);
+                log_error(kernel_log, "(PID: %d) Código op desconocido recibido de Dispatch fd %d: %d", pid, fd_cpu_dispatch, cop);
                 break;
         }
 
@@ -493,9 +508,7 @@ void* atender_cpu_dispatch(void* arg) {
     log_warning(kernel_log, "CPU Dispatch desconectada (fd=%d)", fd_cpu_dispatch);
     
     // Eliminar esta CPU de la lista de CPUs usando función centralizada
-    pthread_mutex_lock(&mutex_lista_cpus);
     cpu* cpu_eliminada = buscar_y_remover_cpu_por_fd(fd_cpu_dispatch);
-    pthread_mutex_unlock(&mutex_lista_cpus);
     
     if (cpu_eliminada) {
         free(cpu_eliminada);
@@ -510,7 +523,7 @@ void* atender_cpu_dispatch(void* arg) {
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 void* hilo_servidor_interrupt(void* _) {
-    fd_interrupt = iniciar_servidor(PUERTO_ESCUCHA_INTERRUPT, kernel_log, "Servidor Kernel Interrupt");
+    fd_interrupt = iniciar_servidor(PUERTO_ESCUCHA_INTERRUPT, kernel_log, "Kernel Interrupt");
 
     while (1) {
         int fd_cpu_interrupt = esperar_cliente(fd_interrupt, kernel_log);
@@ -582,7 +595,7 @@ void* atender_cpu_interrupt(void* arg) {
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 void* hilo_servidor_io(void* _) {
-    fd_kernel_io = iniciar_servidor(PUERTO_ESCUCHA_IO, kernel_log, "Servidor Kernel IO");
+    fd_kernel_io = iniciar_servidor(PUERTO_ESCUCHA_IO, kernel_log, "Kernel IO");
 
     while (1) {
         int fd_io = esperar_cliente(fd_kernel_io, kernel_log);
@@ -646,6 +659,7 @@ void* atender_io(void* arg) {
     }
 
     // Verificar si hay procesos encolados para dicha IO y enviarlo a la misma
+    log_debug(kernel_log, "IO correctamente conectada (fd=%d, nombre='%s'), verificando si hay procesos esperando", fd_io, dispositivo_io->nombre);
     verificar_procesos_bloqueados(dispositivo_io);
 
     log_trace(kernel_log, "Atendiendo IO '%s' (fd=%d)", dispositivo_io->nombre, fd_io);
@@ -660,8 +674,9 @@ void* atender_io(void* arg) {
                     continue;
                 }
 
-                log_trace(kernel_log, "IO '%s' finalizó para PID=%d", dispositivo_io->nombre, pid_finalizado);
+                log_debug(kernel_log, "IO '%s' finalizó para PID=%d, verificando si hay otros procesos esperando", dispositivo_io->nombre, pid_finalizado);
                 cambiar_estado_pcb(buscar_pcb(pid_finalizado), READY);
+                log_info(kernel_log, "## (PID: %d) finalizó IO y pasa a READY", pid_finalizado);
 
                 // Verificar si hay procesos encolados para dicha IO y enviarlo a la misma
                 verificar_procesos_bloqueados(dispositivo_io);
@@ -748,33 +763,19 @@ t_pcb_io* obtener_pcb_esperando_io(char* nombre_io) {
 }
 
 void asignar_proceso(io* dispositivo, t_pcb_io* proceso) {
-    // Marcar el dispositivo como ocupado
     dispositivo->estado = IO_OCUPADO;
     dispositivo->proceso_actual = proceso->pcb;
     proceso->io = dispositivo;
-    
-    // Enviar PID y tiempo a usar a la IO
-    op_code cod_op = IO_OP;
-    if (send(dispositivo->fd, &cod_op, sizeof(op_code), 0) <= 0) {
-        log_error(kernel_log, "Error al enviar IO_OP a IO '%s'", dispositivo->nombre);
-        terminar_kernel();
-        exit(EXIT_FAILURE);
-    }
-    
-    // Enviar PID y tiempo
-    t_paquete* paquete = crear_paquete();
-    paquete->codigo_operacion = IO_OP;
-    
-    // Agregar PID y tiempo al paquete
-    agregar_a_paquete(paquete, &proceso->pcb->PID, sizeof(int));
-    agregar_a_paquete(paquete, &proceso->tiempo_a_usar, sizeof(int));
-    
-    // Enviar paquete
+
+    // Crear paquete serializado
+    t_paquete* paquete = crear_paquete_op(IO_OP);
+    agregar_a_paquete(paquete, dispositivo->nombre, strlen(dispositivo->nombre) + 1); // nombre de la IO
+    agregar_entero_a_paquete(paquete, proceso->tiempo_a_usar); // tiempo
+    agregar_entero_a_paquete(paquete, proceso->pcb->PID); // pid
+
     enviar_paquete(paquete, dispositivo->fd);
     eliminar_paquete(paquete);
 
-    free(dispositivo);
-    
     log_trace(kernel_log, "Enviado PID=%d a IO '%s' por %d ms", proceso->pcb->PID, dispositivo->nombre, proceso->tiempo_a_usar);
 }
 

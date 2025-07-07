@@ -90,25 +90,4 @@ void terminar_io() {
         log_destroy(io_log);
         io_log = NULL;
     }
-    
-    printf("Dispositivo IO finalizado.\n");
 }
-
-// void atender_kernel() {
-//     op_code cop;
-//     while (recv(fd_kernel_io, &cop, sizeof(op_code), 0) > 0) {
-//         switch (cop) {
-//             case IO_OP:
-//                 log_trace(io_log, "IO_OP recibido");
-//                 // procesar op
-//                 break;
-//             default:
-//                 log_warning(io_log, "Operacion desconocida recibida: %d", cop);
-//                 break;
-//         }
-//     }
-
-//     log_warning(io_log, "Se desconectó el Kernel. Finalizando IO...");
-//     // terminar_programa();
-//     exit(EXIT_SUCCESS);
-// }

@@ -6,15 +6,13 @@
 #include "types.h"
 #include <semaphore.h>
 
-/**
- * @brief Recibe los datos de una solicitud IO desde una CPU
- * 
- * @param fd File descriptor de la conexión con la CPU
- * @param nombre_IO Puntero donde se almacenará el nombre del dispositivo IO
- * @param cant_tiempo Puntero donde se almacenará el tiempo de uso
- * @return true Si se recibieron los datos correctamente
- * @return false Si hubo un error al recibir los datos
- */
-bool recv_IO_from_CPU(int fd, char** nombre_IO, int* cant_tiempo);
+// Funciones auxiliares de IO
+io* get_io(char* nombre_io);
+io* buscar_io_por_fd(int fd);
+io* buscar_io_por_nombre(char* nombre);
+bool esta_libre_io(io* dispositivo);
+io* io_disponible(char* nombre);
+void bloquear_pcb_por_io(char* nombre_io, t_pcb* pcb, int tiempo_a_usar);
+void enviar_io(io* dispositivo, t_pcb* pcb, int tiempo_a_usar);
 
 #endif /* IOKERNEL_H_ */

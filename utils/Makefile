@@ -75,7 +75,11 @@ test: $(TEST)
 .PHONY: clean
 clean:
 	-rm -rfv $(dir $(TEST) $(OBJS) $(OUT))
-	-for dir in $(SHARED_LIBPATHS) $(STATIC_LIBPATHS); do $(MAKE) -C $$dir clean; done
+	-rm -fv *.dmp
+	# Solo hacer clean en dependencias si no estamos siendo llamados desde otro módulo
+	@if [ "$(MAKECMDGOALS)" = "clean" ] && [ "$(MAKELEVEL)" -eq 0 ]; then \
+		for dir in $(SHARED_LIBPATHS) $(STATIC_LIBPATHS); do $(MAKE) -C $$dir clean; done; \
+	fi
 
 $(OUT): $(OBJS) | $(dir $(OUT))
 	$(call compile_out)

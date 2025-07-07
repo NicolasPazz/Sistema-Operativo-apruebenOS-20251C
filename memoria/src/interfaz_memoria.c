@@ -119,18 +119,24 @@ t_process_instructions* load_process_instructions(int pid, char* instructions_fi
             }
         } 
         else if (strcmp(token, "READ") == 0) {
-            // READ <dir>
+            // READ <dir> <tam>
             instruction->tipo = READ_OP;
             free(instruction->instruccion_base.parametros1);
             instruction->instruccion_base.parametros1 = strdup("READ");
-            
+        
             char* param1 = strtok(NULL, " ");
-            
+            char* param2 = strtok(NULL, " ");
+        
             if (param1) {
                 free(instruction->instruccion_base.parametros2);
                 instruction->instruccion_base.parametros2 = strdup(param1);
             }
-        } 
+        
+            if (param2) {
+                free(instruction->instruccion_base.parametros3);
+                instruction->instruccion_base.parametros3 = strdup(param2);
+            }
+        }
         else if (strcmp(token, "GOTO") == 0) {
             // GOTO <dir>
             instruction->tipo = GOTO_OP;
@@ -228,7 +234,7 @@ t_process_instructions* load_process_instructions(int pid, char* instructions_fi
 // Obtiene una instrucción específica para un proceso
 t_instruccion* get_instruction(int pid, int pc) {
     if (process_instructions_list == NULL) {
-        log_error(logger, "Lista de instrucciones no inicializada");
+        log_error(logger, "Lista de instrucciones del proceso (PID: %d) no inicializada", pid);
         return NULL;
     }
     
@@ -243,26 +249,27 @@ t_instruccion* get_instruction(int pid, int pc) {
     }
     
     if (process_inst == NULL) {
-        log_error(logger, "PID: %d - No se encontraron instrucciones para este proceso", pid);
+        log_error(logger, "(PID: %d) - No se encontraron instrucciones para este proceso", pid);
         return NULL;
     }
     
+    // Convertir PC de base 1 a base 0 (PC empieza en 1, pero las listas empiezan en 0)
+    if (pc == 0) {
+        pc = 1; // Si PC era 0 (GOTO 0) el programa rompia daba pc_index -1
+    }
+    int pc_index = pc - 1;
+    
     // Verificar que el PC sea válido
-    if (pc >= list_size(process_inst->instructions)) {
-        log_error(logger, "PID: %d - PC fuera de rango: %d", pid, pc);
+    if (pc_index < 0 || pc_index >= list_size(process_inst->instructions)) {
+        log_error(logger, "PID: %d - PC fuera de rango: %d (índice: %d, tamaño lista: %d)", 
+                 pid, pc, pc_index, list_size(process_inst->instructions));
         return NULL;
     }
     
     // Incrementar métrica de instrucciones solicitadas usando la función estándar
     incrementar_instrucciones_solicitadas(pid);
     
-    t_extended_instruccion* extended_instr = list_get(process_inst->instructions, pc);
-    
-    // Loguear la instrucción obtenida (formato requerido)
-    char* instr_str = instruction_to_string(extended_instr, pc);
-    //log_info(logger, "## PID: %d - Obtener instrucción: %d - Instrucción: %s", 
-    //         pid, pc, instr_str);
-    free(instr_str);
+    t_extended_instruccion* extended_instr = list_get(process_inst->instructions, pc_index);
     
     // Devolvemos una copia de la instrucción base que será liberada por el llamador
     t_instruccion* result = malloc(sizeof(t_instruccion));
@@ -310,41 +317,3 @@ void memory_destroy() {
         log_trace(logger, "Lista de procesos en memoria destruida correctamente");
     }
 }
-
-// Para el checkpoint 2: Devuelve un valor fijo de memoria disponible (mock)
-int get_available_memory() {
-    // Requisito para Checkpoint 2: Devuelve un valor fijo de espacio libre (mock)
-    // En una implementación real, calcularíamos la memoria disponible basada en las asignaciones actuales
-    // Para simplificar, asumimos que la mitad de la memoria siempre está disponible
-    int memoria_disponible = cfg->TAM_MEMORIA / 2;
-    
-    log_trace(logger, "Espacio disponible en memoria (mock): %d bytes", memoria_disponible);
-    
-    return memoria_disponible;
-}
-
-/*
- * FUNCIONES COMENTADAS - ESTAS FUNCIONES ESTÁN DUPLICADAS
- * La implementación principal está en manejo_memoria.c
- * Comentadas para evitar logs duplicados de métricas
- */
-
-/*
-// Inicializa un proceso en memoria (mock para checkpoint 2)
-int initialize_process(int pid, int size) {
-    // Esta función está duplicada - la implementación principal está en manejo_memoria.c
-    return 0;
-}
-
-// Finaliza un proceso y libera sus recursos
-void finalize_process(int pid) {
-    // Esta función está duplicada - la implementación principal está en manejo_memoria.c
-    // IMPORTANTE: Los logs de métricas se manejan en finalizar_proceso_en_memoria()
-}
-
-// Obtiene la información de un proceso
-t_proceso_memoria* get_process_info(int pid) {
-    // Esta función está duplicada - usar obtener_proceso() de manejo_memoria.c
-    return NULL;
-}
-*/

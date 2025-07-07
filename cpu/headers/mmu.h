@@ -23,5 +23,7 @@ bool tlb_habilitada(void);
 long timestamp_actual(void);
 int seleccionar_victima_tlb(void);
 int cargar_configuracion(char* path);
+void desalojar_proceso_tlb();
+void desalojar_proceso_cache();
 
 #endif // MMU_H

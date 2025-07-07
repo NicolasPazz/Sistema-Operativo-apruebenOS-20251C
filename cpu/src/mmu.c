@@ -5,6 +5,7 @@
 #include "../headers/cicloDeInstruccion.h"
 #include "../../memoria/headers/init_memoria.h"
 #include <time.h>
+#include "../headers/main.h"
 
 t_cache_paginas* cache = NULL;
 t_list* tlb = NULL;
@@ -84,60 +85,69 @@ int traducir_direccion_fisica(int direccion_logica) {
     // Calcular entradas de cada nivel para paginación multinivel
     int entradas[cantidad_niveles];
     for (int nivel = 0; nivel < cantidad_niveles; nivel++) {
-        int divisor = pow(entradas_por_tabla, cantidad_niveles - (nivel + 1));
+        int divisor = 1;
+        for (int j = 0; j < cantidad_niveles - (nivel + 1); j++)
+            divisor *= entradas_por_tabla;
         entradas[nivel] = (nro_pagina / divisor) % entradas_por_tabla;
     }
 
     int frame = 0;
 
-    // Buscar en la TLB
-    if (tlb_habilitada() && tlb_buscar(nro_pagina, &frame)) {
-        log_info(cpu_log, "PID: %d - TLB HIT - Página: %d", pid_ejecutando, nro_pagina);    
+    bool hit = false;
+    if (tlb_habilitada()) {
+        pthread_mutex_lock(&mutex_tlb);
+        hit = tlb_buscar(nro_pagina, &frame);
+        pthread_mutex_unlock(&mutex_tlb);
+    }
+    if (tlb_habilitada() && hit) {
+        log_info(cpu_log, VERDE("(PID: %d) - TLB HIT - Página: %d"), pid_ejecutando, nro_pagina);    
     } else {
-        log_info(cpu_log, "PID: %d - TLB MISS - Página: %d", pid_ejecutando, nro_pagina);
+        log_info(cpu_log, ROJO("(PID: %d) - TLB MISS - Página: %d"), pid_ejecutando, nro_pagina);
 
-        // Pedir a Memoria el frame
-        t_paquete* paquete = crear_paquete_op(SOLICITAR_FRAME_PARA_ENTRADAS);
-        log_trace(cpu_log, "PID: %d - OBTENER MARCO - Página: %d", pid_ejecutando, nro_pagina);
-        log_trace(cpu_log, "Serializando SOLICITAR_FRAME_PARA_ENTRADAS:");
-        log_trace(cpu_log, "  PID: %d", pid_ejecutando);
-        log_trace(cpu_log, "  Cant. niveles: %d", cantidad_niveles);
-
+        // Nueva operación: solo se envía PID y nro_pagina
+        t_paquete* paquete = crear_paquete_op(ACCESO_TABLA_PAGINAS_OP);
         agregar_entero_a_paquete(paquete, pid_ejecutando);
-        agregar_entero_a_paquete(paquete, cantidad_niveles);
-
-        for (int i = 0; i < cantidad_niveles; i++) {
-            log_trace(cpu_log, "  Entrada[%d] = %d", i, entradas[i]);
-            agregar_entero_a_paquete(paquete, entradas[i]);
-        }
-
+        agregar_entero_a_paquete(paquete, nro_pagina);
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
 
-        // Recibir frame
-        if (recv(fd_memoria, &frame, sizeof(int), MSG_WAITALL) != sizeof(int)) {
-            log_error(cpu_log, "PID: %d - Error al recibir marco desde Memoria", pid_ejecutando);
+        // Recibir respuesta como paquete
+        op_code codigo_operacion;
+        if (recv(fd_memoria, &codigo_operacion, sizeof(op_code), MSG_WAITALL) != sizeof(op_code)) {
+            log_error(cpu_log, "PID: %d - Error al recibir op_code de respuesta desde Memoria", pid_ejecutando);
             exit(EXIT_FAILURE);
         }
+        
+        if (codigo_operacion != PAQUETE_OP) {
+            log_error(cpu_log, "PID: %d - Op_code inesperado en respuesta: %d (esperaba PAQUETE_OP)", 
+                     pid_ejecutando, codigo_operacion);
+            exit(EXIT_FAILURE);
+        }
+        
+        t_list* lista_respuesta = recibir_contenido_paquete(fd_memoria);
+        if (lista_respuesta == NULL || list_size(lista_respuesta) < 1) {
+            log_error(cpu_log, "PID: %d - Error al recibir respuesta de marco desde Memoria", pid_ejecutando);
+            exit(EXIT_FAILURE);
+        }
+        
+        frame = *(int*)list_get(lista_respuesta, 0);
+        list_destroy_and_destroy_elements(lista_respuesta, free);
 
         if (frame == -1) {
             log_error(cpu_log, "PID: %d - Error al traducir dirección: Marco no encontrado", pid_ejecutando);
             exit(EXIT_FAILURE);
         }
 
-        log_info(cpu_log, "PID: %d - OBTENER MARCO - Página: %d - Marco: %d", pid_ejecutando, nro_pagina, frame);
+        log_info(cpu_log, VERDE("(PID: %d) - OBTENER MARCO - Página: %d - Marco: %d"), pid_ejecutando, nro_pagina, frame);
 
         if (tlb_habilitada()) {
+            pthread_mutex_lock(&mutex_tlb);
             tlb_insertar(nro_pagina, frame);
+            pthread_mutex_unlock(&mutex_tlb);
         }
     }
-
-    // Finalmente: dirección física = frame * tamaño_página + desplazamiento
     return frame * tam_pagina + desplazamiento;
 }
-
-
-
 
 bool tlb_buscar(int pagina, int* frame_out) {
     for (int i = 0; i < list_size(tlb); i++) {
@@ -201,4 +211,29 @@ long timestamp_actual() {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
+void desalojar_proceso_tlb() {
+    pthread_mutex_lock(&mutex_tlb);
+    if (!tlb_habilitada()) {
+        pthread_mutex_unlock(&mutex_tlb);
+        log_trace(cpu_log, "TLB deshabilitada");
+        return;
+    }
+
+    log_trace(cpu_log, "Limpiando TLB para proceso %d", pid_ejecutando);
+    
+    // Limpiar todas las entradas de la TLB
+    for (int i = 0; i < list_size(tlb); i++) {
+        entrada_tlb_t* entrada = list_get(tlb, i);
+        if (entrada) {
+            free(entrada);
+        }
+    }
+    
+    // Vaciar la lista
+    list_clean(tlb);
+    
+    log_trace(cpu_log, "TLB limpiada exitosamente para proceso %d", pid_ejecutando);
+    pthread_mutex_unlock(&mutex_tlb);
 }

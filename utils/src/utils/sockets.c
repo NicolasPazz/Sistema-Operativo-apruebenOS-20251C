@@ -8,7 +8,8 @@
 #include "../headers/sockets.h"
 
         /////////////////////////////// Log y Config ///////////////////////////////
-t_log* iniciar_logger(char *file, char *process_name, bool is_active_console, t_log_level level) {
+    t_log* iniciar_logger(char *file, char *process_name, bool is_active_console, t_log_level level) {
+    remove(file);
 	t_log* nuevo_logger = log_create(file, process_name,is_active_console,level);
 	if (nuevo_logger == NULL) {
 		perror("Error al crear el log");
@@ -77,7 +78,7 @@ int iniciar_servidor(char *puerto, t_log* logger, char* msj_server) {
 	}
 
 	freeaddrinfo(servinfo);
-	log_trace(logger, "%s escuchando en puerto %s", msj_server, puerto);
+	log_trace(logger, AZUL("[Servidor]")VERDE(" %s")" escuchando en puerto"VERDE(" %s"), msj_server, puerto);
 
 	return socket_servidor;
 }
@@ -185,7 +186,7 @@ void liberar_conexion(int socket_cliente) {
 bool validar_handshake(int fd, handshake_code esperado, t_log* log) {
     int recibido;
     if (recv(fd, &recibido, sizeof(int), MSG_WAITALL) != sizeof(int)) {
-        log_error(log, "Error recibiendo handshake (fd=%d): %s", fd, strerror(errno));
+        //log_error(log, "Error recibiendo handshake (fd=%d): %s", fd, strerror(errno));
         return false;
     }
 
@@ -405,9 +406,30 @@ t_paquete* crear_paquete_op(op_code codop) {
  * @param numero Valor entero (4 bytes) que se agregará al final del buffer.
  */
 void agregar_entero_a_paquete(t_paquete *paquete, int numero) {
-    paquete->buffer->stream = realloc(paquete->buffer->stream, paquete->buffer->size + sizeof(int));
-    memcpy(paquete->buffer->stream + paquete->buffer->size, &numero, sizeof(int));
+    int tamanio = sizeof(int);
+    paquete->buffer->stream = realloc(paquete->buffer->stream, paquete->buffer->size + sizeof(int) + tamanio);
+    memcpy(paquete->buffer->stream + paquete->buffer->size, &tamanio, sizeof(int));
+    memcpy(paquete->buffer->stream + paquete->buffer->size + sizeof(int), &numero, tamanio);
+    paquete->buffer->size += sizeof(int) + tamanio;
+}
+
+void agregar_string_a_paquete(t_paquete* paquete, char* cadena) {
+    int longitud = strlen(cadena) + 1;
+    agregar_a_paquete(paquete, cadena, longitud);
+}
+
+void agregar_entero_con_tamanio_a_paquete(t_paquete *paquete, int numero) {
+    int param_size = sizeof(int);
+
+    // Reservar espacio y agregar primero el tamaño
+    paquete->buffer->stream = realloc(paquete->buffer->stream, paquete->buffer->size + sizeof(int) + param_size);
+
+    memcpy(paquete->buffer->stream + paquete->buffer->size, &param_size, sizeof(int));
     paquete->buffer->size += sizeof(int);
+
+    // Luego el valor
+    memcpy(paquete->buffer->stream + paquete->buffer->size, &numero, param_size);
+    paquete->buffer->size += param_size;
 }
 
 bool enviar_operacion(int socket, op_code operacion) {
@@ -420,9 +442,20 @@ bool enviar_operacion(int socket, op_code operacion) {
 char* leer_string(char* buffer, int* desplazamiento) {
     int tamanio = leer_entero(buffer, desplazamiento);
 
-    if (tamanio <= 0 || tamanio > MAX_STRING_SIZE) {
+    if (tamanio < 0 || tamanio > MAX_STRING_SIZE) {
         fprintf(stderr, "leer_string: Tamaño inválido (%d)\n", tamanio);
         exit(EXIT_FAILURE);
+    }
+    
+    // Manejar string vacío
+    if (tamanio == 0) {
+        char* palabra = malloc(1);
+        if (!palabra) {
+            perror("leer_string: Error al asignar memoria");
+            exit(EXIT_FAILURE);
+        }
+        palabra[0] = '\0';
+        return palabra;
     }
     
     char* palabra = malloc(tamanio + 1);
@@ -446,6 +479,13 @@ int leer_entero(char *buffer, int * desplazamiento) {
     (*desplazamiento) += sizeof(int);
     return entero;
 }
+
+bool enviar_enteros(int socket, int* enteros, int cantidad) {
+    int total_bytes = cantidad * sizeof(int);
+    int enviados = send(socket, enteros, total_bytes, 0);
+    return enviados == total_bytes;
+}
+
 
         /////////////////////////////// Recepcion de paquete/mensaje ///////////////////////////////
 /**
@@ -627,72 +667,8 @@ t_list* recibir_2_enteros_sin_op(int socket) {
     return lista;
 }
 
-/*
-// WARNING: posible leak usando esta funcion (reserva memoria y no la libera), siempre liberar los mallocs despues de usar
-t_list* recibir_4_enteros(int socket) {
-	int entero1;
-	int entero2;
-	int entero3;
-	int entero4;
-	
-
-	int size = 0;
-    char *buffer;
-    int desp = 0;
-	t_list* lista = list_create();
-
-    buffer = recibir_buffer(&size, socket);
-
-	entero1 = leer_entero(buffer,&desp);
-	entero2 = leer_entero(buffer,&desp);
-	entero3 = leer_entero(buffer,&desp);
-	entero4 = leer_entero(buffer,&desp);
-
-	list_add(lista, (void *)(uintptr_t)entero1);
-	list_add(lista, (void *)(uintptr_t)entero2);
-	list_add(lista, (void *)(uintptr_t)entero3);
-	list_add(lista, (void *)(uintptr_t)entero4);
-	
-
-	free(buffer);
-	return lista;
+bool recibir_enteros(int socket, int* destino, int cantidad) {
+    int total_bytes = cantidad * sizeof(int);
+    int recibidos = recv(socket, destino, total_bytes, MSG_WAITALL);
+    return recibidos == total_bytes;
 }
-
-int recibir_entero(int socket)
-{
-
-    int size = 0;
-    char *buffer;
-    int desp = 0;
-
-    buffer = recibir_buffer(&size, socket);
-    int entero = leer_entero(buffer, &desp);
-    
-    free(buffer);
-    return entero;
-}
-
-// WARNING: posible leak usando esta funcion (reserva memoria y no la libera), siempre liberar los mallocs despues de usar
-t_list* recibir_2_enteros(int socket) {
-	int entero1;
-	int entero2;
-	
-
-	int size = 0;
-    char *buffer;
-    int desp = 0;
-	t_list* lista = list_create();
-
-    buffer = recibir_buffer(&size, socket);
-
-	entero1 = leer_entero(buffer,&desp);
-	entero2 = leer_entero(buffer,&desp);
-
-	list_add(lista, (void *)(uintptr_t)entero1);
-	list_add(lista, (void *)(uintptr_t)entero2);	
-
-	free(buffer);
-	return lista;
-}
-
-*/

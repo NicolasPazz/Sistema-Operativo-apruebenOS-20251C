@@ -41,9 +41,9 @@ void INIT_PROC(char* nombre_archivo, int tam_memoria) {
     enviar_paquete(paquete, fd_memoria);
     eliminar_paquete(paquete);
     
-    // Esperar respuesta de memoria (t_respuesta_memoria)
-    t_respuesta_memoria respuesta;
-    if (recv(fd_memoria, &respuesta, sizeof(t_respuesta_memoria), 0) <= 0) {
+    // Esperar respuesta de memoria (t_respuesta)
+    t_respuesta respuesta;
+    if (recv(fd_memoria, &respuesta, sizeof(t_respuesta), 0) <= 0) {
         log_error(mock_log, "Error al recibir respuesta de memoria para INIT_PROC");
         return;
     }
@@ -285,8 +285,4 @@ void FINALIZAR_PROC_OP_mock() {
     printf("PID del proceso: ");
     scanf("%d", &pid);
     FINALIZAR_PROC(pid);
-}
-
-void SEND_PSEUDOCOD_FILE_mock() {
-    log_trace(mock_log, "## Ejecutando SEND_PSEUDOCOD_FILE_mock");
 }

@@ -40,8 +40,6 @@ void ejecutar_submenu(op_code cod, int fd_a_testear) {
                         FINALIZAR_PROC_OP_mock(); break;
                     case DEBUGGER:
                         DEBUGGER_mock(); break;
-                    case SEND_PSEUDOCOD_FILE:
-                        SEND_PSEUDOCOD_FILE_mock(); break;
                     case NOOP_OP:
                         NOOP_OP_mock(); break;
                     case WRITE_OP:
@@ -85,7 +83,6 @@ void menu(int fd_a_testear) {
         printf("11. IO_FINALIZADA_OP\n");
         printf("12. FINALIZAR_PROC_OP\n");
         printf("13. DEBUGGER\n");
-        printf("14. SEND_PSEUDOCOD_FILE\n");
         printf("15. NOOP_OP\n");
         printf("16. WRITE_OP\n");
         printf("17. READ_OP\n");

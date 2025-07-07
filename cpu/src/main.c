@@ -3,8 +3,11 @@
 #include "../headers/cicloDeInstruccion.h"
 #include "../headers/mmu.h"
 #include <signal.h>
-
+t_log* log_cpu;
 pthread_t hilo_dispatch, hilo_interrupt, hilo_memoria;
+pthread_mutex_t mutex_estado_proceso = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_tlb = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_cache = PTHREAD_MUTEX_INITIALIZER;
 
 // Manejador de señales para terminación limpia
 void signal_handler(int sig) {
@@ -30,7 +33,7 @@ int main(int argc, char* argv[]) {
     iniciar_logger_cpu();
     inicializar_mmu();
 
-    log_trace(cpu_log, "[CPU %i] Iniciando proceso CPU", numero_cpu);
+    log_trace(cpu_log, AZUL("=== Iniciando CPU: %d ==="), numero_cpu);
 
     conectar_kernel_dispatch();
     send(fd_kernel_dispatch, &numero_cpu, sizeof(int), 0);
@@ -63,55 +66,56 @@ int main(int argc, char* argv[]) {
 void* recibir_kernel_dispatch(void* arg) {
     log_trace(cpu_log, "[DISPATCH] Hilo de recepción de Kernel Dispatch iniciado");
     int noFinalizar = 0;
+    int cod_op;
     while (noFinalizar != -1) {
-        log_trace(cpu_log, "[DISPATCH] Esperando operación desde Kernel...");
-        int cod_op = recibir_operacion(fd_kernel_dispatch);
-        log_trace(cpu_log, "[DISPATCH] Operación recibida desde Kernel: %d", cod_op);
-        
+        log_trace(cpu_log, AZUL("[DISPATCH]")" Esperando operación desde Kernel...");
+        cod_op = recibir_operacion(fd_kernel_dispatch);
+        log_trace(cpu_log, AZUL("[DISPATCH]")" Operación recibida desde Kernel: %d", cod_op);
+
         switch (cod_op) {
             case MENSAJE_OP:
-                log_trace(cpu_log, "[DISPATCH] Procesando MENSAJE_OP");
+                log_trace(cpu_log, AZUL("[DISPATCH]")" MENSAJE_OP recibido desde Kernel");
 			    recibir_mensaje(fd_kernel_dispatch, cpu_log);
 			    break;
             case EXEC_OP:
-                log_trace(cpu_log, "[DISPATCH] ✓ EXEC_OP recibido desde Kernel - Iniciando ejecución");
+                log_trace(cpu_log, AZUL("[DISPATCH]")" EXEC_OP recibido desde Kernel");
                 
-                // Recibir PC y PID usando la función correcta para enteros
-                t_list* lista = recibir_2_enteros_sin_op(fd_kernel_dispatch);
+                // Recibir PC y PID usando recibir_contenido_paquete (con prefijo de tamaño)
+                t_list* lista = recibir_contenido_paquete(fd_kernel_dispatch);
                 if (lista == NULL) {
-                    log_error(cpu_log, "[DISPATCH] ✗ Error al recibir paquete EXEC_OP");
+                    log_error(cpu_log, AZUL("[DISPATCH]")" Error al recibir paquete EXEC_OP");
                     break;
                 }
 
-                // Verificar que la lista tenga los elementos necesarios
                 if (list_size(lista) < 2) {
-                    log_error(cpu_log, "[DISPATCH] ✗ Paquete EXEC_OP incompleto - Faltan datos");
-                    list_destroy(lista);
+                    log_error(cpu_log, AZUL("[DISPATCH]")" Paquete EXEC_OP incompleto - Faltan datos");
+                    list_destroy_and_destroy_elements(lista, free);
                     break;
                 }
+                pthread_mutex_lock(&mutex_estado_proceso);
+                pc = *(int*)list_get(lista, 0);         // Primer elemento = PC
+                pid_ejecutando = *(int*)list_get(lista, 1);  // Segundo elemento = PID
+                pthread_mutex_unlock(&mutex_estado_proceso);
                 
-                // Los enteros vienen como valores directos (no punteros) por uintptr_t casting
-                pc = (int)(uintptr_t)list_get(lista, 0);         // Primer elemento = PC
-                pid_ejecutando = (int)(uintptr_t)list_get(lista, 1);  // Segundo elemento = PID
-                
-                log_trace(cpu_log, "[DISPATCH] ✓ Proceso asignado - PID: %d, PC inicial: %d", pid_ejecutando, pc);
-                log_trace(cpu_log, "[DISPATCH] ▶ Iniciando ejecución del proceso...");
+                log_trace(cpu_log, AZUL("[DISPATCH]") " Proceso asignado - PID: %d, PC inicial: %d", pid_ejecutando, pc);
+                log_trace(cpu_log, AZUL("[DISPATCH]") " Iniciando ejecución del proceso...");
                 
                 ejecutar_ciclo_instruccion();
                 
-                log_trace(cpu_log, "[DISPATCH] ◼ Ejecución del proceso PID %d finalizada", pid_ejecutando);
+                log_trace(cpu_log, "[DISPATCH] Ejecución del proceso PID %d finalizada", pid_ejecutando);
                 // Resetear variables después de la ejecución
+                pthread_mutex_lock(&mutex_estado_proceso);
                 pid_ejecutando = -1;
-                pc = 0;
-                
-                list_destroy(lista);
+                pc = 1;
+                pthread_mutex_unlock(&mutex_estado_proceso);
+                list_destroy_and_destroy_elements(lista, free);
                 break;
             case -1:
-                log_error(cpu_log, "[DISPATCH] ✗ Desconexión de Kernel (Dispatch)");
-                close(fd_kernel_dispatch);
-                break;
+                log_warning(cpu_log, "Se desconectó el Kernel. Finalizando CPU...");
+                terminar_programa();
+                exit(EXIT_SUCCESS);
             default:
-                log_error(cpu_log, "[DISPATCH] ✗ Operación desconocida de Dispatch: %d", cod_op);
+                log_error(cpu_log, "[DISPATCH] Operación desconocida de Dispatch: %d", cod_op);
         }
     }
     return NULL;
@@ -122,14 +126,16 @@ void* recibir_kernel_interrupt(void* arg) {
         int cod_op = recibir_operacion(fd_kernel_interrupt);
         switch (cod_op) {
             case -1:
-                log_warning(cpu_log, "Se desconectó el Kernel (Dispatch). Finalizando CPU...");
+                log_warning(cpu_log, "Se desconectó el Kernel. Finalizando CPU...");
                 terminar_programa();
+                exit(EXIT_SUCCESS);
             case INTERRUPCION_OP:
                 // Recibir PID de la interrupción
                 recv(fd_kernel_interrupt, &pid_interrupt, sizeof(int), MSG_WAITALL);
-                log_info(cpu_log, "## Llega interrupción al puerto Interrupt");
-                
+                log_info(cpu_log, VERDE("## Llega interrupción al puerto Interrupt"));
+                pthread_mutex_lock(&mutex_estado_proceso);
                 hay_interrupcion = 1;
+                pthread_mutex_unlock(&mutex_estado_proceso);
                 break;
             default:
                 log_error(cpu_log, "Operacion desconocida de Interrupt: %d", cod_op);

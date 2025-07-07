@@ -28,6 +28,13 @@ typedef struct {
     int numero_pagina;     // Número de página lógica del proceso que contiene
     void* contenido;       // Puntero directo al contenido en memoria_principal
     time_t timestamp_asignacion; // Para algoritmos de reemplazo (futuro)
+    
+    // SISTEMA DE BLOQUEO DE MARCOS FÍSICOS
+    bool bloqueado;             // 1 = marco bloqueado para operaciones I/O, 0 = libre
+    pthread_t thread_bloqueador; // ID del thread que tiene bloqueado el marco
+    pthread_mutex_t mutex_frame; // Mutex específico para este marco físico
+    bool mutex_inicializado;    // 1 = mutex inicializado, 0 = no inicializado (lazy init)
+    char operacion_actual[64];  // Descripción de la operación que tiene el marco bloqueado
 } t_frame;
 
 /**
@@ -59,20 +66,23 @@ typedef struct {
 // ============================================================================
 
 /**
- * @brief Entrada de tabla de páginas
+ * @brief Entrada individual en una tabla de páginas
  * 
  * Cada entrada puede apuntar a:
  * - Otra tabla de páginas (niveles intermedios)
  * - Un marco físico (nivel hoja)
  */
+// Forward declaration para referencia circular
+typedef struct t_tabla_paginas t_tabla_paginas;
+
 typedef struct {
     bool presente;              // 1 = página en memoria, 0 = no asignada o en SWAP
     bool modificado;            // Dirty bit - 1 = página modificada
     bool referenciado;          // Reference bit - para algoritmos de reemplazo
     uint32_t numero_frame;      // Número de marco físico (si presente=true)
     
-    // Para niveles intermedios (no hoja)
-    void* tabla_siguiente;      // Puntero a tabla del siguiente nivel (NULL si es hoja)
+    // NAVEGACIÓN JERÁRQUICA MULTINIVEL
+    t_tabla_paginas* tabla_siguiente;  // Puntero a tabla del siguiente nivel (NULL en nivel hoja)
     
     // Metadatos adicionales
     time_t timestamp_acceso;    // Último acceso (para algoritmos LRU)
@@ -84,7 +94,7 @@ typedef struct {
  * Contiene un array de entradas. El tamaño del array es siempre
  * ENTRADAS_POR_TABLA (configurable).
  */
-typedef struct {
+struct t_tabla_paginas {
     t_entrada_tabla* entradas;      // Array de entradas (tamaño = ENTRADAS_POR_TABLA)
     int nivel;                      // Nivel en la jerarquía (0=hoja, mayor=más alto)
     int entradas_utilizadas;        // Cantidad de entradas con contenido válido
@@ -93,7 +103,7 @@ typedef struct {
     // Metadatos para optimización
     int pid_propietario;            // PID del proceso propietario
     pthread_mutex_t mutex_tabla;    // Mutex para acceso concurrente a esta tabla
-} t_tabla_paginas;
+};
 
 /**
  * @brief Estructura de paginación completa de un proceso

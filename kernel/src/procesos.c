@@ -18,18 +18,23 @@ const char* estado_to_string(Estados estado) {
     }
 }
 
-void mostrar_pcb(t_pcb PCB) {
-    log_trace(kernel_log, "-*-*-*-*-*- PCB -*-*-*-*-*-\n");
-    log_trace(kernel_log, "PID: %u\n", PCB.PID);
-    log_trace(kernel_log, "PC: %u\n", PCB.PC);
-    mostrar_metrica("ME", PCB.ME);
-    mostrar_metrica("MT", PCB.MT);
-    log_trace(kernel_log, "Estado: %s\n", estado_to_string(PCB.Estado));
-    log_trace(kernel_log, "Tiempo inicio exec: %f\n", PCB.tiempo_inicio_exec);
-    log_trace(kernel_log, "Rafaga estimada: %.2f\n", PCB.estimacion_rafaga);
-    log_trace(kernel_log, "Path: %s\n", PCB.path);
-    log_trace(kernel_log, "Tamanio de memoria: %u\n", PCB.tamanio_memoria);
-    log_trace(kernel_log, "-*-*-*-*-*-*-*-*-*-*-*-*-*-\n");
+void mostrar_pcb(t_pcb* PCB) {
+    if (PCB == NULL) {
+        log_error(kernel_log, "mostrar_pcb: PCB es NULL");
+        return;
+    }
+
+    log_trace(kernel_log, "-*-*-*-*-*- PCB -*-*-*-*-*-");
+    log_trace(kernel_log, "PID: %d", PCB->PID);
+    log_trace(kernel_log, "PC: %d", PCB->PC);
+    mostrar_metrica("ME", PCB->ME);
+    mostrar_metrica("MT", PCB->MT);
+    log_trace(kernel_log, "Estado: %s", estado_to_string(PCB->Estado));
+    log_trace(kernel_log, "Tiempo inicio exec: %.3f", PCB->tiempo_inicio_exec);
+    log_trace(kernel_log, "Rafaga estimada: %.2f", PCB->estimacion_rafaga);
+    log_trace(kernel_log, "Path: %s", PCB->path ? PCB->path : "(null)");
+    log_trace(kernel_log, "Tamanio de memoria: %d", PCB->tamanio_memoria);
+    log_trace(kernel_log, "-*-*-*-*-*-*-*-*-*-*-*-*-*-");
 }
 
 void mostrar_metrica(const char* nombre, int* metrica) {
@@ -90,7 +95,7 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
             exit(EXIT_FAILURE);
         }
 
-        log_info(kernel_log, "## (%u) Pasa del estado %s al estado %s",
+        log_info(kernel_log, VERDE("## (PID: %u) Pasa del estado ")AZUL("%s")VERDE(" al estado ")AZUL("%s"),
                 PCB->PID,
                 estado_to_string(PCB->Estado),
                 estado_to_string(nuevo_estado_enum));
@@ -120,13 +125,12 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
         // Si pasa al Estado EXEC hay que actualizar el tiempo_inicio_exec
         if (nuevo_estado_enum == EXEC) {
             PCB->tiempo_inicio_exec = get_time();
-        } 
-        
-        // SJF
-        if (PCB->Estado == EXEC && nuevo_estado_enum == BLOCKED) {
-            // Cuando SALE de EXEC calculo la estimacion proxima
+        } else if (PCB->Estado == EXEC) {
+            // calculo la estimacion proxima
             double rafaga_real = get_time() - PCB->tiempo_inicio_exec;
             PCB->estimacion_rafaga = ALFA * rafaga_real + (1 - ALFA) * PCB->estimacion_rafaga;
+            // reiniciar el tiempo de inicio
+            PCB->tiempo_inicio_exec = 0;
         }
 
         if (PCB->Estado == SUSP_READY) {
@@ -158,7 +162,6 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
     list_add(cola_destino, PCB);
     liberar_cola_por_estado(nuevo_estado_enum);
 
-    loguear_metricas_estado(PCB);
     switch(nuevo_estado_enum) {
         case NEW: sem_post(&sem_proceso_a_new); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a NEW aumentado"); break;
         case READY: sem_post(&sem_proceso_a_ready); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a READY aumentado"); break;
@@ -170,11 +173,12 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
                             log_debug(kernel_log, "cambiar_estado_pcb: Semaforo SUSP READY VACIA disminuido");
                             break;
         case SUSP_BLOCKED: sem_post(&sem_proceso_a_susp_blocked); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a SUSP BLOCKED aumentado"); break;
-        case EXIT_ESTADO: sem_post(&sem_proceso_a_exit); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a EXIT aumentado"); break;
+        case EXIT_ESTADO: loguear_metricas_estado(PCB); sem_post(&sem_proceso_a_exit); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a EXIT aumentado"); break;
         default: log_error(kernel_log, "nuevo_estado_enum: Error al pasar PCB de %s a %s", estado_to_string(estado_viejo), estado_to_string(nuevo_estado_enum));
                  terminar_kernel();
                  exit(EXIT_FAILURE);
     }
+    mostrar_colas_estados();
 }
 
 bool transicion_valida(Estados actual, Estados destino) {
@@ -269,57 +273,15 @@ void liberar_cola_por_estado(Estados estado) {
 void loguear_metricas_estado(t_pcb* pcb) {
     if (!pcb) return;
 
-    log_trace(kernel_log, "Logueando métricas de estado para el PCB con PID %d", pcb->PID);
-
-    char buffer[512];
-    int offset = snprintf(buffer, sizeof(buffer), "## (%d) - Métricas de estado: ", pcb->PID);
+    log_info(kernel_log, VERDE("## (PID: %d) - Métricas finales :"), pcb->PID);
 
     for (int i = 0; i < 7; i++) {
-        offset += snprintf(buffer + offset, sizeof(buffer) - offset,
-            "%s (%u) (%u)", estado_to_string((Estados)i), pcb->ME[i], pcb->MT[i]);
-
-        if (i < 6) offset += snprintf(buffer + offset, sizeof(buffer) - offset, ", ");
+        const char* nombre_estado = estado_to_string((Estados)i);
+        unsigned veces = pcb->ME[i];
+        unsigned tiempo = pcb->MT[i];
+        log_info(kernel_log, "    "AZUL("%-12s")" Veces: "VERDE("%-2u")" | Tiempo: "VERDE("%-6u ms"), nombre_estado, veces, tiempo);
     }
-
-    log_info(kernel_log, "%s", buffer);
 }
-
-t_pcb* obtener_pcb_por_pid(int pid) {
-    if (!cola_procesos) {
-        log_error(kernel_log, "obtener_pcb_por_pid: cola_procesos es NULL");
-        return NULL;
-    }
-
-    // Buscar el PCB en la cola de procesos
-    for (int i = 0; i < list_size(cola_procesos); i++) {
-        t_pcb* pcb = list_get(cola_procesos, i);
-        if (pcb && pcb->PID == pid) {
-            return pcb;
-        }
-    }
-
-    // No se encontró el PCB
-    log_warning(kernel_log, "obtener_pcb_por_pid: No se encontró PCB con PID %d", pid);
-    return NULL;
-}
-
-t_pcb* buscar_y_remover_pcb_por_pid(t_list* cola, int pid) {
-    if (!cola) {
-        log_error(kernel_log, "buscar_y_remover_pcb_por_pid: cola es NULL");
-        return NULL;
-    }
-
-    // Buscar y remover el PCB de la cola específica
-    for (int i = 0; i < list_size(cola); i++) {
-        t_pcb* pcb = list_get(cola, i);
-        if (pcb && pcb->PID == pid) {
-            return list_remove(cola, i);
-        }
-    }
-
-    // No se encontró el PCB
-    log_warning(kernel_log, "buscar_y_remover_pcb_por_pid: No se encontró PCB con PID %d en la cola", pid);
-    return NULL;
 
 t_pcb* buscar_pcb(int pid) {
     log_debug(kernel_log, "buscar_pcb: esperando mutex_cola_procesos para buscar PCB del proceso %d", pid);
@@ -345,4 +307,23 @@ t_pcb* buscar_pcb(int pid) {
     }
 
     return resultado;
+}
+
+t_pcb* buscar_y_remover_pcb_por_pid(t_list* cola, int pid) {
+    if (!cola) {
+        log_error(kernel_log, "buscar_y_remover_pcb_por_pid: cola es NULL");
+        return NULL;
+    }
+
+    // Buscar y remover el PCB de la cola específica
+    for (int i = 0; i < list_size(cola); i++) {
+        t_pcb* pcb = list_get(cola, i);
+        if (pcb && pcb->PID == pid) {
+            return list_remove(cola, i);
+        }
+    }
+
+    // No se encontró el PCB
+    log_warning(kernel_log, "buscar_y_remover_pcb_por_pid: No se encontró PCB con PID %d en la cola", pid);
+    return NULL;
 }

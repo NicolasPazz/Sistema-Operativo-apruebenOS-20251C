@@ -22,17 +22,17 @@ void signal_handler(int sig) {
 int main(int argc, char* argv[]) {
     // Configurar el manejador de señales
     signal(SIGINT, signal_handler);
-
+    
     // Inicializar logger
-    iniciar_logger_memoria();
     if (!cargar_configuracion("memoria/memoria.config")) {
-        log_error(logger, "Error al cargar la configuracion de memoria.");
+        printf("Error al cargar la configuracion de memoria.");
         cerrar_programa();
         return EXIT_FAILURE;
     }
-
-    log_trace(logger, "=== INICIANDO SISTEMA DE MEMORIA ===");
-    log_trace(logger, "Configuración cargada - TAM_MEMORIA: %d, TAM_PAGINA: %d, NIVELES: %d, ENTRADAS_POR_TABLA: %d", 
+    iniciar_logger_memoria();
+    
+    log_trace(logger, AZUL("=== INICIANDO SISTEMA DE MEMORIA ==="));
+    log_debug(logger, "Configuración cargada - TAM_MEMORIA: %d, TAM_PAGINA: %d, NIVELES: %d, ENTRADAS_POR_TABLA: %d", 
              cfg->TAM_MEMORIA, cfg->TAM_PAGINA, cfg->CANTIDAD_NIVELES, cfg->ENTRADAS_POR_TABLA);
 
     // Inicializar el sistema completo de memoria con paginación multinivel
@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    log_trace(logger, "=== SERVIDOR DE MEMORIA INICIADO ===");
+    log_trace(logger, AZUL("=== SERVIDOR DE MEMORIA INICIADO ==="));
     log_trace(logger, "Escuchando en puerto %d. Esperando conexiones...", cfg->PUERTO_ESCUCHA);
 
   

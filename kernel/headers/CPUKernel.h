@@ -15,13 +15,6 @@ int get_pid_from_cpu(int fd, op_code instruccion);
 cpu* get_cpu_from_fd(int fd);
 
 /**
- * @brief Busca una CPU por su file descriptor
- * @param fd: File descriptor de la CPU a buscar
- * @return Puntero a la estructura CPU encontrada, NULL si no se encuentra
- */
-cpu* buscar_cpu_por_fd(int fd);
-
-/**
  * @brief Busca y remueve una CPU por su file descriptor
  * @param fd: File descriptor de la CPU a remover
  * @return Puntero a la estructura CPU removida, NULL si no se encuentra

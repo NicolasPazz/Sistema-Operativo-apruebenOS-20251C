@@ -62,6 +62,7 @@ t_list* recibir_paquete(int socket_cliente);
 t_list* recibir_contenido_paquete(int socket_cliente);
 void enviar_mensaje(char* mensaje, int socket_cliente);
 void enviar_paquete(t_paquete* paquete, int socket_cliente);
+bool enviar_enteros(int socket, int* enteros, int cantidad);
 
 void crear_buffer(t_paquete* paquete);
 
@@ -70,6 +71,8 @@ t_paquete* crear_paquete(void);
 t_paquete* crear_paquete_op(op_code codop);
 void agregar_a_paquete(t_paquete* paquete, void* valor, int tamanio);
 void agregar_entero_a_paquete(t_paquete *paquete, int numero);
+void agregar_entero_con_tamanio_a_paquete(t_paquete *paquete, int numero);
+void agregar_string_a_paquete(t_paquete* paquete, char* cadena);
 void* serializar_paquete(t_paquete* paquete, int bytes);
 void eliminar_paquete(t_paquete* paquete);
 
@@ -79,5 +82,6 @@ void iterator(char* value);
 char* leer_string(char* buffer, int* desplazamiento);
 int leer_entero(char *buffer, int * desplazamiento);
 t_list* recibir_2_enteros_sin_op(int socket);
+bool recibir_enteros(int socket, int* destino, int cantidad);
 
 #endif /* UTILS_SOCKETS_H_ */

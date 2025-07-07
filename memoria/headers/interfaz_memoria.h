@@ -32,23 +32,5 @@ char* instruction_to_string(t_extended_instruccion* instruction, int pc);
 void memory_init();
 void memory_destroy();
 
-// Para el checkpoint 2: Devuelve un valor fijo de espacio libre (mock)
-int get_available_memory();
-
-/*
- * FUNCIONES COMENTADAS - DUPLICADAS EN manejo_memoria.c
- * La implementación principal está en manejo_memoria.c
- */
-
-/*
-// Inicializa un proceso en memoria (mock para checkpoint 2)
-int initialize_process(int pid, int size);
-
-// Finaliza un proceso y libera sus recursos
-void finalize_process(int pid);
-
-// Obtiene la información de un proceso
-t_proceso_memoria* get_process_info(int pid);
-*/
 
 #endif

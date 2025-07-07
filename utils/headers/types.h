@@ -1,5 +1,6 @@
 #ifndef UTILS_TYPES_H
 #define UTILS_TYPES_H
+#include "colores.h"
 
 /////////////////////////////// Estructuras compartidas ///////////////////////////////
 
@@ -26,7 +27,6 @@ typedef enum {
 	READ_OP, 
 	GOTO_OP,
 	PEDIR_PAGINA_OP,
-	SOLICITAR_FRAME_PARA_ENTRADAS,
 
 	// Ciclo de Instrucciones CPU
 	PEDIR_INSTRUCCION_OP, // Fetch
@@ -35,14 +35,14 @@ typedef enum {
 
 	// Memoria
 	PEDIR_CONFIG_CPU_OP,
+	INSTRUCCION_A_CPU_OP,
 	FINALIZAR_PROC_OP,
 
 	// Testing
 	DEBUGGER,
 
 	// Operaciones adicionales de memoria
-	SEND_PSEUDOCOD_FILE, // cod_op para mandar de kernel a memoria la ruta del archivo de pseudocodigo
-	ACCESO_TABLA_PAGINAS_OP,      // Acceso a tabla de páginas - devuelve número de marco
+	ACCESO_TABLA_PAGINAS_OP,      // Acceso a tabla de páginas - devuelve el Frame de un PID y su Pagina
 	ACCESO_ESPACIO_USUARIO_OP,    // Acceso a espacio de usuario - lectura/escritura
 	LEER_PAGINA_COMPLETA_OP,      // Leer página completa desde dirección física
 	ACTUALIZAR_PAGINA_COMPLETA_OP, // Actualizar página completa en dirección física
@@ -96,7 +96,7 @@ typedef struct {
 typedef enum {
     OK,
 	ERROR
-} t_respuesta_memoria;
+} t_respuesta;
 
 // Instrucciones de CPU
 typedef struct{

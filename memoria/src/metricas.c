@@ -3,10 +3,37 @@
 #include <commons/log.h>
 #include <commons/string.h>
 #include <stdio.h>
+#include <time.h>
 
 // Variables externas
 extern t_sistema_memoria* sistema_memoria;
 extern t_log* logger;
+
+// ============== FUNCIONES DE CREACIÓN DE MÉTRICAS ==============
+
+t_metricas_proceso* crear_metricas_proceso(int pid) {
+    t_metricas_proceso* metricas = malloc(sizeof(t_metricas_proceso));
+    if (!metricas) {
+        log_error(logger, "Error al crear métricas para proceso %d", pid);
+        return NULL;
+    }
+
+    metricas->pid = pid;
+    metricas->accesos_tabla_paginas = 0;
+    metricas->instrucciones_solicitadas = 0;
+    metricas->bajadas_swap = 0;
+    metricas->subidas_memoria_principal = 0;
+    metricas->lecturas_memoria = 0;
+    metricas->escrituras_memoria = 0;
+    metricas->timestamp_creacion = time(NULL);
+    metricas->timestamp_ultimo_acceso = time(NULL);
+
+    pthread_mutex_init(&metricas->mutex_metricas, NULL);
+
+    return metricas;
+}
+
+// ============== FUNCIONES DE INCREMENTO DE MÉTRICAS ==============
 
 void incrementar_accesos_tabla_paginas(int pid) {
     char pid_str[16];
@@ -96,16 +123,24 @@ void imprimir_metricas_proceso(int pid) {
     
     pthread_mutex_lock(&metricas->mutex_metricas);
     
-    // Formato EXACTO según consigna:
-    // "Acc.T.Pag: <ATP>; Inst.Sol.: <Inst.Sol.>; SWAP: <SWAP>; Mem.Prin.: <Mem.Prin.>; Lec.Mem.: <Lec.Mem.>; Esc.Mem.: <Esc.Mem.>"
-    log_info(logger, "## PID: %d - Proceso Destruido - Métricas - Acc.T.Pag: %d; Inst.Sol.: %d; SWAP: %d; Mem.Prin.: %d; Lec.Mem.: %d; Esc.Mem.: %d",
-             pid,
+    // Formato formal según consigna
+    log_info(logger, VERDE("## (PID: %d) - Proceso Destruido - Métricas - Acc.T.Pag: %d; Inst.Sol.: %d; SWAP: %d; Mem.Prin.: %d; Lec.Mem.: %d; Esc.Mem.: %d"), 
+             pid, 
              metricas->accesos_tabla_paginas,
              metricas->instrucciones_solicitadas,
              metricas->bajadas_swap,
              metricas->subidas_memoria_principal,
              metricas->lecturas_memoria,
              metricas->escrituras_memoria);
+    
+    // Formato legible (mantener para debugging)
+    log_info(logger, VERDE("## (PID: %d) - Proceso Destruido - Métricas finales:"), pid);
+    log_info(logger, "    "AZUL("Acc.T.Pag:")"      "VERDE("%d"), metricas->accesos_tabla_paginas);
+    log_info(logger, "    "AZUL("Inst.Sol.:")"      "VERDE("%d"), metricas->instrucciones_solicitadas);
+    log_info(logger, "    "AZUL("SWAP:")"           "VERDE("%d"), metricas->bajadas_swap);
+    log_info(logger, "    "AZUL("Mem.Prin.:")"      "VERDE("%d"), metricas->subidas_memoria_principal);
+    log_info(logger, "    "AZUL("Lec.Mem.:")"       "VERDE("%d"), metricas->lecturas_memoria);
+    log_info(logger, "    "AZUL("Esc.Mem.:")"       "VERDE("%d"), metricas->escrituras_memoria);
     
     pthread_mutex_unlock(&metricas->mutex_metricas);
 }
