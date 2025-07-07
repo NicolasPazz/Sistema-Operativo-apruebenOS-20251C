@@ -50,7 +50,7 @@ static t_entrada_tabla* _buscar_entrada_pagina(int pid, int numero_pagina) {
  * Esta función crea todas las estructuras administrativas necesarias
  */
 t_proceso_memoria* crear_proceso_memoria(int pid, int tamanio) {
-    if (pid < 0 || tamanio <= 0) {
+    if (pid < 0) {
         log_error(logger, "PID: %d - Error al crear proceso: Parámetros inválidos (tamaño=%d)", pid, tamanio);
         return NULL;
     }
@@ -102,7 +102,7 @@ t_proceso_memoria* crear_proceso_memoria(int pid, int tamanio) {
 
 t_resultado_memoria crear_proceso_en_memoria(int pid, int tamanio, char* nombre_archivo) {
     // ========== VALIDACIONES INICIALES ==========
-    if (pid < 0 || tamanio <= 0) {
+    if (pid < 0) {
         log_error(logger, "PID: %d - Error al crear proceso: Parámetros inválidos (tamaño=%d)", pid, tamanio);
         return MEMORIA_ERROR_DIRECCION_INVALIDA;
     }

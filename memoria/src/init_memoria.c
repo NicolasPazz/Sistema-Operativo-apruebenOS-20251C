@@ -78,7 +78,7 @@ int cargar_configuracion(char* path) {
 
 void iniciar_logger_memoria() {
     // Inicializar logger con configuración por defecto hasta cargar la configuración real
-    logger = iniciar_logger("memoria.log", MODULENAME, 1, log_level_from_string(cfg->LOG_LEVEL));
+    logger = iniciar_logger("memoria/memoria.log", MODULENAME, 1, log_level_from_string(cfg->LOG_LEVEL));
     if (logger == NULL) {
         printf("Error al iniciar memoria logs\n");
     } else {

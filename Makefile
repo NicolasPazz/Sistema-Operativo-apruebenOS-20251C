@@ -35,6 +35,8 @@ set_log_level:
 logs:
 	@echo "Eliminando códigos ANSI de los archivos .log..."
 	@find . -type f -name "*.log" -exec sed -i -r "s/\x1B\[[0-9;]*[mK]//g" {} +
+	@echo "Filtrando solo líneas [INFO] en los archivos .log..."
+	@find . -type f -name "*.log" -exec sed -i -n '/\[INFO\]/p' {} +
 
 # /////////////////////// Ejecutar módulos ///////////////////////
 .PHONY: run
@@ -49,7 +51,7 @@ run: set_log_level clean all
 
 	@echo -e "\033[38;2;179;236;111mIniciando kernel (en primer plano)...\033[38;2;179;236;111m"
 	@bash levantar_modulos.sh &   # Levanta CPU e IO en background
-	@./kernel/bin/kernel PROCESO_INICIAL 128
+	@./kernel/bin/kernel PLANI_CORTO_PLAZO 0
 
 	@echo "Corrigiendo logs luego de que kernel terminó..."
 	@$(MAKE) logs

@@ -4,7 +4,7 @@ NOOP
 WRITE 64 DATOS_EN_PAGINA_2
 READ 64 15
 GOTO 7
-IO teclado 1000000
+IO teclado 100
 INIT_PROC proceso_hijo 256
 INIT_PROC proceso_mediano 128
 INIT_PROC proceso_grande 256

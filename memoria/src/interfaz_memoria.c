@@ -254,6 +254,9 @@ t_instruccion* get_instruction(int pid, int pc) {
     }
     
     // Convertir PC de base 1 a base 0 (PC empieza en 1, pero las listas empiezan en 0)
+    if (pc == 0) {
+        pc = 1; // Si PC era 0 (GOTO 0) el programa rompia daba pc_index -1
+    }
     int pc_index = pc - 1;
     
     // Verificar que el PC sea válido

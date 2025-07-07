@@ -198,6 +198,8 @@ void EXIT(t_pcb* pcb_a_finalizar) {
     // Notificar a planificador LP
     sem_post(&sem_finalizacion_de_proceso);
 
+   // Hay que Comentar para que Kernel no finalice en las pruebas
+
     // Verificar si no quedan procesos en el sistema
     log_debug(kernel_log, "EXIT: verificando si quedan procesos en el sistema");
     
