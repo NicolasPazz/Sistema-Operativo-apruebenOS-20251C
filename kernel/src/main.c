@@ -77,7 +77,10 @@ int main(int argc, char* argv[]) {
 
     while (true) {
         pthread_mutex_lock(&mutex_conexiones);
-        if (conectado_cpu && conectado_io && conectado_memoria) break;
+        if (conectado_cpu && conectado_io && conectado_memoria){
+            pthread_mutex_unlock(&mutex_conexiones);
+            break;
+        } 
         pthread_mutex_unlock(&mutex_conexiones);
         sleep(1);
     }

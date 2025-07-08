@@ -152,28 +152,31 @@ void terminar_programa() {
     
     // Cerrar conexiones de sockets
     if (fd_kernel_dispatch > 0) {
-        close(fd_kernel_dispatch);
         log_trace(cpu_log, "Conexión Kernel Dispatch cerrada");
+        close(fd_kernel_dispatch);
     }
     
     if (fd_kernel_interrupt > 0) {
-        close(fd_kernel_interrupt);
         log_trace(cpu_log, "Conexión Kernel Interrupt cerrada");
+        close(fd_kernel_interrupt);
     }
     
     if (fd_memoria > 0) {
-        close(fd_memoria);
         log_trace(cpu_log, "Conexión Memoria cerrada");
+        close(fd_memoria);
     }
     
-    // Liberar recursos de configuración y logging
-    if (cpu_config != NULL) {
-        config_destroy(cpu_config);
-        log_trace(cpu_log, "Configuración CPU liberada");
+    if (cfg_memoria != NULL) {
+        log_trace(cpu_log, "Configuración MEMORIA liberada");
+        free(cfg_memoria);
     }
     
     if (cpu_log != NULL) {
         log_trace(cpu_log, "CPU terminado correctamente");
         log_destroy(cpu_log);
+    }
+
+    if (cpu_config != NULL) {
+        config_destroy(cpu_config);
     }
 }

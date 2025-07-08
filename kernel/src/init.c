@@ -84,7 +84,7 @@ sem_t sem_cpu_disponible;
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 void iniciar_config_kernel() {
-    kernel_config = iniciar_config("kernel/kernel.config");    // lanzar error
+    kernel_config = iniciar_config("kernel/kernel.config");
 
     IP_MEMORIA = config_get_string_value(kernel_config, "IP_MEMORIA");
     PUERTO_MEMORIA = config_get_string_value(kernel_config, "PUERTO_MEMORIA");
@@ -601,19 +601,24 @@ void* hilo_servidor_io(void* _) {
         int fd_io = esperar_cliente(fd_kernel_io, kernel_log);
         if (fd_io == -1) {
             log_error(kernel_log, "hilo_servidor_io: Error al recibir cliente");
-            continue;
+            terminar_kernel();
+            exit(EXIT_FAILURE);
         }
 
         if (!validar_handshake(fd_io, HANDSHAKE_IO_KERNEL, kernel_log)) {
             close(fd_io);
-            continue;
+            terminar_kernel();
+            exit(EXIT_FAILURE);
         }
+
+        log_debug(kernel_log, "hilo_servidor_io: HANDSHAKE_IO_KERNEL recibido de IO (fd=%d)", fd_io);
 
         char nombre_io[256];
         if (recv(fd_io, nombre_io, sizeof(nombre_io), 0) <= 0) {
-            log_error(kernel_log, "Error al recibir nombre de IO");
+            log_error(kernel_log, "hilo_servidor_io: Error al recibir nombre de IO");
             close(fd_io);
-            continue;
+            terminar_kernel();
+            exit(EXIT_FAILURE);
         }
 
         io* nueva_io = malloc(sizeof(io));
@@ -622,15 +627,19 @@ void* hilo_servidor_io(void* _) {
         nueva_io->estado = IO_OCUPADO;
         nueva_io->proceso_actual = NULL;
 
+        log_debug(kernel_log, "hilo_servidor_io: esperando mutex_ios para agregar nueva IO (fd=%d, nombre='%s')", fd_io, nueva_io->nombre);
         pthread_mutex_lock(&mutex_ios);
+        log_debug(kernel_log, "hilo_servidor_io: bloqueando mutex_ios para agregar nueva IO (fd=%d, nombre='%s')", fd_io, nueva_io->nombre);
         list_add(lista_ios, nueva_io);
         pthread_mutex_unlock(&mutex_ios);
 
+        log_debug(kernel_log, "hilo_servidor_io: esperando mutex_conexiones para verificar procesos bloqueados en IO '%s'", nueva_io->nombre);
         pthread_mutex_lock(&mutex_conexiones);
+        log_debug(kernel_log, "hilo_servidor_io: bloqueando mutex_conexiones para verificar procesos bloqueados en IO '%s'", nueva_io->nombre);
         conectado_io = true;
         pthread_mutex_unlock(&mutex_conexiones);
 
-        log_trace(kernel_log, "HANDSHAKE_IO_KERNEL: IO '%s' conectada exitosamente (fd=%d)", nueva_io->nombre, fd_io);
+        log_trace(kernel_log, "hilo_servidor_io: HANDSHAKE_IO_KERNEL: IO '%s' conectada exitosamente (fd=%d)", nueva_io->nombre, fd_io);
 
         int* arg = malloc(sizeof(int));
         *arg = fd_io;

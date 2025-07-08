@@ -17,6 +17,7 @@ void inicializar_mmu() {
     cache = inicializar_cache();    
 }
 
+/*
 int cargar_configuracion(char* path) {
     t_config* cfg_file = config_create(path);
 
@@ -60,14 +61,13 @@ int cargar_configuracion(char* path) {
     cfg_memoria->RETARDO_MEMORIA = config_get_int_value(cfg_file, "RETARDO_MEMORIA");
     cfg_memoria->PATH_SWAPFILE = config_get_string_value(cfg_file, "PATH_SWAPFILE");
     cfg_memoria->RETARDO_SWAP = config_get_int_value(cfg_file, "RETARDO_SWAP");
-    cfg_memoria->LOG_LEVEL = config_get_string_value(cfg_file, "LOG_LEVEL");
     cfg_memoria->DUMP_PATH = config_get_string_value(cfg_file, "DUMP_PATH");
 
     log_trace(cpu_log, "Archivo de configuracion cargado correctamente");
     config_destroy(cfg_file);
 
     return 1;
-}
+}*/
 
 int traducir_direccion_fisica(int direccion_logica) {
     if (cfg_memoria == NULL) {
@@ -144,6 +144,7 @@ int traducir_direccion_fisica(int direccion_logica) {
             pthread_mutex_lock(&mutex_tlb);
             tlb_insertar(nro_pagina, frame);
             pthread_mutex_unlock(&mutex_tlb);
+            log_debug(cpu_log, "TLB actualizado con página %d -> frame %d", nro_pagina, frame);
         }
     }
     return frame * tam_pagina + desplazamiento;
@@ -226,7 +227,8 @@ void desalojar_proceso_tlb() {
     // Limpiar todas las entradas de la TLB
     for (int i = 0; i < list_size(tlb); i++) {
         entrada_tlb_t* entrada = list_get(tlb, i);
-        if (entrada) {
+         if (entrada) {
+            log_debug(cpu_log, "Limpiando entrada TLB: Página %d, Frame %d", entrada->pagina, entrada->frame);
             free(entrada);
         }
     }
