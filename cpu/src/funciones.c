@@ -19,10 +19,7 @@ void func_write(char* direccion_logica_str, char* datos) {
     if (cache_habilitada()) {
         int pos = buscar_pagina_en_cache(nro_pagina);
         if (pos != -1) {
-            char* contenido = cache_leer(nro_pagina); // Asume malloc interno
-            log_info(cpu_log, VERDE("(PID: %d) - Cache HIT - Pagina: %d - Valor: %s"), pid_ejecutando, nro_pagina, contenido);
-            log_trace("PID: %d - Contenido leído (cache): %s\n", pid_ejecutando, contenido);
-            free(contenido);
+            cache_modificar(nro_pagina, datos); // Asume malloc interno
             return;
         }
         log_info(cpu_log, ROJO("(PID: %d) - Cache MISS - Pagina: %d"), pid_ejecutando, nro_pagina);
@@ -98,7 +95,6 @@ void func_read(char* direccion_logica_str, char* tam_str) {
         int pos = buscar_pagina_en_cache(nro_pagina);
         if (pos != -1) {
             char* contenido = cache_leer(nro_pagina); // Asume malloc interno
-            log_info(cpu_log, VERDE("(PID: %d) - Cache HIT - Pagina: %d - Valor: %s"), pid_ejecutando, nro_pagina, contenido);
             log_trace("PID: %d - Contenido leído (cache): %s\n", pid_ejecutando, contenido);
             free(contenido);
             return;

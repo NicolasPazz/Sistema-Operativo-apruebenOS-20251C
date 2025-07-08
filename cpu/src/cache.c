@@ -121,14 +121,7 @@ void desalojar_proceso_cache() {
         if (cache->entradas[i].modificado && cache->entradas[i].numero_pagina >= 0) {
             int frameC = -1;
             int pagina = cache->entradas[i].numero_pagina;
-
-            if (tlb_habilitada()) {
-                bool encontrado = tlb_buscar(pagina, &frameC);
-                if (!encontrado) {
-                    log_warning(cpu_log, "TLB no contiene mapeo para página %d. No se pudo determinar frame.", pagina);
-                }
-            }
-
+            
             log_info(cpu_log, VERDE("(PID: %d) - Memory Update - Página: %d - Frame: %d"), pid_ejecutando, pagina, frameC);
 
             // escribir_pagina_en_memoria(pagina, frame, cache->entradas[i].contenido);
@@ -189,8 +182,9 @@ void cache_modificar(int frame, char* datos) {
         pthread_mutex_unlock(&mutex_cache);
         return;
     }
-    cache->entradas[nro_pagina_en_cache].contenido = datos;
+    cache->entradas[nro_pagina_en_cache].contenido = strdup(datos);
     cache->entradas[nro_pagina_en_cache].modificado = true;
+    log_trace("PID: %d - Contenido leído (cache): %s\n", pid_ejecutando, cache->entradas[nro_pagina_en_cache].contenido);
     pthread_mutex_unlock(&mutex_cache);
 }
 
@@ -231,7 +225,7 @@ void cache_escribir(int frame, char* datos) {
     
     // Asignar nueva entrada
     cache->entradas[entrada_index].numero_pagina = frame;
-    cache->entradas[entrada_index].contenido = datos;
+    cache->entradas[entrada_index].contenido = strdup(datos);
     cache->entradas[entrada_index].modificado = false;
     cache->entradas[entrada_index].bit_referencia = 1;
     log_info(cpu_log, VERDE("(PID: %d) - Cache Add - Pagina: %d"), pid_ejecutando, frame);

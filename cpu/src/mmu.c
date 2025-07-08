@@ -144,6 +144,7 @@ int traducir_direccion_fisica(int direccion_logica) {
             pthread_mutex_lock(&mutex_tlb);
             tlb_insertar(nro_pagina, frame);
             pthread_mutex_unlock(&mutex_tlb);
+            log_debug(cpu_log, "TLB actualizado con página %d -> frame %d", nro_pagina, frame);
         }
     }
     return frame * tam_pagina + desplazamiento;
@@ -226,7 +227,8 @@ void desalojar_proceso_tlb() {
     // Limpiar todas las entradas de la TLB
     for (int i = 0; i < list_size(tlb); i++) {
         entrada_tlb_t* entrada = list_get(tlb, i);
-        if (entrada) {
+         if (entrada) {
+            log_debug(cpu_log, "Limpiando entrada TLB: Página %d, Frame %d", entrada->pagina, entrada->frame);
             free(entrada);
         }
     }
