@@ -186,12 +186,12 @@ void liberar_conexion(int socket_cliente) {
 bool validar_handshake(int fd, handshake_code esperado, t_log* log) {
     int recibido;
     if (recv(fd, &recibido, sizeof(int), MSG_WAITALL) != sizeof(int)) {
-        //log_error(log, "Error recibiendo handshake (fd=%d): %s", fd, strerror(errno));
+        log_error(log, "Error recibiendo handshake (fd=%d): %s", fd, strerror(errno));
         return false;
     }
 
     if (recibido != esperado) {
-        log_warning(log, "Handshake invalido (fd=%d): se esperaba %d, se recibio %d", fd, esperado, recibido);
+        log_error(log, "Handshake invalido (fd=%d): se esperaba %d, se recibio %d", fd, esperado, recibido);
         return false;
     }
 
