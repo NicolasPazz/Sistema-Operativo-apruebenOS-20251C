@@ -166,12 +166,6 @@ void terminar_programa() {
         close(fd_memoria);
     }
     
-    // Liberar recursos de configuración y logging
-    if (cpu_config != NULL) {
-        log_trace(cpu_log, "Configuración CPU liberada");
-        config_destroy(cpu_config);
-    }
-
     if (cfg_memoria != NULL) {
         log_trace(cpu_log, "Configuración MEMORIA liberada");
         free(cfg_memoria);
@@ -182,5 +176,7 @@ void terminar_programa() {
         log_destroy(cpu_log);
     }
 
-    log_debug(cpu_log, "CPU finalizado correctamente");
+    if (cpu_config != NULL) {
+        config_destroy(cpu_config);
+    }
 }

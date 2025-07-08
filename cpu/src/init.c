@@ -23,17 +23,17 @@ char* LOG_LEVEL;
 void leer_config_cpu() {
     cpu_config = iniciar_config("cpu/cpu.config");
 
-    IP_MEMORIA = strdup(config_get_string_value(cpu_config, "IP_MEMORIA"));
-    PUERTO_MEMORIA = strdup(config_get_string_value(cpu_config, "PUERTO_MEMORIA"));
-    IP_KERNEL = strdup(config_get_string_value(cpu_config, "IP_KERNEL"));
-    PUERTO_KERNEL_DISPATCH = strdup(config_get_string_value(cpu_config, "PUERTO_KERNEL_DISPATCH"));
-    PUERTO_KERNEL_INTERRUPT = strdup(config_get_string_value(cpu_config, "PUERTO_KERNEL_INTERRUPT"));
-    ENTRADAS_TLB = strdup(config_get_string_value(cpu_config, "ENTRADAS_TLB"));
-    REEMPLAZO_TLB = strdup(config_get_string_value(cpu_config, "REEMPLAZO_TLB"));
-    ENTRADAS_CACHE = strdup(config_get_string_value(cpu_config, "ENTRADAS_CACHE"));
-    REEMPLAZO_CACHE = strdup(config_get_string_value(cpu_config, "REEMPLAZO_CACHE"));
-    RETARDO_CACHE = strdup(config_get_string_value(cpu_config, "RETARDO_CACHE"));
-    LOG_LEVEL = strdup(config_get_string_value(cpu_config, "LOG_LEVEL"));
+    IP_MEMORIA = config_get_string_value(cpu_config, "IP_MEMORIA");
+    PUERTO_MEMORIA = config_get_string_value(cpu_config, "PUERTO_MEMORIA");
+    IP_KERNEL = config_get_string_value(cpu_config, "IP_KERNEL");
+    PUERTO_KERNEL_DISPATCH = config_get_string_value(cpu_config, "PUERTO_KERNEL_DISPATCH");
+    PUERTO_KERNEL_INTERRUPT = config_get_string_value(cpu_config, "PUERTO_KERNEL_INTERRUPT");
+    ENTRADAS_TLB = config_get_string_value(cpu_config, "ENTRADAS_TLB");
+    REEMPLAZO_TLB = config_get_string_value(cpu_config, "REEMPLAZO_TLB");
+    ENTRADAS_CACHE = config_get_string_value(cpu_config, "ENTRADAS_CACHE");
+    REEMPLAZO_CACHE = config_get_string_value(cpu_config, "REEMPLAZO_CACHE");
+    RETARDO_CACHE = config_get_string_value(cpu_config, "RETARDO_CACHE");
+    LOG_LEVEL = config_get_string_value(cpu_config, "LOG_LEVEL");
 
     // === AGREGAR ESTE CHEQUEO ===
     if (!(IP_MEMORIA && PUERTO_MEMORIA &&

@@ -84,7 +84,7 @@ sem_t sem_cpu_disponible;
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 void iniciar_config_kernel() {
-    kernel_config = iniciar_config("kernel/kernel.config");    // lanzar error
+    kernel_config = iniciar_config("kernel/kernel.config");
 
     IP_MEMORIA = config_get_string_value(kernel_config, "IP_MEMORIA");
     PUERTO_MEMORIA = config_get_string_value(kernel_config, "PUERTO_MEMORIA");
