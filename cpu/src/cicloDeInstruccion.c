@@ -200,8 +200,8 @@ void check_interrupt() {
             pthread_mutex_unlock(&mutex_estado_proceso);
 
             // Limpiar TLB y cache antes de desalojar el proceso
-            desalojar_proceso_tlb();
-            desalojar_proceso_cache();
+            desalojar_proceso_tlb(pid_ejecutando);
+            desalojar_proceso_cache(pid_ejecutando);
 
             t_paquete* paquete = crear_paquete_op(OK);
             pthread_mutex_lock(&mutex_estado_proceso);

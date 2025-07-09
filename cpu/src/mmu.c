@@ -17,58 +17,6 @@ void inicializar_mmu() {
     cache = inicializar_cache();    
 }
 
-/*
-int cargar_configuracion(char* path) {
-    t_config* cfg_file = config_create(path);
-
-    if (cfg_file == NULL) {
-        log_error(cpu_log, "No se encontro el archivo de configuracion: %s", path);
-        return 0;
-    }
-
-    char* properties[] = {
-        "PUERTO_ESCUCHA",
-        "TAM_MEMORIA",
-        "TAM_PAGINA",
-        "ENTRADAS_POR_TABLA",
-        "CANTIDAD_NIVELES",
-        "RETARDO_MEMORIA",
-        "PATH_SWAPFILE",
-        "RETARDO_SWAP",
-        "LOG_LEVEL",
-        "DUMP_PATH",
-        NULL
-    };
-
-    if (!config_has_all_properties(cfg_file, properties)) {
-        log_error(cpu_log, "Propiedades faltantes en el archivo de configuracion");
-        config_destroy(cfg_file);
-        return 0;
-    }
-
-    cfg_memoria = malloc(sizeof(t_config_memoria));
-    if (cfg_memoria == NULL) {
-        log_error(cpu_log, "Error al asignar memoria para la configuracion");
-        config_destroy(cfg_file);
-        return 0;
-    }
-
-    cfg_memoria->PUERTO_ESCUCHA = config_get_int_value(cfg_file, "PUERTO_ESCUCHA");
-    cfg_memoria->TAM_MEMORIA = config_get_int_value(cfg_file, "TAM_MEMORIA");
-    cfg_memoria->TAM_PAGINA = config_get_int_value(cfg_file, "TAM_PAGINA");
-    cfg_memoria->ENTRADAS_POR_TABLA = config_get_int_value(cfg_file, "ENTRADAS_POR_TABLA");
-    cfg_memoria->CANTIDAD_NIVELES = config_get_int_value(cfg_file, "CANTIDAD_NIVELES");
-    cfg_memoria->RETARDO_MEMORIA = config_get_int_value(cfg_file, "RETARDO_MEMORIA");
-    cfg_memoria->PATH_SWAPFILE = config_get_string_value(cfg_file, "PATH_SWAPFILE");
-    cfg_memoria->RETARDO_SWAP = config_get_int_value(cfg_file, "RETARDO_SWAP");
-    cfg_memoria->DUMP_PATH = config_get_string_value(cfg_file, "DUMP_PATH");
-
-    log_trace(cpu_log, "Archivo de configuracion cargado correctamente");
-    config_destroy(cfg_file);
-
-    return 1;
-}*/
-
 int traducir_direccion_fisica(int direccion_logica) {
     if (cfg_memoria == NULL) {
         log_error(cpu_log, "ERROR: cfg_memoria no inicializada");
@@ -82,7 +30,6 @@ int traducir_direccion_fisica(int direccion_logica) {
     int nro_pagina = direccion_logica / tam_pagina;
     int desplazamiento = direccion_logica % tam_pagina;
 
-    // Calcular entradas de cada nivel para paginación multinivel
     int entradas[cantidad_niveles];
     for (int nivel = 0; nivel < cantidad_niveles; nivel++) {
         int divisor = 1;
@@ -92,44 +39,41 @@ int traducir_direccion_fisica(int direccion_logica) {
     }
 
     int frame = 0;
-
     bool hit = false;
     if (tlb_habilitada()) {
         pthread_mutex_lock(&mutex_tlb);
-        hit = tlb_buscar(nro_pagina, &frame);
+        hit = tlb_buscar(pid_ejecutando, nro_pagina, &frame);
         pthread_mutex_unlock(&mutex_tlb);
     }
+
     if (tlb_habilitada() && hit) {
         log_info(cpu_log, VERDE("(PID: %d) - TLB HIT - Página: %d"), pid_ejecutando, nro_pagina);    
     } else {
         log_info(cpu_log, ROJO("(PID: %d) - TLB MISS - Página: %d"), pid_ejecutando, nro_pagina);
 
-        // Nueva operación: solo se envía PID y nro_pagina
         t_paquete* paquete = crear_paquete_op(ACCESO_TABLA_PAGINAS_OP);
         agregar_entero_a_paquete(paquete, pid_ejecutando);
         agregar_entero_a_paquete(paquete, nro_pagina);
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
 
-        // Recibir respuesta como paquete
         op_code codigo_operacion;
         if (recv(fd_memoria, &codigo_operacion, sizeof(op_code), MSG_WAITALL) != sizeof(op_code)) {
             log_error(cpu_log, "PID: %d - Error al recibir op_code de respuesta desde Memoria", pid_ejecutando);
             exit(EXIT_FAILURE);
         }
-        
+
         if (codigo_operacion != PAQUETE_OP) {
-            log_error(cpu_log, "PID: %d - Op_code inesperado en respuesta: %d (esperaba PAQUETE_OP)", 
-                     pid_ejecutando, codigo_operacion);
+            log_error(cpu_log, "PID: %d - Op_code inesperado en respuesta: %d (esperaba PAQUETE_OP)", pid_ejecutando, codigo_operacion);
             exit(EXIT_FAILURE);
         }
-        
+
         t_list* lista_respuesta = recibir_contenido_paquete(fd_memoria);
         if (lista_respuesta == NULL || list_size(lista_respuesta) < 1) {
             log_error(cpu_log, "PID: %d - Error al recibir respuesta de marco desde Memoria", pid_ejecutando);
             exit(EXIT_FAILURE);
         }
-        
+
         frame = *(int*)list_get(lista_respuesta, 0);
         list_destroy_and_destroy_elements(lista_respuesta, free);
 
@@ -142,20 +86,20 @@ int traducir_direccion_fisica(int direccion_logica) {
 
         if (tlb_habilitada()) {
             pthread_mutex_lock(&mutex_tlb);
-            tlb_insertar(nro_pagina, frame);
+            tlb_insertar(pid_ejecutando, nro_pagina, frame);
             pthread_mutex_unlock(&mutex_tlb);
-            log_debug(cpu_log, "TLB actualizado con página %d -> frame %d", nro_pagina, frame);
+            log_debug(cpu_log, "TLB insertada (PID=%d): Página %d -> Frame %d", pid_ejecutando, nro_pagina, frame);
         }
     }
     return frame * tam_pagina + desplazamiento;
 }
 
-bool tlb_buscar(int pagina, int* frame_out) {
+bool tlb_buscar(int pid, int pagina, int* frame_out) {
     for (int i = 0; i < list_size(tlb); i++) {
         entrada_tlb_t* entrada = list_get(tlb, i);
-        if (entrada->valido && entrada->pagina == pagina) {
+        if (entrada->valido && entrada->pagina == pagina && entrada->pid == pid) {
             *frame_out = entrada->frame;
-            entrada->tiempo_uso = timestamp_actual(); // Para LRU: actualizamos uso
+            entrada->tiempo_uso = timestamp_actual();
             return true;
         }
     }
@@ -166,13 +110,14 @@ bool tlb_habilitada() {
     return atoi(ENTRADAS_TLB) > 0;
 }
 
-void tlb_insertar(int pagina, int frame) {
+void tlb_insertar(int pid, int pagina, int frame) {
     entrada_tlb_t* nueva_entrada = malloc(sizeof(entrada_tlb_t));
+    nueva_entrada->pid = pid;
     nueva_entrada->pagina = pagina;
     nueva_entrada->frame = frame;
     nueva_entrada->valido = true;
-    nueva_entrada->tiempo_uso = timestamp_actual(); // Para LRU
-    nueva_entrada->orden_fifo = orden_fifo++;        // Para FIFO
+    nueva_entrada->tiempo_uso = timestamp_actual();
+    nueva_entrada->orden_fifo = orden_fifo++;
 
     if (list_size(tlb) < atoi(ENTRADAS_TLB)) {
         list_add(tlb, nueva_entrada);
@@ -214,7 +159,7 @@ long timestamp_actual() {
     return ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
 }
 
-void desalojar_proceso_tlb() {
+void desalojar_proceso_tlb(int pid) {
     pthread_mutex_lock(&mutex_tlb);
     if (!tlb_habilitada()) {
         pthread_mutex_unlock(&mutex_tlb);
@@ -222,20 +167,18 @@ void desalojar_proceso_tlb() {
         return;
     }
 
-    log_trace(cpu_log, "Limpiando TLB para proceso %d", pid_ejecutando);
-    
-    // Limpiar todas las entradas de la TLB
+    log_trace(cpu_log, "Limpiando TLB para proceso %d", pid);
+
     for (int i = 0; i < list_size(tlb); i++) {
         entrada_tlb_t* entrada = list_get(tlb, i);
-         if (entrada) {
-            log_debug(cpu_log, "Limpiando entrada TLB: Página %d, Frame %d", entrada->pagina, entrada->frame);
+        if (entrada && entrada->pid == pid) {
+            log_debug(cpu_log, "Limpiando entrada TLB: PID %d, Página %d, Frame %d", entrada->pid, entrada->pagina, entrada->frame);
             free(entrada);
+            list_remove(tlb, i);
+            i--; // ajustar índice tras eliminación
         }
     }
-    
-    // Vaciar la lista
-    list_clean(tlb);
-    
-    log_trace(cpu_log, "TLB limpiada exitosamente para proceso %d", pid_ejecutando);
+
+    log_trace(cpu_log, "TLB limpiada exitosamente para proceso %d", pid);
     pthread_mutex_unlock(&mutex_tlb);
 }

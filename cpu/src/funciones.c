@@ -1,3 +1,4 @@
+
 #include "../headers/cicloDeInstruccion.h"
 #include "../headers/init.h"
 #include "../headers/mmu.h"
@@ -17,16 +18,17 @@ void func_write(char* direccion_logica_str, char* datos) {
 
     // 1. CACHE
     if (cache_habilitada()) {
-        int pos = buscar_pagina_en_cache(nro_pagina);
+        int pos = buscar_pagina_en_cache(pid_ejecutando, nro_pagina);
         if (pos != -1) {
-            cache_modificar(nro_pagina, datos); // Asume malloc interno
-            return;
+                cache_modificar(pid_ejecutando, nro_pagina, datos);
+                log_info(cpu_log, VERDE("(PID: %d) - Cache HIT - Pagina: %d - Valor escrito: %s"), pid_ejecutando, nro_pagina, datos);
+                return;
         }
         log_info(cpu_log, ROJO("(PID: %d) - Cache MISS - Pagina: %d"), pid_ejecutando, nro_pagina);
         }
 
     // 2. TRADUCCIÓN Y ESCRITURA EN MEMORIA
-        int direccion_fisica = traducir_direccion_fisica(direccion_logica);
+    int direccion_fisica = traducir_direccion_fisica(direccion_logica);
 
     t_paquete* paquete = crear_paquete_op(WRITE_OP);
     agregar_a_paquete(paquete, &pid_ejecutando, sizeof(int));
@@ -79,7 +81,7 @@ void func_write(char* direccion_logica_str, char* datos) {
         }
         
         char* contenido = (char*)list_get(lista_respuesta, 0);
-        cache_escribir(nro_pagina, contenido);
+        cache_escribir(pid_ejecutando, nro_pagina, contenido);
         list_destroy_and_destroy_elements(lista_respuesta, free);
     }
 }
@@ -92,9 +94,10 @@ void func_read(char* direccion_logica_str, char* tam_str) {
 
     // 1. CACHE
     if (cache_habilitada()) {
-        int pos = buscar_pagina_en_cache(nro_pagina);
+        int pos = buscar_pagina_en_cache(pid_ejecutando, nro_pagina);
         if (pos != -1) {
-            char* contenido = cache_leer(nro_pagina); // Asume malloc interno
+            char* contenido = cache_leer(pid_ejecutando, nro_pagina); // Asume malloc interno
+            log_info(cpu_log, VERDE("(PID: %d) - Cache HIT - Pagina: %d - Valor: %s"), pid_ejecutando, nro_pagina, contenido);
             log_trace("PID: %d - Contenido leído (cache): %s\n", pid_ejecutando, contenido);
             free(contenido);
             return;
@@ -166,7 +169,7 @@ void func_read(char* direccion_logica_str, char* tam_str) {
         }
         
         char* contenido_pagina = (char*)list_get(lista_respuesta_pagina, 0);
-        cache_escribir(nro_pagina, contenido_pagina);
+        cache_escribir(pid_ejecutando, nro_pagina, contenido_pagina);
         list_destroy_and_destroy_elements(lista_respuesta_pagina, free);
     }
 }
@@ -235,8 +238,8 @@ void func_dump_memory() {
 
 void func_exit() {
     // Limpiar TLB y cache antes de terminar el proceso
-    desalojar_proceso_tlb();
-    desalojar_proceso_cache();
+    desalojar_proceso_tlb(pid_ejecutando);
+    desalojar_proceso_cache(pid_ejecutando);
     
     int op = EXIT_OP;
     send(fd_kernel_dispatch, &op, sizeof(int), 0);

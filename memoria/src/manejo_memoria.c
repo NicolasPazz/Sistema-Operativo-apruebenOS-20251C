@@ -986,7 +986,8 @@ bool actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido_p
     
     // Calcular el número de marco desde la dirección física
     int numero_marco = direccion_fisica / cfg->TAM_PAGINA;
-    
+    log_trace(logger, "PID: %d - Quiero acceder al marco %d (dir_fisica=%d)", pid, numero_marco, direccion_fisica);
+
     // Obtener el número de página que está mapeada a este marco
     int numero_pagina = obtener_numero_pagina_de_marco(pid, numero_marco);
     if (numero_pagina == -1) {
