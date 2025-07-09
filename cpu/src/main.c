@@ -131,8 +131,14 @@ void* recibir_kernel_interrupt(void* arg) {
                 exit(EXIT_SUCCESS);
             case INTERRUPCION_OP:
                 // Recibir PID de la interrupción
-                recv(fd_kernel_interrupt, &pid_interrupt, sizeof(int), MSG_WAITALL);
-                log_info(cpu_log, VERDE("## Llega interrupción al puerto Interrupt"));
+                log_trace(cpu_log, VERDE("[INTERRUPT]: Recibiendo interrupción desde Kernel"));
+                int buffer_size;
+                void* buffer = recibir_buffer(&buffer_size, fd_kernel_interrupt);
+                int offset = 0;
+                leer_entero(buffer, &offset);
+                pid_interrupt = leer_entero(buffer, &offset);
+                free(buffer);
+                log_debug(cpu_log, VERDE("[INTERRUPT]: ## PID recibido para interrupción: %d mientras se ejecutaba PID %d"), pid_interrupt, pid_ejecutando);
                 pthread_mutex_lock(&mutex_estado_proceso);
                 hay_interrupcion = 1;
                 pthread_mutex_unlock(&mutex_estado_proceso);

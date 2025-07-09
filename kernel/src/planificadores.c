@@ -167,13 +167,9 @@ void* menor_rafaga_restante(void* a, void* b) {
     }
 
     // Log de comparación
-    log_trace(kernel_log,
-        "Comparando procesos:\n"
-        "  • PID %d - Estado: %s - Ráfaga restante: %.2f ms\n"
-        "  • PID %d - Estado: %s - Ráfaga restante: %.2f ms",
-        pcb_a->PID, estado_to_string(pcb_a->Estado), restante_a,
-        pcb_b->PID, estado_to_string(pcb_b->Estado), restante_b
-    );
+    log_trace(kernel_log, "Comparando procesos:");
+    log_trace(kernel_log, "  • PID %d - Estado: %s - Ráfaga restante: %.2f ms", pcb_a->PID, estado_to_string(pcb_a->Estado), restante_a);
+    log_trace(kernel_log, "  • PID %d - Estado: %s - Ráfaga restante: %.2f ms", pcb_b->PID, estado_to_string(pcb_b->Estado), restante_b);
 
     // Comparar ráfagas restantes
     if (restante_a < restante_b) {
@@ -274,21 +270,22 @@ void dispatch(t_pcb* proceso_a_ejecutar) {
 
             t_interrupcion* nueva = malloc(sizeof(t_interrupcion));
             nueva->cpu_a_desalojar = cpu_disponible;
-            nueva->proceso_a_desalojar = proceso_a_ejecutar;
+            nueva->p_a_ejecutar = proceso_a_ejecutar;
 
             log_debug(kernel_log, "DISPATCH: esperando mutex_cola_interrupciones para encolar interrupción");
             pthread_mutex_lock(&mutex_cola_interrupciones);
             log_debug(kernel_log, "DISPATCH: bloqueando mutex_cola_interrupciones para encolar interrupción");
             queue_push(cola_interrupciones, nueva);
             pthread_mutex_unlock(&mutex_cola_interrupciones);
-
-            sem_post(&sem_interrupciones);
             log_trace(kernel_log,
-                "Dispatch: Interrupción encolada para desalojar CPU %d (desaloja PID=%d para correr PID=%d)",
+                "[INTERRUPT]: Interrupción encolada para desalojar CPU %d (desaloja PID=%d para correr PID=%d)",
                 cpu_disponible->id,
                 cpu_disponible->pid,  // PID actual en esa CPU
                 proceso_a_ejecutar->PID  // nuevo PID a ejecutar
-            );            
+            ); 
+
+            sem_post(&sem_interrupciones);
+           
             pthread_mutex_unlock(&mutex_lista_cpus);
             return; // Esperar a que se procese la interrupción
 
@@ -406,7 +403,7 @@ void iniciar_interrupt_handler(void) {
 }
 
 void* interrupt_handler(void* arg) {
-    log_trace(kernel_log, "Interrupt handler iniciado");
+    log_trace(kernel_log, VERDE("Interrupt handler iniciado"));
 
     while (1) {
         sem_wait(&sem_interrupciones);
@@ -416,92 +413,88 @@ void* interrupt_handler(void* arg) {
         pthread_mutex_unlock(&mutex_cola_interrupciones);
 
         if (!intr) {
-            log_error(kernel_log, "Interrupt handler: Cola de interrupciones vacía");
+            log_error(kernel_log, VERDE("[INTERRUPT]: Interrupt handler: Cola de interrupción vacía"));
             terminar_kernel();
             exit(EXIT_FAILURE);
         }
 
         int fd_interrupt = obtener_fd_interrupt(intr->cpu_a_desalojar->id);
         if (fd_interrupt == -1) {
-            log_error(kernel_log, "Interrupt handler: No se encontró fd_interrupt para CPU %d", intr->cpu_a_desalojar->id);
-            free(intr);
+            log_error(kernel_log, VERDE("[INTERRUPT]: Interrupt handler: No se encontró fd_interrupt para CPU %d"), intr->cpu_a_desalojar->id);
             terminar_kernel();
             exit(EXIT_FAILURE);
         }
 
         log_trace(kernel_log,
-            "Interrupt handler: Enviando interrupción a CPU %d (desaloja PID=%d para correr PID=%d)",
+            VERDE("[INTERRUPT]: Interrupt handler: Enviando interrupción a CPU %d (desaloja PID=%d para correr PID=%d)"),
             intr->cpu_a_desalojar->id,
             intr->cpu_a_desalojar->pid,
-            intr->proceso_a_desalojar->PID
+            intr->p_a_ejecutar->PID
         );        
 
-        // Enviar interrupción
+        // Enviar interrupción con el PID actualmente ejecutando en la CPU
         t_paquete* paquete = crear_paquete_op(INTERRUPCION_OP);
+        agregar_entero_a_paquete(paquete, intr->cpu_a_desalojar->pid);
         enviar_paquete(paquete, fd_interrupt);
         eliminar_paquete(paquete);
 
         // Esperar respuesta
-        t_respuesta respuesta;
-        if (recv(fd_interrupt, &respuesta, sizeof(t_respuesta), 0) <= 0) {
-            log_error(kernel_log, "Interrupt handler: No se pudo recibir respuesta de CPU %d", intr->cpu_a_desalojar->id);
-            terminar_kernel();
-            exit(EXIT_FAILURE);
-        }
+        int respuesta = recibir_operacion(fd_interrupt);
 
-        if (respuesta != OK) {
-            log_debug(kernel_log, "Interrupt handler: CPU %d respondió con ERROR", intr->cpu_a_desalojar->id);
-            free(intr);
-            continue;
-        }
+        switch (respuesta) {
+            case OK:
+                log_debug(kernel_log, VERDE("[INTERRUPT]: Interrupt handler: CPU %d respondió OK"), intr->cpu_a_desalojar->id);
 
-        // Recibir el buffer con PID y nuevo PC
-        int buffer_size;
-        void* buffer = recibir_buffer(&buffer_size, fd_interrupt);
-        if (!buffer) {
-            log_error(kernel_log, "Interrupt handler: Error al recibir buffer de CPU %d", intr->cpu_a_desalojar->id);
-            terminar_kernel();
-            exit(EXIT_FAILURE);
-        }
+                // Recibir el buffer con PID y nuevo PC
+                t_list* lista = recibir_contenido_paquete(fd_interrupt);
+                // size debe ser 2 (PID y PC)
+                if (list_size(lista) != 2) {
+                    log_error(kernel_log, "[INTERRUPT]: Interrupt handler: Error al recibir buffer de CPU %d", intr->cpu_a_desalojar->id);
+                    terminar_kernel();
+                    exit(EXIT_FAILURE);
+                }
 
-        int offset = 0;
-        int pid_recibido = leer_entero(buffer, &offset);
-        int nuevo_pc = leer_entero(buffer, &offset);
-        free(buffer);
+                int pid_recibido = *(int*)list_get(lista, 0); // PID
+                int nuevo_pc = *(int*)list_get(lista, 1); // PC
+        
+                if (!pid_recibido || !nuevo_pc) {
+                    log_error(kernel_log, "[INTERRUPT]: Interrupt handler: PID o PC recibido inválido (PID=%d, PC=%d)", 
+                            pid_recibido, nuevo_pc);
+                    terminar_kernel();
+                    exit(EXIT_FAILURE);
+                }
+        
+                if (pid_recibido != intr->cpu_a_desalojar->pid) {
+                    log_error(kernel_log, "[INTERRUPT]: Interrupt handler: PID recibido (%d) no coincide con el PID en ejecución (%d)",
+                            pid_recibido, intr->cpu_a_desalojar->pid);
+                    terminar_kernel();
+                    exit(EXIT_FAILURE);
+                }
 
-        if (!pid_recibido || !nuevo_pc) {
-            log_error(kernel_log, "Interrupt handler: PID o PC recibido inválido (PID=%d, PC=%d)", 
-                      pid_recibido, nuevo_pc);
-            terminar_kernel();
-            exit(EXIT_FAILURE);
-        }
+                free(intr);
 
-        if (pid_recibido != intr->proceso_a_desalojar->PID) {
-            log_error(kernel_log, "Interrupt handler: PID recibido (%d) no coincide con el PID del proceso a desalojar (%d)", 
-                      pid_recibido, intr->proceso_a_desalojar->PID);
-            free(buffer);
-            free(intr);
-            terminar_kernel();
-            exit(EXIT_FAILURE);
-        }
-
-        t_pcb* pcb = buscar_pcb(pid_recibido);
-        if (!pcb) {
-            log_error(kernel_log, "Interrupt handler: No se encontró PCB para PID %d", pid_recibido);
-            free(intr);
-            terminar_kernel();
-            exit(EXIT_FAILURE);
-        }
-
-        log_info(kernel_log, "## (%d) - Desalojado por algoritmo SJF/SRT", pid_recibido);
-
-        pcb->PC = nuevo_pc;
-        cambiar_estado_pcb(pcb, READY);
-        solicitar_replanificacion_srt();
-
-        free(intr);
+                t_pcb* pcb = buscar_pcb(pid_recibido);
+                if (!pcb) {
+                    log_error(kernel_log, "[INTERRUPT]: Interrupt handler: No se encontró PCB para PID %d", pid_recibido);
+                    terminar_kernel();
+                    exit(EXIT_FAILURE);
+                }
+        
+                log_info(kernel_log, VERDE("[INTERRUPT]: ## (%d) - Desalojado por algoritmo SJF/SRT"), pid_recibido);
+        
+                pcb->PC = nuevo_pc;
+                cambiar_estado_pcb(pcb, READY);
+                solicitar_replanificacion_srt();
+            case ERROR:
+                log_debug(kernel_log, VERDE("[INTERRUPT]: Interrupt handler: CPU %d respondió con ERROR"), intr->cpu_a_desalojar->id);
+                free(intr);
+                continue;
+            default:
+                log_error(kernel_log, "[INTERRUPT]: Interrupt handler: No se pudo recibir respuesta de CPU %d", intr->cpu_a_desalojar->id);
+                terminar_kernel();
+                exit(EXIT_FAILURE);
+        }       
     }
-    return NULL;
 }
 
 void solicitar_replanificacion_srt(void) {

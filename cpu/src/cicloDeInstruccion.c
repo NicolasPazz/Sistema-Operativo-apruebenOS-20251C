@@ -196,6 +196,7 @@ void check_interrupt() {
     if (hay_interrupcion) {
         hay_interrupcion = 0;
         if (pid_ejecutando == pid_interrupt) {
+            log_debug(cpu_log, VERDE("[INTERRUPT]: ## (PID: %d) - Recibida interrupción, desalojando proceso"), pid_ejecutando);
             seguir_ejecutando = 0;
             pthread_mutex_unlock(&mutex_estado_proceso);
 
@@ -211,8 +212,14 @@ void check_interrupt() {
 
             enviar_paquete(paquete, fd_kernel_interrupt);
             eliminar_paquete(paquete);
+            log_debug(cpu_log, VERDE("[INTERRUPT]: ## (PID: %d) - Respuesta de OK enviada a Kernel por interrupción válida"), pid_ejecutando);
             return;
         }
+        log_debug(cpu_log, VERDE("[INTERRUPT]: ## (PID: %d) - Interrupción recibida pero no corresponde al PID ejecutando (%d)"), pid_interrupt, pid_ejecutando);
+        t_paquete* paquete = crear_paquete_op(ERROR);
+        enviar_paquete(paquete, fd_kernel_interrupt);
+        eliminar_paquete(paquete);
+        log_debug(cpu_log, VERDE("[INTERRUPT]: ## (PID: %d) - Respuesta de ERROR enviada a Kernel por interrupción no válida"), pid_interrupt);
     }
     pthread_mutex_unlock(&mutex_estado_proceso);
 }

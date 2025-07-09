@@ -590,7 +590,7 @@ void* hilo_servidor_interrupt(void* _) {
 }
 
 void* atender_cpu_interrupt(void* arg) {
-    int fd_cpu_interrupt = *(int*)arg;
+    /*int fd_cpu_interrupt = *(int*)arg;
     free(arg);
 
     op_code cop;
@@ -604,7 +604,7 @@ void* atender_cpu_interrupt(void* arg) {
     }
 
     log_warning(kernel_log, "CPU Interrupt desconectada (fd=%d)", fd_cpu_interrupt);
-    close(fd_cpu_interrupt);
+    close(fd_cpu_interrupt);*/
     return NULL;
 }
 
