@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
   
     //////////////////////////// Config, log e inicializaciones ////////////////////////////
     if (argc < 3) {
-        fprintf(stderr, "Uso: %s [archivo_pseudocodigo] [tamanio_proceso]\nEJ: ./bin/kernel PROCESO_INICIAL 128\n", argv[0]);
+        fprintf(stderr, "Uso: %s [archivo_pseudocodigo] [tamanio_proceso]\nEJ: ./bin/kernel proceso_inicial 128\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
@@ -26,6 +26,7 @@ int main(int argc, char* argv[]) {
     iniciar_diccionario_tiempos();
     iniciar_diccionario_archivos_por_pcb();
     iniciar_planificadores();
+    if(strcmp(ALGORITMO_CORTO_PLAZO, "SRT") == 0) iniciar_interrupt_handler();
 
     char* archivo_pseudocodigo = argv[1];
     int tamanio_proceso = atoi(argv[2]);

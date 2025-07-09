@@ -29,7 +29,7 @@ PID_MEMORIA=$!
 sleep 10
 
 # INICIAR KERNEL
-valgrind --tool=helgrind --log-file=kernel/kernel.helgrind ./kernel/bin/kernel PROCESO_INICIAL 128 --action &
+valgrind --tool=helgrind --log-file=kernel/kernel.helgrind ./kernel/bin/kernel proceso_inicial 128 --action &
 PID_KERNEL=$!
 sleep 10
 

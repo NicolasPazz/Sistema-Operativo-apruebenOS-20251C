@@ -45,6 +45,7 @@ t_list* cola_exit;
 t_list* cola_procesos; // Cola con TODOS los procesos sin importar el estado (Procesos totales del sistema)
 t_list* pcbs_bloqueados_por_dump_memory;
 t_list* pcbs_esperando_io;
+t_queue* cola_interrupciones;
 
 // Listas y semaforos de CPUs y IOs conectadas
 t_list* lista_cpus;
@@ -68,6 +69,7 @@ pthread_mutex_t mutex_cola_blocked;
 pthread_mutex_t mutex_cola_exit;
 pthread_mutex_t mutex_cola_procesos;
 pthread_mutex_t mutex_pcbs_esperando_io;
+pthread_mutex_t mutex_cola_interrupciones;
 sem_t sem_proceso_a_new;
 sem_t sem_proceso_a_susp_ready;
 sem_t sem_proceso_a_susp_blocked;
@@ -78,6 +80,8 @@ sem_t sem_proceso_a_exit;
 sem_t sem_susp_ready_vacia;
 sem_t sem_finalizacion_de_proceso;
 sem_t sem_cpu_disponible;
+sem_t sem_replanificar_srt;
+sem_t sem_interrupciones;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
  //                                       INICIALIZACIONES                                       //
@@ -151,6 +155,7 @@ void iniciar_sincronizacion_kernel() {
     pthread_mutex_init(&mutex_cola_exit, NULL);
     pthread_mutex_init(&mutex_cola_procesos, NULL);
     pthread_mutex_init(&mutex_pcbs_esperando_io, NULL);
+    pthread_mutex_init(&mutex_cola_interrupciones, NULL);
 
     sem_init(&sem_proceso_a_new, 0, 0);
     sem_init(&sem_proceso_a_susp_ready, 0, 0);
@@ -162,9 +167,12 @@ void iniciar_sincronizacion_kernel() {
     sem_init(&sem_susp_ready_vacia, 0, 1);
     sem_init(&sem_finalizacion_de_proceso, 0, 0);
     sem_init(&sem_cpu_disponible, 0, 0);
-    
+    sem_init(&sem_replanificar_srt, 0, 0);
+    sem_init(&sem_interrupciones, 0, 0);
+
     lista_cpus = list_create();
     lista_ios = list_create();
+    cola_interrupciones = queue_create();
 
     conectado_cpu = false;
     conectado_io = false;
@@ -207,6 +215,7 @@ void terminar_kernel() {
     pthread_mutex_destroy(&mutex_cola_exit);
     pthread_mutex_destroy(&mutex_cola_procesos);
     pthread_mutex_destroy(&mutex_pcbs_esperando_io);
+    pthread_mutex_destroy(&mutex_cola_interrupciones);
 
     sem_destroy(&sem_proceso_a_new);
     sem_destroy(&sem_proceso_a_susp_ready);
@@ -218,9 +227,12 @@ void terminar_kernel() {
     sem_destroy(&sem_susp_ready_vacia);
     sem_destroy(&sem_finalizacion_de_proceso);
     sem_destroy(&sem_cpu_disponible);
+    sem_destroy(&sem_replanificar_srt);
+    sem_destroy(&sem_interrupciones);
 
     list_destroy(lista_cpus);
     list_destroy(lista_ios);
+    queue_destroy(cola_interrupciones);
 
     close(fd_cpu_dispatch);
     close(fd_cpu_interrupt);
@@ -301,6 +313,7 @@ void* hilo_servidor_dispatch(void* _) {
         pthread_mutex_unlock(&mutex_lista_cpus);
 
         sem_post(&sem_cpu_disponible);
+        solicitar_replanificacion_srt();
         log_debug(kernel_log, "hilo_servidor_dispatch: Semaforo CPU DISPONIBLE aumentado por nueva CPU (fd=%d, ID=%d)", fd_cpu_dispatch, id_cpu);
 
         pthread_mutex_lock(&mutex_conexiones);
@@ -401,6 +414,7 @@ void* atender_cpu_dispatch(void* arg) {
                 pthread_mutex_unlock(&mutex_lista_cpus);
 
                 sem_post(&sem_cpu_disponible);
+                solicitar_replanificacion_srt();
 
                 log_debug(kernel_log, "atender_cpu_dispatch: Semaforo CPU DISPONIBLE aumentado por IO");
                 log_trace(kernel_log, "Procesando solicitud de IO '%s' por %d ms para PID=%d", nombre_IO, cant_tiempo, pcb_a_io->PID);
@@ -445,6 +459,8 @@ void* atender_cpu_dispatch(void* arg) {
                 
                 // Liberar CPU para que el planificador pueda usarla
                 sem_post(&sem_cpu_disponible);
+                solicitar_replanificacion_srt();
+
                 log_debug(kernel_log, "EXIT: Semáforo CPU DISPONIBLE aumentado por CPU liberada");
                 
                 break;
@@ -486,6 +502,8 @@ void* atender_cpu_dispatch(void* arg) {
                 
                 // Liberar CPU para que el planificador pueda usarla
                 sem_post(&sem_cpu_disponible);
+                solicitar_replanificacion_srt();
+
                 log_debug(kernel_log, "DUMP_MEMORY: Semáforo CPU DISPONIBLE aumentado por CPU liberada");
 
                 // ========== EJECUTAR SYSCALL ==========

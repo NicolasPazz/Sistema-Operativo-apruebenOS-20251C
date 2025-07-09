@@ -29,7 +29,7 @@ PID_MEMORIA=$!
 sleep 10
 
 # INICIAR KERNEL
-valgrind --leak-check=full --log-file=kernel/kernel.valgrind ./kernel/bin/kernel PROCESO_INICIAL 128 --action &
+valgrind --leak-check=full --log-file=kernel/kernel.valgrind ./kernel/bin/kernel proceso_inicial 128 --action &
 PID_KERNEL=$!
 sleep 10
 

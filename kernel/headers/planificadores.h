@@ -20,6 +20,7 @@ extern pthread_mutex_t mutex_cola_blocked;
 extern pthread_mutex_t mutex_cola_exit;
 extern pthread_mutex_t mutex_cola_procesos;
 extern pthread_mutex_t mutex_pcbs_esperando_io;
+extern pthread_mutex_t mutex_cola_interrupciones;
 extern sem_t sem_proceso_a_new;
 extern sem_t sem_proceso_a_susp_ready;
 extern sem_t sem_proceso_a_susp_blocked;
@@ -30,6 +31,8 @@ extern sem_t sem_proceso_a_exit;
 extern sem_t sem_susp_ready_vacia;
 extern sem_t sem_finalizacion_de_proceso;
 extern sem_t sem_cpu_disponible;
+extern sem_t sem_replanificar_srt;
+extern sem_t sem_interrupciones;
 
 /////////////////////////// Planificacion de Largo Plazo ////////////////////////////
 
@@ -51,7 +54,7 @@ void* menor_rafaga_restante(void* a, void* b);
 
 void dispatch(t_pcb* proceso_a_ejecutar);
 
-bool interrupt(cpu* cpu_a_desalojar, t_pcb *proceso_a_ejecutar);
+bool interrupt(cpu *cpu_a_desalojar, t_pcb *proceso_a_ejecutar);
 
 double get_time();
 
@@ -60,6 +63,12 @@ void* planificador_largo_plazo(void* arg);
 void activar_planificador_largo_plazo(void);
 
 void iniciar_planificadores(void);
+
+void iniciar_interrupt_handler(void);
+
+void* interrupt_handler(void);
+
+void solicitar_replanificacion_srt(void);
 
 void* planificador_largo_plazo(void* arg);
 
@@ -72,6 +81,6 @@ void* planificador_corto_plazo(void* arg);
 
 bool hay_espacio_suficiente_memoria(int tamanio);
 
-
+int obtener_fd_interrupt(int id_cpu);
 
 #endif /* PLANIFICADORES_H */

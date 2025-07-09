@@ -75,7 +75,7 @@ stop:
 # /////////////////////// Ejecutar módulos individualmente ///////////////////////
 .PHONY: kernel
 kernel:
-	./kernel/bin/kernel PROCESO_INICIAL 128
+	./kernel/bin/kernel proceso_inicial 128
 
 .PHONY: memoria
 memoria:
