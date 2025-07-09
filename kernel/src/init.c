@@ -105,7 +105,7 @@ void iniciar_config_kernel() {
     if (!IP_MEMORIA || !PUERTO_MEMORIA || !PUERTO_ESCUCHA_DISPATCH || !PUERTO_ESCUCHA_INTERRUPT ||
         !PUERTO_ESCUCHA_IO || !ALGORITMO_CORTO_PLAZO || !ALGORITMO_INGRESO_A_READY ||
         !ALFA || !ESTIMACION_INICIAL || !TIEMPO_SUSPENSION || !LOG_LEVEL) {
-        printf("iniciar_config_kernel: Faltan campos obligatorios en kernel.config");
+        printf("iniciar_config_kernel: Faltan campos obligatorios en kernel.config\n");
         exit(EXIT_FAILURE);
     } else {
         /*

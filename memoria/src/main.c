@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
     
     // Inicializar logger
     if (!cargar_configuracion("memoria/memoria.config")) {
-        printf("Error al cargar la configuracion de memoria.");
+        printf("Error al cargar la configuracion de memoria.\n");
         cerrar_programa();
         return EXIT_FAILURE;
     }

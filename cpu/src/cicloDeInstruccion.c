@@ -186,7 +186,7 @@ void execute(op_code tipo_instruccion, t_instruccion* instruccion) {
             func_exit();
             break;
         default:
-            log_error(cpu_log, "Instrucción desconocida\n");
+            log_error(cpu_log, "Instrucción desconocida");
         break;
     }
 }

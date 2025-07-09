@@ -405,7 +405,7 @@ void iniciar_interrupt_handler(void) {
     log_trace(kernel_log, "Hilo de manejo de interrupciones iniciado correctamente");
 }
 
-void* interrupt_handler(void) {
+void* interrupt_handler(void* arg) {
     log_trace(kernel_log, "Interrupt handler iniciado");
 
     while (1) {

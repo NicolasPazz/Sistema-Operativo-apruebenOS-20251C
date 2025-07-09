@@ -52,7 +52,7 @@ void mostrar_metrica(const char* nombre, int* metrica) {
 }
 
 void mostrar_colas_estados() {
-    log_trace(kernel_log, "Colas -> [NEW: %d, READY: %d, EXEC: %d, BLOCK: %d, SUSP.BLOCK: %d, SUSP.READY: %d, EXIT: %d] | Procesos en total: %d\n",
+    log_trace(kernel_log, "Colas -> [NEW: %d, READY: %d, EXEC: %d, BLOCK: %d, SUSP.BLOCK: %d, SUSP.READY: %d, EXIT: %d] | Procesos en total: %d",
         list_size(cola_new),
         list_size(cola_ready),
         list_size(cola_running),

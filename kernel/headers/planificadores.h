@@ -66,7 +66,7 @@ void iniciar_planificadores(void);
 
 void iniciar_interrupt_handler(void);
 
-void* interrupt_handler(void);
+void* interrupt_handler(void* arg);
 
 void solicitar_replanificacion_srt(void);
 

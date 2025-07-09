@@ -184,7 +184,7 @@ void cache_modificar(int frame, char* datos) {
     }
     cache->entradas[nro_pagina_en_cache].contenido = strdup(datos);
     cache->entradas[nro_pagina_en_cache].modificado = true;
-    log_trace("PID: %d - Contenido leído (cache): %s\n", pid_ejecutando, cache->entradas[nro_pagina_en_cache].contenido);
+    log_trace(cpu_log, "PID: %d - Contenido leído (cache): %s", pid_ejecutando, cache->entradas[nro_pagina_en_cache].contenido);
     pthread_mutex_unlock(&mutex_cache);
 }
 

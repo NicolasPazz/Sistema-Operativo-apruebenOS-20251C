@@ -110,7 +110,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    log_trace(kernel_log, "Kernel ejecutandose. Presione Ctrl+C para terminar.\n");
+    log_trace(kernel_log, "Kernel ejecutandose. Presione Ctrl+C para terminar.");
 
     activar_planificador_largo_plazo();
 
