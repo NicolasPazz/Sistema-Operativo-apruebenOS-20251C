@@ -443,52 +443,44 @@ void* interrupt_handler(void* arg) {
 
         switch (respuesta) {
             case OK:
-                log_debug(kernel_log, VERDE("[INTERRUPT]: Interrupt handler: CPU %d respondió OK"), intr->cpu_a_desalojar->id);
+                log_debug(kernel_log, VERDE("[INTERRUPT]: CPU %d respondió OK"), intr->cpu_a_desalojar->id);
 
-                // Recibir el buffer con PID y nuevo PC
-                t_list* lista = recibir_contenido_paquete(fd_interrupt);
-                // size debe ser 2 (PID y PC)
-                if (list_size(lista) != 2) {
-                    log_error(kernel_log, "[INTERRUPT]: Interrupt handler: Error al recibir buffer de CPU %d", intr->cpu_a_desalojar->id);
+                t_list* contenido = recibir_contenido_paquete(fd_interrupt);
+                if (list_size(contenido) != 2) {
+                    log_error(kernel_log, "[INTERRUPT]: Error en buffer recibido de CPU");
+                    list_destroy_and_destroy_elements(contenido, free);
                     terminar_kernel();
                     exit(EXIT_FAILURE);
                 }
 
-                int pid_recibido = *(int*)list_get(lista, 0); // PID
-                int nuevo_pc = *(int*)list_get(lista, 1); // PC
-        
-                if (!pid_recibido || !nuevo_pc) {
-                    log_error(kernel_log, "[INTERRUPT]: Interrupt handler: PID o PC recibido inválido (PID=%d, PC=%d)", 
-                            pid_recibido, nuevo_pc);
-                    terminar_kernel();
-                    exit(EXIT_FAILURE);
-                }
-        
+                int pid_recibido = *(int*)list_get(contenido, 0);
+                int nuevo_pc = *(int*)list_get(contenido, 1);
+                list_destroy_and_destroy_elements(contenido, free);
+
                 if (pid_recibido != intr->cpu_a_desalojar->pid) {
-                    log_error(kernel_log, "[INTERRUPT]: Interrupt handler: PID recibido (%d) no coincide con el PID en ejecución (%d)",
+                    log_error(kernel_log, "[INTERRUPT]: PID recibido (%d) no coincide con PID esperado (%d)",
                             pid_recibido, intr->cpu_a_desalojar->pid);
                     terminar_kernel();
                     exit(EXIT_FAILURE);
                 }
 
-                free(intr);
-
                 t_pcb* pcb = buscar_pcb(pid_recibido);
                 if (!pcb) {
-                    log_error(kernel_log, "[INTERRUPT]: Interrupt handler: No se encontró PCB para PID %d", pid_recibido);
+                    log_error(kernel_log, "[INTERRUPT]: PCB no encontrado para PID %d", pid_recibido);
                     terminar_kernel();
                     exit(EXIT_FAILURE);
                 }
-        
-                log_info(kernel_log, VERDE("[INTERRUPT]: ## (%d) - Desalojado por algoritmo SJF/SRT"), pid_recibido);
-        
+
+                log_info(kernel_log, VERDE("[INTERRUPT]: ## (%d) - Desalojado por SJF/SRT"), pid_recibido);
+
                 pcb->PC = nuevo_pc;
                 cambiar_estado_pcb(pcb, READY);
                 solicitar_replanificacion_srt();
+                free(intr);
             case ERROR:
                 log_debug(kernel_log, VERDE("[INTERRUPT]: Interrupt handler: CPU %d respondió con ERROR"), intr->cpu_a_desalojar->id);
                 free(intr);
-                continue;
+                break;
             default:
                 log_error(kernel_log, "[INTERRUPT]: Interrupt handler: No se pudo recibir respuesta de CPU %d", intr->cpu_a_desalojar->id);
                 terminar_kernel();
@@ -498,6 +490,7 @@ void* interrupt_handler(void* arg) {
 }
 
 void solicitar_replanificacion_srt(void) {
+    
     if(strcmp(ALGORITMO_CORTO_PLAZO, "SRT") == 0 && list_size(cola_ready) > 0) {
         sem_post(&sem_replanificar_srt);
         log_debug(kernel_log, "Replanificación SRT solicitada");
