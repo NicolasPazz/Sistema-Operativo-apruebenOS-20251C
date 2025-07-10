@@ -272,8 +272,7 @@ void EXIT(t_pcb* pcb_a_finalizar) {
     
     if(total_procesos == 0) {
         mostrar_colas_estados();
-        log_info(kernel_log, "Todos los procesos han terminado. Finalizando kernel...");
-        terminar_kernel();
-        exit(EXIT_SUCCESS);
+        log_trace(kernel_log, "EXIT: No quedan procesos en el sistema, activando shutdown automático");
+        activar_shutdown_automatico();
     }
 }

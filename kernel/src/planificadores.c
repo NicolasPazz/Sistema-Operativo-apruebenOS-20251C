@@ -4,6 +4,8 @@
 pthread_mutex_t mutex_planificador_lp;
 pthread_cond_t cond_planificador_lp;
 estado_planificador estado_planificador_lp = STOP;
+bool planificador_lp_activado = false;
+bool shutdown_automatico_activado = false;
 
 /////////////////////////////// Planificador Corto Plazo ///////////////////////////////
 t_pcb* elegir_por_fifo() {
@@ -391,6 +393,7 @@ double get_time() {
 void activar_planificador_largo_plazo(void) {
     pthread_mutex_lock(&mutex_planificador_lp);
     estado_planificador_lp = RUNNING;
+    planificador_lp_activado = true;
     pthread_cond_signal(&cond_planificador_lp);
     pthread_mutex_unlock(&mutex_planificador_lp);
     log_trace(kernel_log, "Planificador de largo plazo activado");
@@ -548,6 +551,9 @@ void iniciar_planificadores(void) {
     }
     pthread_detach(hilo_planificador_cp);
     log_trace(kernel_log, "Planificador de corto plazo iniciado correctamente");
+    
+    // Iniciar shutdown automático
+    iniciar_shutdown_automatico();
 }
 
 void* planificador_largo_plazo(void* arg) {
@@ -897,6 +903,7 @@ void* planificador_mediano_plazo(t_pcb* pcb) {
     pthread_t hilo_timer;
     pthread_create(&hilo_timer, NULL, timer_suspension_blocked, (void*)pcb);
     pthread_detach(hilo_timer);
+    return NULL;
 }
 
 void* timer_suspension_blocked(void* arg) {
@@ -999,4 +1006,141 @@ t_respuesta suspender_proceso_en_memoria(int pid) {
         return ERROR;
     }
     return respuesta;
+}
+
+// Funciones para shutdown automático
+bool todas_las_colas_vacias(void) {
+    pthread_mutex_lock(&mutex_cola_new);
+    bool new_vacia = list_is_empty(cola_new);
+    pthread_mutex_unlock(&mutex_cola_new);
+
+    pthread_mutex_lock(&mutex_cola_ready);
+    bool ready_vacia = list_is_empty(cola_ready);
+    pthread_mutex_unlock(&mutex_cola_ready);
+
+    pthread_mutex_lock(&mutex_cola_susp_ready);
+    bool susp_ready_vacia = list_is_empty(cola_susp_ready);
+    pthread_mutex_unlock(&mutex_cola_susp_ready);
+
+    pthread_mutex_lock(&mutex_cola_susp_blocked);
+    bool susp_blocked_vacia = list_is_empty(cola_susp_blocked);
+    pthread_mutex_unlock(&mutex_cola_susp_blocked);
+
+    pthread_mutex_lock(&mutex_cola_blocked);
+    bool blocked_vacia = list_is_empty(cola_blocked);
+    pthread_mutex_unlock(&mutex_cola_blocked);
+
+    pthread_mutex_lock(&mutex_cola_exit);
+    bool exit_vacia = list_is_empty(cola_exit);
+    pthread_mutex_unlock(&mutex_cola_exit);
+
+    pthread_mutex_lock(&mutex_cola_rechazados);
+    bool rechazados_vacia = list_is_empty(cola_rechazados);
+    pthread_mutex_unlock(&mutex_cola_rechazados);
+
+    pthread_mutex_lock(&mutex_lista_cpus);
+    bool cpus_ocupadas = false;
+    for (int i = 0; i < list_size(lista_cpus); i++) {
+        cpu* c = list_get(lista_cpus, i);
+        if (c->tipo_conexion == CPU_DISPATCH && c->pid != -1) {
+            cpus_ocupadas = true;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&mutex_lista_cpus);
+
+    bool todas_vacias = new_vacia && ready_vacia && susp_ready_vacia && 
+                       susp_blocked_vacia && blocked_vacia && exit_vacia && 
+                       rechazados_vacia && !cpus_ocupadas;
+
+    if (todas_vacias) {
+        log_trace(kernel_log, "SHUTDOWN: Todas las colas están vacías y no hay CPUs ejecutando procesos");
+    }
+
+    return todas_vacias;
+}
+
+void notificar_shutdown_a_modulos(void) {
+    log_trace(kernel_log, "SHUTDOWN: Notificando shutdown a todos los módulos");
+    
+    // Notificar a Memoria
+    int fd_memoria_shutdown = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, kernel_log);
+    if (fd_memoria_shutdown != -1) {
+        int handshake = HANDSHAKE_MEMORIA_KERNEL;
+        send(fd_memoria_shutdown, &handshake, sizeof(int), 0);
+        
+        t_paquete* paquete = crear_paquete_op(SHUTDOWN_OP);
+        enviar_paquete(paquete, fd_memoria_shutdown);
+        eliminar_paquete(paquete);
+        
+        close(fd_memoria_shutdown);
+        log_trace(kernel_log, "SHUTDOWN: Notificación enviada a Memoria");
+    }
+
+    // Notificar a todas las CPUs conectadas
+    pthread_mutex_lock(&mutex_lista_cpus);
+    for (int i = 0; i < list_size(lista_cpus); i++) {
+        cpu* c = list_get(lista_cpus, i);
+        if (c->tipo_conexion == CPU_DISPATCH) {
+            t_paquete* paquete = crear_paquete_op(SHUTDOWN_OP);
+            enviar_paquete(paquete, c->fd);
+            eliminar_paquete(paquete);
+            log_trace(kernel_log, "SHUTDOWN: Notificación enviada a CPU %d", c->id);
+        }
+    }
+    pthread_mutex_unlock(&mutex_lista_cpus);
+
+    // Notificar a todos los dispositivos IO
+    pthread_mutex_lock(&mutex_ios);
+    for (int i = 0; i < list_size(lista_ios); i++) {
+        io* dispositivo_io = list_get(lista_ios, i);
+        t_paquete* paquete = crear_paquete_op(SHUTDOWN_OP);
+        enviar_paquete(paquete, dispositivo_io->fd);
+        eliminar_paquete(paquete);
+        log_trace(kernel_log, "SHUTDOWN: Notificación enviada a IO %s", dispositivo_io->nombre);
+    }
+    pthread_mutex_unlock(&mutex_ios);
+}
+
+void* thread_shutdown_automatico(void* arg) {
+    log_trace(kernel_log, "SHUTDOWN: Thread de shutdown automático iniciado");
+    
+    while (1) {
+        // Esperar a que se active el shutdown automático
+        if (shutdown_automatico_activado) {
+            log_trace(kernel_log, "SHUTDOWN: Shutdown automático activado, verificando colas vacías");
+            
+            if (todas_las_colas_vacias()) {
+                log_trace(kernel_log, "SHUTDOWN: Todas las colas vacías confirmadas, notificando shutdown a módulos");
+                notificar_shutdown_a_modulos();
+                
+                // Esperar un poco para que los módulos procesen la notificación
+                sleep(1);
+                
+                log_trace(kernel_log, "SHUTDOWN: Finalizando Kernel automáticamente");
+                terminar_kernel();
+                exit(EXIT_SUCCESS);
+            }
+        }
+        
+        // Verificar cada 1 segundo
+        sleep(1);
+    }
+    
+    return NULL;
+}
+
+void iniciar_shutdown_automatico(void) {
+    pthread_t hilo_shutdown;
+    if (pthread_create(&hilo_shutdown, NULL, thread_shutdown_automatico, NULL) != 0) {
+        log_error(kernel_log, "Error al crear thread de shutdown automático");
+        return;
+    }
+    pthread_detach(hilo_shutdown);
+    log_trace(kernel_log, "SHUTDOWN: Thread de shutdown automático iniciado correctamente");
+}
+
+void activar_shutdown_automatico(void) {
+    shutdown_automatico_activado = true;
+    log_trace(kernel_log, "SHUTDOWN: Shutdown automático activado");
 }

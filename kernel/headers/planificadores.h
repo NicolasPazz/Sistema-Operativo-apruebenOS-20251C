@@ -97,4 +97,11 @@ int obtener_fd_interrupt(int id_cpu);
 void* planificador_mediano_plazo(t_pcb* pcb);
 void* timer_suspension_blocked(void* arg);
 
+// Funciones para shutdown automático
+bool todas_las_colas_vacias(void);
+void iniciar_shutdown_automatico(void);
+void activar_shutdown_automatico(void);
+void* thread_shutdown_automatico(void* arg);
+void notificar_shutdown_a_modulos(void);
+
 #endif /* PLANIFICADORES_H */

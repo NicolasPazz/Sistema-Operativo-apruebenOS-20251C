@@ -50,7 +50,10 @@ typedef enum {
 	
 	// Operaciones de suspensión/des-suspensión
 	SUSPENDER_PROCESO_OP,         // Suspender proceso (mover páginas a SWAP)
-	DESUSPENDER_PROCESO_OP        // Des-suspender proceso (cargar páginas desde SWAP)
+	DESUSPENDER_PROCESO_OP,       // Des-suspender proceso (cargar páginas desde SWAP)
+	
+	// Operación de shutdown
+	SHUTDOWN_OP                   // Notificar shutdown a módulos
 } op_code;
 
 // Handshake

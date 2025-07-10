@@ -122,6 +122,8 @@ op_code decode(char* nombre_instruccion) {
         resultado = DUMP_MEMORY_OP;
     } else if (strcmp(nombre_instruccion, "EXIT") == 0) {
         resultado = EXIT_OP;
+    } else if (strcmp(nombre_instruccion, "SHUTDOWN") == 0) {
+        resultado = SHUTDOWN_OP;
     }
     
     if (resultado != -1) {
@@ -184,6 +186,14 @@ void execute(op_code tipo_instruccion, t_instruccion* instruccion) {
         case EXIT_OP:
             log_trace(cpu_log, "INSTRUCCION :%d", tipo_instruccion); 
             func_exit();
+            break;
+        case SHUTDOWN_OP:
+            log_info(cpu_log, "SHUTDOWN_OP recibido - Finalizando CPU");
+            // Cerrar todas las conexiones y liberar recursos
+            if (fd_memoria != -1) close(fd_memoria);
+            if (fd_kernel_dispatch != -1) close(fd_kernel_dispatch);
+            if (fd_kernel_interrupt != -1) close(fd_kernel_interrupt);
+            exit(EXIT_SUCCESS);
             break;
         default:
             log_error(cpu_log, "Instrucción desconocida");

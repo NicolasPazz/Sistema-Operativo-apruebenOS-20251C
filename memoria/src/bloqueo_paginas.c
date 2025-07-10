@@ -296,11 +296,21 @@ int obtener_numero_pagina_de_marco(int pid, int numero_marco) {
         return -1;
     }
     
+    log_trace(logger, "PID: %d - Buscando página mapeada al marco %d (total páginas: %d)", 
+              pid, numero_marco, estructura->paginas_totales);
+    
     // Buscar la página que está mapeada al marco
     for (int pag = 0; pag < estructura->paginas_totales; pag++) {
         t_entrada_tabla* entrada = buscar_entrada_tabla(estructura, pag);
-        if (entrada && entrada->presente && entrada->numero_frame == numero_marco) {
-            return pag;
+        if (entrada) {
+            log_trace(logger, "PID: %d - Página %d: presente=%d, marco=%d", 
+                      pid, pag, entrada->presente, entrada->numero_frame);
+            if (entrada->presente && entrada->numero_frame == numero_marco) {
+                log_trace(logger, "PID: %d - Encontrada página %d mapeada al marco %d", pid, pag, numero_marco);
+                return pag;
+            }
+        } else {
+            log_trace(logger, "PID: %d - Página %d: entrada nula", pid, pag);
         }
     }
     

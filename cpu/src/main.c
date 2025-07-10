@@ -110,6 +110,11 @@ void* recibir_kernel_dispatch(void* arg) {
                 pthread_mutex_unlock(&mutex_estado_proceso);
                 list_destroy_and_destroy_elements(lista, free);
                 break;
+            case SHUTDOWN_OP:
+                log_info(cpu_log, "SHUTDOWN_OP recibido - Finalizando CPU");
+                terminar_programa();
+                exit(EXIT_SUCCESS);
+                break;
             case -1:
                 log_warning(cpu_log, "Se desconectó el Kernel. Finalizando CPU...");
                 terminar_programa();

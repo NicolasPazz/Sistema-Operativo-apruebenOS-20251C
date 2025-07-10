@@ -493,6 +493,15 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                     (respuesta == OK) ? "exitosa" : "fallida", pid);
             break;
         }
+        case SHUTDOWN_OP: {
+            log_info(logger, "SHUTDOWN_OP recibido - Finalizando Memoria");
+            // Cerrar todas las conexiones y liberar recursos
+            if (fd_kernel != -1) close(fd_kernel);
+            if (fd_cpu != -1) close(fd_cpu);
+            if (fd_memoria != -1) close(fd_memoria);
+            exit(EXIT_SUCCESS);
+            break;
+        }
         default: { 
             log_error(logger, "Codigo de operacion desconocido recibido del cliente %d: %d", cliente_socket, cop);
             break;

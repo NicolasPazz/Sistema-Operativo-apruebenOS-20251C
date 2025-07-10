@@ -75,6 +75,12 @@ int main(int argc, char* argv[]) {
                 list_destroy_and_destroy_elements(parametros_io, free);
                 break;
             }
+            case SHUTDOWN_OP: {
+                log_info(io_log, "SHUTDOWN_OP recibido - Finalizando IO");
+                terminar_io();
+                exit(EXIT_SUCCESS);
+                break;
+            }
             default:
                 log_warning(io_log, "Se desconectó el Kernel. Finalizando IO...");
                 terminar_io();

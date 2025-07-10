@@ -538,6 +538,12 @@ void* atender_cpu_dispatch(void* arg) {
                 list_destroy_and_destroy_elements(parametros_dump, free);
                 break;
                 
+            case SHUTDOWN_OP:
+                log_info(kernel_log, "SHUTDOWN_OP recibido - Finalizando Kernel");
+                terminar_kernel();
+                exit(EXIT_SUCCESS);
+                break;
+                
             default:
                 log_error(kernel_log, "(PID: %d) Código op desconocido recibido de Dispatch fd %d: %d", pid, fd_cpu_dispatch, cop);
                 break;
