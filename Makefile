@@ -46,12 +46,13 @@ run: set_log_level clean all
 
 	@echo -e "\033[38;2;179;236;111mIniciando memoria...\033[38;2;179;236;111m"
 	@./memoria/bin/memoria > memoria/memoria.log 2>&1 &
-
 	@sleep 1
 
 	@echo -e "\033[38;2;179;236;111mIniciando kernel (en primer plano)...\033[38;2;179;236;111m"
+	@sleep 1
 	@bash levantar_modulos.sh &   # Levanta CPU e IO en background
-	@./kernel/bin/kernel PLANI_CORTO_PLAZO 0
+	@sleep 1
+	@./kernel/bin/kernel PLANI_LYM_PLAZO 0
 
 	@echo "Corrigiendo logs luego de que kernel terminó..."
 	@$(MAKE) logs

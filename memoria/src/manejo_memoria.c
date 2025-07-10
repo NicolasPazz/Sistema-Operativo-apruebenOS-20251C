@@ -97,6 +97,43 @@ t_proceso_memoria* crear_proceso_memoria(int pid, int tamanio) {
         return NULL;
     }
 
+    // Forzar que todas las páginas estén presentes al crear el proceso
+    int paginas_totales = proceso->estructura_paginas->paginas_totales;
+    int marcos_disponibles = sistema_memoria->admin_marcos->frames_libres;
+    if (marcos_disponibles < paginas_totales) {
+        log_error(logger, "PID: %d - No hay marcos suficientes para inicializar todas las páginas (%d requeridas, %d libres)", pid, paginas_totales, marcos_disponibles);
+        list_destroy_and_destroy_elements(proceso->instrucciones, free);
+        destruir_metricas_proceso(proceso->metricas);
+        destruir_estructura_paginas(proceso->estructura_paginas);
+        free(proceso);
+        return NULL;
+    }
+    for (int i = 0; i < paginas_totales; i++) {
+        int frame = asignar_marco_libre(pid, i);
+        if (frame == -1) {
+            log_error(logger, "PID: %d - Error al asignar marco para página %d al crear proceso", pid, i);
+            // Liberar recursos ya asignados
+            for (int j = 0; j < i; j++) {
+                t_entrada_tabla* entrada = buscar_entrada_tabla(proceso->estructura_paginas, j);
+                if (entrada && entrada->presente) {
+                    liberar_marco(entrada->numero_frame);
+                    entrada->presente = false;
+                    entrada->numero_frame = 0;
+                }
+            }
+            list_destroy_and_destroy_elements(proceso->instrucciones, free);
+            destruir_metricas_proceso(proceso->metricas);
+            destruir_estructura_paginas(proceso->estructura_paginas);
+            free(proceso);
+            return NULL;
+        }
+        t_entrada_tabla* entrada = buscar_entrada_tabla(proceso->estructura_paginas, i);
+        if (entrada) {
+            entrada->presente = true;
+            entrada->numero_frame = frame;
+            entrada->timestamp_acceso = time(NULL);
+        }
+    }
     return proceso;
 }
 
@@ -328,29 +365,21 @@ t_resultado_memoria suspender_proceso_en_memoria(int pid) {
         return MEMORIA_OK;
     }
     
-    // Escribir páginas del proceso a SWAP
-    t_resultado_memoria resultado = suspender_proceso_completo(pid);
-    if (resultado != MEMORIA_OK) {
-        log_error(logger, "PID: %d - Error al escribir proceso a SWAP", pid);
+    // Escribir páginas del proceso a SWAP, liberar marcos y marcar como no presente
+    int resultado = suspender_proceso_completo(pid);
+    if (resultado != 1) {
+        log_error(logger, "PID: %d - Error al suspender proceso a SWAP", pid);
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
-        return resultado;
+        return MEMORIA_ERROR_IO;
     }
     
-    // Liberar marcos físicos del proceso
-    liberar_marcos_proceso(pid);
-    
-    // Marcar proceso como suspendido
+    // Actualizar estadísticas globales
     proceso->suspendido = true;
     proceso->activo = false;
-    
-    // Actualizar estadísticas
     sistema_memoria->procesos_activos--;
     sistema_memoria->procesos_suspendidos++;
     sistema_memoria->memoria_utilizada -= proceso->tamanio;
     sistema_memoria->total_suspensiones++;
-    
-    // Incrementar métrica de bajadas a SWAP
-    incrementar_bajadas_swap(pid);
     
     pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
     
@@ -381,54 +410,25 @@ t_resultado_memoria reanudar_proceso_en_memoria(int pid) {
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
         return MEMORIA_OK;
     }
-    
-    // Verificar si hay suficientes marcos libres
-    int paginas_necesarias = proceso->estructura_paginas->paginas_totales;
-    if (obtener_marcos_libres() < paginas_necesarias) {
-        log_error(logger, "PID: %d - Memoria insuficiente para reanudar. Necesarias: %d, Disponibles: %d", 
-                  pid, paginas_necesarias, obtener_marcos_libres());
+
+    // Lógica centralizada en manejo_swap.c
+    int resultado = reanudar_proceso_suspendido(pid);
+    if (resultado == 1) {
+        // Actualizar campos y métricas del proceso
+        proceso->suspendido = false;
+        proceso->activo = true;
+        sistema_memoria->procesos_activos++;
+        sistema_memoria->procesos_suspendidos--;
+        sistema_memoria->memoria_utilizada += proceso->tamanio;
+        sistema_memoria->total_reanudaciones++;
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
-        return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
-    }
-    
-    // Leer proceso desde SWAP
-    t_resultado_memoria resultado = reanudar_proceso_suspendido(pid);
-    if (resultado != MEMORIA_OK) {
-        log_error(logger, "PID: %d - Error al leer proceso desde SWAP", pid);
+        log_info(logger, "PID: %d - Proceso reanudado exitosamente (vía manejo_swap)", pid);
+        return MEMORIA_OK;
+    } else {
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
-        return resultado;
+        log_error(logger, "PID: %d - Error al reanudar proceso (vía manejo_swap)", pid);
+        return MEMORIA_ERROR_IO;
     }
-    
-    // Asignar nuevos marcos para todas las páginas
-    for (int i = 0; i < paginas_necesarias; i++) {
-        int numero_frame = asignar_marco_libre(pid, i);
-        if (numero_frame == -1) {
-            log_error(logger, "PID: %d - Error al asignar marco para página %d", pid, i);
-            pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
-            return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
-        }
-        
-        // Actualizar entrada en tabla de páginas
-        configurar_entrada_pagina(proceso->estructura_paginas, i, numero_frame);
-    }
-    
-    // Marcar proceso como activo
-    proceso->suspendido = false;
-    proceso->activo = true;
-    
-    // Actualizar estadísticas
-    sistema_memoria->procesos_activos++;
-    sistema_memoria->procesos_suspendidos--;
-    sistema_memoria->memoria_utilizada += proceso->tamanio;
-    sistema_memoria->total_reanudaciones++;
-    
-    // Incrementar métrica de subidas a memoria principal
-    incrementar_subidas_memoria_principal(pid);
-    
-    pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
-    
-    log_trace(logger, "## PID: %d - Proceso reanudado exitosamente", pid);
-    return MEMORIA_OK;
 }
 
 // ============================================================================

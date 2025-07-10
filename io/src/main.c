@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
 
                 log_info(io_log, VERDE("## (PID: %d) - Inicio de IO - Tiempo: %d"), pid, tiempo_io);
                 log_trace(io_log, "Simulando operación de I/O para PID %d durante %.3f milisegundos...", pid, (double)tiempo_io/1000);
-                usleep(tiempo_io); // 1.000.000	en usleep es 1 Segundo
+                usleep(tiempo_io * 1000); // tiempo_io en ms, usleep espera us
                 log_info(io_log, VERDE("## (PID: %d) - Fin de IO"), pid);
             
                 op_code finalizado = IO_FINALIZADA_OP;

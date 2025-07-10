@@ -17,6 +17,7 @@ typedef struct PCB {
     double estimacion_rafaga;
     char* path;
     int tamanio_memoria;
+    bool cancelar_timer_suspension;
 } t_pcb;
 
 typedef enum Estados {

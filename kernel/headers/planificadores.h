@@ -74,7 +74,8 @@ void* planificador_largo_plazo(void* arg);
 
 void* menor_tamanio(void* a, void* b);
 
-t_pcb* elegir_por_pmcp();
+t_pcb* elegir_por_pmcp(); // Esta solo elige PMCP en la cola de NEW
+t_pcb* elegir_por_pmcp_en_cola(t_list* cola); // Es para elegir procesos por PMCP en la cola de SUSP_READY
 
 void* gestionar_exit(void* arg);
 void* planificador_corto_plazo(void* arg);
@@ -82,5 +83,8 @@ void* planificador_corto_plazo(void* arg);
 bool hay_espacio_suficiente_memoria(int tamanio);
 
 int obtener_fd_interrupt(int id_cpu);
+
+void* planificador_mediano_plazo(t_pcb* pcb);
+void* timer_suspension_blocked(void* arg);
 
 #endif /* PLANIFICADORES_H */

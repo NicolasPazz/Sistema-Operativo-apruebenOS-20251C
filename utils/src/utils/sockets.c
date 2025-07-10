@@ -185,8 +185,13 @@ void liberar_conexion(int socket_cliente) {
 
 bool validar_handshake(int fd, handshake_code esperado, t_log* log) {
     int recibido;
-    if (recv(fd, &recibido, sizeof(int), MSG_WAITALL) != sizeof(int)) {
-        log_error(log, "Error recibiendo handshake (fd=%d): %s", fd, strerror(errno));
+    int ret = recv(fd, &recibido, sizeof(int), MSG_WAITALL);
+    if (ret != sizeof(int)) {
+        if (ret == 0) {
+            log_error(log, "Error recibiendo handshake (fd=%d): conexión cerrada por el peer", fd);
+        } else {
+            log_error(log, "Error recibiendo handshake (fd=%d): %s", fd, strerror(errno));
+        }
         return false;
     }
 

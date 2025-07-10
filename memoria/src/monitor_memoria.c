@@ -72,8 +72,15 @@ void calcular_indices_multinivel(int numero_pagina, int cantidad_niveles, int en
             divisor *= entradas_por_tabla;
         indices[nivel] = (numero_pagina / divisor) % entradas_por_tabla;
     }
-    log_debug(logger, "calcular_indices_multinivel: num_pag=%d indices=[%d,%d,%d]", 
-        numero_pagina, indices[0], indices[1], indices[2]); // ajusta cantidad_niveles según tu config
+    // Loguear solo los índices válidos
+    char indices_str[128] = {0};
+    char temp[16];
+    for (int i = 0; i < cantidad_niveles; i++) {
+        sprintf(temp, "%d", indices[i]);
+        strcat(indices_str, temp);
+        if (i < cantidad_niveles - 1) strcat(indices_str, ",");
+    }
+    log_debug(logger, "calcular_indices_multinivel: num_pag=%d indices=[%s]", numero_pagina, indices_str);
 }
 
 // ============== FUNCIONES DE LOGGING Y COMUNICACIÓN ==============

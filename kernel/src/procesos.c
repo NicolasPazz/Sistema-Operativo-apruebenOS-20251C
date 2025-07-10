@@ -178,6 +178,14 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
                  terminar_kernel();
                  exit(EXIT_FAILURE);
     }
+
+    // Lógica para el timer de suspensión del planificador mediano plazo
+    if (nuevo_estado_enum == BLOCKED) {
+        planificador_mediano_plazo(PCB);
+    } else if (PCB->Estado == BLOCKED && nuevo_estado_enum != SUSP_BLOCKED) {
+        PCB->cancelar_timer_suspension = true;
+    }
+
     mostrar_colas_estados();
 }
 

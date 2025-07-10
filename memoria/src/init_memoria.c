@@ -264,15 +264,14 @@ t_resultado_memoria liberar_marco(int numero_frame) {
     t_frame* frame = &admin->frames[numero_frame];
     
     if (!frame->ocupado) {
-        log_warning(logger, "Intento de liberar frame ya libre: %d", numero_frame);
-        pthread_mutex_unlock(&admin->mutex_frames);
-        return MEMORIA_ERROR_DIRECCION_INVALIDA;
+        log_warning(logger, "Intento de liberar frame ya libre: %d (FORZANDO LIBERACIÓN DE TODAS FORMAS)", numero_frame);
+        // No return: continuar y limpiar igual
     }
     
     int pid_anterior = frame->pid_propietario;
     int pagina_anterior = frame->numero_pagina;
     
-    // Limpiar el frame
+    // Limpiar el frame SIEMPRE
     frame->ocupado = false;
     frame->pid_propietario = -1;
     frame->numero_pagina = -1;
@@ -284,12 +283,22 @@ t_resultado_memoria liberar_marco(int numero_frame) {
     // Actualizar bitmap (marcar como libre)
     bitarray_clean_bit(admin->bitmap_frames, numero_frame);
     
-    // Agregar a lista de frames libres
-    int* frame_num = malloc(sizeof(int));
-    *frame_num = numero_frame;
-    list_add(admin->lista_frames_libres, frame_num);
+    // Agregar a lista de frames libres SOLO si no estaba ya
+    bool ya_en_lista = false;
+    for (int i = 0; i < list_size(admin->lista_frames_libres); i++) {
+        int* f = list_get(admin->lista_frames_libres, i);
+        if (*f == numero_frame) {
+            ya_en_lista = true;
+            break;
+        }
+    }
+    if (!ya_en_lista) {
+        int* frame_num = malloc(sizeof(int));
+        *frame_num = numero_frame;
+        list_add(admin->lista_frames_libres, frame_num);
+    }
     
-    // Actualizar contadores
+    // Actualizar contadores SIEMPRE
     admin->frames_libres++;
     admin->frames_ocupados--;
     admin->total_liberaciones++;
@@ -573,10 +582,10 @@ void finalizar_sistema_memoria(void) {
         dictionary_destroy_and_destroy_elements(sistema_memoria->procesos, (void*)destruir_proceso);
     }
     if (sistema_memoria->estructuras_paginas) {
-        dictionary_destroy_and_destroy_elements(sistema_memoria->estructuras_paginas, (void*)destruir_estructura_paginas);
+        dictionary_destroy(sistema_memoria->estructuras_paginas); // NO destruir elementos
     }
     if (sistema_memoria->metricas_procesos) {
-        dictionary_destroy_and_destroy_elements(sistema_memoria->metricas_procesos, (void*)destruir_metricas_proceso);
+        dictionary_destroy(sistema_memoria->metricas_procesos); // NO destruir elementos
     }
     if (sistema_memoria->process_instructions) {
         liberar_instrucciones_dictionary(sistema_memoria->process_instructions);

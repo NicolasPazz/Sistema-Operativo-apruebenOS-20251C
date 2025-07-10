@@ -198,6 +198,9 @@ void EXIT(t_pcb* pcb_a_finalizar) {
     // Notificar a planificador LP
     sem_post(&sem_finalizacion_de_proceso);
 
+    // Notificar al planificador de largo plazo que puede intentar avanzar procesos de NEW
+    sem_post(&sem_proceso_a_new);
+
    // Hay que Comentar para que Kernel no finalice en las pruebas
 
     // Verificar si no quedan procesos en el sistema

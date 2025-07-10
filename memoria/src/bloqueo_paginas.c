@@ -276,7 +276,7 @@ static int obtener_numero_marco_de_pagina(int pid, int numero_pagina) {
     }
     
     if (!entrada->presente) {
-        log_error(logger, "PID: %d - Página %d no está presente en memoria", pid, numero_pagina);
+        log_trace(logger, "PID: %d - Página %d no está presente en memoria (flujo normal de swap/suspensión)", pid, numero_pagina);
         return -1;
     }
     
@@ -314,7 +314,7 @@ bool bloquear_marco_por_pagina(int pid, int numero_pagina, const char* operacion
     
     int numero_frame = obtener_numero_marco_de_pagina(pid, numero_pagina);
     if (numero_frame < 0) {
-        log_error(logger, "PID: %d - No se pudo obtener marco de página %d", pid, numero_pagina);
+        log_trace(logger, "PID: %d - No se pudo obtener marco de página %d (flujo normal de swap/suspensión)", pid, numero_pagina);
         return false;
     }
     
@@ -327,7 +327,7 @@ bool desbloquear_marco_por_pagina(int pid, int numero_pagina, const char* operac
     
     int numero_frame = obtener_numero_marco_de_pagina(pid, numero_pagina);
     if (numero_frame < 0) {
-        log_error(logger, "PID: %d - No se pudo obtener marco de página %d", pid, numero_pagina);
+        log_trace(logger, "PID: %d - No se pudo obtener marco de página %d (flujo normal de swap/suspensión)", pid, numero_pagina);
         return false;
     }
     

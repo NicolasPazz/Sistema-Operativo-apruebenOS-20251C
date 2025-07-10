@@ -559,40 +559,105 @@ void* planificador_largo_plazo(void* arg) {
         }
         pthread_mutex_unlock(&mutex_planificador_lp);
 
-        // Esperar procesos en NEW
-        log_debug(kernel_log, "planificador_largo_plazo: Semaforo a NEW disminuido");
-        sem_wait(&sem_proceso_a_new);
+        while (1) {
+            // Esperar a que haya procesos en SUSP_READY o NEW
+            pthread_mutex_lock(&mutex_cola_susp_ready);
+            int susp_ready_count = list_size(cola_susp_ready);
+            pthread_mutex_unlock(&mutex_cola_susp_ready);
 
-        log_trace(kernel_log, "planificador_largo_plazo: Hay procesos en NEW, intentando mover a READY");
-            
-        // Esperar a que cola_susp_ready esté vacía
-        //log_debug(kernel_log, "planificador_largo_plazo: Semaforo SUSP READY VACIA disminuido");
-        //sem_wait(&sem_susp_ready_vacia);
-            
-        // Obtener el proceso de NEW según el algoritmo
-        log_debug(kernel_log, "planificador_largo_plazo: esperando mutex_cola_new para obtener PCB de NEW");
+            pthread_mutex_lock(&mutex_cola_new);
+            int new_count = list_size(cola_new);
+            pthread_mutex_unlock(&mutex_cola_new);
+
+            if (susp_ready_count > 0 || new_count > 0) {
+                break;
+            }
+            // Esperar a que llegue un proceso a SUSP_READY o NEW
+            int sem_val;
+            sem_getvalue(&sem_proceso_a_susp_ready, &sem_val);
+            if (sem_val > 0) {
+                sem_wait(&sem_proceso_a_susp_ready);
+            } else {
+                sem_wait(&sem_proceso_a_new);
+            }
+        }
+
+        // Prioridad: SUSP_READY > NEW
+        pthread_mutex_lock(&mutex_cola_susp_ready);
+        if (!list_is_empty(cola_susp_ready)) {
+            t_pcb* pcb = NULL;
+            if (strcmp(ALGORITMO_INGRESO_A_READY, "FIFO") == 0) {
+                pcb = (t_pcb*)list_get(cola_susp_ready, 0);
+            } else if (strcmp(ALGORITMO_INGRESO_A_READY, "PMCP") == 0) {
+                pcb = elegir_por_pmcp_en_cola(cola_susp_ready);
+            }
+            pthread_mutex_unlock(&mutex_cola_susp_ready);
+            if (pcb) {
+                // Enviar DESUSPENDER_PROCESO_OP a Memoria antes de pasar a READY
+                int op_code = DESUSPENDER_PROCESO_OP;
+                log_trace(kernel_log, "Planificador LP: Intentando reanudar PID %d desde SUSP_READY", pcb->PID);
+                // LOG DE ESTADO DE MARCOS
+                int total_frames = -1, marcos_libres = -1, frames_ocupados = -1;
+                // Pedir a memoria el estado de marcos (por socket no está, así que logueamos el tamaño y lo que sabemos)
+                log_info(kernel_log, "Planificador LP: (INFO) Tamaño proceso PID %d: %d bytes", pcb->PID, pcb->tamanio_memoria);
+                log_info(kernel_log, "Planificador LP: (INFO) Tamaño memoria: 256 bytes, Tamaño página: 16 bytes, Total marcos: 16");
+                // No podemos consultar a memoria, pero podemos estimar:
+                // Cada proceso ocupa ceil(tamanio_memoria/16) marcos
+                // Loguear cuántos procesos hay en READY, EXEC, SUSP_READY, etc.
+                pthread_mutex_lock(&mutex_cola_ready);
+                int ready_count = list_size(cola_ready);
+                pthread_mutex_unlock(&mutex_cola_ready);
+                pthread_mutex_lock(&mutex_cola_running);
+                int running_count = list_size(cola_running);
+                pthread_mutex_unlock(&mutex_cola_running);
+                pthread_mutex_lock(&mutex_cola_susp_ready);
+                int susp_ready_count2 = list_size(cola_susp_ready);
+                pthread_mutex_unlock(&mutex_cola_susp_ready);
+                log_info(kernel_log, "Planificador LP: (INFO) Procesos en READY: %d, EXEC: %d, SUSP_READY: %d", ready_count, running_count, susp_ready_count2);
+                // Enviar op a memoria
+                if (send(fd_memoria, &op_code, sizeof(int), 0) <= 0 ||
+                    send(fd_memoria, &pcb->PID, sizeof(int), 0) <= 0) {
+                    log_error(kernel_log, "Error al enviar DESUSPENDER_PROCESO_OP a Memoria para PID %d", pcb->PID);
+                    continue;
+                }
+                t_respuesta respuesta;
+                if (recv(fd_memoria, &respuesta, sizeof(t_respuesta), 0) <= 0) {
+                    log_error(kernel_log, "Error al recibir respuesta de memoria para DESUSPENDER_PROCESO_OP (PID %d)", pcb->PID);
+                    continue;
+                } else if (respuesta == OK) {
+                    log_info(kernel_log, "Planificador LP: Proceso PID %d reanudado correctamente, pasa a READY", pcb->PID);
+                    cambiar_estado_pcb(pcb, READY);
+                } else if (respuesta == MEMORIA_ERROR_NO_ESPACIO) {
+                    log_warning(kernel_log, "Planificador LP: No hay espacio para reanudar PID %d, se reintentará más tarde", pcb->PID);
+                    log_info(kernel_log, "Planificador LP: (INFO) Probablemente no hay marcos libres suficientes. Esperando liberación de memoria...");
+                    usleep(100000);
+                    continue;
+                } else {
+                    log_error(kernel_log, "Planificador LP: Error al desuspender proceso en memoria (PID %d), respuesta=%d", pcb->PID, respuesta);
+                    continue;
+                }
+            }
+            continue;
+        }
+        pthread_mutex_unlock(&mutex_cola_susp_ready);
+
+        // Si no hay en SUSP_READY, pasar de NEW
         pthread_mutex_lock(&mutex_cola_new);
-        log_debug(kernel_log, "planificador_largo_plazo: Bloqueando mutex_cola_new para obtener PCB de NEW");
-        t_pcb* pcb = NULL;
-        if (strcmp(ALGORITMO_INGRESO_A_READY, "FIFO") == 0) {
-            pcb = (t_pcb*)list_get(cola_new, 0);
-        } else if (strcmp(ALGORITMO_INGRESO_A_READY, "PMCP") == 0) {
-            pcb = elegir_por_pmcp();
-        }
-
-        pthread_mutex_unlock(&mutex_cola_new);
-
-        if (pcb) {
-            log_debug(kernel_log, "planificador_largo_plazo: enviando un nuevo proceso a READY");
-            cambiar_estado_pcb(pcb, READY);
+        if (!list_is_empty(cola_new)) {
+            t_pcb* pcb = NULL;
+            if (strcmp(ALGORITMO_INGRESO_A_READY, "FIFO") == 0) {
+                pcb = (t_pcb*)list_get(cola_new, 0);
+            } else if (strcmp(ALGORITMO_INGRESO_A_READY, "PMCP") == 0) {
+                pcb = elegir_por_pmcp();
+            }
+            pthread_mutex_unlock(&mutex_cola_new);
+            if (pcb) {
+                cambiar_estado_pcb(pcb, READY);
+            }
+            continue;
         } else {
-            terminar_kernel();
-            exit(EXIT_FAILURE);
+            pthread_mutex_unlock(&mutex_cola_new);
         }
-           
-        //sem_post(&sem_susp_ready_vacia);
-        //log_debug(kernel_log, "planificador_largo_plazo: Semaforo SUSP READY VACIA aumentado");
-
     }
     return NULL;
 }
@@ -614,6 +679,10 @@ t_pcb* elegir_por_pmcp() {
         log_trace(kernel_log, "elegir_por_pmcp: Proceso elegido PID=%d, Tamaño=%d", pcb_mas_chico->PID, pcb_mas_chico->tamanio_memoria);
     }
     return (t_pcb*)pcb_mas_chico;
+}
+
+t_pcb* elegir_por_pmcp_en_cola(t_list* cola) {
+    return (t_pcb*)list_get_minimum(cola, menor_tamanio);
 }
 
 void* gestionar_exit(void* arg) {
@@ -709,3 +778,48 @@ bool hay_espacio_suficiente_memoria(int tamanio) {
     return hay_espacio;
 }
 
+void* planificador_mediano_plazo(t_pcb* pcb) {
+    pcb->cancelar_timer_suspension = false;
+    pthread_t hilo_timer;
+    pthread_create(&hilo_timer, NULL, timer_suspension_blocked, (void*)pcb);
+    pthread_detach(hilo_timer);
+}
+
+void* timer_suspension_blocked(void* arg) {
+    t_pcb* pcb = (t_pcb*)arg;
+    int tiempo = atoi(TIEMPO_SUSPENSION);
+
+    log_trace(kernel_log, "## (PID: %d) - Timer de suspensión iniciado por %d ms", pcb->PID, tiempo);
+    usleep(tiempo * 1000);
+
+    if (pcb->cancelar_timer_suspension) {
+        log_trace(kernel_log, "## (PID: %d) - Timer cancelado, el proceso ya no está en BLOCKED", pcb->PID);
+        return NULL;
+    }
+
+    pthread_mutex_lock(&mutex_cola_blocked);
+    bool sigue_bloqueado = (pcb->Estado == BLOCKED);
+    pthread_mutex_unlock(&mutex_cola_blocked);
+
+    if (sigue_bloqueado) {
+        cambiar_estado_pcb(pcb, SUSP_BLOCKED);
+
+        // Avisar a memoria para suspender el proceso
+        int op_code = SUSPENDER_PROCESO_OP;
+        send(fd_memoria, &op_code, sizeof(int), 0);
+        send(fd_memoria, &pcb->PID, sizeof(int), 0);
+
+        // Esperar respuesta de memoria
+        t_respuesta respuesta;
+        if (recv(fd_memoria, &respuesta, sizeof(t_respuesta), 0) <= 0) {
+            log_error(kernel_log, "Error al recibir respuesta de memoria para SUSPENDER_PROCESO_OP (PID %d)", pcb->PID);
+        } else if (respuesta == OK) {
+            log_trace(kernel_log, "## (PID: %d) - Proceso suspendido por mediano plazo (Memoria OK)", pcb->PID);
+            sem_post(&sem_proceso_a_new); // Aumenta el semaforo de NEW porque ahora hay más memoria disponible
+            sem_post(&sem_proceso_a_susp_ready); // Aumenta el semaforo de SUSP_READY porque ahora hay más memoria disponible
+        } else {
+            log_error(kernel_log, "## (PID: %d) - Error al suspender proceso en memoria", pcb->PID);
+        }
+    }
+    return NULL;
+}

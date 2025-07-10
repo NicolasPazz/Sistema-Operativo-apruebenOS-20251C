@@ -707,10 +707,25 @@ void* atender_io(void* arg) {
                     log_error(kernel_log, "Error al recibir PID finalizado de IO '%s'", dispositivo_io->nombre);
                     continue;
                 }
+                
+                // Buscar PCB para cambiar estado dependiendo de si estaba en SUSP_BLOCKED o BLOCKED
+                t_pcb* pcb = buscar_pcb(pid_finalizado);
+                if (!pcb) {
+                    log_error(kernel_log, "No se encontró PCB para PID=%d al finalizar IO", pid_finalizado);
+                    continue;
+                }
 
-                log_debug(kernel_log, "IO '%s' finalizó para PID=%d, verificando si hay otros procesos esperando", dispositivo_io->nombre, pid_finalizado);
-                cambiar_estado_pcb(buscar_pcb(pid_finalizado), READY);
-                log_info(kernel_log, "## (PID: %d) finalizó IO y pasa a READY", pid_finalizado);
+                if (pcb->Estado == SUSP_BLOCKED) {
+                    cambiar_estado_pcb(pcb, SUSP_READY);
+                    log_info(kernel_log, "## (PID: %d) finalizó IO y pasa a SUSP_READY", pid_finalizado);
+
+                } else if (pcb->Estado == BLOCKED) {
+                    cambiar_estado_pcb(pcb, READY);
+                    log_info(kernel_log, "## (PID: %d) finalizó IO y pasa a READY", pid_finalizado);
+                    
+                } else {
+                    log_warning(kernel_log, "PID=%d finalizó IO pero estaba en estado %s", pid_finalizado, estado_to_string(pcb->Estado));
+                }
 
                 // Verificar si hay procesos encolados para dicha IO y enviarlo a la misma
                 verificar_procesos_bloqueados(dispositivo_io);
