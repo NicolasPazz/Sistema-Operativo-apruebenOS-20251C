@@ -243,6 +243,7 @@ int asignar_marco_libre(int pid, int numero_pagina) {
     pthread_mutex_unlock(&admin->mutex_frames);
     
     log_trace(logger, "## Marco asignado - Frame: %d, PID: %d, Página: %d", numero_frame, pid, numero_pagina);
+    log_trace(logger, "[MARCOS] Total de marcos libres tras asignar: %d", admin->frames_libres);
     return numero_frame;
 }
 
@@ -293,9 +294,9 @@ t_resultado_memoria liberar_marco(int numero_frame) {
         }
     }
     if (!ya_en_lista) {
-        int* frame_num = malloc(sizeof(int));
-        *frame_num = numero_frame;
-        list_add(admin->lista_frames_libres, frame_num);
+    int* frame_num = malloc(sizeof(int));
+    *frame_num = numero_frame;
+    list_add(admin->lista_frames_libres, frame_num);
     }
     
     // Actualizar contadores SIEMPRE
@@ -306,6 +307,7 @@ t_resultado_memoria liberar_marco(int numero_frame) {
     pthread_mutex_unlock(&admin->mutex_frames);
     
     log_trace(logger, "## Marco liberado - Frame: %d (era PID: %d, Página: %d)", numero_frame, pid_anterior, pagina_anterior);
+    log_trace(logger, "[MARCOS] Total de marcos libres tras liberar: %d", admin->frames_libres);
     return MEMORIA_OK;
 }
 

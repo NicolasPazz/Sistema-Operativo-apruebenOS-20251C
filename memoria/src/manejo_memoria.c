@@ -98,42 +98,42 @@ t_proceso_memoria* crear_proceso_memoria(int pid, int tamanio) {
     }
 
     // Forzar que todas las páginas estén presentes al crear el proceso
-    int paginas_totales = proceso->estructura_paginas->paginas_totales;
-    int marcos_disponibles = sistema_memoria->admin_marcos->frames_libres;
-    if (marcos_disponibles < paginas_totales) {
-        log_error(logger, "PID: %d - No hay marcos suficientes para inicializar todas las páginas (%d requeridas, %d libres)", pid, paginas_totales, marcos_disponibles);
-        list_destroy_and_destroy_elements(proceso->instrucciones, free);
-        destruir_metricas_proceso(proceso->metricas);
-        destruir_estructura_paginas(proceso->estructura_paginas);
-        free(proceso);
-        return NULL;
-    }
-    for (int i = 0; i < paginas_totales; i++) {
-        int frame = asignar_marco_libre(pid, i);
-        if (frame == -1) {
-            log_error(logger, "PID: %d - Error al asignar marco para página %d al crear proceso", pid, i);
-            // Liberar recursos ya asignados
-            for (int j = 0; j < i; j++) {
-                t_entrada_tabla* entrada = buscar_entrada_tabla(proceso->estructura_paginas, j);
-                if (entrada && entrada->presente) {
-                    liberar_marco(entrada->numero_frame);
-                    entrada->presente = false;
-                    entrada->numero_frame = 0;
-                }
-            }
-            list_destroy_and_destroy_elements(proceso->instrucciones, free);
-            destruir_metricas_proceso(proceso->metricas);
-            destruir_estructura_paginas(proceso->estructura_paginas);
-            free(proceso);
-            return NULL;
-        }
-        t_entrada_tabla* entrada = buscar_entrada_tabla(proceso->estructura_paginas, i);
-        if (entrada) {
-            entrada->presente = true;
-            entrada->numero_frame = frame;
-            entrada->timestamp_acceso = time(NULL);
-        }
-    }
+    // int paginas_totales = proceso->estructura_paginas->paginas_totales;
+    // int marcos_disponibles = sistema_memoria->admin_marcos->frames_libres;
+    // if (marcos_disponibles < paginas_totales) {
+    //     log_error(logger, "PID: %d - No hay marcos suficientes para inicializar todas las páginas (%d requeridas, %d libres)", pid, paginas_totales, marcos_disponibles);
+    //     list_destroy_and_destroy_elements(proceso->instrucciones, free);
+    //     destruir_metricas_proceso(proceso->metricas);
+    //     destruir_estructura_paginas(proceso->estructura_paginas);
+    //     free(proceso);
+    //     return NULL;
+    // }
+    // for (int i = 0; i < paginas_totales; i++) {
+    //     int frame = asignar_marco_libre(pid, i);
+    //     if (frame == -1) {
+    //         log_error(logger, "PID: %d - Error al asignar marco para página %d al crear proceso", pid, i);
+    //         // Liberar recursos ya asignados
+    //         for (int j = 0; j < i; j++) {
+    //             t_entrada_tabla* entrada = buscar_entrada_tabla(proceso->estructura_paginas, j);
+    //             if (entrada && entrada->presente) {
+    //                 liberar_marco(entrada->numero_frame);
+    //                 entrada->presente = false;
+    //                 entrada->numero_frame = 0;
+    //             }
+    //         }
+    //         list_destroy_and_destroy_elements(proceso->instrucciones, free);
+    //         destruir_metricas_proceso(proceso->metricas);
+    //         destruir_estructura_paginas(proceso->estructura_paginas);
+    //         free(proceso);
+    //         return NULL;
+    //     }
+    //     t_entrada_tabla* entrada = buscar_entrada_tabla(proceso->estructura_paginas, i);
+    //     if (entrada) {
+    //         entrada->presente = true;
+    //         entrada->numero_frame = frame;
+    //         entrada->timestamp_acceso = time(NULL);
+    //     }
+    // }
     return proceso;
 }
 
@@ -168,6 +168,11 @@ t_resultado_memoria crear_proceso_en_memoria(int pid, int tamanio, char* nombre_
     // ========== VALIDACIÓN DE MEMORIA DISPONIBLE ==========
     pthread_mutex_lock(&sistema_memoria->admin_marcos->mutex_frames);
     int marcos_disponibles = sistema_memoria->admin_marcos->frames_libres;
+    int marcos_ocupados = sistema_memoria->admin_marcos->frames_ocupados;
+    int total_marcos = sistema_memoria->admin_marcos->cantidad_total_frames;
+    
+    log_trace(logger, "CREAR_PROCESO: PID %d - Estado de marcos: %d libres, %d ocupados, %d total", 
+             pid, marcos_disponibles, marcos_ocupados, total_marcos);
     
     if (marcos_disponibles < paginas_necesarias) {
         log_error(logger, "PID: %d - No hay suficiente memoria física (necesita %d páginas, disponibles %d)", 
@@ -298,6 +303,8 @@ t_resultado_memoria finalizar_proceso_en_memoria(int pid) {
     char pid_str[16];
     sprintf(pid_str, "%d", pid);
     
+    log_trace(logger, "FINALIZAR_PROC: Iniciando finalización del proceso PID %d", pid);
+    
     pthread_mutex_lock(&sistema_memoria->mutex_procesos);
     
     // Verificar si el proceso existe
@@ -308,6 +315,8 @@ t_resultado_memoria finalizar_proceso_en_memoria(int pid) {
         return MEMORIA_ERROR_PROCESO_NO_ENCONTRADO;
     }
     
+    log_trace(logger, "FINALIZAR_PROC: Proceso PID %d encontrado, tamaño: %d bytes", pid, proceso->tamanio);
+    
     // Imprimir métricas antes de finalizar
     log_debug(logger, "FINALIZAR_PROC: Imprimiendo métricas para PID %d", pid);
     imprimir_metricas_proceso(pid);
@@ -317,6 +326,11 @@ t_resultado_memoria finalizar_proceso_en_memoria(int pid) {
     log_debug(logger, "FINALIZAR_PROC: Liberando marcos para PID %d", pid);
     liberar_marcos_proceso(pid);
     log_debug(logger, "FINALIZAR_PROC: Marcos liberados para PID %d", pid);
+
+    // Liberar espacio de SWAP asociado al proceso
+    log_debug(logger, "FINALIZAR_PROC: Liberando espacio de SWAP para PID %d", pid);
+    liberar_espacio_swap_proceso(pid);
+    log_debug(logger, "FINALIZAR_PROC: Espacio de SWAP liberado para PID %d", pid);
     
     // Actualizar estadísticas del sistema
     log_debug(logger, "FINALIZAR_PROC: Actualizando estadísticas del sistema para PID %d", pid);
@@ -336,6 +350,7 @@ t_resultado_memoria finalizar_proceso_en_memoria(int pid) {
     
     pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
     
+    log_trace(logger, "FINALIZAR_PROC: Proceso PID %d finalizado exitosamente", pid);
     log_trace(logger, "## PID: %d - Finaliza el proceso", pid);
     log_debug(logger, "FINALIZAR_PROC: Retornando MEMORIA_OK para PID %d", pid);
     return MEMORIA_OK;
@@ -410,7 +425,7 @@ t_resultado_memoria reanudar_proceso_en_memoria(int pid) {
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
         return MEMORIA_OK;
     }
-
+    
     // Lógica centralizada en manejo_swap.c
     int resultado = reanudar_proceso_suspendido(pid);
     if (resultado == 1) {
@@ -689,6 +704,12 @@ static void liberar_marcos_proceso(int pid) {
     pthread_mutex_lock(&sistema_memoria->admin_marcos->mutex_frames);
     log_debug(logger, "LIBERAR_MARCOS: Mutex adquirido para PID %d", pid);
 
+    // Log del estado actual de marcos antes de liberar
+    log_debug(logger, "LIBERAR_MARCOS: Estado actual - Total frames: %d, Libres: %d, Ocupados: %d", 
+              sistema_memoria->admin_marcos->cantidad_total_frames,
+              sistema_memoria->admin_marcos->frames_libres,
+              sistema_memoria->admin_marcos->frames_ocupados);
+
     int marcos_liberados = 0;
     for (int i = 0; i < sistema_memoria->admin_marcos->cantidad_total_frames; i++) {
         t_frame* frame = &sistema_memoria->admin_marcos->frames[i];
@@ -699,6 +720,12 @@ static void liberar_marcos_proceso(int pid) {
             log_debug(logger, "LIBERAR_MARCOS: Marco %d liberado para PID %d", i, pid);
         }
     }
+
+    // Log del estado final de marcos después de liberar
+    log_debug(logger, "LIBERAR_MARCOS: Estado final - Total frames: %d, Libres: %d, Ocupados: %d", 
+              sistema_memoria->admin_marcos->cantidad_total_frames,
+              sistema_memoria->admin_marcos->frames_libres,
+              sistema_memoria->admin_marcos->frames_ocupados);
 
     log_debug(logger, "LIBERAR_MARCOS: Total de marcos liberados para PID %d: %d", pid, marcos_liberados);
     pthread_mutex_unlock(&sistema_memoria->admin_marcos->mutex_frames);
