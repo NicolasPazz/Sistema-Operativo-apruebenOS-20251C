@@ -40,7 +40,7 @@ logs:
 
 # /////////////////////// Ejecutar módulos ///////////////////////
 .PHONY: run
-run: set_log_level clean all
+run: stop set_log_level clean all
 	@echo "Limpiando logs..."
 	@find . -type f -name "*.log" -exec rm -f {} +
 
@@ -61,14 +61,18 @@ run: set_log_level clean all
 .PHONY: stop
 stop:
 	@echo "Deteniendo procesos por nombre..."
-	@pkill -f ./memoria/bin/memoria || true
-	@pkill -f ./cpu/bin/cpu || true
-	@pkill -f ./io/bin/io || true
-	@pkill -f ./kernel/bin/kernel || true
+	@-pkill -f ./memoria/bin/memoria 2>/dev/null || true
+	@-pkill -f ./cpu/bin/cpu 2>/dev/null || true
+	@-pkill -f ./io/bin/io 2>/dev/null || true
+	@-pkill -f ./kernel/bin/kernel 2>/dev/null || true
+
+	@echo "Esperando que los procesos terminen..."
+	@sleep 2
 
 	@echo "Forzando cierre de puertos usados (8000-8004)..."
-	@for port in 8000 8001 8002 8003 8004; do \
+	@-for port in 8000 8001 8002 8003 8004; do \
 		fuser -k $$port/tcp 2>/dev/null || true; \
+		sleep 0.5; \
 	done
 
 	@echo "Todos los procesos y puertos fueron liberados."
