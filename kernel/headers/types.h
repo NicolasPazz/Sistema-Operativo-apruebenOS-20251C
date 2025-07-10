@@ -82,5 +82,10 @@ typedef struct {
     int pid_a_ejecutar;
 } t_interrupcion;
 
+typedef struct {
+    t_pcb *pcb;
+    bool  *vigente; 
+    int pid;
+} t_timer_arg;
     
 #endif /* TYPES_H */

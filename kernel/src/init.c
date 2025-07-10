@@ -30,7 +30,7 @@ char* PUERTO_ESCUCHA_IO;
 char* ALGORITMO_CORTO_PLAZO;
 char* ALGORITMO_INGRESO_A_READY;
 double ALFA;
-char* TIEMPO_SUSPENSION;
+double TIEMPO_SUSPENSION;
 double ESTIMACION_INICIAL;
 char* LOG_LEVEL;
 
@@ -102,7 +102,7 @@ void iniciar_config_kernel() {
     ALGORITMO_INGRESO_A_READY = config_get_string_value(kernel_config, "ALGORITMO_INGRESO_A_READY");
     ALFA = config_get_double_value(kernel_config, "ALFA");
     ESTIMACION_INICIAL = config_get_double_value(kernel_config, "ESTIMACION_INICIAL");
-    TIEMPO_SUSPENSION = config_get_string_value(kernel_config, "TIEMPO_SUSPENSION");
+    TIEMPO_SUSPENSION = config_get_double_value(kernel_config, "TIEMPO_SUSPENSION");
     LOG_LEVEL = config_get_string_value(kernel_config, "LOG_LEVEL");
 
     if (!IP_MEMORIA || !PUERTO_MEMORIA || !PUERTO_ESCUCHA_DISPATCH || !PUERTO_ESCUCHA_INTERRUPT ||
@@ -273,7 +273,9 @@ void* hilo_cliente_memoria(void* _) {
         exit(EXIT_FAILURE);
     }
 
+    log_debug(kernel_log, "Esperando mutex_conexiones para validar handshake con Memoria (fd=%d)", fd_memoria);
     pthread_mutex_lock(&mutex_conexiones);
+    log_debug(kernel_log, "Bloqueando mutex_conexiones para validar handshake con Memoria (fd=%d)", fd_memoria);
     conectado_memoria = true;
     pthread_mutex_unlock(&mutex_conexiones);
 
@@ -322,11 +324,14 @@ void* hilo_servidor_dispatch(void* _) {
         pthread_mutex_unlock(&mutex_lista_cpus);
 
         sem_post(&sem_cpu_disponible);
+        log_debug(kernel_log, "hilo_servidor_dispatch: Semáforo CPU DISPONIBLE aumentado por nueva CPU (fd=%d, ID=%d)", fd_cpu_dispatch, id_cpu);
+
         solicitar_replanificacion_srt();
         log_trace(kernel_log, "hilo_servidor_dispatch: replanificacion solicitada");
-        log_debug(kernel_log, "hilo_servidor_dispatch: Semaforo CPU DISPONIBLE aumentado por nueva CPU (fd=%d, ID=%d)", fd_cpu_dispatch, id_cpu);
-
+        log_trace(kernel_log, "hilo_servidor_dispatch: Semaforo CPU DISPONIBLE aumentado por nueva CPU (fd=%d, ID=%d)", fd_cpu_dispatch, id_cpu);
+        log_debug(kernel_log, "hilo_servidor_dispatch: esperando mutex_conexiones para marcar CPU como conectada (fd=%d)", fd_cpu_dispatch);
         pthread_mutex_lock(&mutex_conexiones);
+        log_debug(kernel_log, "hilo_servidor_dispatch: bloqueando mutex_conexiones para marcar CPU como conectada (fd=%d)", fd_cpu_dispatch);
         conectado_cpu = true;
         pthread_mutex_unlock(&mutex_conexiones);
 
@@ -356,8 +361,9 @@ void* atender_cpu_dispatch(void* arg) {
             close(fd_cpu_dispatch);
             return NULL;
         }
-        
+        log_debug(kernel_log, "atender_cpu_dispatch: esperando mutex_lista_cpus para procesar operación %d en CPU ID=%d", cop, cpu_actual->id);
         pthread_mutex_lock(&mutex_lista_cpus);
+        log_debug(kernel_log, "atender_cpu_dispatch: bloqueando mutex_lista_cpus para procesar operación %d en CPU ID=%d", cop, cpu_actual->id);
         cpu_actual->instruccion_actual = cop;
         int pid = cpu_actual->pid;
         pthread_mutex_unlock(&mutex_lista_cpus);
@@ -366,7 +372,7 @@ void* atender_cpu_dispatch(void* arg) {
 
         switch (cop) {
             case INIT_PROC_OP: {
-                log_info(kernel_log, VERDE("## (PID: %d) Solicitó syscall: ")ROJO("INIT_PROC"), pid);
+                log_info(kernel_log, VERDE("## (%d) Solicitó syscall: ")ROJO("INIT_PROC"), pid);
                 log_trace(kernel_log, "INIT_PROC_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
             
                 // ========== RECIBIR PARÁMETROS ==========
@@ -380,7 +386,7 @@ void* atender_cpu_dispatch(void* arg) {
                 char* nombre = (char*)list_get(parametros_init_proc, 0);
                 int size = *(int*)list_get(parametros_init_proc, 1);
                 log_trace(kernel_log, "Proceso: %s Size: %d recibido de CPU Dispatch (fd=%d)", nombre, size, fd_cpu_dispatch);   
-                log_debug(kernel_log, "atender_cpu_dispatch: Iniciando nuevo proceso con nombre de archivo '%s' y size %d", nombre, size);
+                log_trace(kernel_log, "atender_cpu_dispatch: Iniciando nuevo proceso con nombre de archivo '%s' y size %d", nombre, size);
                 
                 // ========== EJECUTAR SYSCALL ==========
                 INIT_PROC(nombre, size);
@@ -391,7 +397,7 @@ void* atender_cpu_dispatch(void* arg) {
             }
 
             case IO_OP: {
-                log_info(kernel_log, VERDE("## (PID: %d) Solicitó syscall: ")ROJO("IO"), pid);
+                log_info(kernel_log, VERDE("## (%d) Solicitó syscall: ")ROJO("IO"), pid);
                 log_trace(kernel_log, "IO_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
 
                 // ========== RECIBIR PARÁMETROS ==========
@@ -410,24 +416,25 @@ void* atender_cpu_dispatch(void* arg) {
 
                 // Buscar Proceso PCB para mandarlo a IO y bloquearlo
                 t_pcb* pcb_a_io = buscar_pcb(pid);
-                if (!pcb_a_io) {
-                    log_error(kernel_log, "No se encontró PCB para PID=%d", pid);
-                    list_destroy_and_destroy_elements(parametros_io, free);
-                    break;
-                }
+
                 // Actualizar el PC con el que me dijo CPU
                 pcb_a_io->PC = PC;
 
+                log_debug(kernel_log, "atender_cpu_dispatch: esperando mutex_lista_cpus para buscar PCB con PID=%d", pid);
                 pthread_mutex_lock(&mutex_lista_cpus);
+                log_debug(kernel_log, "atender_cpu_dispatch: bloqueando mutex_lista_cpus para buscar PCB con PID=%d", pid);
+
                 cpu_actual->pid = -1;
                 cpu_actual->instruccion_actual = -1;
                 pthread_mutex_unlock(&mutex_lista_cpus);
 
                 sem_post(&sem_cpu_disponible);
+                log_debug(kernel_log, "atender_cpu_dispatch: Semáforo CPU DISPONIBLE aumentado por IO (fd=%d)", fd_cpu_dispatch);
+
                 solicitar_replanificacion_srt();
                 log_trace(kernel_log, "atender_cpu_dispatch_IO: replanificacion solicitada");
 
-                log_debug(kernel_log, "atender_cpu_dispatch: Semaforo CPU DISPONIBLE aumentado por IO");
+                log_trace(kernel_log, "atender_cpu_dispatch: Semaforo CPU DISPONIBLE aumentado por IO");
                 log_trace(kernel_log, "Procesando solicitud de IO '%s' por %d ms para PID=%d", nombre_IO, cant_tiempo, pcb_a_io->PID);
     
                 // ========== EJECUTAR SYSCALL ==========
@@ -438,11 +445,14 @@ void* atender_cpu_dispatch(void* arg) {
             }            
 
             case EXIT_OP:
-                log_info(kernel_log, VERDE("## (PID: %d) Solicitó syscall: ")ROJO("EXIT"), pid);
+                log_info(kernel_log, VERDE("## (%d) Solicitó syscall: ")ROJO("EXIT"), pid);
                 log_trace(kernel_log, "EXIT_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
 
                 // Obtener PID del proceso que está ejecutando esta CPU
+                log_debug(kernel_log, "atender_cpu_dispatch: esperando mutex_lista_cpus para obtener PID de la CPU (fd=%d)", fd_cpu_dispatch);
                 pthread_mutex_lock(&mutex_lista_cpus);
+                log_debug(kernel_log, "atender_cpu_dispatch: bloqueando mutex_lista_cpus para obtener PID de la CPU (fd=%d)", fd_cpu_dispatch);
+
                 int pid_exit = cpu_actual->pid;
                 pthread_mutex_unlock(&mutex_lista_cpus);
                 
@@ -476,22 +486,27 @@ void* atender_cpu_dispatch(void* arg) {
                 }
 
                 // Limpiar PID de la CPU asociada
+                log_debug(kernel_log, "atender_cpu_dispatch: esperando mutex_lista_cpus para limpiar PID de la CPU (fd=%d)", fd_cpu_dispatch);
                 pthread_mutex_lock(&mutex_lista_cpus);
+                log_debug(kernel_log, "atender_cpu_dispatch: bloqueando mutex_lista_cpus para limpiar PID de la CPU (fd=%d)", fd_cpu_dispatch);
+
                 cpu_actual->pid = -1; // Limpiar PID de la CPU
                 cpu_actual->instruccion_actual = -1; // Limpiar instrucción actual
                 pthread_mutex_unlock(&mutex_lista_cpus);
                 
                 // Liberar CPU para que el planificador pueda usarla
                 sem_post(&sem_cpu_disponible);
+                log_debug(kernel_log, "atender_cpu_dispatch: Semáforo CPU DISPONIBLE aumentado por CPU liberada (fd=%d)", fd_cpu_dispatch);
+
                 solicitar_replanificacion_srt();
                 log_trace(kernel_log, "atender_cpu_dispatch_EXIT: replanificacion solicitada");
 
-                log_debug(kernel_log, "EXIT: Semáforo CPU DISPONIBLE aumentado por CPU liberada");
+                log_trace(kernel_log, "EXIT: Semáforo CPU DISPONIBLE aumentado por CPU liberada");
                 
                 break;
 
             case DUMP_MEMORY_OP:
-                log_info(kernel_log, VERDE("## (PID: %d) Solicitó syscall: ")ROJO("DUMP_MEMORY"), pid);
+                log_info(kernel_log, VERDE("## (%d) Solicitó syscall: ")ROJO("DUMP_MEMORY"), pid);
                 log_trace(kernel_log, "DUMP_MEMORY_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
                 
                 // ========== RECIBIR PARÁMETROS ==========
@@ -508,11 +523,6 @@ void* atender_cpu_dispatch(void* arg) {
 
                 // Obtener el PCB del proceso
                 t_pcb* pcb_dump = buscar_pcb(PID);
-                if (!pcb_dump) {
-                    log_error(kernel_log, "DUMP_MEMORY_OP: No se encontró PCB para PID %d", PID);
-                    list_destroy_and_destroy_elements(parametros_dump, free);
-                    break;
-                }
 
                 // ✅ ACTUALIZAR PC DEL PCB (igual que en IO_OP)
                 pcb_dump->PC = PC_actualizado;
@@ -520,17 +530,22 @@ void* atender_cpu_dispatch(void* arg) {
 
                 // ========== LIBERAR CPU (IGUAL QUE EXIT E IO) ==========
                 // Limpiar PID de la CPU asociada
+                log_debug(kernel_log, "atender_cpu_dispatch: esperando mutex_lista_cpus para limpiar PID de la CPU (fd=%d)", fd_cpu_dispatch);
                 pthread_mutex_lock(&mutex_lista_cpus);
+                log_debug(kernel_log, "atender_cpu_dispatch: bloqueando mutex_lista_cpus para limpiar PID de la CPU (fd=%d)", fd_cpu_dispatch);
+
                 cpu_actual->pid = -1; // Limpiar PID de la CPU
                 cpu_actual->instruccion_actual = -1; // Limpiar instrucción actual
                 pthread_mutex_unlock(&mutex_lista_cpus);
                 
                 // Liberar CPU para que el planificador pueda usarla
                 sem_post(&sem_cpu_disponible);
+                log_debug(kernel_log, "atender_cpu_dispatch_DUMP: Semáforo CPU DISPONIBLE aumentado por CPU liberada (fd=%d)", fd_cpu_dispatch);
+
                 solicitar_replanificacion_srt();
                 log_trace(kernel_log, "atender_cpu_dispatch_DUMP: replanificacion solicitada");
 
-                log_debug(kernel_log, "DUMP_MEMORY: Semáforo CPU DISPONIBLE aumentado por CPU liberada");
+                log_trace(kernel_log, "DUMP_MEMORY: Semáforo CPU DISPONIBLE aumentado por CPU liberada");
 
                 // ========== EJECUTAR SYSCALL ==========
                 DUMP_MEMORY(pcb_dump);
@@ -550,7 +565,10 @@ void* atender_cpu_dispatch(void* arg) {
         }
 
         // Limpiar la instrucción actual de la CPU
+        log_debug(kernel_log, "atender_cpu_dispatch: esperando mutex_lista_cpus para limpiar instrucción actual de la CPU (fd=%d)", fd_cpu_dispatch);
         pthread_mutex_lock(&mutex_lista_cpus);
+        log_debug(kernel_log, "atender_cpu_dispatch: bloqueando mutex_lista_cpus para limpiar instrucción actual de la CPU (fd=%d)", fd_cpu_dispatch);
+
         cpu_actual->instruccion_actual = -1; // Valor inválido para indicar que está libre
         pthread_mutex_unlock(&mutex_lista_cpus);
     }
@@ -601,42 +619,23 @@ void* hilo_servidor_interrupt(void* _) {
         nueva_cpu->pid = -1;
         nueva_cpu->instruccion_actual = -1;
         
+        log_debug(kernel_log, "hilo_servidor_interrupt: esperando mutex_lista_cpus para agregar nueva CPU (fd=%d, ID=%d)", fd_cpu_interrupt, id_cpu);
         pthread_mutex_lock(&mutex_lista_cpus);
+        log_debug(kernel_log, "hilo_servidor_interrupt: bloqueando mutex_lista_cpus para agregar nueva CPU (fd=%d, ID=%d)", fd_cpu_interrupt, id_cpu);
+
         list_add(lista_cpus, nueva_cpu);
         pthread_mutex_unlock(&mutex_lista_cpus);
 
+        /*log_debug(kernel_log, "hilo_servidor_interrupt: esperando mutex_conexiones para marcar CPU como conectada (fd=%d)", fd_cpu_interrupt);
         pthread_mutex_lock(&mutex_conexiones);
+        log_debug(kernel_log, "hilo_servidor_interrupt: bloqueando mutex_conexiones para marcar CPU como conectada (fd=%d)", fd_cpu_interrupt);
+
         conectado_cpu = true;
-        pthread_mutex_unlock(&mutex_conexiones);
+        pthread_mutex_unlock(&mutex_conexiones);*/
 
         log_trace(kernel_log, "HANDSHAKE_CPU_KERNEL_INTERRUPT: CPU conectada exitosamente a Interrupt (fd=%d), ID=%d", nueva_cpu->fd, nueva_cpu->id);
-
-        int* arg = malloc(sizeof(int));
-        *arg = fd_cpu_interrupt;
-        pthread_t hilo;
-        pthread_create(&hilo, NULL, atender_cpu_interrupt, arg);
-        pthread_detach(hilo);
     }
 
-    return NULL;
-}
-
-void* atender_cpu_interrupt(void* arg) {
-    /*int fd_cpu_interrupt = *(int*)arg;
-    free(arg);
-
-    op_code cop;
-    while (recv(fd_cpu_interrupt, &cop, sizeof(op_code), 0) > 0) {
-        switch (cop) {
-            default:
-                log_error(kernel_log, "Codigo op desconocido recibido de Interrupt (fd=%d): %d", fd_cpu_interrupt, cop);
-                terminar_kernel();
-                exit(EXIT_FAILURE);
-        }
-    }
-
-    log_warning(kernel_log, "CPU Interrupt desconectada (fd=%d)", fd_cpu_interrupt);
-    close(fd_cpu_interrupt);*/
     return NULL;
 }
 
@@ -661,7 +660,7 @@ void* hilo_servidor_io(void* _) {
             exit(EXIT_FAILURE);
         }
 
-        log_debug(kernel_log, "hilo_servidor_io: HANDSHAKE_IO_KERNEL recibido de IO (fd=%d)", fd_io);
+        log_trace(kernel_log, "hilo_servidor_io: HANDSHAKE_IO_KERNEL recibido de IO (fd=%d)", fd_io);
 
         char nombre_io[256];
         if (recv(fd_io, nombre_io, sizeof(nombre_io), 0) <= 0) {
@@ -706,7 +705,10 @@ void* atender_io(void* arg) {
     free(arg);
 
     // Encontrar la IO asociada a este file descriptor usando función centralizada
+    log_debug(kernel_log, "atender_io: esperando mutex_ios para buscar IO por fd=%d", fd_io);
     pthread_mutex_lock(&mutex_ios);
+    log_debug(kernel_log, "atender_io: bloqueando mutex_ios para buscar IO por fd=%d", fd_io);
+
     io* dispositivo_io = buscar_io_por_fd(fd_io);
     pthread_mutex_unlock(&mutex_ios);
 
@@ -718,7 +720,7 @@ void* atender_io(void* arg) {
     }
 
     // Verificar si hay procesos encolados para dicha IO y enviarlo a la misma
-    log_debug(kernel_log, "IO correctamente conectada (fd=%d, nombre='%s'), verificando si hay procesos esperando", fd_io, dispositivo_io->nombre);
+    log_trace(kernel_log, "IO correctamente conectada (fd=%d, nombre='%s'), verificando si hay procesos esperando", fd_io, dispositivo_io->nombre);
     verificar_procesos_bloqueados(dispositivo_io);
 
     log_trace(kernel_log, "Atendiendo IO '%s' (fd=%d)", dispositivo_io->nombre, fd_io);
@@ -766,7 +768,10 @@ void* atender_io(void* arg) {
     }
 
     // Evitar que nuevos procesos se envíen a esta IO
+    log_debug(kernel_log, "atender_io: esperando mutex_ios para marcar IO '%s' como OCUPADA (fd=%d)", dispositivo_io->nombre, fd_io);
     pthread_mutex_lock(&mutex_ios);
+    log_debug(kernel_log, "atender_io: bloqueando mutex_ios para marcar IO '%s' como OCUPADA (fd=%d)", dispositivo_io->nombre, fd_io);
+
     dispositivo_io->estado = IO_OCUPADO;
     pthread_mutex_unlock(&mutex_ios);
 
@@ -777,7 +782,9 @@ void* atender_io(void* arg) {
     exit_procesos_relacionados(dispositivo_io);
 
     // Eliminar la IO de la lista global
+    log_debug(kernel_log, "atender_io: esperando mutex_ios para eliminar IO '%s' (fd=%d) de la lista", dispositivo_io->nombre, fd_io);
     pthread_mutex_lock(&mutex_ios);
+    log_debug(kernel_log, "atender_io: bloqueando mutex_ios para eliminar IO '%s' (fd=%d) de la lista", dispositivo_io->nombre, fd_io);
     for (int i = 0; i < list_size(lista_ios); i++) {
         if (list_get(lista_ios, i) == dispositivo_io) {
             list_remove(lista_ios, i);
@@ -810,7 +817,9 @@ void verificar_procesos_bloqueados(io* io) {
 
     if (!pendiente) {
         log_trace(kernel_log, "No hay procesos pendientes para la IO '%s'", io->nombre);
+        log_debug(kernel_log, "verificar_procesos_bloqueados: esperando mutex_ios para marcar IO '%s' como DISPONIBLE", io->nombre);
         pthread_mutex_lock(&mutex_ios);
+        log_debug(kernel_log, "verificar_procesos_bloqueados: bloqueando mutex_ios para marcar IO '%s' como DISPONIBLE", io->nombre);
         io->estado = IO_DISPONIBLE;
         io->proceso_actual = NULL;
         pthread_mutex_unlock(&mutex_ios);
@@ -869,7 +878,9 @@ void exit_procesos_relacionados(io* dispositivo) {
     bool hay_otras_io_disponibles = false;
     io* otra_io = NULL;
 
+    log_debug(kernel_log, "exit_procesos_relacionados: esperando mutex_ios para verificar otras IO con el mismo nombre '%s'", dispositivo->nombre);
     pthread_mutex_lock(&mutex_ios);
+    log_debug(kernel_log, "exit_procesos_relacionados: bloqueando mutex_ios para verificar otras IO con el mismo nombre '%s'", dispositivo->nombre);
     for (int j = 0; j < list_size(lista_ios); j++) {
         otra_io = list_get(lista_ios, j);
         if (otra_io != dispositivo && strcmp(otra_io->nombre, dispositivo->nombre) == 0) {
@@ -883,7 +894,9 @@ void exit_procesos_relacionados(io* dispositivo) {
     if (!hay_otras_io_disponibles) {
         t_list* pcbs_afectados = list_create();
 
+        log_debug(kernel_log, "exit_procesos_relacionados: esperando mutex_pcbs_esperando_io para mover procesos a EXIT por desconexión de IO '%s'", dispositivo->nombre);
         pthread_mutex_lock(&mutex_pcbs_esperando_io);
+        log_debug(kernel_log, "exit_procesos_relacionados: bloqueando mutex_pcbs_esperando_io para mover procesos a EXIT por desconexión de IO '%s'", dispositivo->nombre);
         int i = 0;
         while (i < list_size(pcbs_esperando_io)) {
             t_pcb_io* pcb_io = list_get(pcbs_esperando_io, i);

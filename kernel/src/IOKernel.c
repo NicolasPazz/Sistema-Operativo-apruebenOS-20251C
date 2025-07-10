@@ -81,7 +81,7 @@ io* io_disponible(char* nombre) {
     for(int i = 0; i < list_size(lista_ios); i++) {
         io* dispositivo = list_get(lista_ios, i);
         if (strcmp(dispositivo->nombre, nombre) == 0 && dispositivo->estado == IO_DISPONIBLE) {
-            log_debug(kernel_log, "IO '%s' está disponible (fd=%d)", dispositivo->nombre, dispositivo->fd);
+            log_trace(kernel_log, "IO '%s' está disponible (fd=%d)", dispositivo->nombre, dispositivo->fd);
             pthread_mutex_unlock(&mutex_ios);
             return dispositivo;
         }
@@ -98,8 +98,12 @@ void bloquear_pcb_por_io(char* nombre_io, t_pcb* pcb, int tiempo_a_usar) {
         enviar_io(dispositivo, pcb, tiempo_a_usar);
     } else {
         // Si la IO no está disponible, se agrega a la lista de bloqueados por IO
-        log_debug(kernel_log, "No hay IO disponible con el nombre '%s'", nombre_io);
+        log_trace(kernel_log, "No hay IO disponible con el nombre '%s'", nombre_io);
+        log_debug(kernel_log, "bloquear_pcb_por_io: esperando mutex_pcbs_esperando_io para agregar PCB PID=%d a la lista de bloqueados por IO '%s' por %d ms", 
+                  pcb->PID, nombre_io, tiempo_a_usar);
         pthread_mutex_lock(&mutex_pcbs_esperando_io);
+        log_debug(kernel_log, "bloquear_pcb_por_io: bloqueando mutex_pcbs_esperando_io para agregar PCB PID=%d a la lista de bloqueados por IO '%s' por %d ms", 
+                  pcb->PID, nombre_io, tiempo_a_usar);
         t_pcb_io* pcb_io = malloc(sizeof(t_pcb_io));
         pcb_io->pcb = pcb;
         pcb_io->io = get_io(nombre_io);

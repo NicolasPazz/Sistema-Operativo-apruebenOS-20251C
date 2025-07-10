@@ -103,7 +103,7 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
             exit(EXIT_FAILURE);
         }
 
-        log_info(kernel_log, VERDE("## (PID: %u) Pasa del estado ")AZUL("%s")VERDE(" al estado ")AZUL("%s"),
+        log_info(kernel_log, AZUL("## (%u) Pasa del estado ")VERDE("%s")AZUL(" al estado ")VERDE("%s"),
                 PCB->PID,
                 estado_to_string(PCB->Estado),
                 estado_to_string(nuevo_estado_enum));
@@ -154,11 +154,25 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
             double rafaga_real = get_time() - PCB->tiempo_inicio_exec;
             PCB->estimacion_rafaga = ALFA * rafaga_real + (1 - ALFA) * PCB->estimacion_rafaga;
             // reiniciar el tiempo de inicio
-            PCB->tiempo_inicio_exec = 0;
+            PCB->tiempo_inicio_exec = -1;
+        }
+
+        if (nuevo_estado_enum == BLOCKED) {
+            PCB->tiempo_inicio_blocked = get_time();
+            iniciar_timer_suspension(PCB);
+        } else if (PCB->Estado == BLOCKED) {
+            // reiniciar el tiempo de inicio
+            PCB->tiempo_inicio_blocked = -1;
+            //invalidar el timer vigente
+            if (PCB->timer_flag) {
+                *(PCB->timer_flag) = false;
+                PCB->timer_flag = NULL;
+            }
         }
 
         if (PCB->Estado == SUSP_READY) {
             sem_post(&sem_susp_ready_vacia); // Sumar 1 al semaforo
+            log_debug(kernel_log, "cambiar_estado_pcb: Semaforo SUSP READY VACIA aumentado");
         }
 
         // Cambiar Estado y actualizar Metricas de Estados
@@ -285,37 +299,37 @@ t_list* obtener_cola_por_estado(Estados estado) {
 void bloquear_cola_por_estado(Estados estado) {
     switch (estado) {
         case NEW:
-            log_trace(kernel_log, "bloquear_cola_por_estado: esperando mutex_cola_new para bloquear cola NEW");
+            log_debug(kernel_log, "bloquear_cola_por_estado: esperando mutex_cola_new para bloquear cola NEW");
             pthread_mutex_lock(&mutex_cola_new);
             log_debug(kernel_log, "bloquear_cola_por_estado: bloqueando mutex_cola_new para cola NEW");
             break;
         case READY:
-            log_trace(kernel_log, "bloquear_cola_por_estado: esperando mutex_cola_ready para bloquear cola READY");
+            log_debug(kernel_log, "bloquear_cola_por_estado: esperando mutex_cola_ready para bloquear cola READY");
             pthread_mutex_lock(&mutex_cola_ready);
             log_debug(kernel_log, "bloquear_cola_por_estado: bloqueando mutex_cola_ready para cola READY");
             break;
         case EXEC:
-            log_trace(kernel_log, "bloquear_cola_por_estado: esperando mutex_cola_running para bloquear cola EXEC");
+            log_debug(kernel_log, "bloquear_cola_por_estado: esperando mutex_cola_running para bloquear cola EXEC");
             pthread_mutex_lock(&mutex_cola_running);
             log_debug(kernel_log, "bloquear_cola_por_estado: bloqueando mutex_cola_running para cola EXEC");
             break;
         case BLOCKED:
-            log_trace(kernel_log, "bloquear_cola_por_estado: esperando mutex_cola_blocked para bloquear cola BLOCKED");
+            log_debug(kernel_log, "bloquear_cola_por_estado: esperando mutex_cola_blocked para bloquear cola BLOCKED");
             pthread_mutex_lock(&mutex_cola_blocked);
             log_debug(kernel_log, "bloquear_cola_por_estado: bloqueando mutex_cola_blocked para cola BLOCKED");
             break;
         case SUSP_READY:
-            log_trace(kernel_log, "bloquear_cola_por_estado: esperando mutex_cola_susp_ready para bloquear cola SUSP_READY");
+            log_debug(kernel_log, "bloquear_cola_por_estado: esperando mutex_cola_susp_ready para bloquear cola SUSP_READY");
             pthread_mutex_lock(&mutex_cola_susp_ready);
             log_debug(kernel_log, "bloquear_cola_por_estado: bloqueando mutex_cola_susp_ready para cola SUSP_READY");
             break;
         case SUSP_BLOCKED:
-            log_trace(kernel_log, "bloquear_cola_por_estado: esperando mutex_cola_susp_blocked para bloquear cola SUSP_BLOCKED");
+            log_debug(kernel_log, "bloquear_cola_por_estado: esperando mutex_cola_susp_blocked para bloquear cola SUSP_BLOCKED");
             pthread_mutex_lock(&mutex_cola_susp_blocked);
             log_debug(kernel_log, "bloquear_cola_por_estado: bloqueando mutex_cola_susp_blocked para cola SUSP_BLOCKED");
             break;
         case EXIT_ESTADO:
-            log_trace(kernel_log, "bloquear_cola_por_estado: esperando mutex_cola_exit para bloquear cola EXIT");
+            log_debug(kernel_log, "bloquear_cola_por_estado: esperando mutex_cola_exit para bloquear cola EXIT");
             pthread_mutex_lock(&mutex_cola_exit);
             log_debug(kernel_log, "bloquear_cola_por_estado: bloqueando mutex_cola_exit para cola EXIT");
             break;
@@ -344,13 +358,13 @@ void liberar_cola_por_estado(Estados estado) {
 void loguear_metricas_estado(t_pcb* pcb) {
     if (!pcb) return;
 
-    log_info(kernel_log, VERDE("## (PID: %d) - Métricas finales :"), pcb->PID);
+    log_info(kernel_log, NARANJA("## (%d) - Métricas de estado:"), pcb->PID);
 
     for (int i = 0; i < 7; i++) {
         const char* nombre_estado = estado_to_string((Estados)i);
         unsigned veces = pcb->ME[i];
         unsigned tiempo = pcb->MT[i];
-        log_info(kernel_log, "    "AZUL("%-12s")" Veces: "VERDE("%-2u")" | Tiempo: "VERDE("%-6u ms"), nombre_estado, veces, tiempo);
+        log_info(kernel_log, "    "NARANJA("%-12s")" Veces: "VERDE("%-2u")" | Tiempo: "VERDE("%-6u ms"), nombre_estado, veces, tiempo);
     }
 }
 

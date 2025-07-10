@@ -52,7 +52,7 @@ t_pcb* elegir_por_sjf() {
         exit(EXIT_FAILURE);
     }
 
-    log_debug(kernel_log, "SJF: buscando entre %d procesos con menor ráfaga en cola_ready", list_size(cola_ready));
+    log_trace(kernel_log, "SJF: buscando entre %d procesos con menor ráfaga en cola_ready", list_size(cola_ready));
     for (int i = 0; i < list_size(cola_ready); i++) {
         mostrar_pcb((t_pcb*)list_get(cola_ready, i));
     }
@@ -61,7 +61,7 @@ t_pcb* elegir_por_sjf() {
     pthread_mutex_unlock(&mutex_cola_ready);
 
     if (seleccionado) {
-        log_debug(kernel_log, "SJF: Proceso elegido PID=%d con estimación=%.2f", 
+        log_trace(kernel_log, "SJF: Proceso elegido PID=%d con estimación=%.2f", 
                   seleccionado->PID, seleccionado->estimacion_rafaga);
     } else {
         log_error(kernel_log, "SJF: No se pudo seleccionar un proceso");
@@ -94,7 +94,7 @@ t_pcb* elegir_por_srt() {
         exit(EXIT_FAILURE);
     }
 
-    log_debug(kernel_log, "SRT: Proceso candidato elegido PID=%d con ráfaga restante=%.2f ms", 
+    log_trace(kernel_log, "SRT: Proceso candidato elegido PID=%d con ráfaga restante=%.2f ms", 
               candidato_ready->PID, candidato_ready->estimacion_rafaga);
 
     log_debug(kernel_log, "SRT: esperando mutex_lista_cpus para buscar CPU disponible o con mayor ráfaga restante");
@@ -123,11 +123,6 @@ t_pcb* elegir_por_srt() {
     
             // Si no está libre, buscar si al menos una tiene mayor ráfaga restante que candidato_ready
             t_pcb* pcb_exec = buscar_pcb(c->pid);
-            if (!pcb_exec) {
-                log_error(kernel_log, "SRT: Error al obtener PCB de la CPU con PID %d", c->pid);
-                terminar_kernel();
-                exit(EXIT_FAILURE);
-            }
     
             if(menor_rafaga_restante((void*)pcb_exec, (void*)candidato_ready) == (void*)candidato_ready) {
                 // Esta CPU tiene un proceso con mayor ráfaga restante que el candidato
@@ -140,12 +135,15 @@ t_pcb* elegir_por_srt() {
     pthread_mutex_unlock(&mutex_lista_cpus);
 
     // Si hay CPU libre o hay una CPU ejecutando un proceso con mayor ráfaga restante
-    if (cpu_libre || cpu_con_mayor_rafaga_restante) {
-        log_trace(kernel_log, "SRT: Hay CPU libre o una ejecutando un proceso de mayor rafaga");
-        return candidato_ready;
+    if (cpu_libre) {
+        log_trace(kernel_log, "SRT: Hay CPU libre para ejecutar el proceso READY seleccionado (PID=%d)", candidato_ready->PID);
+        return candidato_ready; // Se puede asignar el proceso ahora
+    } else if(cpu_con_mayor_rafaga_restante) {
+        log_trace(kernel_log, "SRT: Hay CPU ocupada con un proceso con mayor ráfaga restante que el proceso READY seleccionado (PID=%d)", candidato_ready->PID);
+        return candidato_ready; // Se puede asignar el proceso ahora, pero se deberadesalojar
     } else {        // Si no hay CPU libre ni una ejecutando un proceso con mayor ráfaga restante
         //replanificar cuando haya una cpu libre o entre un proceso en ready?
-        log_debug(kernel_log, "SRT: No hay CPU libre ni con mayor ráfaga restante que el proceso READY seleccionado (PID=%d), se reintentará cuando se cumplan las condiciones", candidato_ready->PID);
+        log_trace(kernel_log, "SRT: No hay CPU libre ni con mayor ráfaga restante que el proceso READY seleccionado (PID=%d), se reintentará cuando se cumplan las condiciones", candidato_ready->PID);
         return NULL; // No se puede asignar el proceso ahora
     }
 }
@@ -243,11 +241,6 @@ void dispatch(t_pcb* proceso_a_ejecutar) {
                 if (c->tipo_conexion != CPU_DISPATCH) continue;
 
                 t_pcb* pcb_exec = buscar_pcb(c->pid);
-                if (!pcb_exec) {
-                    log_error(kernel_log, "Error al obtener PCB de la CPU con PID %d", c->pid);
-                    terminar_kernel();
-                    exit(EXIT_FAILURE);
-                }
                 
                 double rafaga_restante;
 
@@ -290,6 +283,7 @@ void dispatch(t_pcb* proceso_a_ejecutar) {
             ); 
 
             sem_post(&sem_interrupciones);
+            log_debug(kernel_log, "[INTERRUPT]: semaforo INTERRUPCIONES aumentado para procesar interrupción");
            
             pthread_mutex_unlock(&mutex_lista_cpus);
             return; // Esperar a que se procese la interrupción
@@ -309,7 +303,6 @@ void dispatch(t_pcb* proceso_a_ejecutar) {
 
     // Transicionar a EXEC
     cambiar_estado_pcb(proceso_a_ejecutar, EXEC);
-    proceso_a_ejecutar->tiempo_inicio_exec = get_time();
 
     // Crear y enviar paquete a CPU
     t_paquete* paquete = crear_paquete_op(EXEC_OP);
@@ -390,8 +383,100 @@ double get_time() {
     return tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
 
+void* timer_suspension(void* v_arg) {
+    t_timer_arg *arg = v_arg;
+    t_pcb *pcb  = arg->pcb;
+    bool  *flag = arg->vigente;
+    int pid = arg->pid; 
+
+    usleep(TIEMPO_SUSPENSION * 1000); // usleep usa microsegundos: 1 ms = 1000 µs
+
+    if(!pcb) {
+        log_trace(kernel_log, AZUL("[PLANI MP] (PID: %d Timer de suspensión ignorado por PCB null)"), pid);
+        if(flag) free(flag);
+        free(arg);
+        return NULL;
+    } else if (pcb->tiempo_inicio_blocked < 0) {
+        log_trace(kernel_log, AZUL("[PLANI MP] (PID: %d Timer de suspensión ignorado por tiempo_inicio_blocked no inicializado)"), pid);
+        if(flag) free(flag);
+        free(arg);
+        return NULL;
+    } else if (pcb->Estado != BLOCKED) {
+        log_trace(kernel_log, AZUL("[PLANI MP] (PID: %d Timer de suspensión ignorado por estado no BLOCKED)"), pid);
+        if(flag) free(flag);
+        free(arg);
+        return NULL;
+    } else if (pcb->timer_flag != flag) {
+        log_trace(kernel_log, AZUL("[PLANI MP] (PID: %d Timer de suspensión ignorado por flag distinto"), pid);
+        if(flag) free(flag);
+        free(arg);
+        return NULL;
+    } else if (!*flag) {
+        log_trace(kernel_log, AZUL("[PLANI MP] (PID: %d Timer de suspensión ignorado por flag no vigente"), pid);
+        if(flag) free(flag);
+        free(arg);
+        return NULL;
+    }
+        
+    log_trace(kernel_log, AZUL("[PLANI MP] Timer de suspensión expirado para PID=%d"), pcb->PID);
+
+    t_paquete* paquete = crear_paquete_op(SUSPENDER_PROCESO_OP);
+    agregar_entero_a_paquete(paquete, pcb->PID);
+    enviar_paquete(paquete, fd_memoria);
+    eliminar_paquete(paquete);
+
+    t_respuesta respuesta;
+    if (recv(fd_memoria, &respuesta, sizeof(t_respuesta), 0) <= 0 || respuesta != OK) {
+        log_error(kernel_log, "[PLANI MP] Error al suspender proceso PID %d", pcb->PID);
+        terminar_kernel();
+        exit(EXIT_FAILURE);
+    }
+
+    log_trace(kernel_log, AZUL("[PLANI MP] Proceso PID %d suspendido correctamente"), pcb->PID);
+
+    if (pcb->timer_flag == flag) pcb->timer_flag = NULL;
+
+    cambiar_estado_pcb(pcb, SUSP_BLOCKED);
+
+    free(flag);
+    free(arg);
+
+    // TODO REPLANIFICAR
+
+    return NULL;
+}
+
+void iniciar_timer_suspension(t_pcb* pcb) {
+    pthread_t hilo_timer;
+    bool *flag = malloc(sizeof(bool));
+    *flag = true;
+
+    if (pcb->timer_flag) {
+        *(pcb->timer_flag) = false;
+    }
+
+    pcb->timer_flag = flag; // mutex?
+
+    t_timer_arg *arg = malloc(sizeof(t_timer_arg));
+    arg->pcb    = pcb;
+    arg->vigente = flag;
+    arg->pid = pcb->PID;
+
+    if (pthread_create(&hilo_timer, NULL, timer_suspension, arg) == 0) {
+        log_trace(kernel_log, AZUL("[PLANI MP] Hilo de suspensión creado para PID %d"), pcb->PID);
+        pthread_detach(hilo_timer);
+    } else {
+        pcb->timer_flag = NULL;
+        free(flag);
+        free(arg);
+        log_error(kernel_log, "[PLANI MP] No se pudo crear hilo de suspensión para PID %d", pcb->PID);
+    }
+}
+
 void activar_planificador_largo_plazo(void) {
+    log_debug(kernel_log, "activar_planificador_largo_plazo: esperando mutex_planificador_lp");
     pthread_mutex_lock(&mutex_planificador_lp);
+    log_debug(kernel_log, "activar_planificador_largo_plazo: bloqueando mutex_planificador_lp");
     estado_planificador_lp = RUNNING;
     planificador_lp_activado = true;
     pthread_cond_signal(&cond_planificador_lp);
@@ -415,9 +500,12 @@ void* interrupt_handler(void* arg) {
     log_trace(kernel_log, VERDE("Interrupt handler iniciado"));
 
     while (1) {
+        log_debug(kernel_log, "[INTERRUPT]: semaforo INTERRUPCIONES disminuido");
         sem_wait(&sem_interrupciones);
 
+        log_debug(kernel_log, "[INTERRUPT]: esperando mutex_cola_interrupciones");
         pthread_mutex_lock(&mutex_cola_interrupciones);
+        log_debug(kernel_log, "[INTERRUPT]: bloqueando mutex_cola_interrupciones");
         t_interrupcion* intr = queue_pop(cola_interrupciones);
         pthread_mutex_unlock(&mutex_cola_interrupciones);
 
@@ -452,7 +540,7 @@ void* interrupt_handler(void* arg) {
 
         switch (respuesta) {
             case OK:
-                log_debug(kernel_log, VERDE("[INTERRUPT]: CPU %d respondió OK"), intr->cpu_a_desalojar->id);
+                log_trace(kernel_log, VERDE("[INTERRUPT]: CPU %d respondió OK"), intr->cpu_a_desalojar->id);
 
                 t_list* contenido = recibir_contenido_paquete(fd_interrupt);
                 if (!contenido) {
@@ -460,7 +548,7 @@ void* interrupt_handler(void* arg) {
                     terminar_kernel();
                     exit(EXIT_FAILURE);
                 }
-                log_debug(kernel_log, "[INTERRUPT]: Cantidad de elementos en contenido recibido: %d", list_size(contenido));
+                log_trace(kernel_log, "[INTERRUPT]: Cantidad de elementos en contenido recibido: %d", list_size(contenido));
                 
                 if (list_size(contenido) < 2) {
                     log_error(kernel_log, "[INTERRUPT]: Error en buffer recibido de CPU");
@@ -481,28 +569,23 @@ void* interrupt_handler(void* arg) {
                 }
 
                 t_pcb* pcb = buscar_pcb(pid_recibido);
-                if (!pcb) {
-                    log_error(kernel_log, "[INTERRUPT]: PCB no encontrado para PID %d", pid_recibido);
-                    terminar_kernel();
-                    exit(EXIT_FAILURE);
-                }
 
-                log_info(kernel_log, VERDE("[INTERRUPT]: ## (%d) - Desalojado por SJF/SRT"), pid_recibido);
-                log_debug(kernel_log, "Interrupt handler: Actualizando PCB PID=%d con nuevo PC=%d", pid_recibido, nuevo_pc);
+                log_info(kernel_log, MAGENTA("## (%d) - Desalojado por SJF/SRT"), pid_recibido);
+                log_trace(kernel_log, "Interrupt handler: Actualizando PCB PID=%d con nuevo PC=%d", pid_recibido, nuevo_pc);
 
                 pcb->PC = nuevo_pc;
 
                 // Limpiar CPU desalojada
                 intr->cpu_a_desalojar->pid = -1;
                 intr->cpu_a_desalojar->instruccion_actual = -1; // Resetear instrucción actual
-                log_debug(kernel_log, "Interrupt handler: CPU %d liberada", intr->cpu_a_desalojar->id);
+                log_trace(kernel_log, "Interrupt handler: CPU %d liberada", intr->cpu_a_desalojar->id);
                 cambiar_estado_pcb(pcb, READY);
                 solicitar_replanificacion_srt();
                 log_trace(kernel_log, "interrupt_handler: replanificacion solicitada");
                 free(intr);
                 break;
             case ERROR:
-                log_debug(kernel_log, VERDE("[INTERRUPT]: Interrupt handler: CPU %d respondió con ERROR"), intr->cpu_a_desalojar->id);
+                log_trace(kernel_log, VERDE("[INTERRUPT]: Interrupt handler: CPU %d respondió con ERROR"), intr->cpu_a_desalojar->id);
                 free(intr);
                 break;
             default:
@@ -517,7 +600,8 @@ void solicitar_replanificacion_srt(void) {
 
     if(strcmp(ALGORITMO_CORTO_PLAZO, "SRT") == 0 && list_size(cola_ready) > 0) {
         sem_post(&sem_replanificar_srt);
-        log_debug(kernel_log, "Replanificación SRT solicitada");
+        log_debug(kernel_log, "solicitar_replanificacion_srt: semaforo replanificar SRT aumentado");
+        log_trace(kernel_log, "[PLANI CP]: Replanificación SRT solicitada");
     }
 }
 
@@ -559,7 +643,9 @@ void iniciar_planificadores(void) {
 void* planificador_largo_plazo(void* arg) {
     log_trace(kernel_log, "[LP] Planificador de largo plazo iniciado");
     while (1) {
+        log_debug(kernel_log, "planificador_largo_plazo: esperando mutex_planificador_lp");
         pthread_mutex_lock(&mutex_planificador_lp);
+        log_debug(kernel_log, "planificador_largo_plazo: bloqueando mutex_planificador_lp");
         while (estado_planificador_lp == STOP) {
             log_trace(kernel_log, "Planificador de largo plazo en STOP, esperando activación...");
             pthread_cond_wait(&cond_planificador_lp, &mutex_planificador_lp);
@@ -767,11 +853,11 @@ void* menor_tamanio(void* a, void* b) {
     return pcb_a->tamanio_memoria <= pcb_b->tamanio_memoria ? pcb_a : pcb_b;
 }
 
-t_pcb* elegir_por_pmcp() {
+t_pcb* elegir_por_pmcp(t_list *cola_a_utilizar) {
     log_trace(kernel_log, "PLANIFICANDO PMCP (Proceso Mas Chico Primero)");
-    t_pcb* pcb_mas_chico = (t_pcb*)list_get_minimum(cola_new, menor_tamanio);
+    t_pcb* pcb_mas_chico = (t_pcb*)list_get_minimum(cola_a_utilizar, menor_tamanio);
     if (!pcb_mas_chico) {
-        log_error(kernel_log, "elegir_por_pmcp: No se encontró ningún proceso en NEW");
+        log_error(kernel_log, "elegir_por_pmcp: No se encontró ningún proceso en NEW o SUSP_READY");
         terminar_kernel();
         exit(EXIT_FAILURE);
     } else {
@@ -820,7 +906,7 @@ void* planificador_corto_plazo(void* arg) {
     while (1) {
 
         if(strcmp(ALGORITMO_CORTO_PLAZO, "SRT") == 0) {
-            log_trace(kernel_log, "Planificador CP: Esperando semáforo sem_replanificar_srt...");
+            log_debug(kernel_log, "Planificador CP: semaforo REPLANIFICAR SRT disminuido");
             sem_wait(&sem_replanificar_srt);
         } else {    
             // Esperar a que llegue un proceso a READY
@@ -875,27 +961,31 @@ void* planificador_corto_plazo(void* arg) {
             terminar_kernel();
             exit(EXIT_FAILURE);
         }
-        log_debug(kernel_log, "planificador_corto_plazo: No se pudo elegir un proceso para ejecutar para SRT");
+        log_trace(kernel_log, "planificador_corto_plazo: No se pudo elegir un proceso para ejecutar para SRT");
     }
 }
 
 bool hay_espacio_suficiente_memoria(int tamanio) {
+    log_trace(kernel_log, "Verificando espacio suficiente en memoria para tamaño %d", tamanio);
     t_paquete* paquete = crear_paquete_op(CHECK_MEMORY_SPACE_OP);
-    agregar_a_paquete(paquete, &tamanio, sizeof(int));
+    agregar_entero_a_paquete(paquete, tamanio);
     enviar_paquete(paquete, fd_memoria);
     eliminar_paquete(paquete);
 
-    t_paquete* respuesta = (t_paquete*)recibir_paquete(fd_memoria);
-    if (respuesta == NULL) {
+    int respuesta = recibir_operacion(fd_memoria);
+    if (respuesta < 0 || (respuesta != OK && respuesta != ERROR)) {
         log_error(kernel_log, "Error al recibir respuesta de memoria");
-        return false;
+        terminar_kernel();
+        exit(EXIT_FAILURE);
     }
     
-    // Convertimos el código de operación a t_resultado_memoria
-    t_resultado_memoria resultado = (t_resultado_memoria)respuesta->codigo_operacion;
-    bool hay_espacio = resultado == MEMORIA_OK;
-    eliminar_paquete(respuesta);
-    return hay_espacio;
+    if (respuesta == OK) {
+        log_trace(kernel_log, "Espacio suficiente en memoria para tamaño %d", tamanio);
+        return true;
+    } else if (respuesta == ERROR) {
+        log_trace(kernel_log, "No hay espacio suficiente en memoria para tamaño %d", tamanio);
+        return false;
+    }
 }
 
 void* planificador_mediano_plazo(t_pcb* pcb) {

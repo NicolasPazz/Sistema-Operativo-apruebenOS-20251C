@@ -1,4 +1,6 @@
 #include "../headers/io.h"
+#include <sys/time.h>
+
 /////////////////////////////// Inicializacion de variables globales ///////////////////////////////
 t_log* io_log;
 t_config* io_config;
@@ -90,4 +92,10 @@ void terminar_io() {
         log_destroy(io_log);
         io_log = NULL;
     }
+}
+
+double get_time() {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }

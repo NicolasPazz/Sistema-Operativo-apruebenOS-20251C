@@ -39,7 +39,7 @@ extern char* PUERTO_ESCUCHA_IO;
 extern char* ALGORITMO_CORTO_PLAZO;
 extern char* ALGORITMO_INGRESO_A_READY;
 extern double ALFA;
-extern char* TIEMPO_SUSPENSION;
+extern double TIEMPO_SUSPENSION;
 extern double ESTIMACION_INICIAL;
 extern char* LOG_LEVEL;
 
@@ -109,8 +109,6 @@ void* atender_cpu_dispatch(void* arg);
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 void* hilo_servidor_interrupt(void* _);
-
-void* atender_cpu_interrupt(void* arg);
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
  //                                              IO                                              //

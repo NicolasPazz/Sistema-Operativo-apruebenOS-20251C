@@ -105,7 +105,7 @@ void procesar_conexion(void* void_args) {
     log_trace(logger, "Conexion procesada exitosamente para %s (fd=%d)", server_name, cliente_socket);
 
     op_code cop;
-    while (recv(cliente_socket, &cop, sizeof(op_code), 0) > 0) {
+    while ( (cop = recibir_operacion(cliente_socket)) != -1 ) {
         procesar_cod_ops(cop, cliente_socket);
     }
 
@@ -431,8 +431,16 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             log_trace(logger, "CHECK_MEMORY_SPACE_OP recibido");
 
             // Recibir tamaño solicitado
+            t_list* datos = recibir_contenido_paquete(cliente_socket);
+            if (list_size(datos) < 1) {
+                log_error(logger, "CHECK_MEMORY_SPACE_OP: No se recibieron datos válidos");
+                list_destroy_and_destroy_elements(datos, free);
+                break;
+            }
+
             int tamanio;
-            recv_data(cliente_socket, &tamanio, sizeof(int));
+            tamanio = *(int*)list_get(datos, 0);
+            list_destroy_and_destroy_elements(datos, free);
             
             // Verificar espacio disponible
             bool hay_espacio = verificar_espacio_disponible(tamanio);

@@ -45,7 +45,7 @@ int main(int argc, char* argv[]) {
 
                 // ========== RECIBIR PARÁMETROS DESDE KERNEL ==========
                 t_list* parametros_io = recibir_contenido_paquete(fd_kernel_io);
-                if (!parametros_io || list_size(parametros_io) < 2) {
+                if (!parametros_io || list_size(parametros_io) < 3) {
                     log_error(io_log, "Error al recibir paquete de IO_OP");
                     if (parametros_io) list_destroy_and_destroy_elements(parametros_io, free);
                     break;
@@ -59,9 +59,22 @@ int main(int argc, char* argv[]) {
                 log_debug(io_log, "PID recibido: %d | Tiempo de IO: %d | Dispositivo: %s", pid, tiempo_io, nombre_io);
 
                 log_info(io_log, VERDE("## (PID: %d) - Inicio de IO - Tiempo: %d"), pid, tiempo_io);
+              
                 log_trace(io_log, "Simulando operación de I/O para PID %d durante %.3f milisegundos...", pid, (double)tiempo_io/1000);
-                usleep(tiempo_io * 1000); // tiempo_io en ms, usleep espera us
+                log_trace(io_log, "Simulando operación de I/O para PID %d durante %.d milisegundos...", pid, tiempo_io);
+
+                double inicio = get_time();
+
+                int resultado = usleep(tiempo_io * 1000); // usleep usa microsegundos: 1 ms = 1000 µs
+                if(resultado != 0) {
+                    log_error(io_log, "Error al simular IO para PID %d: %s", pid, strerror(errno));
+                    list_destroy_and_destroy_elements(parametros_io, free);
+                    terminar_io();
+                    exit(EXIT_FAILURE);
+                }
+              
                 log_info(io_log, VERDE("## (PID: %d) - Fin de IO"), pid);
+                log_debug(io_log, "Operación de I/O para PID %d finalizada en %.2f milisegundos", pid, get_time() - inicio);
             
                 op_code finalizado = IO_FINALIZADA_OP;
                 if (send(fd_kernel_io, &finalizado, sizeof(op_code), 0) <= 0 ||
