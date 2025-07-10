@@ -25,38 +25,12 @@ void INIT_PROC(char* nombre_archivo, int tam_memoria) {
     nuevo_proceso->path = strdup(nombre_archivo);
     nuevo_proceso->PC = 1;  // Inicializar PC a 1
     nuevo_proceso->estimacion_rafaga = ESTIMACION_INICIAL;
+    nuevo_proceso->tiempo_inicio_exec = -1;  // Inicializar tiempo de inicio exec a -1
+    nuevo_proceso->tiempo_inicio_blocked = -1;  // Inicializar tiempo de inicio blocked a -1
     
-    // Comunicarse con memoria para inicializar el proceso
-    t_paquete* paquete = crear_paquete_op(INIT_PROC_OP);
-    agregar_a_paquete(paquete, &nuevo_proceso->PID, sizeof(int));
-    agregar_a_paquete(paquete, nombre_archivo, strlen(nombre_archivo) + 1);
-    agregar_a_paquete(paquete, &tam_memoria, sizeof(int));
-    enviar_paquete(paquete, fd_memoria);
-    eliminar_paquete(paquete);
-    
-    // Esperar respuesta de memoria
-    t_respuesta respuesta;
-    if (recv(fd_memoria, &respuesta, sizeof(t_respuesta), 0) <= 0) {
-        log_error(kernel_log, "Error al recibir respuesta de memoria para INIT_PROC");
-        free(nuevo_proceso->path);
-        free(nuevo_proceso);
-        terminar_kernel();
-        exit(EXIT_FAILURE);
-    }
-    
-    // Procesar respuesta
-    if (respuesta == OK) {
-        log_trace(kernel_log, "INIT_PROC: proceso nuevo a la cola NEW");
-        cambiar_estado_pcb(nuevo_proceso, NEW);  
-        log_info(kernel_log, VERDE("## (PID: %d) Se crea el proceso - Estado: "AZUL("NEW")), nuevo_proceso->PID);
-    } else {
-        log_error(kernel_log, "Error al crear proceso en memoria");
-        int pid = nuevo_proceso->PID;
-        free(nuevo_proceso->path);
-        free(nuevo_proceso);
-        // Error al crear el proceso en memoria, no se puede continuar
-        log_error(kernel_log, "No se pudo inicializar el proceso PID %d en memoria", pid);
-    }
+    log_trace(kernel_log, "INIT_PROC: proceso nuevo a la cola NEW");
+    cambiar_estado_pcb(nuevo_proceso, NEW);  
+    log_info(kernel_log, CYAN("## (%d) Se crea el proceso - Estado: "AZUL("NEW")), nuevo_proceso->PID);
 }
 
 //////////////////////////////////////////////////////////// DUMP MEMORY ////////////////////////////////////////////////////////////
@@ -119,14 +93,14 @@ void IO(char* nombre_io, int tiempo_a_usar, t_pcb* pcb_a_io) {
     
     if (dispositivo == NULL) {
         // Si no existe ninguna IO en el sistema con el nombre solicitado, el proceso se deberá enviar a EXIT
-        log_debug(kernel_log, "IO: No existe el dispositivo '%s'", nombre_io);
+        log_trace(kernel_log, "IO: No existe el dispositivo '%s'", nombre_io);
         cambiar_estado_pcb(pcb_a_io, EXIT_ESTADO);
         return;
     }
 
     // En caso de que sí exista al menos una instancia de IO, aun si la misma se encuentre ocupada, el kernel deberá pasar el proceso al estado BLOCKED y agregarlo a la cola de bloqueados por la IO solicitada. 
-    log_info(kernel_log, VERDE("## (PID: %d) - Bloqueado por IO: %s"), pcb_a_io->PID, nombre_io);
-    log_debug(kernel_log, "## (PID: %d) - Bloqueado por IO: %s (tiempo: %d ms)", pcb_a_io->PID, nombre_io, tiempo_a_usar);  
+    log_info(kernel_log, PURPURA("## (%d) - Bloqueado por IO: %s"), pcb_a_io->PID, nombre_io);
+    log_trace(kernel_log, "## (PID: %d) - Bloqueado por IO: %s (tiempo: %d ms)", pcb_a_io->PID, nombre_io, tiempo_a_usar);  
 
 
     cambiar_estado_pcb(pcb_a_io, BLOCKED);
@@ -172,7 +146,7 @@ void EXIT(t_pcb* pcb_a_finalizar) {
     }
 
     // Logs
-    log_info(kernel_log, VERDE("## (PID: %d) - Finaliza el proceso"), pcb_a_finalizar->PID);
+    log_info(kernel_log, ROJO("## (%d) - Finaliza el proceso"), pcb_a_finalizar->PID);
     loguear_metricas_estado(pcb_a_finalizar);
 
     // Eliminar de cola_exit, cola procesos, liberar pcb y cronometro
@@ -197,12 +171,14 @@ void EXIT(t_pcb* pcb_a_finalizar) {
 
     // Notificar a planificador LP
     sem_post(&sem_finalizacion_de_proceso);
+    log_debug(kernel_log, "EXIT: Semáforo de finalización de proceso aumentado");
 
    // Hay que Comentar para que Kernel no finalice en las pruebas
 
     // Verificar si no quedan procesos en el sistema
-    log_debug(kernel_log, "EXIT: verificando si quedan procesos en el sistema");
+    log_trace(kernel_log, "EXIT: verificando si quedan procesos en el sistema");
     
+    log_debug(kernel_log, "EXIT: esperando mutex_cola_new, mutex_cola_ready, mutex_cola_running, mutex_cola_blocked, mutex_cola_susp_ready, mutex_cola_susp_blocked y mutex_cola_procesos");
     pthread_mutex_lock(&mutex_cola_new);
     pthread_mutex_lock(&mutex_cola_ready);
     pthread_mutex_lock(&mutex_cola_running);
@@ -210,6 +186,7 @@ void EXIT(t_pcb* pcb_a_finalizar) {
     pthread_mutex_lock(&mutex_cola_susp_ready);
     pthread_mutex_lock(&mutex_cola_susp_blocked);
     pthread_mutex_lock(&mutex_cola_procesos);
+    log_debug(kernel_log, "EXIT: bloqueando mutex_cola_new, mutex_cola_ready, mutex_cola_running, mutex_cola_blocked, mutex_cola_susp_ready, mutex_cola_susp_blocked y mutex_cola_procesos");
     
     int total_procesos = list_size(cola_new) + list_size(cola_ready) + 
                         list_size(cola_running) + list_size(cola_blocked) + 
