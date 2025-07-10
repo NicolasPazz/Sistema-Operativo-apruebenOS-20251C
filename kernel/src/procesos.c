@@ -52,18 +52,22 @@ void mostrar_metrica(const char* nombre, int* metrica) {
 }
 
 void mostrar_colas_estados() {
-    log_trace(kernel_log, "Colas -> [NEW: %d, READY: %d, EXEC: %d, BLOCK: %d, SUSP.BLOCK: %d, SUSP.READY: %d, EXIT: %d] | Procesos en total: %d",
+    log_trace(kernel_log, "Colas -> [NEW: %d, READY: %d, EXEC: %d, BLOCK: %d, SUSP.BLOCK: %d, SUSP.READY: %d, RECHAZADOS: %d, EXIT: %d] | Procesos en total: %d",
         list_size(cola_new),
         list_size(cola_ready),
         list_size(cola_running),
         list_size(cola_blocked),
         list_size(cola_susp_blocked),
         list_size(cola_susp_ready),
+        list_size(cola_rechazados),
         list_size(cola_exit),
         list_size(cola_procesos));
 }
 
 void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
+    log_debug(kernel_log, "cambiar_estado_pcb: [PID %d] INICIO - Estado actual: %s, Nuevo estado: %s", 
+              PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
+    
     if (PCB == NULL) {
         log_error(kernel_log, "cambiar_estado_pcb: PCB es NULL");
         terminar_kernel();
@@ -79,12 +83,16 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
         exit(EXIT_FAILURE);
     }
 
+    log_debug(kernel_log, "cambiar_estado_pcb: [PID %d] Transición válida confirmada", PCB->PID);
+    
     t_list* cola_destino = obtener_cola_por_estado(nuevo_estado_enum);
     if (!cola_destino) {
         log_error(kernel_log, "cambiar_estado_pcb: Error al obtener las colas correspondientes");
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
+
+    log_debug(kernel_log, "cambiar_estado_pcb: [PID %d] Cola destino obtenida correctamente", PCB->PID);
 
     if (PCB->Estado != INIT) {
         t_list* cola_origen = obtener_cola_por_estado(PCB->Estado);
@@ -103,6 +111,22 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
         bloquear_cola_por_estado(PCB->Estado);
         list_remove_element(cola_origen, PCB);
         liberar_cola_por_estado(PCB->Estado);
+        
+        // Asegurar que el proceso esté en cola_procesos
+        bool ya_en_cola_procesos = false;
+        pthread_mutex_lock(&mutex_cola_procesos);
+        for (int i = 0; i < list_size(cola_procesos); i++) {
+            t_pcb* pcb_existente = list_get(cola_procesos, i);
+            if (pcb_existente->PID == PCB->PID) {
+                ya_en_cola_procesos = true;
+                break;
+            }
+        }
+        if (!ya_en_cola_procesos) {
+            list_add(cola_procesos, PCB);
+            log_trace(kernel_log, "cambiar_estado_pcb: PID %d agregado a cola_procesos", PCB->PID);
+        }
+        pthread_mutex_unlock(&mutex_cola_procesos);
 
         // Actualizar Metricas de Tiempo antes de cambiar de Estado
         char* pid_key = string_itoa(PCB->PID);
@@ -152,41 +176,80 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
         // Cambiar Estado y actualizar Metricas de Estados
         PCB->Estado = nuevo_estado_enum;
         PCB->ME[nuevo_estado_enum] += 1;  // Se suma 1 en las Metricas de estado del nuevo estado
-        bloquear_cola_por_estado(PCB->Estado);
+        
+        // Agregar a cola_procesos
+        pthread_mutex_lock(&mutex_cola_procesos);
         list_add(cola_procesos, PCB);
+        log_trace(kernel_log, "cambiar_estado_pcb: PID %d agregado a cola_procesos (INIT)", PCB->PID);
+        pthread_mutex_unlock(&mutex_cola_procesos);
+        
+        bloquear_cola_por_estado(PCB->Estado);
+        list_add(cola_destino, PCB);
         liberar_cola_por_estado(PCB->Estado);
     }
 
-    Estados estado_viejo = PCB->Estado;
     bloquear_cola_por_estado(nuevo_estado_enum);
     list_add(cola_destino, PCB);
     liberar_cola_por_estado(nuevo_estado_enum);
 
     switch(nuevo_estado_enum) {
-        case NEW: sem_post(&sem_proceso_a_new); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a NEW aumentado"); break;
-        case READY: sem_post(&sem_proceso_a_ready); solicitar_replanificacion_srt(); log_trace(kernel_log, "cambiar_estado_pcb: replanificacion solicitada"); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a READY aumentado"); break;
-        case EXEC: sem_post(&sem_proceso_a_running); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a EXEC aumentado"); break;
-        case BLOCKED: sem_post(&sem_proceso_a_blocked); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a BLOCKED aumentado"); break;
-        case SUSP_READY:    sem_post(&sem_proceso_a_susp_ready);
-                            log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a SUSP READY aumentado");
-                            sem_wait(&sem_susp_ready_vacia); // Restar 1 al semaforo
-                            log_debug(kernel_log, "cambiar_estado_pcb: Semaforo SUSP READY VACIA disminuido");
+        case NEW: 
+            log_debug(kernel_log, "cambiar_estado_pcb: [PID %d] Antes de sem_post(&sem_proceso_a_new)", PCB->PID);
+            sem_post(&sem_proceso_a_new); 
+            log_debug(kernel_log, "cambiar_estado_pcb: [PID %d] Semaforo a NEW aumentado", PCB->PID); 
+            break;
+        case READY: 
+            log_debug(kernel_log, "cambiar_estado_pcb: [PID %d] Antes de sem_post(&sem_proceso_a_ready)", PCB->PID);
+            sem_post(&sem_proceso_a_ready); 
+            solicitar_replanificacion_srt(); 
+            log_trace(kernel_log, "cambiar_estado_pcb: replanificacion solicitada"); 
+            log_debug(kernel_log, "cambiar_estado_pcb: [PID %d] Semaforo a READY aumentado", PCB->PID); 
+            break;
+        case EXEC: 
+            log_debug(kernel_log, "cambiar_estado_pcb: [PID %d] Antes de sem_post(&sem_proceso_a_running)", PCB->PID);
+            sem_post(&sem_proceso_a_running); 
+            log_debug(kernel_log, "cambiar_estado_pcb: [PID %d] Semaforo a EXEC aumentado", PCB->PID); 
+            break;
+        case BLOCKED: 
+            log_debug(kernel_log, "cambiar_estado_pcb: [PID %d] Antes de sem_post(&sem_proceso_a_blocked)", PCB->PID);
+            sem_post(&sem_proceso_a_blocked); 
+            log_debug(kernel_log, "cambiar_estado_pcb: [PID %d] Semaforo a BLOCKED aumentado", PCB->PID); 
+            break;
+        case SUSP_READY:    log_debug(kernel_log, "cambiar_estado_pcb: [PID %d] INICIO caso SUSP_READY", PCB->PID);
+                            log_debug(kernel_log, "cambiar_estado_pcb: [PID %d] Antes de sem_post(&sem_proceso_a_susp_ready)", PCB->PID);
+                            sem_post(&sem_proceso_a_susp_ready);
+                            log_debug(kernel_log, "cambiar_estado_pcb: [PID %d] Semaforo a SUSP READY aumentado", PCB->PID);
+                            log_debug(kernel_log, "cambiar_estado_pcb: [PID %d] FIN caso SUSP_READY", PCB->PID);
                             break;
-        case SUSP_BLOCKED: sem_post(&sem_proceso_a_susp_blocked); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a SUSP BLOCKED aumentado"); break;
-        case EXIT_ESTADO: loguear_metricas_estado(PCB); sem_post(&sem_proceso_a_exit); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a EXIT aumentado"); break;
-        default: log_error(kernel_log, "nuevo_estado_enum: Error al pasar PCB de %s a %s", estado_to_string(estado_viejo), estado_to_string(nuevo_estado_enum));
+        case SUSP_BLOCKED: 
+            log_debug(kernel_log, "cambiar_estado_pcb: [PID %d] Antes de sem_post(&sem_proceso_a_susp_blocked)", PCB->PID);
+            sem_post(&sem_proceso_a_susp_blocked); 
+            log_debug(kernel_log, "cambiar_estado_pcb: [PID %d] Semaforo a SUSP BLOCKED aumentado", PCB->PID); 
+            break;
+        case EXIT_ESTADO: 
+            log_debug(kernel_log, "cambiar_estado_pcb: [PID %d] Antes de loguear_metricas_estado", PCB->PID);
+            loguear_metricas_estado(PCB); 
+            log_debug(kernel_log, "cambiar_estado_pcb: [PID %d] Antes de sem_post(&sem_proceso_a_exit)", PCB->PID);
+            sem_post(&sem_proceso_a_exit); 
+            log_debug(kernel_log, "cambiar_estado_pcb: [PID %d] Semaforo a EXIT aumentado", PCB->PID); 
+            break;
+        default: log_error(kernel_log, "nuevo_estado_enum: Error al pasar PCB a %s", estado_to_string(nuevo_estado_enum));
                  terminar_kernel();
                  exit(EXIT_FAILURE);
     }
 
     // Lógica para el timer de suspensión del planificador mediano plazo
     if (nuevo_estado_enum == BLOCKED) {
+        log_debug(kernel_log, "cambiar_estado_pcb: [PID %d] Iniciando planificador mediano plazo", PCB->PID);
         planificador_mediano_plazo(PCB);
     } else if (PCB->Estado == BLOCKED && nuevo_estado_enum != SUSP_BLOCKED) {
+        log_debug(kernel_log, "cambiar_estado_pcb: [PID %d] Cancelando timer de suspensión", PCB->PID);
         PCB->cancelar_timer_suspension = true;
     }
 
+    log_debug(kernel_log, "cambiar_estado_pcb: [PID %d] Antes de mostrar_colas_estados()", PCB->PID);
     mostrar_colas_estados();
+    log_debug(kernel_log, "cambiar_estado_pcb: [PID %d] FIN - Función completada exitosamente", PCB->PID);
 }
 
 bool transicion_valida(Estados actual, Estados destino) {

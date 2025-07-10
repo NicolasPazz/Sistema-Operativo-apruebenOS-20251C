@@ -43,6 +43,7 @@ t_list* cola_susp_ready;
 t_list* cola_susp_blocked;
 t_list* cola_exit;
 t_list* cola_procesos; // Cola con TODOS los procesos sin importar el estado (Procesos totales del sistema)
+t_list* cola_rechazados; // Cola de procesos rechazados por falta de memoria
 t_list* pcbs_bloqueados_por_dump_memory;
 t_list* pcbs_esperando_io;
 t_queue* cola_interrupciones;
@@ -68,6 +69,7 @@ pthread_mutex_t mutex_cola_running;
 pthread_mutex_t mutex_cola_blocked;
 pthread_mutex_t mutex_cola_exit;
 pthread_mutex_t mutex_cola_procesos;
+pthread_mutex_t mutex_cola_rechazados;
 pthread_mutex_t mutex_pcbs_esperando_io;
 pthread_mutex_t mutex_cola_interrupciones;
 sem_t sem_proceso_a_new;
@@ -77,6 +79,7 @@ sem_t sem_proceso_a_ready;
 sem_t sem_proceso_a_running;
 sem_t sem_proceso_a_blocked;
 sem_t sem_proceso_a_exit;
+sem_t sem_proceso_a_rechazados;
 sem_t sem_susp_ready_vacia;
 sem_t sem_finalizacion_de_proceso;
 sem_t sem_cpu_disponible;
@@ -137,6 +140,7 @@ void iniciar_estados_kernel() {
     cola_susp_blocked = list_create();
     cola_exit = list_create();
     cola_procesos = list_create();
+    cola_rechazados = list_create();
     pcbs_bloqueados_por_dump_memory = list_create();
     pcbs_esperando_io = list_create();
 }
@@ -154,6 +158,7 @@ void iniciar_sincronizacion_kernel() {
     pthread_mutex_init(&mutex_cola_blocked, NULL);
     pthread_mutex_init(&mutex_cola_exit, NULL);
     pthread_mutex_init(&mutex_cola_procesos, NULL);
+    pthread_mutex_init(&mutex_cola_rechazados, NULL);
     pthread_mutex_init(&mutex_pcbs_esperando_io, NULL);
     pthread_mutex_init(&mutex_cola_interrupciones, NULL);
 
@@ -164,6 +169,7 @@ void iniciar_sincronizacion_kernel() {
     sem_init(&sem_proceso_a_running, 0, 0);
     sem_init(&sem_proceso_a_blocked, 0, 0);
     sem_init(&sem_proceso_a_exit, 0, 0);
+    sem_init(&sem_proceso_a_rechazados, 0, 0);
     sem_init(&sem_susp_ready_vacia, 0, 1);
     sem_init(&sem_finalizacion_de_proceso, 0, 0);
     sem_init(&sem_cpu_disponible, 0, 0);
@@ -199,6 +205,7 @@ void terminar_kernel() {
     list_destroy(cola_susp_blocked);
     list_destroy(cola_exit);
     list_destroy(cola_procesos);
+    list_destroy(cola_rechazados);
     list_destroy(pcbs_bloqueados_por_dump_memory);
     list_destroy(pcbs_esperando_io);
 
@@ -214,6 +221,7 @@ void terminar_kernel() {
     pthread_mutex_destroy(&mutex_cola_blocked);
     pthread_mutex_destroy(&mutex_cola_exit);
     pthread_mutex_destroy(&mutex_cola_procesos);
+    pthread_mutex_destroy(&mutex_cola_rechazados);
     pthread_mutex_destroy(&mutex_pcbs_esperando_io);
     pthread_mutex_destroy(&mutex_cola_interrupciones);
 
@@ -224,6 +232,7 @@ void terminar_kernel() {
     sem_destroy(&sem_proceso_a_running);
     sem_destroy(&sem_proceso_a_blocked);
     sem_destroy(&sem_proceso_a_exit);
+    sem_destroy(&sem_proceso_a_rechazados);
     sem_destroy(&sem_susp_ready_vacia);
     sem_destroy(&sem_finalizacion_de_proceso);
     sem_destroy(&sem_cpu_disponible);
@@ -439,17 +448,27 @@ void* atender_cpu_dispatch(void* arg) {
                 
                 log_trace(kernel_log, "EXIT_OP asociado a PID=%d", pid);
 
-                // Buscar y remover PCB de RUNNING usando función centralizada
+                // Buscar el PCB en EXEC sin removerlo
                 log_debug(kernel_log, "atender_cpu_dispatch: esperando mutex_cola_running para buscar PCB con PID=%d", pid_exit);
+
                 pthread_mutex_lock(&mutex_cola_running);
                 log_debug(kernel_log, "atender_cpu_dispatch: bloqueando mutex_cola_running para buscar PCB con PID=%d", pid_exit);
-                t_pcb* pcb_a_finalizar = buscar_y_remover_pcb_por_pid(cola_running, pid_exit);
+                t_pcb* pcb_a_finalizar = NULL;
+                for (int i = 0; i < list_size(cola_running); i++) {
+                    t_pcb* pcb = list_get(cola_running, i);
+                    if (pcb && pcb->PID == pid_exit) {
+                        pcb_a_finalizar = pcb;
+                        break;
+                    }
+                }
                 pthread_mutex_unlock(&mutex_cola_running);
 
                 // Confirmar que se encontró el PCB
                 if (pcb_a_finalizar) {
                     // Cambiar estado y finalizar
                     cambiar_estado_pcb(pcb_a_finalizar, EXIT_ESTADO);
+                    // Llamar a la syscall EXIT para liberar recursos y comunicarse con Memoria
+                    //EXIT(pcb_a_finalizar);
                 } else {
                     log_error(kernel_log, "EXIT: No se encontró PCB para PID=%d en RUNNING", pid_exit);
                     terminar_kernel();

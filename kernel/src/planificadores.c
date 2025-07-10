@@ -551,6 +551,7 @@ void iniciar_planificadores(void) {
 }
 
 void* planificador_largo_plazo(void* arg) {
+    log_trace(kernel_log, "[LP] Planificador de largo plazo iniciado");
     while (1) {
         pthread_mutex_lock(&mutex_planificador_lp);
         while (estado_planificador_lp == STOP) {
@@ -560,7 +561,7 @@ void* planificador_largo_plazo(void* arg) {
         pthread_mutex_unlock(&mutex_planificador_lp);
 
         while (1) {
-            // Esperar a que haya procesos en SUSP_READY o NEW
+            // Esperar a que haya procesos en SUSP_READY, NEW o RECHAZADOS
             pthread_mutex_lock(&mutex_cola_susp_ready);
             int susp_ready_count = list_size(cola_susp_ready);
             pthread_mutex_unlock(&mutex_cola_susp_ready);
@@ -569,20 +570,33 @@ void* planificador_largo_plazo(void* arg) {
             int new_count = list_size(cola_new);
             pthread_mutex_unlock(&mutex_cola_new);
 
-            if (susp_ready_count > 0 || new_count > 0) {
+            pthread_mutex_lock(&mutex_cola_rechazados);
+            int rechazados_count = list_size(cola_rechazados);
+            pthread_mutex_unlock(&mutex_cola_rechazados);
+
+            if (susp_ready_count > 0 || new_count > 0 || rechazados_count > 0) {
                 break;
             }
-            // Esperar a que llegue un proceso a SUSP_READY o NEW
-            int sem_val;
-            sem_getvalue(&sem_proceso_a_susp_ready, &sem_val);
-            if (sem_val > 0) {
+            
+            // Esperar a que llegue un proceso a SUSP_READY, NEW o RECHAZADOS
+            int sem_val_susp_ready, sem_val_new, sem_val_rechazados;
+            sem_getvalue(&sem_proceso_a_susp_ready, &sem_val_susp_ready);
+            sem_getvalue(&sem_proceso_a_new, &sem_val_new);
+            sem_getvalue(&sem_proceso_a_rechazados, &sem_val_rechazados);
+            
+            if (sem_val_susp_ready > 0) {
                 sem_wait(&sem_proceso_a_susp_ready);
-            } else {
+            } else if (sem_val_new > 0) {
                 sem_wait(&sem_proceso_a_new);
+            } else if (sem_val_rechazados > 0) {
+                sem_wait(&sem_proceso_a_rechazados);
+            } else {
+                // Si no hay semáforos disponibles, esperar un poco y verificar de nuevo
+                usleep(100000); // 100ms
             }
         }
 
-        // Prioridad: SUSP_READY > NEW
+        // Prioridad: SUSP_READY > NEW > RECHAZADOS
         pthread_mutex_lock(&mutex_cola_susp_ready);
         if (!list_is_empty(cola_susp_ready)) {
             t_pcb* pcb = NULL;
@@ -593,43 +607,16 @@ void* planificador_largo_plazo(void* arg) {
             }
             pthread_mutex_unlock(&mutex_cola_susp_ready);
             if (pcb) {
-                // Enviar DESUSPENDER_PROCESO_OP a Memoria antes de pasar a READY
-                int op_code = DESUSPENDER_PROCESO_OP;
-                log_trace(kernel_log, "Planificador LP: Intentando reanudar PID %d desde SUSP_READY", pcb->PID);
-                // LOG DE ESTADO DE MARCOS
-                int total_frames = -1, marcos_libres = -1, frames_ocupados = -1;
-                // Pedir a memoria el estado de marcos (por socket no está, así que logueamos el tamaño y lo que sabemos)
-                log_info(kernel_log, "Planificador LP: (INFO) Tamaño proceso PID %d: %d bytes", pcb->PID, pcb->tamanio_memoria);
-                log_info(kernel_log, "Planificador LP: (INFO) Tamaño memoria: 256 bytes, Tamaño página: 16 bytes, Total marcos: 16");
-                // No podemos consultar a memoria, pero podemos estimar:
-                // Cada proceso ocupa ceil(tamanio_memoria/16) marcos
-                // Loguear cuántos procesos hay en READY, EXEC, SUSP_READY, etc.
-                pthread_mutex_lock(&mutex_cola_ready);
-                int ready_count = list_size(cola_ready);
-                pthread_mutex_unlock(&mutex_cola_ready);
-                pthread_mutex_lock(&mutex_cola_running);
-                int running_count = list_size(cola_running);
-                pthread_mutex_unlock(&mutex_cola_running);
-                pthread_mutex_lock(&mutex_cola_susp_ready);
-                int susp_ready_count2 = list_size(cola_susp_ready);
-                pthread_mutex_unlock(&mutex_cola_susp_ready);
-                log_info(kernel_log, "Planificador LP: (INFO) Procesos en READY: %d, EXEC: %d, SUSP_READY: %d", ready_count, running_count, susp_ready_count2);
-                // Enviar op a memoria
-                if (send(fd_memoria, &op_code, sizeof(int), 0) <= 0 ||
-                    send(fd_memoria, &pcb->PID, sizeof(int), 0) <= 0) {
-                    log_error(kernel_log, "Error al enviar DESUSPENDER_PROCESO_OP a Memoria para PID %d", pcb->PID);
-                    continue;
-                }
-                t_respuesta respuesta;
-                if (recv(fd_memoria, &respuesta, sizeof(t_respuesta), 0) <= 0) {
-                    log_error(kernel_log, "Error al recibir respuesta de memoria para DESUSPENDER_PROCESO_OP (PID %d)", pcb->PID);
-                    continue;
-                } else if (respuesta == OK) {
+                t_respuesta respuesta = desuspender_proceso_en_memoria(pcb->PID);
+                if (respuesta == OK) {
                     log_info(kernel_log, "Planificador LP: Proceso PID %d reanudado correctamente, pasa a READY", pcb->PID);
+                    // Remover de la cola de SUSP_READY
+                    pthread_mutex_lock(&mutex_cola_susp_ready);
+                    list_remove_element(cola_susp_ready, pcb);
+                    pthread_mutex_unlock(&mutex_cola_susp_ready);
                     cambiar_estado_pcb(pcb, READY);
                 } else if (respuesta == MEMORIA_ERROR_NO_ESPACIO) {
                     log_warning(kernel_log, "Planificador LP: No hay espacio para reanudar PID %d, se reintentará más tarde", pcb->PID);
-                    log_info(kernel_log, "Planificador LP: (INFO) Probablemente no hay marcos libres suficientes. Esperando liberación de memoria...");
                     usleep(100000);
                     continue;
                 } else {
@@ -641,22 +628,128 @@ void* planificador_largo_plazo(void* arg) {
         }
         pthread_mutex_unlock(&mutex_cola_susp_ready);
 
-        // Si no hay en SUSP_READY, pasar de NEW
+        // Si no hay en SUSP_READY, intentar inicializar procesos de NEW
         pthread_mutex_lock(&mutex_cola_new);
         if (!list_is_empty(cola_new)) {
             t_pcb* pcb = NULL;
             if (strcmp(ALGORITMO_INGRESO_A_READY, "FIFO") == 0) {
                 pcb = (t_pcb*)list_get(cola_new, 0);
+                log_trace(kernel_log, "Planificador LP: Usando FIFO para NEW - Seleccionado PID %d (tamaño: %d)", pcb->PID, pcb->tamanio_memoria);
             } else if (strcmp(ALGORITMO_INGRESO_A_READY, "PMCP") == 0) {
                 pcb = elegir_por_pmcp();
+                log_trace(kernel_log, "Planificador LP: Usando PMCP para NEW - Seleccionado PID %d (tamaño: %d)", pcb->PID, pcb->tamanio_memoria);
             }
             pthread_mutex_unlock(&mutex_cola_new);
             if (pcb) {
-                cambiar_estado_pcb(pcb, READY);
+                // Crear nueva conexión efímera a Memoria para inicializar el proceso
+                int fd_memoria_local = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, kernel_log);
+                if (fd_memoria_local == -1) {
+                    log_error(kernel_log, "[LP] No se pudo crear conexión efímera a Memoria para inicializar PID %d", pcb->PID);
+                    usleep(100000);
+                    continue;
+                }
+                int handshake = HANDSHAKE_MEMORIA_KERNEL;
+                send(fd_memoria_local, &handshake, sizeof(int), 0);
+
+                // Comunicarse con memoria para inicializar el proceso
+                t_paquete* paquete = crear_paquete_op(INIT_PROC_OP);
+                agregar_a_paquete(paquete, &pcb->PID, sizeof(int));
+                agregar_a_paquete(paquete, pcb->path, strlen(pcb->path) + 1);
+                agregar_a_paquete(paquete, &pcb->tamanio_memoria, sizeof(int));
+                enviar_paquete(paquete, fd_memoria_local);
+                eliminar_paquete(paquete);
+                
+                // Esperar respuesta de memoria
+                t_respuesta respuesta;
+                if (recv(fd_memoria_local, &respuesta, sizeof(t_respuesta), 0) <= 0) {
+                    log_error(kernel_log, "[LP] Error al recibir respuesta de memoria para inicializar PID %d", pcb->PID);
+                    close(fd_memoria_local);
+                    usleep(100000);
+                    continue;
+                }
+                close(fd_memoria_local);
+                
+                if (respuesta == OK) {
+                    log_info(kernel_log, "Planificador LP: Proceso NEW PID %d inicializado correctamente, pasa a READY", pcb->PID);
+                    // Remover de la cola de NEW
+                    pthread_mutex_lock(&mutex_cola_new);
+                    list_remove_element(cola_new, pcb);
+                    pthread_mutex_unlock(&mutex_cola_new);
+                    cambiar_estado_pcb(pcb, READY);
+                } else if (respuesta == MEMORIA_ERROR_NO_ESPACIO) {
+                    log_warning(kernel_log, "Planificador LP: No hay espacio para inicializar PID %d de NEW, se reintentará más tarde", pcb->PID);
+                    usleep(100000);
+                    continue;
+                } else {
+                    log_error(kernel_log, "Planificador LP: Error al inicializar proceso NEW en memoria (PID %d), respuesta=%d", pcb->PID, respuesta);
+                    continue;
+                }
             }
             continue;
         } else {
             pthread_mutex_unlock(&mutex_cola_new);
+        }
+
+        // Si no hay en SUSP_READY ni NEW, intentar inicializar RECHAZADOS
+        pthread_mutex_lock(&mutex_cola_rechazados);
+        if (!list_is_empty(cola_rechazados)) {
+            t_pcb* pcb = NULL;
+            if (strcmp(ALGORITMO_INGRESO_A_READY, "FIFO") == 0) {
+                pcb = (t_pcb*)list_get(cola_rechazados, 0);
+                log_trace(kernel_log, "Planificador LP: Usando FIFO para RECHAZADOS - Seleccionado PID %d (tamaño: %d)", pcb->PID, pcb->tamanio_memoria);
+            } else if (strcmp(ALGORITMO_INGRESO_A_READY, "PMCP") == 0) {
+                pcb = elegir_por_pmcp_en_cola(cola_rechazados);
+                log_trace(kernel_log, "Planificador LP: Usando PMCP para RECHAZADOS - Seleccionado PID %d (tamaño: %d)", pcb->PID, pcb->tamanio_memoria);
+            }
+            pthread_mutex_unlock(&mutex_cola_rechazados);
+            if (pcb) {
+                // Crear nueva conexión efímera a Memoria (similar a INIT_PROC)
+                int fd_memoria_local = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, kernel_log);
+                if (fd_memoria_local == -1) {
+                    log_error(kernel_log, "[LP] No se pudo crear conexión efímera a Memoria para inicializar PID %d", pcb->PID);
+                    usleep(100000);
+                    continue;
+                }
+                int handshake = HANDSHAKE_MEMORIA_KERNEL;
+                send(fd_memoria_local, &handshake, sizeof(int), 0);
+
+                // Comunicarse con memoria para inicializar el proceso
+                t_paquete* paquete = crear_paquete_op(INIT_PROC_OP);
+                agregar_a_paquete(paquete, &pcb->PID, sizeof(int));
+                agregar_a_paquete(paquete, pcb->path, strlen(pcb->path) + 1);
+                agregar_a_paquete(paquete, &pcb->tamanio_memoria, sizeof(int));
+                enviar_paquete(paquete, fd_memoria_local);
+                eliminar_paquete(paquete);
+                
+                // Esperar respuesta de memoria
+                t_respuesta respuesta;
+                if (recv(fd_memoria_local, &respuesta, sizeof(t_respuesta), 0) <= 0) {
+                    log_error(kernel_log, "[LP] Error al recibir respuesta de memoria para inicializar PID %d", pcb->PID);
+                    close(fd_memoria_local);
+                    usleep(100000);
+                    continue;
+                }
+                close(fd_memoria_local);
+                
+                if (respuesta == OK) {
+                    log_info(kernel_log, "Planificador LP: Proceso rechazado PID %d inicializado correctamente, pasa a READY", pcb->PID);
+                    // Remover de la cola de rechazados
+                    pthread_mutex_lock(&mutex_cola_rechazados);
+                    list_remove_element(cola_rechazados, pcb);
+                    pthread_mutex_unlock(&mutex_cola_rechazados);
+                    cambiar_estado_pcb(pcb, READY);
+                } else if (respuesta == MEMORIA_ERROR_NO_ESPACIO) {
+                    //log_trace(kernel_log, "Planificador LP: No hay espacio para inicializar PID %d rechazado, se reintentará más tarde", pcb->PID);
+                    usleep(100000);
+                    continue;
+                } else {
+                    log_error(kernel_log, "Planificador LP: Error al inicializar proceso rechazado en memoria (PID %d), respuesta=%d", pcb->PID, respuesta);
+                    continue;
+                }
+            }
+            continue;
+        } else {
+            pthread_mutex_unlock(&mutex_cola_rechazados);
         }
     }
     return NULL;
@@ -727,6 +820,27 @@ void* planificador_corto_plazo(void* arg) {
             // Esperar a que llegue un proceso a READY
             log_debug(kernel_log, "planificador_corto_plazo: Semaforo a READY disminuido");
             sem_wait(&sem_proceso_a_ready);   
+            
+            // Verificar CPUs conectadas antes de esperar CPU disponible
+            pthread_mutex_lock(&mutex_lista_cpus);
+            int total_cpus = list_size(lista_cpus);
+            int cpus_dispatch = 0;
+            for (int i = 0; i < total_cpus; i++) {
+                cpu* c = list_get(lista_cpus, i);
+                if (c->tipo_conexion == CPU_DISPATCH) {
+                    cpus_dispatch++;
+                }
+            }
+            pthread_mutex_unlock(&mutex_lista_cpus);
+            
+            log_info(kernel_log, "Planificador CP: CPUs conectadas - Total: %d, Dispatch: %d", total_cpus, cpus_dispatch);
+            
+            if (cpus_dispatch == 0) {
+                log_error(kernel_log, "Planificador CP: No hay CPUs DISPATCH conectadas. El sistema no puede ejecutar procesos.");
+                terminar_kernel();
+                exit(EXIT_FAILURE);
+            }
+            
             // Esperar cpu disponible
             log_trace(kernel_log, "Planificador CP: ✓ Proceso llegó a READY - Verificando disponibilidad de cpu");
             log_debug(kernel_log, "planificador_corto_plazo: Semaforo CPU DISPONIBLE disminuido");
@@ -803,23 +917,86 @@ void* timer_suspension_blocked(void* arg) {
 
     if (sigue_bloqueado) {
         cambiar_estado_pcb(pcb, SUSP_BLOCKED);
-
-        // Avisar a memoria para suspender el proceso
-        int op_code = SUSPENDER_PROCESO_OP;
-        send(fd_memoria, &op_code, sizeof(int), 0);
-        send(fd_memoria, &pcb->PID, sizeof(int), 0);
-
-        // Esperar respuesta de memoria
-        t_respuesta respuesta;
-        if (recv(fd_memoria, &respuesta, sizeof(t_respuesta), 0) <= 0) {
-            log_error(kernel_log, "Error al recibir respuesta de memoria para SUSPENDER_PROCESO_OP (PID %d)", pcb->PID);
-        } else if (respuesta == OK) {
+        // Modularizado: usar función efímera
+        t_respuesta respuesta = suspender_proceso_en_memoria(pcb->PID);
+        if (respuesta == OK) {
             log_trace(kernel_log, "## (PID: %d) - Proceso suspendido por mediano plazo (Memoria OK)", pcb->PID);
-            sem_post(&sem_proceso_a_new); // Aumenta el semaforo de NEW porque ahora hay más memoria disponible
-            sem_post(&sem_proceso_a_susp_ready); // Aumenta el semaforo de SUSP_READY porque ahora hay más memoria disponible
+            sem_post(&sem_proceso_a_new);
+            sem_post(&sem_proceso_a_susp_ready);
         } else {
             log_error(kernel_log, "## (PID: %d) - Error al suspender proceso en memoria", pcb->PID);
         }
     }
     return NULL;
+}
+
+// Función modularizada para desuspender proceso en Memoria
+t_respuesta desuspender_proceso_en_memoria(int pid) {
+    int fd_memoria_local = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, kernel_log);
+    if (fd_memoria_local == -1) {
+        log_error(kernel_log, "No se pudo crear conexión efímera a Memoria para DESUSPENDER_PROCESO_OP PID %d", pid);
+        return ERROR;
+    }
+    int handshake = HANDSHAKE_MEMORIA_KERNEL;
+    send(fd_memoria_local, &handshake, sizeof(int), 0);
+
+    // Usar paquete
+    t_paquete* paquete = crear_paquete_op(DESUSPENDER_PROCESO_OP);
+    agregar_entero_a_paquete(paquete, pid);
+    enviar_paquete(paquete, fd_memoria_local);
+    eliminar_paquete(paquete);
+
+    t_respuesta respuesta;
+    int r = recv(fd_memoria_local, &respuesta, sizeof(t_respuesta), 0);
+    close(fd_memoria_local);
+    if (r <= 0) {
+        log_error(kernel_log, "Error al recibir respuesta de memoria para DESUSPENDER_PROCESO_OP (PID %d)", pid);
+        return ERROR;
+    }
+    return respuesta;
+}
+
+// Función para encolar procesos rechazados por falta de memoria
+void encolar_proceso_rechazado(t_pcb* pcb) {
+    log_debug(kernel_log, "encolar_proceso_rechazado: esperando mutex_cola_rechazados para encolar PID %d", pcb->PID);
+    pthread_mutex_lock(&mutex_cola_rechazados);
+    log_debug(kernel_log, "encolar_proceso_rechazado: bloqueando mutex_cola_rechazados para encolar PID %d", pcb->PID);
+    
+    list_add(cola_rechazados, pcb);
+    sem_post(&sem_proceso_a_rechazados);
+    
+    pthread_mutex_unlock(&mutex_cola_rechazados);
+    
+    // También agregar a cola_procesos para que pueda ser encontrado por buscar_pcb
+    pthread_mutex_lock(&mutex_cola_procesos);
+    list_add(cola_procesos, pcb);
+    pthread_mutex_unlock(&mutex_cola_procesos);
+    
+    log_trace(kernel_log, "encolar_proceso_rechazado: PID %d encolado en cola_rechazados y cola_procesos", pcb->PID);
+}
+
+// Función modularizada para suspender proceso en Memoria usando conexión efímera
+t_respuesta suspender_proceso_en_memoria(int pid) {
+    int fd_memoria_local = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, kernel_log);
+    if (fd_memoria_local == -1) {
+        log_error(kernel_log, "No se pudo crear conexión efímera a Memoria para SUSPENDER_PROCESO_OP PID %d", pid);
+        return ERROR;
+    }
+    int handshake = HANDSHAKE_MEMORIA_KERNEL;
+    send(fd_memoria_local, &handshake, sizeof(int), 0);
+
+    // Usar paquete
+    t_paquete* paquete = crear_paquete_op(SUSPENDER_PROCESO_OP);
+    agregar_entero_a_paquete(paquete, pid);
+    enviar_paquete(paquete, fd_memoria_local);
+    eliminar_paquete(paquete);
+
+    t_respuesta respuesta;
+    int r = recv(fd_memoria_local, &respuesta, sizeof(t_respuesta), 0);
+    close(fd_memoria_local);
+    if (r <= 0) {
+        log_error(kernel_log, "Error al recibir respuesta de memoria para SUSPENDER_PROCESO_OP (PID %d)", pid);
+        return ERROR;
+    }
+    return respuesta;
 }
