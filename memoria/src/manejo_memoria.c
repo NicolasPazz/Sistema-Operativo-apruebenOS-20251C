@@ -1013,7 +1013,9 @@ bool actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido_p
     usleep(cfg->RETARDO_MEMORIA * 1000);
     
     // Escribir página completa en el espacio de usuario
-    memcpy(sistema_memoria->memoria_principal + direccion_fisica, contenido_pagina, cfg->TAM_PAGINA);
+    memset(sistema_memoria->memoria_principal + direccion_fisica, 0, cfg->TAM_PAGINA);  // Limpia
+    memcpy(sistema_memoria->memoria_principal + direccion_fisica, contenido_pagina, strlen(contenido_pagina) + 1);  // Copia real
+
     
     // MARCAR LA PÁGINA COMO MODIFICADA (DIRTY BIT)
     t_entrada_tabla* entrada = _buscar_entrada_pagina(pid, numero_pagina);

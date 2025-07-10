@@ -47,7 +47,7 @@ int buscar_pagina_en_cache(int pid, int numero_pagina) {
     }
     for (int i = 0; i < cache->cantidad_entradas; i++) {
         if (cache->entradas[i].numero_pagina == numero_pagina && cache->entradas[i].pid == pid) {
-            log_info(cpu_log, VERDE("(PID: %d) - Cache Hit - Pagina: %d"), pid, numero_pagina);
+            log_info(cpu_log, "(PID: %d) - Cache Hit - Pagina: %d", pid, numero_pagina);
             if (strcmp(cache->algoritmo_reemplazo, "CLOCK") == 0 || strcmp(cache->algoritmo_reemplazo, "CLOCK-M") == 0) {
                 cache->entradas[i].bit_referencia = 1;
             }
@@ -195,29 +195,35 @@ void liberar_cache() {
 
 void cache_modificar(int pid, int frame, char* datos) {
     pthread_mutex_lock(&mutex_cache);
+
     if (cache == NULL || !cache_habilitada(cache)) {
         pthread_mutex_unlock(&mutex_cache);
         log_trace(cpu_log, "La cache está deshabilitada o ya fue liberada.");
         return;
     }
 
-    int nro_pagina_en_cache = buscar_pagina_en_cache(pid, frame);
-    if (nro_pagina_en_cache <= -1) {
+    int pos = buscar_pagina_en_cache(pid, frame);
+    if (pos < 0) {
         log_trace(cpu_log, "No se encontró la página %d en la caché para PID %d", frame, pid);
         pthread_mutex_unlock(&mutex_cache);
         return;
     }
 
-    if (cache->entradas[nro_pagina_en_cache].contenido != NULL)
-        free(cache->entradas[nro_pagina_en_cache].contenido);
+    if (cache->entradas[pos].contenido != NULL)
+        free(cache->entradas[pos].contenido);
 
-    cache->entradas[nro_pagina_en_cache].contenido = strdup(datos);
-    cache->entradas[nro_pagina_en_cache].modificado = true;
+    int len = strlen(datos);
+    cache->entradas[pos].contenido = malloc(len);
+    memcpy(cache->entradas[pos].contenido, datos, len);
+    cache->entradas[pos].modificado = true;
+
+    log_trace(cpu_log, "Cache modificada (PID: %d, Pagina: %d, Tam: %d)", pid, frame, len);
+    
     pthread_mutex_unlock(&mutex_cache);
 }
 
 
-void cache_escribir(int pid, int frame, char* datos) {
+void cache_escribir(int pid, int frame, char* datos, bool modificado) {
     pthread_mutex_lock(&mutex_cache);
     if (cache == NULL || !cache_habilitada(cache)) {
         pthread_mutex_unlock(&mutex_cache);
@@ -227,7 +233,6 @@ void cache_escribir(int pid, int frame, char* datos) {
 
     int entrada_index = -1;
 
-    // Buscar entrada libre
     for (int i = 0; i < cache->cantidad_entradas; i++) {
         if (cache->entradas[i].numero_pagina == -1) {
             entrada_index = i;
@@ -235,7 +240,6 @@ void cache_escribir(int pid, int frame, char* datos) {
         }
     }
 
-    // Si no hay libre, seleccionar víctima
     if (entrada_index == -1) {
         entrada_index = (strcmp(cache->algoritmo_reemplazo, "CLOCK-M") == 0)
                         ? seleccionar_victima_clock_m()
@@ -244,16 +248,13 @@ void cache_escribir(int pid, int frame, char* datos) {
 
     t_entrada_cache* entrada = &cache->entradas[entrada_index];
 
-    // Si la entrada anterior estaba modificada, bajarla a memoria
     if (entrada->contenido != NULL &&
         entrada->modificado &&
         entrada->numero_pagina >= 0) {
 
-        // Enviar pid real de la entrada vieja
         int pagina_vieja = entrada->numero_pagina;
         int pid_viejo = entrada->pid;
 
-        // Pedir marco real a Memoria
         t_paquete* paquete = crear_paquete_op(ACCESO_TABLA_PAGINAS_OP);
         agregar_entero_a_paquete(paquete, pid_viejo);
         agregar_entero_a_paquete(paquete, pagina_vieja);
@@ -274,6 +275,7 @@ void cache_escribir(int pid, int frame, char* datos) {
                 log_trace(cpu_log, "Escribiendo página vieja (PID=%d, Página=%d) en marco %d",
                           pid_viejo, pagina_vieja, marco);
                 enviar_actualizar_pagina_completa(pid_viejo, direccion_fisica, entrada->contenido);
+                log_info(cpu_log, "Cache Writeback: PID=%d Página=%d bajada a memoria", pid_viejo, pagina_vieja);
             } else {
                 log_warning(cpu_log, "La página a desalojar (PID=%d, Página=%d) ya no está mapeada. No se actualiza.",
                             pid_viejo, pagina_vieja);
@@ -281,20 +283,23 @@ void cache_escribir(int pid, int frame, char* datos) {
         }
     }
 
-    // Liberar contenido anterior
     free(entrada->contenido);
 
-    // Asignar nueva entrada
     entrada->numero_pagina = frame;
-    entrada->contenido = strdup(datos);
-    entrada->modificado = false;
+
+    int size = strlen(datos) + 1;
+    entrada->contenido = malloc(size);
+    memcpy(entrada->contenido, datos, size);
+
+    entrada->modificado = modificado;
     entrada->bit_referencia = 1;
     entrada->pid = pid;
 
-    log_info(cpu_log, VERDE("(PID: %d) - Cache Add - Página: %d"), pid, frame);
+    log_info(cpu_log, "(PID: %d) - Cache Add - Página: %d", pid, frame);
 
     pthread_mutex_unlock(&mutex_cache);
 }
+
 
 
 

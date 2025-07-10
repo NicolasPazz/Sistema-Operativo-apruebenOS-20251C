@@ -33,7 +33,7 @@ void desalojar_proceso_cache();
 void liberar_cache();
 bool cache_habilitada();
 void cache_modificar(int pid, int frame, char* datos);
-void cache_escribir(int pid, int frame, char* datos);
+void cache_escribir(int pid, int frame, char* datos, bool modificado);
 char* cache_leer(int pid, int numero_pagina);
 void enviar_actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido);
 #endif
