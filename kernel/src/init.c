@@ -30,7 +30,7 @@ char* PUERTO_ESCUCHA_IO;
 char* ALGORITMO_CORTO_PLAZO;
 char* ALGORITMO_INGRESO_A_READY;
 double ALFA;
-char* TIEMPO_SUSPENSION;
+double TIEMPO_SUSPENSION;
 double ESTIMACION_INICIAL;
 char* LOG_LEVEL;
 
@@ -99,7 +99,7 @@ void iniciar_config_kernel() {
     ALGORITMO_INGRESO_A_READY = config_get_string_value(kernel_config, "ALGORITMO_INGRESO_A_READY");
     ALFA = config_get_double_value(kernel_config, "ALFA");
     ESTIMACION_INICIAL = config_get_double_value(kernel_config, "ESTIMACION_INICIAL");
-    TIEMPO_SUSPENSION = config_get_string_value(kernel_config, "TIEMPO_SUSPENSION");
+    TIEMPO_SUSPENSION = config_get_double_value(kernel_config, "TIEMPO_SUSPENSION");
     LOG_LEVEL = config_get_string_value(kernel_config, "LOG_LEVEL");
 
     if (!IP_MEMORIA || !PUERTO_MEMORIA || !PUERTO_ESCUCHA_DISPATCH || !PUERTO_ESCUCHA_INTERRUPT ||
@@ -709,7 +709,8 @@ void* atender_io(void* arg) {
                     log_error(kernel_log, "Error al recibir PID finalizado de IO '%s'", dispositivo_io->nombre);
                     continue;
                 }
-                t_pcb* pcb_fin = buscar_pcb(pid_finalizado);
+                t_pcb* pcb_fin = buscar_pcb(pid_finalizado);       
+
                 if (pcb_fin->Estado == SUSP_BLOCKED) {
                     log_info(kernel_log, AMARILLO("## (%d) finalizó IO y pasa a SUSP_READY"), pid_finalizado);
                     log_trace(kernel_log, AZUL("[PLANI MP] ## (PID: %d) finalizó IO y pasa a SUSP_READY"), pid_finalizado);

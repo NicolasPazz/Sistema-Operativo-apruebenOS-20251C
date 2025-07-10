@@ -1,5 +1,7 @@
 #include "../headers/io.h"
 #include <signal.h>
+#include <unistd.h>
+
 
 // Manejador de señales para terminación limpia
 void signal_handler(int sig) {
@@ -45,7 +47,7 @@ int main(int argc, char* argv[]) {
 
                 // ========== RECIBIR PARÁMETROS DESDE KERNEL ==========
                 t_list* parametros_io = recibir_contenido_paquete(fd_kernel_io);
-                if (!parametros_io || list_size(parametros_io) < 2) {
+                if (!parametros_io || list_size(parametros_io) < 3) {
                     log_error(io_log, "Error al recibir paquete de IO_OP");
                     if (parametros_io) list_destroy_and_destroy_elements(parametros_io, free);
                     break;
@@ -59,8 +61,14 @@ int main(int argc, char* argv[]) {
                 log_debug(io_log, "PID recibido: %d | Tiempo de IO: %d | Dispositivo: %s", pid, tiempo_io, nombre_io);
 
                 log_info(io_log, VERDE("## (PID: %d) - Inicio de IO - Tiempo: %d"), pid, tiempo_io);
-                log_trace(io_log, "Simulando operación de I/O para PID %d durante %.3f milisegundos...", pid, (double)tiempo_io/1000);
-                usleep(tiempo_io); // 1.000.000	en usleep es 1 Segundo
+                log_trace(io_log, "Simulando operación de I/O para PID %d durante %.d milisegundos...", pid, tiempo_io);
+                int resultado = usleep(tiempo_io * 1000); // usleep usa microsegundos: 1 ms = 1000 µs
+                if(resultado != 0) {
+                    log_error(io_log, "Error al simular IO para PID %d: %s", pid, strerror(errno));
+                    list_destroy_and_destroy_elements(parametros_io, free);
+                    terminar_io();
+                    exit(EXIT_FAILURE);
+                }
                 log_info(io_log, VERDE("## (PID: %d) - Fin de IO"), pid);
             
                 op_code finalizado = IO_FINALIZADA_OP;

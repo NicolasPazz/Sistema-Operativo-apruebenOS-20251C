@@ -18,6 +18,7 @@ typedef struct PCB {
     char* path;
     int tamanio_memoria;
     double tiempo_inicio_blocked;
+    bool* timer_flag;
 } t_pcb;
 
 typedef enum Estados {
@@ -82,5 +83,9 @@ typedef struct {
     int pid_a_ejecutar;
 } t_interrupcion;
 
+typedef struct {
+    t_pcb *pcb;
+    bool  *vigente; 
+} t_timer_arg;
     
 #endif /* TYPES_H */

@@ -135,9 +135,15 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
 
         if (nuevo_estado_enum == BLOCKED) {
             PCB->tiempo_inicio_blocked = get_time();
+            iniciar_timer_suspension(PCB);
         } else if (PCB->Estado == BLOCKED) {
             // reiniciar el tiempo de inicio
             PCB->tiempo_inicio_blocked = -1;
+            //invalidar el timer vigente
+            if (PCB->timer_flag) {
+                *(PCB->timer_flag) = false;
+                PCB->timer_flag = NULL;
+            }
         }
 
         if (PCB->Estado == SUSP_READY) {
