@@ -20,6 +20,7 @@ void iniciar_config_io(void);
 void iniciar_logger_io(void);
 void iniciar_conexiones_io(char* nombre_io);
 void terminar_io(void);
+double get_time();
 // void atender_kernel(void);
 
 #endif /* IO_H */

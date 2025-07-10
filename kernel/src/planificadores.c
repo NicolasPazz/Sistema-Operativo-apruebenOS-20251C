@@ -385,17 +385,32 @@ void* timer_suspension(void* v_arg) {
     t_timer_arg *arg = v_arg;
     t_pcb *pcb  = arg->pcb;
     bool  *flag = arg->vigente;
+    int pid = arg->pid; 
 
     usleep(TIEMPO_SUSPENSION * 1000); // usleep usa microsegundos: 1 ms = 1000 µs
 
     if(!pcb) {
-        log_trace(kernel_log, AZUL("[PLANI MP] Timer de suspensión ignorado por PCB null"));
+        log_trace(kernel_log, AZUL("[PLANI MP] (PID: %d Timer de suspensión ignorado por PCB null)"), pid);
         if(flag) free(flag);
         free(arg);
         return NULL;
-    } else if (pcb->tiempo_inicio_blocked < 0 || pcb->Estado != BLOCKED || pcb->timer_flag != flag || !*flag) {
-        log_trace(kernel_log, AZUL("[PLANI MP] Timer de suspensión ignorado para PID=%d (Estado=%s, tiempo_inicio_blocked=%.2f)"), 
-                  pcb->PID, estado_to_string(pcb->Estado), pcb->tiempo_inicio_blocked);
+    } else if (pcb->tiempo_inicio_blocked < 0) {
+        log_trace(kernel_log, AZUL("[PLANI MP] (PID: %d Timer de suspensión ignorado por tiempo_inicio_blocked no inicializado)"), pid);
+        if(flag) free(flag);
+        free(arg);
+        return NULL;
+    } else if (pcb->Estado != BLOCKED) {
+        log_trace(kernel_log, AZUL("[PLANI MP] (PID: %d Timer de suspensión ignorado por estado no BLOCKED)"), pid);
+        if(flag) free(flag);
+        free(arg);
+        return NULL;
+    } else if (pcb->timer_flag != flag) {
+        log_trace(kernel_log, AZUL("[PLANI MP] (PID: %d Timer de suspensión ignorado por flag distinto"), pid);
+        if(flag) free(flag);
+        free(arg);
+        return NULL;
+    } else if (!*flag) {
+        log_trace(kernel_log, AZUL("[PLANI MP] (PID: %d Timer de suspensión ignorado por flag no vigente"), pid);
         if(flag) free(flag);
         free(arg);
         return NULL;
@@ -443,6 +458,7 @@ void iniciar_timer_suspension(t_pcb* pcb) {
     t_timer_arg *arg = malloc(sizeof(t_timer_arg));
     arg->pcb    = pcb;
     arg->vigente = flag;
+    arg->pid = pcb->PID;
 
     if (pthread_create(&hilo_timer, NULL, timer_suspension, arg) == 0) {
         log_trace(kernel_log, AZUL("[PLANI MP] Hilo de suspensión creado para PID %d"), pcb->PID);

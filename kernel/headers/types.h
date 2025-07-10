@@ -86,6 +86,7 @@ typedef struct {
 typedef struct {
     t_pcb *pcb;
     bool  *vigente; 
+    int pid;
 } t_timer_arg;
     
 #endif /* TYPES_H */

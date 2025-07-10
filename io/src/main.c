@@ -1,7 +1,5 @@
 #include "../headers/io.h"
 #include <signal.h>
-#include <unistd.h>
-
 
 // Manejador de señales para terminación limpia
 void signal_handler(int sig) {
@@ -62,6 +60,9 @@ int main(int argc, char* argv[]) {
 
                 log_info(io_log, VERDE("## (PID: %d) - Inicio de IO - Tiempo: %d"), pid, tiempo_io);
                 log_trace(io_log, "Simulando operación de I/O para PID %d durante %.d milisegundos...", pid, tiempo_io);
+
+                double inicio = get_time();
+
                 int resultado = usleep(tiempo_io * 1000); // usleep usa microsegundos: 1 ms = 1000 µs
                 if(resultado != 0) {
                     log_error(io_log, "Error al simular IO para PID %d: %s", pid, strerror(errno));
@@ -70,6 +71,7 @@ int main(int argc, char* argv[]) {
                     exit(EXIT_FAILURE);
                 }
                 log_info(io_log, VERDE("## (PID: %d) - Fin de IO"), pid);
+                log_debug(io_log, "Operación de I/O para PID %d finalizada en %.2f milisegundos", pid, get_time() - inicio);
             
                 op_code finalizado = IO_FINALIZADA_OP;
                 if (send(fd_kernel_io, &finalizado, sizeof(op_code), 0) <= 0 ||
