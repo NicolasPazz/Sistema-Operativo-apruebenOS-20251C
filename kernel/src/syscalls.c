@@ -244,7 +244,6 @@ void EXIT(t_pcb* pcb_a_finalizar) {
     sem_post(&sem_proceso_a_new);
 
    // Hay que Comentar para que Kernel no finalice en las pruebas
-/*
     // Verificar si no quedan procesos en el sistema
     log_debug(kernel_log, "EXIT: verificando si quedan procesos en el sistema");
     
@@ -277,5 +276,4 @@ void EXIT(t_pcb* pcb_a_finalizar) {
         terminar_kernel();
         exit(EXIT_SUCCESS);
     }
-*/
 }
