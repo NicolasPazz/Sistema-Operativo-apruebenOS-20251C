@@ -164,7 +164,7 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
 
     switch(nuevo_estado_enum) {
         case NEW: sem_post(&sem_proceso_a_new); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a NEW aumentado"); break;
-        case READY: sem_post(&sem_proceso_a_ready); solicitar_replanificacion_srt(); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a READY aumentado"); break;
+        case READY: sem_post(&sem_proceso_a_ready); solicitar_replanificacion_srt(); log_trace(kernel_log, "cambiar_estado_pcb: replanificacion solicitada"); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a READY aumentado"); break;
         case EXEC: sem_post(&sem_proceso_a_running); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a EXEC aumentado"); break;
         case BLOCKED: sem_post(&sem_proceso_a_blocked); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a BLOCKED aumentado"); break;
         case SUSP_READY:    sem_post(&sem_proceso_a_susp_ready);

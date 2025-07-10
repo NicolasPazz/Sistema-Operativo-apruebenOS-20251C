@@ -88,9 +88,6 @@ int main(int argc, char* argv[]) {
 
     log_trace(kernel_log, "CPU, IO y Memoria conectados. Continuando ejecucion");
     
-    //////////////////////////// Primer proceso ////////////////////////////
-    log_trace(kernel_log, "Creando proceso inicial:  Archivo: %s, Tamanio: %d", archivo_pseudocodigo, tamanio_proceso);
-    INIT_PROC(archivo_pseudocodigo, tamanio_proceso); 
 
     //////////////////////////// Esperar enter ////////////////////////////
 
@@ -111,6 +108,10 @@ int main(int argc, char* argv[]) {
     }
 
     log_trace(kernel_log, "Kernel ejecutandose. Presione Ctrl+C para terminar.");
+
+    //////////////////////////// Primer proceso ////////////////////////////
+    log_trace(kernel_log, "Creando proceso inicial:  Archivo: %s, Tamanio: %d", archivo_pseudocodigo, tamanio_proceso);
+    INIT_PROC(archivo_pseudocodigo, tamanio_proceso); 
 
     activar_planificador_largo_plazo();
 

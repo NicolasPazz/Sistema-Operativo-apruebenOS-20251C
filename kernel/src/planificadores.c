@@ -92,6 +92,9 @@ t_pcb* elegir_por_srt() {
         exit(EXIT_FAILURE);
     }
 
+    log_debug(kernel_log, "SRT: Proceso candidato elegido PID=%d con ráfaga restante=%.2f ms", 
+              candidato_ready->PID, candidato_ready->estimacion_rafaga);
+
     log_debug(kernel_log, "SRT: esperando mutex_lista_cpus para buscar CPU disponible o con mayor ráfaga restante");
     pthread_mutex_lock(&mutex_lista_cpus);
     log_debug(kernel_log, "SRT: bloqueando mutex_lista_cpus para buscar CPU disponible o con mayor ráfaga restante");
@@ -270,7 +273,7 @@ void dispatch(t_pcb* proceso_a_ejecutar) {
 
             t_interrupcion* nueva = malloc(sizeof(t_interrupcion));
             nueva->cpu_a_desalojar = cpu_disponible;
-            nueva->p_a_ejecutar = proceso_a_ejecutar;
+            nueva->pid_a_ejecutar = proceso_a_ejecutar->PID;
 
             log_debug(kernel_log, "DISPATCH: esperando mutex_cola_interrupciones para encolar interrupción");
             pthread_mutex_lock(&mutex_cola_interrupciones);
@@ -317,6 +320,7 @@ void dispatch(t_pcb* proceso_a_ejecutar) {
               proceso_a_ejecutar->PID, cpu_disponible->id, proceso_a_ejecutar->PC);
 }
 
+/*
 bool interrupt(cpu* cpu_a_desalojar, t_pcb *proceso_a_ejecutar) {
     log_trace(kernel_log, "Interrupción enviada a CPU %d (fd=%d) para desalojo", cpu_a_desalojar->id, cpu_a_desalojar->fd);
     int fd_interrupt = obtener_fd_interrupt(cpu_a_desalojar->id);
@@ -359,10 +363,11 @@ bool interrupt(cpu* cpu_a_desalojar, t_pcb *proceso_a_ejecutar) {
             terminar_kernel();
             exit(EXIT_FAILURE);
         }
+        free(buffer);
         return true;
     }
     return false;
-}
+}*/
 
 int obtener_fd_interrupt(int id_cpu) {
     // Buscar el fd de la CPU por su ID
@@ -373,7 +378,8 @@ int obtener_fd_interrupt(int id_cpu) {
         }
     }
     log_error(kernel_log, "obtener_fd_interrupt: No se encontró CPU con ID %d", id_cpu);
-    return -1; // No se encontró la CPU
+    terminar_kernel();
+    exit(EXIT_FAILURE);
 }
 
 double get_time() {
@@ -429,7 +435,7 @@ void* interrupt_handler(void* arg) {
             VERDE("[INTERRUPT]: Interrupt handler: Enviando interrupción a CPU %d (desaloja PID=%d para correr PID=%d)"),
             intr->cpu_a_desalojar->id,
             intr->cpu_a_desalojar->pid,
-            intr->p_a_ejecutar->PID
+            intr->pid_a_ejecutar
         );        
 
         // Enviar interrupción con el PID actualmente ejecutando en la CPU
@@ -446,7 +452,14 @@ void* interrupt_handler(void* arg) {
                 log_debug(kernel_log, VERDE("[INTERRUPT]: CPU %d respondió OK"), intr->cpu_a_desalojar->id);
 
                 t_list* contenido = recibir_contenido_paquete(fd_interrupt);
-                if (list_size(contenido) != 2) {
+                if (!contenido) {
+                    log_error(kernel_log, "[INTERRUPT]: El contenido recibido es NULL");
+                    terminar_kernel();
+                    exit(EXIT_FAILURE);
+                }
+                log_debug(kernel_log, "[INTERRUPT]: Cantidad de elementos en contenido recibido: %d", list_size(contenido));
+                
+                if (list_size(contenido) < 2) {
                     log_error(kernel_log, "[INTERRUPT]: Error en buffer recibido de CPU");
                     list_destroy_and_destroy_elements(contenido, free);
                     terminar_kernel();
@@ -472,11 +485,19 @@ void* interrupt_handler(void* arg) {
                 }
 
                 log_info(kernel_log, VERDE("[INTERRUPT]: ## (%d) - Desalojado por SJF/SRT"), pid_recibido);
+                log_debug(kernel_log, "Interrupt handler: Actualizando PCB PID=%d con nuevo PC=%d", pid_recibido, nuevo_pc);
 
                 pcb->PC = nuevo_pc;
+
+                // Limpiar CPU desalojada
+                intr->cpu_a_desalojar->pid = -1;
+                intr->cpu_a_desalojar->instruccion_actual = -1; // Resetear instrucción actual
+                log_debug(kernel_log, "Interrupt handler: CPU %d liberada", intr->cpu_a_desalojar->id);
                 cambiar_estado_pcb(pcb, READY);
                 solicitar_replanificacion_srt();
+                log_trace(kernel_log, "interrupt_handler: replanificacion solicitada");
                 free(intr);
+                break;
             case ERROR:
                 log_debug(kernel_log, VERDE("[INTERRUPT]: Interrupt handler: CPU %d respondió con ERROR"), intr->cpu_a_desalojar->id);
                 free(intr);
@@ -490,7 +511,7 @@ void* interrupt_handler(void* arg) {
 }
 
 void solicitar_replanificacion_srt(void) {
-    
+
     if(strcmp(ALGORITMO_CORTO_PLAZO, "SRT") == 0 && list_size(cola_ready) > 0) {
         sem_post(&sem_replanificar_srt);
         log_debug(kernel_log, "Replanificación SRT solicitada");
@@ -660,8 +681,12 @@ void* planificador_corto_plazo(void* arg) {
         if (proceso_elegido) {
             dispatch(proceso_elegido);
             continue;
+        } else if(strcmp(ALGORITMO_CORTO_PLAZO, "SRT") != 0) {
+            log_error(kernel_log, "planificador_corto_plazo: No se pudo elegir un proceso para ejecutar");
+            terminar_kernel();
+            exit(EXIT_FAILURE);
         }
-        log_debug(kernel_log, "planificador_corto_plazo: No se pudo elegir un proceso para ejecutar");
+        log_debug(kernel_log, "planificador_corto_plazo: No se pudo elegir un proceso para ejecutar para SRT");
     }
 }
 

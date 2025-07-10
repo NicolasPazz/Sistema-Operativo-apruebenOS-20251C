@@ -314,6 +314,7 @@ void* hilo_servidor_dispatch(void* _) {
 
         sem_post(&sem_cpu_disponible);
         solicitar_replanificacion_srt();
+        log_trace(kernel_log, "hilo_servidor_dispatch: replanificacion solicitada");
         log_debug(kernel_log, "hilo_servidor_dispatch: Semaforo CPU DISPONIBLE aumentado por nueva CPU (fd=%d, ID=%d)", fd_cpu_dispatch, id_cpu);
 
         pthread_mutex_lock(&mutex_conexiones);
@@ -415,6 +416,7 @@ void* atender_cpu_dispatch(void* arg) {
 
                 sem_post(&sem_cpu_disponible);
                 solicitar_replanificacion_srt();
+                log_trace(kernel_log, "atender_cpu_dispatch_IO: replanificacion solicitada");
 
                 log_debug(kernel_log, "atender_cpu_dispatch: Semaforo CPU DISPONIBLE aumentado por IO");
                 log_trace(kernel_log, "Procesando solicitud de IO '%s' por %d ms para PID=%d", nombre_IO, cant_tiempo, pcb_a_io->PID);
@@ -450,16 +452,20 @@ void* atender_cpu_dispatch(void* arg) {
                     cambiar_estado_pcb(pcb_a_finalizar, EXIT_ESTADO);
                 } else {
                     log_error(kernel_log, "EXIT: No se encontró PCB para PID=%d en RUNNING", pid_exit);
+                    terminar_kernel();
+                    exit(EXIT_FAILURE);
                 }
 
                 // Limpiar PID de la CPU asociada
                 pthread_mutex_lock(&mutex_lista_cpus);
                 cpu_actual->pid = -1; // Limpiar PID de la CPU
+                cpu_actual->instruccion_actual = -1; // Limpiar instrucción actual
                 pthread_mutex_unlock(&mutex_lista_cpus);
                 
                 // Liberar CPU para que el planificador pueda usarla
                 sem_post(&sem_cpu_disponible);
                 solicitar_replanificacion_srt();
+                log_trace(kernel_log, "atender_cpu_dispatch_EXIT: replanificacion solicitada");
 
                 log_debug(kernel_log, "EXIT: Semáforo CPU DISPONIBLE aumentado por CPU liberada");
                 
@@ -503,6 +509,7 @@ void* atender_cpu_dispatch(void* arg) {
                 // Liberar CPU para que el planificador pueda usarla
                 sem_post(&sem_cpu_disponible);
                 solicitar_replanificacion_srt();
+                log_trace(kernel_log, "atender_cpu_dispatch_DUMP: replanificacion solicitada");
 
                 log_debug(kernel_log, "DUMP_MEMORY: Semáforo CPU DISPONIBLE aumentado por CPU liberada");
 

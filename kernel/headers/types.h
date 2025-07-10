@@ -78,7 +78,7 @@ typedef struct PCB_DUMP_MEMORY{
     ///// INTERRUPCIONES
 typedef struct {
     cpu* cpu_a_desalojar;
-    t_pcb* p_a_ejecutar;
+    int pid_a_ejecutar;
 } t_interrupcion;
 
     

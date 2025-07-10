@@ -216,7 +216,7 @@ void EXIT(t_pcb* pcb_a_finalizar) {
                         list_size(cola_susp_ready) + list_size(cola_susp_blocked) + 
                         list_size(cola_procesos);
     
-        pthread_mutex_unlock(&mutex_cola_procesos);
+    pthread_mutex_unlock(&mutex_cola_procesos);
     pthread_mutex_unlock(&mutex_cola_susp_blocked);
     pthread_mutex_unlock(&mutex_cola_susp_ready);
     pthread_mutex_unlock(&mutex_cola_blocked);
