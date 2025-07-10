@@ -218,7 +218,8 @@ void check_interrupt() {
             return;
         }
         log_debug(cpu_log, VERDE("[INTERRUPT]: ## (PID: %d) - Interrupción recibida pero no corresponde al PID ejecutando (%d)"), pid_interrupt, pid_ejecutando);
-        send(fd_kernel_interrupt, ERROR, sizeof(t_respuesta), 0);
+        t_respuesta respuesta_error = ERROR;
+        send(fd_kernel_interrupt, &respuesta_error, sizeof(t_respuesta), 0);
         log_debug(cpu_log, VERDE("[INTERRUPT]: ## (PID: %d) - Respuesta de ERROR enviada a Kernel por interrupción no válida"), pid_interrupt);
     }
     pthread_mutex_unlock(&mutex_estado_proceso);
