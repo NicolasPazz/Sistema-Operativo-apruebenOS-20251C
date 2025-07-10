@@ -75,4 +75,11 @@ typedef struct PCB_DUMP_MEMORY{
     int timestamp;  // Timestamp para identificar la operación de dump
 } t_pcb_dump_memory;
 
+    ///// INTERRUPCIONES
+typedef struct {
+    cpu* cpu_a_desalojar;
+    int pid_a_ejecutar;
+} t_interrupcion;
+
+    
 #endif /* TYPES_H */

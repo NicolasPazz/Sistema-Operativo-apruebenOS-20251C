@@ -95,7 +95,7 @@ void func_read(char* direccion_logica_str, char* tam_str) {
         int pos = buscar_pagina_en_cache(nro_pagina);
         if (pos != -1) {
             char* contenido = cache_leer(nro_pagina); // Asume malloc interno
-            log_trace("PID: %d - Contenido leído (cache): %s\n", pid_ejecutando, contenido);
+            log_trace(cpu_log, "PID: %d - Contenido leído (cache): %s", pid_ejecutando, contenido);
             free(contenido);
             return;
         }
@@ -133,7 +133,7 @@ void func_read(char* direccion_logica_str, char* tam_str) {
     
     char* contenido = (char*)list_get(lista_respuesta, 0);
     log_info(cpu_log, VERDE("(PID: %d) - READ - Dir Fisica: %d - Valor: %s"), pid_ejecutando, direccion_fisica, contenido);
-    log_trace("PID: %d - Contenido leído: %s\n", pid_ejecutando, contenido);
+    log_trace(cpu_log, "PID: %d - Contenido leído: %s", pid_ejecutando, contenido);
     list_destroy_and_destroy_elements(lista_respuesta, free);
 
     // 3. Si hay caché habilitada y fue Cache MISS, cargar la página

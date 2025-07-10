@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
   
     //////////////////////////// Config, log e inicializaciones ////////////////////////////
     if (argc < 3) {
-        fprintf(stderr, "Uso: %s [archivo_pseudocodigo] [tamanio_proceso]\nEJ: ./bin/kernel PROCESO_INICIAL 128\n", argv[0]);
+        fprintf(stderr, "Uso: %s [archivo_pseudocodigo] [tamanio_proceso]\nEJ: ./bin/kernel proceso_inicial 128\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
@@ -26,6 +26,7 @@ int main(int argc, char* argv[]) {
     iniciar_diccionario_tiempos();
     iniciar_diccionario_archivos_por_pcb();
     iniciar_planificadores();
+    if(strcmp(ALGORITMO_CORTO_PLAZO, "SRT") == 0) iniciar_interrupt_handler();
 
     char* archivo_pseudocodigo = argv[1];
     int tamanio_proceso = atoi(argv[2]);
@@ -87,9 +88,6 @@ int main(int argc, char* argv[]) {
 
     log_trace(kernel_log, "CPU, IO y Memoria conectados. Continuando ejecucion");
     
-    //////////////////////////// Primer proceso ////////////////////////////
-    log_trace(kernel_log, "Creando proceso inicial:  Archivo: %s, Tamanio: %d", archivo_pseudocodigo, tamanio_proceso);
-    INIT_PROC(archivo_pseudocodigo, tamanio_proceso); 
 
     //////////////////////////// Esperar enter ////////////////////////////
 
@@ -109,7 +107,11 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    log_trace(kernel_log, "Kernel ejecutandose. Presione Ctrl+C para terminar.\n");
+    log_trace(kernel_log, "Kernel ejecutandose. Presione Ctrl+C para terminar.");
+
+    //////////////////////////// Primer proceso ////////////////////////////
+    log_trace(kernel_log, "Creando proceso inicial:  Archivo: %s, Tamanio: %d", archivo_pseudocodigo, tamanio_proceso);
+    INIT_PROC(archivo_pseudocodigo, tamanio_proceso); 
 
     activar_planificador_largo_plazo();
 

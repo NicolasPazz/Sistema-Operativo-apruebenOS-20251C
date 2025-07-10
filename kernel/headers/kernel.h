@@ -10,6 +10,7 @@
 #include "CPUKernel.h"
 #include <signal.h>
 #include <unistd.h>
+#include <commons/collections/queue.h>
 /////////////////////////////// Declaracion de variables globales ///////////////////////////////
 // Logger
 extern t_log* kernel_log;
@@ -53,6 +54,7 @@ extern t_list* cola_exit;
 extern t_list* cola_procesos;
 extern t_list* pcbs_bloqueados_por_dump_memory;
 extern t_list* pcbs_esperando_io;
+extern t_queue* cola_interrupciones;
 
 // Listas y semaforos de CPUs y IOs conectadas
 extern t_list* lista_cpus;

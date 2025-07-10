@@ -28,7 +28,7 @@ PID_MEMORIA=$!
 sleep 10 
 
 # INICIAR KERNEL
-./kernel/bin/kernel PROCESO_INICIAL 128 --action &
+./kernel/bin/kernel proceso_inicial 128 --action &
 PID_KERNEL=$!
 sleep 10 
 

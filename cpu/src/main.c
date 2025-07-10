@@ -131,8 +131,20 @@ void* recibir_kernel_interrupt(void* arg) {
                 exit(EXIT_SUCCESS);
             case INTERRUPCION_OP:
                 // Recibir PID de la interrupción
-                recv(fd_kernel_interrupt, &pid_interrupt, sizeof(int), MSG_WAITALL);
-                log_info(cpu_log, VERDE("## Llega interrupción al puerto Interrupt"));
+                log_trace(cpu_log, VERDE("[INTERRUPT]: Recibiendo interrupción desde Kernel"));
+
+                t_list* datos = recibir_contenido_paquete(fd_kernel_interrupt);
+                if (list_size(datos) < 1) {
+                    log_error(cpu_log, "[INTERRUPT]: No se recibió PID válido en interrupción");
+                    list_destroy_and_destroy_elements(datos, free);
+                    break;
+                }
+
+                pid_interrupt = *(int*)list_get(datos, 0);
+                list_destroy_and_destroy_elements(datos, free);
+
+                log_debug(cpu_log, VERDE("[INTERRUPT]: ## PID recibido para interrupción: %d mientras ejecuta PID %d"), pid_interrupt, pid_ejecutando);
+
                 pthread_mutex_lock(&mutex_estado_proceso);
                 hay_interrupcion = 1;
                 pthread_mutex_unlock(&mutex_estado_proceso);

@@ -52,7 +52,7 @@ void mostrar_metrica(const char* nombre, int* metrica) {
 }
 
 void mostrar_colas_estados() {
-    log_trace(kernel_log, "Colas -> [NEW: %d, READY: %d, EXEC: %d, BLOCK: %d, SUSP.BLOCK: %d, SUSP.READY: %d, EXIT: %d] | Procesos en total: %d\n",
+    log_trace(kernel_log, "Colas -> [NEW: %d, READY: %d, EXEC: %d, BLOCK: %d, SUSP.BLOCK: %d, SUSP.READY: %d, EXIT: %d] | Procesos en total: %d",
         list_size(cola_new),
         list_size(cola_ready),
         list_size(cola_running),
@@ -164,7 +164,7 @@ void cambiar_estado_pcb(t_pcb* PCB, Estados nuevo_estado_enum) {
 
     switch(nuevo_estado_enum) {
         case NEW: sem_post(&sem_proceso_a_new); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a NEW aumentado"); break;
-        case READY: sem_post(&sem_proceso_a_ready); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a READY aumentado"); break;
+        case READY: sem_post(&sem_proceso_a_ready); solicitar_replanificacion_srt(); log_trace(kernel_log, "cambiar_estado_pcb: replanificacion solicitada"); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a READY aumentado"); break;
         case EXEC: sem_post(&sem_proceso_a_running); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a EXEC aumentado"); break;
         case BLOCKED: sem_post(&sem_proceso_a_blocked); log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a BLOCKED aumentado"); break;
         case SUSP_READY:    sem_post(&sem_proceso_a_susp_ready);

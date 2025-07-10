@@ -564,6 +564,7 @@ t_list* recibir_contenido_paquete(int socket_cliente) {
 
     // Recibo el buffer completo
     if (recv(socket_cliente, buffer, buffer_size, MSG_WAITALL) != buffer_size) {
+        printf("recv: tamaño esperado %d pero se recibió menos", buffer_size);
         free(buffer);
         exit(EXIT_FAILURE);
     }
