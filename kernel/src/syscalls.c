@@ -30,7 +30,7 @@ void INIT_PROC(char* nombre_archivo, int tam_memoria) {
     
     log_trace(kernel_log, "INIT_PROC: proceso nuevo a la cola NEW");
     cambiar_estado_pcb(nuevo_proceso, NEW);  
-    log_info(kernel_log, CYAN("## (%d) Se crea el proceso - Estado: "AZUL("NEW")), nuevo_proceso->PID);
+    log_info(kernel_log, CYAN("## (%d) Se crea el proceso - Estado: ")AZUL("NEW"), nuevo_proceso->PID);
 }
 
 //////////////////////////////////////////////////////////// DUMP MEMORY ////////////////////////////////////////////////////////////

@@ -658,13 +658,15 @@ void* planificador_largo_plazo(void* arg) {
         } else if (estado == NEW) {
             // Verificar si hay espacio suficiente en memoria
             if (!hay_espacio_suficiente_memoria(pcb->tamanio_memoria)) {
-                log_error(kernel_log, "planificador_largo_plazo: No hay espacio suficiente en memoria para el proceso PID %d", pcb->PID);
+                log_warning(kernel_log, "planificador_largo_plazo: No hay espacio suficiente en memoria para el proceso PID %d", pcb->PID);
+                liberar_cola_por_estado(estado);
                 continue;
             } else {
                 // Comunicarse con memoria para inicializar el proceso
+                log_trace(kernel_log, "planificador_largo_plazo: Pedido de alojamiento a memoria para PID %d", pcb->PID);
                 t_paquete* paquete = crear_paquete_op(INIT_PROC_OP);
                 agregar_a_paquete(paquete, &pcb->PID, sizeof(int));
-                agregar_a_paquete(paquete, &pcb->path, strlen(pcb->path) + 1);
+                agregar_a_paquete(paquete, pcb->path, strlen(pcb->path) + 1);
                 agregar_a_paquete(paquete, &pcb->tamanio_memoria, sizeof(int));
                 enviar_paquete(paquete, fd_memoria);
                 eliminar_paquete(paquete);
@@ -672,6 +674,7 @@ void* planificador_largo_plazo(void* arg) {
                 t_respuesta respuesta;
                 if (recv(fd_memoria, &respuesta, sizeof(t_respuesta), 0) <= 0 || (respuesta != OK && respuesta != ERROR)) {
                     log_error(kernel_log, "Error al recibir respuesta de memoria para INIT_PROC");
+                    liberar_cola_por_estado(estado);
                     terminar_kernel();
                     exit(EXIT_FAILURE);
                 }
@@ -681,7 +684,7 @@ void* planificador_largo_plazo(void* arg) {
                     log_trace(kernel_log, "planificador_largo_plazo: Proceso PID %d inicializado correctamente en memoria", pcb->PID);
                 } else {
                     log_trace(kernel_log, "planificador_largo_plazo: Error al inicializar proceso PID %d en memoria", pcb->PID);
-                    free(pcb);
+                    liberar_cola_por_estado(estado);
                     continue; // No se pudo inicializar, esperar una replanificacion
                 }
             }
@@ -788,21 +791,25 @@ void* planificador_corto_plazo(void* arg) {
 }
 
 bool hay_espacio_suficiente_memoria(int tamanio) {
+    log_trace(kernel_log, "Verificando espacio suficiente en memoria para tamaño %d", tamanio);
     t_paquete* paquete = crear_paquete_op(CHECK_MEMORY_SPACE_OP);
-    agregar_a_paquete(paquete, &tamanio, sizeof(int));
+    agregar_entero_a_paquete(paquete, tamanio);
     enviar_paquete(paquete, fd_memoria);
     eliminar_paquete(paquete);
 
-    t_paquete* respuesta = (t_paquete*)recibir_paquete(fd_memoria);
-    if (respuesta == NULL) {
+    int respuesta = recibir_operacion(fd_memoria);
+    if (respuesta < 0 || (respuesta != OK && respuesta != ERROR)) {
         log_error(kernel_log, "Error al recibir respuesta de memoria");
-        return false;
+        terminar_kernel();
+        exit(EXIT_FAILURE);
     }
     
-    // Convertimos el código de operación a t_resultado_memoria
-    t_resultado_memoria resultado = (t_resultado_memoria)respuesta->codigo_operacion;
-    bool hay_espacio = resultado == MEMORIA_OK;
-    eliminar_paquete(respuesta);
-    return hay_espacio;
+    if (respuesta == OK) {
+        log_trace(kernel_log, "Espacio suficiente en memoria para tamaño %d", tamanio);
+        return true;
+    } else if (respuesta == ERROR) {
+        log_trace(kernel_log, "No hay espacio suficiente en memoria para tamaño %d", tamanio);
+        return false;
+    }
 }
 
