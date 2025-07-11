@@ -50,6 +50,8 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
+    bool auto_start = (argc == 5 && strcmp(argv[4], "--action") == 0);
+
     /* ---------------- Ruta del .config ---------------- */
     char ruta_cfg[256] = "kernel/kernel.config"; /* default */
     if (argc >= 4)
@@ -126,12 +128,12 @@ int main(int argc, char *argv[])
 
     //////////////////////////// Esperar conexiones minimas ////////////////////////////
 
-    log_trace(kernel_log, "Esperando conexion con al menos una CPU, una IO y Memoria...");
+    printf("Esperando conexion con al menos una CPU y una IO...\n");
 
     while (true)
     {
         pthread_mutex_lock(&mutex_conexiones);
-        if (conectado_cpu && conectado_io && conectado_memoria)
+        if (conectado_cpu && conectado_io)
         {
             pthread_mutex_unlock(&mutex_conexiones);
             break;
@@ -140,29 +142,24 @@ int main(int argc, char *argv[])
         sleep(1);
     }
 
-    log_trace(kernel_log, "CPU, IO y Memoria conectados. Continuando ejecucion");
+    log_trace(kernel_log, "CPU y IO conectados. Continuando ejecucion");
 
     //////////////////////////// Esperar enter ////////////////////////////
 
-    if (argc == 3 || argc == 4)
+    if (auto_start)
     {
-        printf("\nPresione ENTER para iniciar planificacion...\n");
-
-        int c = getchar();
-        while (c != '\n')
-        {
-            fprintf(stderr, "Error: Debe presionar solo ENTER para continuar.\n");
-            while ((c = getchar()) != '\n' && c != EOF)
-                ;
-            printf("\nPresione ENTER para iniciar planificacion...\n");
-            c = getchar();
-        }
+        log_info(kernel_log, "Arranque automático (--action): iniciando en 30 s…");
+        sleep(30);
     }
-    else if (strcmp(argv[3], "--action") == 0 || strcmp(argv[4], "--action") != 0)
+    else
     {
-        log_error(kernel_log, "Parametro desconocido: %s", argv[4]);
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        puts("\nPresione ENTER para iniciar planificación…");
+        int c;
+        while ((c = getchar()) != '\n')
+        {
+            if (c == EOF)
+                exit(EXIT_FAILURE);
+        }
     }
 
     log_trace(kernel_log, "Kernel ejecutandose. Presione Ctrl+C para terminar.");

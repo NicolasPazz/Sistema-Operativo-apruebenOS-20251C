@@ -69,7 +69,6 @@ extern pthread_mutex_t mutex_ios;
 // Conexiones minimas
 extern bool conectado_cpu;
 extern bool conectado_io;
-extern bool conectado_memoria;
 extern pthread_mutex_t mutex_conexiones;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

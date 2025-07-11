@@ -2,17 +2,7 @@ name: Test de Helgrind
 
 on:
   push:
-    branches:
-      - main
-      - Kernel
-      - memoria
-      - branch_cpu
   pull_request:
-    branches:
-      - main
-      - Kernel
-      - memoria
-      - branch_cpu
 
 jobs:
   build:

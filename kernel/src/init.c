@@ -57,7 +57,6 @@ pthread_mutex_t mutex_ios;
 // Conexiones minimas
 bool conectado_cpu = false;
 bool conectado_io = false;
-bool conectado_memoria = false;
 pthread_mutex_t mutex_conexiones;
 
 // Semaforos de planificacion
@@ -186,7 +185,6 @@ void iniciar_sincronizacion_kernel()
 
     conectado_cpu = false;
     conectado_io = false;
-    conectado_memoria = false;
 }
 
 void iniciar_diccionario_tiempos()
@@ -280,12 +278,6 @@ void *hilo_cliente_memoria(void *_)
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
-
-    log_debug(kernel_log, "Esperando mutex_conexiones para validar handshake con Memoria (fd=%d)", fd_memoria);
-    pthread_mutex_lock(&mutex_conexiones);
-    log_debug(kernel_log, "Bloqueando mutex_conexiones para validar handshake con Memoria (fd=%d)", fd_memoria);
-    conectado_memoria = true;
-    pthread_mutex_unlock(&mutex_conexiones);
 
     log_trace(kernel_log, "HANDSHAKE_MEMORIA_KERNEL: Kernel conectado correctamente a Memoria (fd=%d)", fd_memoria);
 
