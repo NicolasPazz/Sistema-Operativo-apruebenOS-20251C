@@ -39,7 +39,7 @@ typedef struct {
 // ============================================================================
 
 int init(void);                 // inicializa loger, cfg, y semaforos
-int cargar_configuracion(char* path); // carga cfg en strut cfg
+int cargar_configuracion_memoria(const char *path_cfg);
 void iniciar_logger_memoria(void);
 void cerrar_programa(void);
 int server_escuchar(char*, int);

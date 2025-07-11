@@ -1,5 +1,6 @@
 #include "../headers/main.h"
 #include <signal.h>
+#include <dirent.h>
 
 extern t_config_memoria* cfg;
 extern t_log* logger;
@@ -19,13 +20,48 @@ void signal_handler(int sig) {
     }
 }
 
-int main(int argc, char* argv[]) {
-    // Configurar el manejador de señales
+/* ── Listar .config disponibles en memoria/ ───────── */
+static void listar_configs_memoria(void)
+{
+    DIR *d = opendir("memoria");
+    if (!d) { puts("No se pudo abrir directorio memoria/"); return; }
+
+    puts("Archivos .config disponibles en memoria/:");
+    struct dirent *de;
+    int hay = 0;
+    while ((de = readdir(d))) {
+        if (strstr(de->d_name, ".config")) {
+            printf("  - %s\n", de->d_name);
+            hay = 1;
+        }
+    }
+    closedir(d);
+    if (!hay) puts("  (ninguno)");
+}
+
+int main(int argc, char *argv[]) {
     signal(SIGINT, signal_handler);
-    
-    // Inicializar logger
-    if (!cargar_configuracion("memoria/memoria.config")) {
-        printf("Error al cargar la configuracion de memoria.\n");
+
+    if (argc > 2) {
+        fprintf(stderr, "Uso: %s [archivo.config]\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    /* Ruta del .config */
+    char ruta_cfg[256] = "memoria/memoria.config";       /* default */
+    if (argc == 2) {
+        snprintf(ruta_cfg, sizeof(ruta_cfg), "memoria/%s", argv[1]);
+    }
+
+    if (access(ruta_cfg, F_OK) == -1) {
+        fprintf(stderr, "❌ No se encontró %s\n\n", ruta_cfg);
+        listar_configs_memoria();
+        return EXIT_FAILURE;
+    }
+
+    /* Inicializar logger y configuración */
+    if (!cargar_configuracion_memoria(ruta_cfg)) { 
+        puts("Error al cargar la configuración de memoria.");
         cerrar_programa();
         return EXIT_FAILURE;
     }

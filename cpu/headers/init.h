@@ -25,7 +25,7 @@ extern char* RETARDO_CACHE;
 extern char* LOG_LEVEL;
 
 /////////////////////////////// Prototipos ///////////////////////////////
-void leer_config_cpu(void);
+void leer_config_cpu(const char *path_cfg);
 void iniciar_logger_cpu(void);
 void* conectar_kernel_dispatch(void);
 void* conectar_kernel_interrupt(void);

@@ -3,6 +3,8 @@
 #include "../headers/cicloDeInstruccion.h"
 #include "../headers/mmu.h"
 #include <signal.h>
+#include <dirent.h>
+
 t_log* log_cpu;
 pthread_t hilo_dispatch, hilo_interrupt, hilo_memoria;
 pthread_mutex_t mutex_estado_proceso = PTHREAD_MUTEX_INITIALIZER;
@@ -19,17 +21,47 @@ void signal_handler(int sig) {
     }
 }
 
+/* ── listar archivos .config en cpu/ ──────────────── */
+static void listar_configs_cpu(void)
+{
+    DIR *d = opendir("cpu");
+    if (!d) { puts("No se pudo abrir directorio cpu/"); return; }
+
+    puts("Archivos .config disponibles en cpu/:");
+    struct dirent *de;
+    int found = 0;
+    while ((de = readdir(d))) {
+        if (strstr(de->d_name, ".config")) {
+            printf("  - %s\n", de->d_name);
+            found = 1;
+        }
+    }
+    closedir(d);
+    if (!found) puts("  (ninguno)");
+}
+
 int main(int argc, char* argv[]) {
     // Configurar el manejador de señales
     signal(SIGINT, signal_handler);
     
-    if (argc < 2) {
-        fprintf(stderr, "[CPU] Uso: %s <ID_CPU>\n", argv[0]);
+    if (argc < 2 || argc > 3) {
+        fprintf(stderr, "Uso: %s <ID_CPU> [cpu.config]\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+    int numero_cpu = atoi(argv[1]);
+
+    char ruta_cfg[256] = "cpu/cpu.config";
+    if (argc == 3)
+        snprintf(ruta_cfg, sizeof(ruta_cfg), "cpu/%s", argv[2]);
+
+    if (access(ruta_cfg, F_OK) == -1) {
+        fprintf(stderr, "❌ No se encontró %s\n\n", ruta_cfg);
+        listar_configs_cpu();
         exit(EXIT_FAILURE);
     }
 
-    int numero_cpu = atoi(argv[1]);
-    leer_config_cpu();
+    leer_config_cpu(ruta_cfg);
+
     iniciar_logger_cpu();
     inicializar_mmu();
 

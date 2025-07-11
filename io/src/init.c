@@ -10,16 +10,24 @@ char* PUERTO_KERNEL;
 char* LOG_LEVEL;
 
 void iniciar_config_io() {
-    io_config = iniciar_config("io/io.config");
+    const char *path_cfg = "io/io.config";
+    io_config = iniciar_config((char *)path_cfg);
 
-    IP_KERNEL = config_get_string_value(io_config, "IP_KERNEL");
-    PUERTO_KERNEL= config_get_string_value(io_config, "PUERTO_KERNEL");
-    LOG_LEVEL = config_get_string_value(io_config, "LOG_LEVEL");
+    IP_KERNEL      = config_get_string_value(io_config, "IP_KERNEL");
+    PUERTO_KERNEL  = config_get_string_value(io_config, "PUERTO_KERNEL");
+    LOG_LEVEL      = config_get_string_value(io_config, "LOG_LEVEL");
 
-    if (IP_KERNEL && PUERTO_KERNEL && LOG_LEVEL) {
-    } else {
-        printf("Error al leer io.config\n");
+    if (!(IP_KERNEL && PUERTO_KERNEL && LOG_LEVEL)) {
+        fprintf(stderr,
+                "iniciar_config_io: Faltan campos obligatorios en %s\n",
+                path_cfg);
+        exit(EXIT_FAILURE);
     }
+
+    printf("        Config leída: %s\n", path_cfg);
+    printf("    IP_KERNEL      : %s\n", IP_KERNEL);
+    printf("    PUERTO_KERNEL  : %s\n", PUERTO_KERNEL);
+    printf("    LOG_LEVEL      : %s\n\n", LOG_LEVEL);
 }
 
 void iniciar_logger_io() {

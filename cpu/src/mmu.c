@@ -18,7 +18,7 @@ void inicializar_mmu() {
 }
 
 /*
-int cargar_configuracion(char* path) {
+int cargar_configuracion_cpu(char* path) {
     t_config* cfg_file = config_create(path);
 
     if (cfg_file == NULL) {

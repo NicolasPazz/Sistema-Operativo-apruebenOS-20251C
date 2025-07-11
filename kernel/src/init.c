@@ -87,8 +87,8 @@ sem_t sem_interrupciones;
  //                                       INICIALIZACIONES                                       //
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
-void iniciar_config_kernel() {
-    kernel_config = iniciar_config("kernel/kernel.config");
+void iniciar_config_kernel(const char *path_cfg) {
+    kernel_config = iniciar_config((char *)path_cfg);
 
     IP_MEMORIA = config_get_string_value(kernel_config, "IP_MEMORIA");
     PUERTO_MEMORIA = config_get_string_value(kernel_config, "PUERTO_MEMORIA");
@@ -102,24 +102,25 @@ void iniciar_config_kernel() {
     TIEMPO_SUSPENSION = config_get_double_value(kernel_config, "TIEMPO_SUSPENSION");
     LOG_LEVEL = config_get_string_value(kernel_config, "LOG_LEVEL");
 
-    if (!IP_MEMORIA || !PUERTO_MEMORIA || !PUERTO_ESCUCHA_DISPATCH || !PUERTO_ESCUCHA_INTERRUPT ||
-        !PUERTO_ESCUCHA_IO || !ALGORITMO_CORTO_PLAZO || !ALGORITMO_INGRESO_A_READY ||
-        !ALFA || !ESTIMACION_INICIAL || !TIEMPO_SUSPENSION || !LOG_LEVEL) {
-        printf("iniciar_config_kernel: Faltan campos obligatorios en kernel.config\n");
+    if (!IP_MEMORIA || !PUERTO_MEMORIA || !PUERTO_ESCUCHA_DISPATCH ||
+        !PUERTO_ESCUCHA_INTERRUPT || !PUERTO_ESCUCHA_IO ||
+        !ALGORITMO_CORTO_PLAZO || !ALGORITMO_INGRESO_A_READY || !LOG_LEVEL) {
+        fprintf(stderr, "iniciar_config_kernel: Faltan campos obligatorios en %s\n", path_cfg);
+        config_destroy(kernel_config);
         exit(EXIT_FAILURE);
     } else {
-        /*
-        printf("IP_MEMORIA: %s", IP_MEMORIA);
-        printf("PUERTO_MEMORIA: %s", PUERTO_MEMORIA);
-        printf("PUERTO_ESCUCHA_DISPATCH: %s", PUERTO_ESCUCHA_DISPATCH);
-        printf("PUERTO_ESCUCHA_INTERRUPT: %s", PUERTO_ESCUCHA_INTERRUPT);
-        printf("PUERTO_ESCUCHA_IO: %s", PUERTO_ESCUCHA_IO);
-        printf("ALGORITMO_CORTO_PLAZO: %s", ALGORITMO_CORTO_PLAZO);
-        printf("ALGORITMO_INGRESO_A_READY: %s", ALGORITMO_INGRESO_A_READY);
-        printf("ALFA: %.2f", ALFA);
-        printf("ESTIMACION_INICIAL: %.2f", ESTIMACION_INICIAL);
-        printf("TIEMPO_SUSPENSION: %s", TIEMPO_SUSPENSION);
-        printf("LOG_LEVEL: %s", LOG_LEVEL);*/
+        printf("        Config leída: %s\n", path_cfg);
+        printf("    IP_MEMORIA                 : %s\n", IP_MEMORIA);
+        printf("    PUERTO_MEMORIA             : %s\n", PUERTO_MEMORIA);
+        printf("    PUERTO_ESCUCHA_DISPATCH    : %s\n", PUERTO_ESCUCHA_DISPATCH);
+        printf("    PUERTO_ESCUCHA_INTERRUPT   : %s\n", PUERTO_ESCUCHA_INTERRUPT);
+        printf("    PUERTO_ESCUCHA_IO          : %s\n", PUERTO_ESCUCHA_IO);
+        printf("    ALGORITMO_CORTO_PLAZO      : %s\n", ALGORITMO_CORTO_PLAZO);
+        printf("    ALGORITMO_INGRESO_A_READY  : %s\n", ALGORITMO_INGRESO_A_READY);
+        printf("    ALFA                       : %.0f\n", ALFA);
+        printf("    ESTIMACION_INICIAL         : %.0f\n", ESTIMACION_INICIAL);
+        printf("    TIEMPO_SUSPENSION          : %.0f\n", TIEMPO_SUSPENSION);
+        printf("    LOG_LEVEL                  : %s\n\n", LOG_LEVEL);
     }
 }
 

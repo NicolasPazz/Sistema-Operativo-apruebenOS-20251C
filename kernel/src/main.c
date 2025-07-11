@@ -1,4 +1,5 @@
 #include "../headers/kernel.h"
+#include <dirent.h>
 
 // Manejador de señales para terminación limpia
 void signal_handler(int sig) {
@@ -9,18 +10,51 @@ void signal_handler(int sig) {
     }
 }
 
+static void listar_configs_kernel(void)
+{
+    DIR *d = opendir("kernel");
+    if (!d) { puts("No se pudo abrir directorio kernel/"); return; }
+
+    puts("Archivos .config disponibles en kernel/:");
+    struct dirent *de;
+    int found = 0;
+    while ((de = readdir(d))) {
+        if (strstr(de->d_name, ".config")) {
+            printf("  - %s\n", de->d_name);
+            found = 1;
+        }
+    }
+    closedir(d);
+    if (!found) puts("  (ninguno)");
+}
+
 int main(int argc, char* argv[]) {
 
     signal(SIGINT, signal_handler);
   
     //////////////////////////// Config, log e inicializaciones ////////////////////////////
-    if (argc < 3) {
-        fprintf(stderr, "Uso: %s [archivo_pseudocodigo] [tamanio_proceso]\nEJ: ./bin/kernel proceso_inicial 128\n", argv[0]);
+    if (argc < 3 || argc > 5) {
+        fprintf(stderr,
+                "Uso: %s <archivo_pseudocodigo> <tamanio_proceso> [kernel.config]\n",
+                argv[0]);
         exit(EXIT_FAILURE);
     }
 
+    /* ---------------- Ruta del .config ---------------- */
+    char ruta_cfg[256] = "kernel/kernel.config";          /* default */
+    if (argc >= 4) {                               
+        snprintf(ruta_cfg, sizeof(ruta_cfg), "kernel/%s", argv[3]);
+    }
+
+    if (access(ruta_cfg, F_OK) == -1) {
+        fprintf(stderr, "❌ No se encontró %s\n\n", ruta_cfg);
+        listar_configs_kernel();
+        exit(EXIT_FAILURE);
+    }
+
+    /* ---------------- Inicializaciones ---------------- */
     iniciar_sincronizacion_kernel();
-    iniciar_config_kernel();
+    iniciar_config_kernel(ruta_cfg);
     iniciar_logger_kernel();
     iniciar_estados_kernel();
     iniciar_diccionario_tiempos();
@@ -91,7 +125,7 @@ int main(int argc, char* argv[]) {
 
     //////////////////////////// Esperar enter ////////////////////////////
 
-    if (argv[3] == NULL) {
+    if (argc == 3 || argc == 4) {
         printf("\nPresione ENTER para iniciar planificacion...\n");
     
         int c = getchar();
@@ -101,8 +135,8 @@ int main(int argc, char* argv[]) {
             printf("\nPresione ENTER para iniciar planificacion...\n");
             c = getchar();
         }
-    } else if (strcmp(argv[3], "--action") != 0) {
-        log_error(kernel_log, "Parametro desconocido: %s", argv[3]);
+    } else if (strcmp(argv[3], "--action") == 0 || strcmp(argv[4], "--action") != 0) {
+        log_error(kernel_log, "Parametro desconocido: %s", argv[4]);
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
