@@ -1,9 +1,10 @@
 #ifndef PLANIFICADORES_H
 #define PLANIFICADORES_H
 
-#define _GNU_SOURCE  // Para usleep() y otras funciones POSIX
+#define _GNU_SOURCE // Para usleep() y otras funciones POSIX
 
 /////////////////////////////// Includes ///////////////////////////////
+
 #include "kernel.h"
 #include "types.h"
 #include <semaphore.h>
@@ -37,50 +38,39 @@ extern sem_t sem_interrupciones;
 /////////////////////////// Planificacion de Largo Plazo ////////////////////////////
 
 // Add enum for planificador states
-typedef enum {
+typedef enum
+{
     STOP,
     RUNNING
 } estado_planificador;
 
+extern pthread_mutex_t mutex_planificador_lp;
+extern pthread_cond_t cond_planificador_lp;
+extern estado_planificador estado_planificador_lp;
+
 //////////////////////////////////////////////////////////////
-t_pcb* elegir_por_fifo();
 
-void* menor_rafaga(void* a, void* b);
-t_pcb* elegir_por_sjf();
-
-t_pcb* elegir_por_srt();
-
-void* menor_rafaga_restante(void* a, void* b);
-
-void dispatch(t_pcb* proceso_a_ejecutar);
-
+t_pcb *elegir_por_fifo();
+void *menor_rafaga(void *a, void *b);
+t_pcb *elegir_por_sjf();
+t_pcb *elegir_por_srt();
+void *menor_rafaga_restante(void *a, void *b);
+void dispatch(t_pcb *proceso_a_ejecutar);
 bool interrupt(cpu *cpu_a_desalojar, t_pcb *proceso_a_ejecutar);
-
 double get_time();
-
-void* planificador_largo_plazo(void* arg);
-
+void *planificador_largo_plazo(void *arg);
 void activar_planificador_largo_plazo(void);
-
 void iniciar_planificadores(void);
-
 void iniciar_interrupt_handler(void);
-
-void* interrupt_handler(void* arg);
-
+void *interrupt_handler(void *arg);
 void solicitar_replanificacion_srt(void);
-
-void* planificador_largo_plazo(void* arg);
-
-void* menor_tamanio(void* a, void* b);
-
-t_pcb* elegir_por_pmcp();
-
-void* gestionar_exit(void* arg);
-void* planificador_corto_plazo(void* arg);
-
+void *planificador_largo_plazo(void *arg);
+void *menor_tamanio(void *a, void *b);
+t_pcb *elegir_por_pmcp();
+void *gestionar_exit(void *arg);
+void *planificador_corto_plazo(void *arg);
 bool hay_espacio_suficiente_memoria(int tamanio);
-
 int obtener_fd_interrupt(int id_cpu);
+void iniciar_timer_suspension(t_pcb *pcb);
 
 #endif /* PLANIFICADORES_H */

@@ -16,7 +16,6 @@
  * @return true si el bloqueo fue exitoso, false si ya estaba bloqueado o error
  */
 bool bloquear_marco(int numero_frame, const char* operacion);
-
 /**
  * @brief Desbloquea un marco físico previamente bloqueado
  * @param numero_frame Número del marco físico a desbloquear
@@ -24,14 +23,12 @@ bool bloquear_marco(int numero_frame, const char* operacion);
  * @return true si el desbloqueo fue exitoso, false si error
  */
 bool desbloquear_marco(int numero_frame, const char* operacion);
-
 /**
  * @brief Verifica si un marco físico está bloqueado
  * @param numero_frame Número del marco físico a verificar
  * @return true si está bloqueado, false si está libre
  */
 bool marco_esta_bloqueado(int numero_frame);
-
 // ============================================================================
 // FUNCIONES DE BLOQUEO MASIVO POR PROCESO
 // ============================================================================
@@ -43,7 +40,6 @@ bool marco_esta_bloqueado(int numero_frame);
  * @return Cantidad de marcos bloqueados exitosamente, -1 si error
  */
 int bloquear_marcos_proceso(int pid, const char* operacion);
-
 /**
  * @brief Desbloquea todos los marcos físicos de un proceso
  * @param pid PID del proceso cuyos marcos se desbloquearán  
@@ -51,7 +47,6 @@ int bloquear_marcos_proceso(int pid, const char* operacion);
  * @return Cantidad de marcos desbloqueados exitosamente, -1 si error
  */
 int desbloquear_marcos_proceso(int pid, const char* operacion);
-
 // ============================================================================
 // FUNCIONES DE UTILIDAD Y HELPERS
 // ============================================================================
@@ -64,7 +59,6 @@ int desbloquear_marcos_proceso(int pid, const char* operacion);
  * @return true si el bloqueo fue exitoso, false si error
  */
 bool bloquear_marco_por_pagina(int pid, int numero_pagina, const char* operacion);
-
 /**
  * @brief Desbloquea el marco físico correspondiente a una página específica
  * @param pid PID del proceso
@@ -73,7 +67,6 @@ bool bloquear_marco_por_pagina(int pid, int numero_pagina, const char* operacion
  * @return true si el desbloqueo fue exitoso, false si error
  */
 bool desbloquear_marco_por_pagina(int pid, int numero_pagina, const char* operacion);
-
 /**
  * @brief Verifica si el marco de una página específica está bloqueado
  * @param pid PID del proceso
@@ -81,7 +74,6 @@ bool desbloquear_marco_por_pagina(int pid, int numero_pagina, const char* operac
  * @return true si está bloqueado, false si está libre
  */
 bool marco_pagina_esta_bloqueado(int pid, int numero_pagina);
-
 /**
  * @brief Obtiene el número de página de un proceso que está mapeada a un marco específico
  * @param pid PID del proceso
@@ -89,14 +81,12 @@ bool marco_pagina_esta_bloqueado(int pid, int numero_pagina);
  * @return Número de página mapeada al marco, -1 si no se encuentra
  */
 int obtener_numero_pagina_de_marco(int pid, int numero_marco);
-
 /**
  * @brief Obtiene el thread que tiene bloqueado un marco
  * @param numero_frame Número del marco físico
  * @return Thread ID del bloqueador, 0 si no está bloqueado
  */
 pthread_t obtener_thread_bloqueador_marco(int numero_frame);
-
 /**
  * @brief Obtiene la operación actual que tiene bloqueado un marco
  * @param numero_frame Número del marco físico
@@ -104,14 +94,12 @@ pthread_t obtener_thread_bloqueador_marco(int numero_frame);
  * @return true si se obtuvo la operación, false si no está bloqueado o error
  */
 bool obtener_operacion_marco(int numero_frame, char* operacion_out);
-
 /**
  * @brief Obtiene estadísticas globales de bloqueos
  * @param marcos_bloqueados_out Cantidad de marcos actualmente bloqueados
  * @param procesos_con_bloqueos_out Cantidad de procesos con al menos un marco bloqueado
  */
 void obtener_estadisticas_bloqueos_marcos(int* marcos_bloqueados_out, int* procesos_con_bloqueos_out);
-
 // ============================================================================
 // FUNCIONES DE INICIALIZACIÓN Y LIMPIEZA
 // ============================================================================
@@ -122,7 +110,6 @@ void obtener_estadisticas_bloqueos_marcos(int* marcos_bloqueados_out, int* proce
  * @return true si la inicialización fue exitosa, false si error
  */
 bool inicializar_bloqueo_marco(int numero_frame);
-
 /**
  * @brief Destruye el sistema de bloqueo de un marco específico
  * @param numero_frame Número del marco a limpiar

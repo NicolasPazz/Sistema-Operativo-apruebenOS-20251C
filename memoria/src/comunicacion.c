@@ -17,6 +17,7 @@
 #include "../../utils/headers/types.h"
 
 /////////////////////////////// Inicializacion de variables globales ///////////////////////////////
+
 int fd_memoria;
 int fd_kernel;
 int fd_cpu;

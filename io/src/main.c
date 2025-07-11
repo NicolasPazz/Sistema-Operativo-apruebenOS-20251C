@@ -72,7 +72,7 @@ int main(int argc, char* argv[]) {
                     exit(EXIT_FAILURE);
                 }
                 log_info(io_log, VERDE("## PID: %d - Fin de IO"), pid);
-                log_debug(io_log, "Operación de I/O para PID %d finalizada en %.2f milisegundos", pid, get_time() - inicio);
+                log_debug(io_log, "Operación de I/O para PID %d finalizada en %.3f milisegundos", pid, get_time() - inicio);
             
                 op_code finalizado = IO_FINALIZADA_OP;
                 if (send(fd_kernel_io, &finalizado, sizeof(op_code), 0) <= 0 ||

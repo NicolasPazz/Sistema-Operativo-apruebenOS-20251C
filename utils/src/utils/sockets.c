@@ -8,6 +8,7 @@
 #include "../headers/sockets.h"
 
         /////////////////////////////// Log y Config ///////////////////////////////
+
     t_log* iniciar_logger(char *file, char *process_name, bool is_active_console, t_log_level level) {
     remove(file);
 	t_log* nuevo_logger = log_create(file, process_name,is_active_console,level);
@@ -28,6 +29,7 @@ t_config* iniciar_config(char* path) {
 }
 
         /////////////////////////////// Conexiones ///////////////////////////////
+
 int iniciar_servidor(char *puerto, t_log* logger, char* msj_server) {
 	if (logger == NULL) {
         printf("Error: Logger no inicializado\n");
@@ -199,6 +201,7 @@ bool validar_handshake(int fd, handshake_code esperado, t_log* log) {
 }
 
         /////////////////////////////// Serializacion ///////////////////////////////
+
 /**
  * @brief Serializa un paquete en un bloque continuo de memoria para su envío por red.
  *
@@ -272,6 +275,7 @@ void paquete(int conexion) {
 }
 
         /////////////////////////////// Envio de paquete/mensaje ///////////////////////////////
+
 void enviar_mensaje(char* mensaje, int socket_cliente) {
 	t_paquete* paquete = malloc(sizeof(t_paquete));
     if (paquete == NULL) {
@@ -439,6 +443,7 @@ bool enviar_operacion(int socket, op_code operacion) {
 }
 
         /////////////////////////////// Deserializacion ///////////////////////////////
+
 char* leer_string(char* buffer, int* desplazamiento) {
     int tamanio = leer_entero(buffer, desplazamiento);
 
@@ -486,8 +491,8 @@ bool enviar_enteros(int socket, int* enteros, int cantidad) {
     return enviados == total_bytes;
 }
 
-
         /////////////////////////////// Recepcion de paquete/mensaje ///////////////////////////////
+
 /**
  * @brief Recibe el código de operación enviado desde un socket.
  * 

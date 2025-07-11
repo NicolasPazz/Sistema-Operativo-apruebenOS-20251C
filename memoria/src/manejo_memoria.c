@@ -1112,4 +1112,3 @@ int calcular_numero_pagina_desde_entradas(int* entradas, int cantidad_niveles, i
     return numero_pagina;
 }
 
-

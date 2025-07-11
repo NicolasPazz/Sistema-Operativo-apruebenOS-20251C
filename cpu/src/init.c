@@ -2,6 +2,7 @@
 #include "../headers/mmu.h"
 
 /////////////////////////////// Inicializacion de variables globales ///////////////////////////////
+
 t_log* cpu_log;
 t_config* cpu_config;
 int fd_memoria;

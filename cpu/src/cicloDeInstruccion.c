@@ -63,7 +63,6 @@ void ejecutar_ciclo_instruccion() {
     log_trace(cpu_log, "[CICLO] ◼ Ciclo de instrucción finalizado para PID: %d", pid_ejecutando);
 }
 
-
 // fetch
 t_instruccion* fetch() {
     log_info(cpu_log, VERDE("## PID: %d - ")ROJO("FETCH")VERDE(" - Program Counter: %d"), pid_ejecutando, pc);

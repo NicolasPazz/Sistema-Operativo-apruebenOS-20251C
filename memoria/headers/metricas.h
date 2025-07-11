@@ -11,7 +11,6 @@
  * @return Puntero a las métricas creadas o NULL en caso de error
  */
 t_metricas_proceso* crear_metricas_proceso(int pid);
-
 // ============== FUNCIONES DE INCREMENTO DE MÉTRICAS ==============
 
 // Funciones para incrementar métricas específicas
@@ -21,15 +20,12 @@ void incrementar_bajadas_swap(int pid);
 void incrementar_subidas_memoria_principal(int pid);
 void incrementar_lecturas_memoria(int pid);
 void incrementar_escrituras_memoria(int pid);
-
 // ============== FUNCIONES DE CONSULTA Y REPORTE ==============
 
 // Función para obtener métricas de un proceso
 t_metricas_proceso* obtener_metricas_proceso(int pid);
-
 // Función para imprimir métricas al finalizar un proceso
 void imprimir_metricas_proceso(int pid);
-
 // Función genérica para actualizar métricas según operación
 void actualizar_metricas(int pid, char* operacion);
 

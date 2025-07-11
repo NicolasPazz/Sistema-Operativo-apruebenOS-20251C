@@ -2,6 +2,7 @@
 #include <sys/time.h>
 
 /////////////////////////////// Inicializacion de variables globales ///////////////////////////////
+
 t_log* io_log;
 t_config* io_config;
 int fd_kernel_io;
@@ -46,6 +47,7 @@ void iniciar_conexiones_io(char* nombre_io) {
     log_trace(io_log, "Intentando conectar a Kernel en %s:%s", IP_KERNEL, PUERTO_KERNEL);
     
     //////////////////////////// Conexion hacia Kernel ////////////////////////////
+
     fd_kernel_io = crear_conexion(IP_KERNEL, PUERTO_KERNEL, io_log);
     if (fd_kernel_io == -1) {
         log_error(io_log, "Error crítico: No se pudo conectar IO a Kernel en %s:%s", IP_KERNEL, PUERTO_KERNEL);
