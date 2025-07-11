@@ -8,6 +8,7 @@
 /////////////////////////////// Declaracion de variables globales ///////////////////////////////
 extern t_log* io_log;
 extern t_config* io_config;
+extern char* nombre_io;
 
 extern int fd_kernel_io;
 

@@ -7,6 +7,7 @@
 /////////////////////////////// Declaracion de variables globales ///////////////////////////////
 extern t_log* cpu_log;
 extern t_config* cpu_config;
+extern int numero_cpu;
 
 extern int fd_memoria;
 extern int fd_kernel_dispatch;

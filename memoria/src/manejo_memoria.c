@@ -197,7 +197,7 @@ t_resultado_memoria crear_proceso_en_memoria(int pid, int tamanio, char* nombre_
     }
 
     // ========== LOG OBLIGATORIO DE CREACIÓN ==========
-    log_info(logger, VERDE("## (PID: %d) - Proceso Creado - Tamaño: %d"), pid, tamanio);
+    log_info(logger, VERDE("## PID: %d - Proceso Creado - Tamaño: %d"), pid, tamanio);
     
     log_debug(logger, "PID: %d - Proceso creado exitosamente:", pid);
     log_debug(logger, "   - Páginas totales: %d", paginas_necesarias);
@@ -323,7 +323,7 @@ t_resultado_memoria suspender_proceso_en_memoria(int pid) {
     }
     
     if (proceso->suspendido) {
-        log_warning(logger, "PID: %d - Proceso ya está suspendido", pid);
+        log_debug(logger, "PID: %d - Proceso ya está suspendido", pid);
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
         return MEMORIA_OK;
     }
@@ -377,7 +377,7 @@ t_resultado_memoria reanudar_proceso_en_memoria(int pid) {
     }
     
     if (!proceso->suspendido) {
-        log_warning(logger, "PID: %d - Proceso no está suspendido", pid);
+        log_debug(logger, "PID: %d - Proceso no está suspendido", pid);
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
         return MEMORIA_OK;
     }
@@ -646,7 +646,7 @@ static t_resultado_memoria liberar_marco_interno(int numero_frame) {
     t_frame* frame = &admin->frames[numero_frame];
     
     if (!frame->ocupado) {
-        log_warning(logger, "Intento de liberar frame ya libre: %d", numero_frame);
+        log_debug(logger, "Intento de liberar frame ya libre: %d", numero_frame);
         return MEMORIA_ERROR_DIRECCION_INVALIDA;
     }
     
@@ -706,7 +706,7 @@ static void liberar_marcos_proceso(int pid) {
 }
 
 void* acceso_espacio_usuario_lectura(int pid, int direccion_fisica, int tamanio) {
-    log_info(logger, VERDE("(PID: %d) - Lectura - Dir. Física: %d - Tamaño: %d"), 
+    log_info(logger, VERDE("(%d) - Lectura - Dir. Física: %d - Tamaño: %d"), 
              pid, direccion_fisica, tamanio);
     
     // Validar parámetros
@@ -736,7 +736,7 @@ void* acceso_espacio_usuario_lectura(int pid, int direccion_fisica, int tamanio)
         *pag = direccion_fisica / cfg->TAM_PAGINA;
         list_add(paginas_bloqueadas, pag);
     } else {
-        log_warning(logger, "PID: %d - No se pudo bloquear página %d para lectura", pid, direccion_fisica / cfg->TAM_PAGINA);
+        log_debug(logger, "PID: %d - No se pudo bloquear página %d para lectura", pid, direccion_fisica / cfg->TAM_PAGINA);
         return NULL;
     }
     
@@ -797,7 +797,7 @@ void* acceso_espacio_usuario_lectura(int pid, int direccion_fisica, int tamanio)
     desbloquear_marco_por_pagina(pid, *pag, "LECTURA_ESPACIO_USUARIO");
     list_destroy_and_destroy_elements(paginas_bloqueadas, free);
     
-    log_info(logger, VERDE("## (PID: %d) - Lectura - Dir. Física: %d - Tamaño: %d"), 
+    log_info(logger, VERDE("## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d"), 
              pid, direccion_fisica, tamanio);
     
     return valor_leido;
@@ -809,7 +809,7 @@ void* acceso_espacio_usuario_lectura(int pid, int direccion_fisica, int tamanio)
  * En caso satisfactorio se responderá un mensaje de 'OK'.
  */
 bool acceso_espacio_usuario_escritura(int pid, int direccion_fisica, int tamanio, void* datos) {
-    log_info(logger, VERDE("(PID: %d) - Escritura - Dir. Física: %d - Tamaño: %d"), 
+    log_info(logger, VERDE("(%d) - Escritura - Dir. Física: %d - Tamaño: %d"), 
              pid, direccion_fisica, tamanio);
     
     // Validar parámetros
@@ -841,7 +841,7 @@ bool acceso_espacio_usuario_escritura(int pid, int direccion_fisica, int tamanio
         *pag = direccion_fisica / cfg->TAM_PAGINA;
         list_add(paginas_bloqueadas, pag);
     } else {
-        log_warning(logger, "PID: %d - No se pudo bloquear página %d para escritura", pid, direccion_fisica / cfg->TAM_PAGINA);
+        log_debug(logger, "PID: %d - No se pudo bloquear página %d para escritura", pid, direccion_fisica / cfg->TAM_PAGINA);
         return false;
     }
     
@@ -860,7 +860,7 @@ bool acceso_espacio_usuario_escritura(int pid, int direccion_fisica, int tamanio
     desbloquear_marco_por_pagina(pid, *pag, "ESCRITURA_ESPACIO_USUARIO");
     list_destroy_and_destroy_elements(paginas_bloqueadas, free);
     
-    log_info(logger, VERDE("## (PID: %d) - Escritura - Dir. Física: %d - Tamaño: %d"), 
+    log_info(logger, VERDE("## PID: %d - Escritura - Dir. Física: %d - Tamaño: %d"), 
              pid, direccion_fisica, tamanio);
     
     return true;
@@ -873,7 +873,7 @@ bool acceso_espacio_usuario_escritura(int pid, int direccion_fisica, int tamanio
  * coincidir con la posición del byte 0 de la página.
  */
 void* leer_pagina_completa(int pid, int direccion_base_pagina) {
-    log_info(logger, "PID: %d - Leer página completa - Dir. Base Página: %d", pid, direccion_base_pagina);
+    log_debug(logger, "PID: %d - Leer página completa - Dir. Base Página: %d", pid, direccion_base_pagina);
     
     // Validar que la dirección coincide con el byte 0 de una página
     if (direccion_base_pagina % cfg->TAM_PAGINA != 0) {
@@ -954,7 +954,7 @@ void* leer_pagina_completa(int pid, int direccion_base_pagina) {
  * Usuario y se responderá como OK.
  */
 bool actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido_pagina) {
-    log_info(logger, "(PID: %d) - Actualizar página completa - Dir. Física: %d", pid, direccion_fisica);
+    log_info(logger, "(%d) - Actualizar página completa - Dir. Física: %d", pid, direccion_fisica);
     
     // Validar parámetros
     if (contenido_pagina == NULL) {

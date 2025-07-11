@@ -30,7 +30,7 @@ int suspender_proceso_completo(int pid) {
     
     t_proceso_memoria* proceso = dictionary_get(sistema_memoria->procesos, string_itoa(pid));
     if (proceso == NULL || proceso->suspendido) {
-        log_warning(logger, "PID: %d - Proceso ya suspendido o no encontrado", pid);
+        log_debug(logger, "PID: %d - Proceso ya suspendido o no encontrado", pid);
         return 0;
     }
     
@@ -105,7 +105,7 @@ int suspender_proceso_completo(int pid) {
         // Incrementar métrica de bajadas a SWAP
         incrementar_bajadas_swap(pid);
         
-        log_info(logger, "PID: %d - Proceso suspendido completamente. Páginas escritas a SWAP: %d", 
+        log_debug(logger, "PID: %d - Proceso suspendido completamente. Páginas escritas a SWAP: %d", 
                  pid, paginas_escritas);
     } else {
         // Si falló la suspensión, liberar las páginas ya escritas a SWAP
@@ -131,7 +131,7 @@ int reanudar_proceso_suspendido(int pid) {
     
     t_proceso_memoria* proceso = dictionary_get(sistema_memoria->procesos, string_itoa(pid));
     if (proceso == NULL || !proceso->suspendido) {
-        log_warning(logger, "PID: %d - Proceso no está suspendido", pid);
+        log_debug(logger, "PID: %d - Proceso no está suspendido", pid);
         return 0;
     }
     
@@ -209,7 +209,7 @@ int reanudar_proceso_suspendido(int pid) {
         // Incrementar métrica de subidas a memoria principal
         incrementar_subidas_memoria_principal(pid);
         
-        log_info(logger, "PID: %d - Proceso reanudado exitosamente. Páginas cargadas desde SWAP: %d", 
+        log_debug(logger, "PID: %d - Proceso reanudado exitosamente. Páginas cargadas desde SWAP: %d", 
                  pid, paginas_cargadas);
     } else {
         // Si falló la reanudación, liberar los marcos ya asignados en esta operación

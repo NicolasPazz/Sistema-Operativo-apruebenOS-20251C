@@ -10,6 +10,7 @@ pthread_t hilo_dispatch, hilo_interrupt, hilo_memoria;
 pthread_mutex_t mutex_estado_proceso = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_tlb = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_cache = PTHREAD_MUTEX_INITIALIZER;
+int numero_cpu;
 
 // Manejador de señales para terminación limpia
 void signal_handler(int sig) {
@@ -48,7 +49,7 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "Uso: %s <ID_CPU> [cpu.config]\n", argv[0]);
         exit(EXIT_FAILURE);
     }
-    int numero_cpu = atoi(argv[1]);
+    numero_cpu = atoi(argv[1]);
 
     char ruta_cfg[256] = "cpu/cpu.config";
     if (argc == 3)
@@ -143,7 +144,7 @@ void* recibir_kernel_dispatch(void* arg) {
                 list_destroy_and_destroy_elements(lista, free);
                 break;
             case -1:
-                log_warning(cpu_log, "Se desconectó el Kernel. Finalizando CPU...");
+                log_debug(cpu_log, "Se desconectó el Kernel. Finalizando CPU...");
                 terminar_programa();
                 exit(EXIT_SUCCESS);
             default:
@@ -158,12 +159,13 @@ void* recibir_kernel_interrupt(void* arg) {
         int cod_op = recibir_operacion(fd_kernel_interrupt);
         switch (cod_op) {
             case -1:
-                log_warning(cpu_log, "Se desconectó el Kernel. Finalizando CPU...");
+                log_debug(cpu_log, "Se desconectó el Kernel. Finalizando CPU...");
                 terminar_programa();
                 exit(EXIT_SUCCESS);
             case INTERRUPCION_OP:
                 // Recibir PID de la interrupción
-                log_trace(cpu_log, VERDE("[INTERRUPT]: Recibiendo interrupción desde Kernel"));
+
+                log_info(cpu_log, VERDE("## Llega interrupción al puerto Interrupt"));
 
                 t_list* datos = recibir_contenido_paquete(fd_kernel_interrupt);
                 if (list_size(datos) < 1) {

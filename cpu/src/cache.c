@@ -45,7 +45,7 @@ int buscar_pagina_en_cache(int numero_pagina) {
     }
     for (int i = 0; i < cache->cantidad_entradas; i++) {
         if (cache->entradas[i].numero_pagina == numero_pagina) {
-            log_info(cpu_log, VERDE("(PID: %d) - Cache Hit - Pagina: %d"), pid_ejecutando, numero_pagina);
+            log_info(cpu_log, VERDE("PID: %d - Cache Hit - Página: %d"), pid_ejecutando, numero_pagina);
             if (strcmp(cache->algoritmo_reemplazo,"CLOCK") == 0 || strcmp(cache->algoritmo_reemplazo, "CLOCK-M") == 0) {
                 cache->entradas[i].bit_referencia = 1;
             }
@@ -122,7 +122,7 @@ void desalojar_proceso_cache() {
             int frameC = -1;
             int pagina = cache->entradas[i].numero_pagina;
             
-            log_info(cpu_log, VERDE("(PID: %d) - Memory Update - Página: %d - Frame: %d"), pid_ejecutando, pagina, frameC);
+            log_info(cpu_log, VERDE("PID: %d - Memory Update - Página: %d - Frame: %d"), pid_ejecutando, pagina, frameC);
 
             // escribir_pagina_en_memoria(pagina, frame, cache->entradas[i].contenido);
         }
@@ -228,7 +228,7 @@ void cache_escribir(int frame, char* datos) {
     cache->entradas[entrada_index].contenido = strdup(datos);
     cache->entradas[entrada_index].modificado = false;
     cache->entradas[entrada_index].bit_referencia = 1;
-    log_info(cpu_log, VERDE("(PID: %d) - Cache Add - Pagina: %d"), pid_ejecutando, frame);
+    log_info(cpu_log, VERDE("PID: %d - Cache Add - Página: %d"), pid_ejecutando, frame);
     pthread_mutex_unlock(&mutex_cache);
 }
 
@@ -237,13 +237,13 @@ char* cache_leer(int numero_pagina) {
     int indice = buscar_pagina_en_cache(numero_pagina);
     if (indice == -1) {
         pthread_mutex_unlock(&mutex_cache);
-        log_warning(cpu_log, "PID: %d - Cache Leer - Página %d no encontrada en caché", pid_ejecutando, numero_pagina);
+        log_debug(cpu_log, "PID: %d - Cache Leer - Página %d no encontrada en caché", pid_ejecutando, numero_pagina);
         return NULL;
     }
 
     if (cache->entradas[indice].contenido == NULL) {
         pthread_mutex_unlock(&mutex_cache);
-        log_warning(cpu_log, "PID: %d - Cache Leer - Contenido nulo en entrada de página %d", pid_ejecutando, numero_pagina);
+        log_debug(cpu_log, "PID: %d - Cache Leer - Contenido nulo en entrada de página %d", pid_ejecutando, numero_pagina);
         return NULL;
     }
 

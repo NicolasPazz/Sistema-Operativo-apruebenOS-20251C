@@ -202,7 +202,7 @@ t_process_instructions* load_process_instructions(int pid, char* instructions_fi
         } 
         else {
             // Unknown instruction, skip it
-            log_warning(logger, "PID: %d - Unknown instruction type: %s", pid, token);
+            log_debug(logger, "PID: %d - Unknown instruction type: %s", pid, token);
             free(instruction->instruccion_base.parametros1);
             free(instruction->instruccion_base.parametros2);
             free(instruction->instruccion_base.parametros3);
@@ -234,7 +234,7 @@ t_process_instructions* load_process_instructions(int pid, char* instructions_fi
 // Obtiene una instrucción específica para un proceso
 t_instruccion* get_instruction(int pid, int pc) {
     if (process_instructions_list == NULL) {
-        log_error(logger, "Lista de instrucciones del proceso (PID: %d) no inicializada", pid);
+        log_error(logger, "Lista de instrucciones del proceso (%d) no inicializada", pid);
         return NULL;
     }
     
@@ -249,7 +249,7 @@ t_instruccion* get_instruction(int pid, int pc) {
     }
     
     if (process_inst == NULL) {
-        log_error(logger, "(PID: %d) - No se encontraron instrucciones para este proceso", pid);
+        log_error(logger, "(%d) - No se encontraron instrucciones para este proceso", pid);
         return NULL;
     }
     

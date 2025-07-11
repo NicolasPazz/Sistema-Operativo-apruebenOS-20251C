@@ -64,7 +64,7 @@ void DUMP_MEMORY(t_pcb* pcb_dump) {
     if (respuesta == OK) {
         // Si la operación fue exitosa, desbloquear el proceso (pasa a READY)
         cambiar_estado_pcb(pcb_dump, READY);
-        log_trace(kernel_log, "## (PID: %d) finalizó DUMP_MEMORY exitosamente y pasa a READY", pcb_dump->PID);
+        log_trace(kernel_log, "## (%d) finalizó DUMP_MEMORY exitosamente y pasa a READY", pcb_dump->PID);
         
         // ✅ Asegurar que el proceso se replanifique inmediatamente
         // Esto es importante para que el proceso continúe ejecutándose después del dump
@@ -72,7 +72,7 @@ void DUMP_MEMORY(t_pcb* pcb_dump) {
     } else {
         // Si hubo error, enviar el proceso a EXIT
         cambiar_estado_pcb(pcb_dump, EXIT_ESTADO);
-        log_error(kernel_log, "## (PID: %d) - Error en DUMP_MEMORY, proceso enviado a EXIT", pcb_dump->PID);
+        log_error(kernel_log, "## (%d) - Error en DUMP_MEMORY, proceso enviado a EXIT", pcb_dump->PID);
     }
 }
 
@@ -100,7 +100,7 @@ void IO(char* nombre_io, int tiempo_a_usar, t_pcb* pcb_a_io) {
 
     // En caso de que sí exista al menos una instancia de IO, aun si la misma se encuentre ocupada, el kernel deberá pasar el proceso al estado BLOCKED y agregarlo a la cola de bloqueados por la IO solicitada. 
     log_info(kernel_log, PURPURA("## (%d) - Bloqueado por IO: %s"), pcb_a_io->PID, nombre_io);
-    log_trace(kernel_log, "## (PID: %d) - Bloqueado por IO: %s (tiempo: %d ms)", pcb_a_io->PID, nombre_io, tiempo_a_usar);  
+    log_trace(kernel_log, "## (%d) - Bloqueado por IO: %s (tiempo: %d ms)", pcb_a_io->PID, nombre_io, tiempo_a_usar);  
 
 
     cambiar_estado_pcb(pcb_a_io, BLOCKED);

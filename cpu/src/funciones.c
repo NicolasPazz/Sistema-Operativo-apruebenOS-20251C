@@ -22,7 +22,7 @@ void func_write(char* direccion_logica_str, char* datos) {
             cache_modificar(nro_pagina, datos); // Asume malloc interno
             return;
         }
-        log_info(cpu_log, ROJO("(PID: %d) - Cache MISS - Pagina: %d"), pid_ejecutando, nro_pagina);
+        log_info(cpu_log, ROJO("PID: %d - Cache Miss - Página: %d"), pid_ejecutando, nro_pagina);
         }
 
     // 2. TRADUCCIÓN Y ESCRITURA EN MEMORIA
@@ -47,7 +47,7 @@ void func_write(char* direccion_logica_str, char* datos) {
         exit(EXIT_FAILURE);
     }
 
-    log_info(cpu_log, VERDE("(PID: %d) - WRITE - Dir Fisica: %d - Valor: %s"), pid_ejecutando, direccion_fisica, datos);
+    log_info(cpu_log, VERDE("PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %s"), pid_ejecutando, direccion_fisica, datos);
 
     // 3. Si hay caché habilitada y fue Cache MISS, cargar la página actualizada
     if (cache_habilitada()) {
@@ -99,7 +99,7 @@ void func_read(char* direccion_logica_str, char* tam_str) {
             free(contenido);
             return;
         }
-        log_info(cpu_log, ROJO("(PID: %d) - Cache MISS - Pagina: %d"), pid_ejecutando, nro_pagina);
+        log_info(cpu_log, ROJO("PID: %d - Cache Miss - Página: %d"), pid_ejecutando, nro_pagina);
     }
 
     // 2. TRADUCCIÓN Y LECTURA DE MEMORIA
@@ -132,7 +132,7 @@ void func_read(char* direccion_logica_str, char* tam_str) {
     }
     
     char* contenido = (char*)list_get(lista_respuesta, 0);
-    log_info(cpu_log, VERDE("(PID: %d) - READ - Dir Fisica: %d - Valor: %s"), pid_ejecutando, direccion_fisica, contenido);
+    log_info(cpu_log, VERDE("PID: %d - Acción: LEER - Dirección Física: %d - Valor: %s"), pid_ejecutando, direccion_fisica, contenido);
     log_trace(cpu_log, "PID: %d - Contenido leído: %s", pid_ejecutando, contenido);
     list_destroy_and_destroy_elements(lista_respuesta, free);
 
@@ -261,7 +261,7 @@ t_instruccion* recibir_instruccion_desde_memoria() {
         return NULL;
     }
 
-    log_info(cpu_log, COLOR1("[MEMORIA->CPU]")" Recibido de Memoria -> param1: '%s', param2: '%s', param3: '%s'",
+    log_debug(cpu_log, COLOR1("[MEMORIA->CPU]")" Recibido de Memoria -> param1: '%s', param2: '%s', param3: '%s'",
         (char*)list_get(lista, 0),
         (char*)list_get(lista, 1),
         (char*)list_get(lista, 2));

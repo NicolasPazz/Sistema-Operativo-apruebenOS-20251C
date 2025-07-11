@@ -222,7 +222,7 @@ int asignar_marco_libre(int pid, int numero_pagina) {
     
     // Verificar si hay marcos disponibles
     if (admin->frames_libres == 0 || list_is_empty(admin->lista_frames_libres)) {
-        log_warning(logger, "## No hay marcos libres disponibles - PID: %d, Página: %d", pid, numero_pagina);
+        log_debug(logger, "## No hay marcos libres disponibles - PID: %d, Página: %d", pid, numero_pagina);
         pthread_mutex_unlock(&admin->mutex_frames);
         return -1;
     }
@@ -271,7 +271,7 @@ t_resultado_memoria liberar_marco(int numero_frame) {
     t_frame* frame = &admin->frames[numero_frame];
     
     if (!frame->ocupado) {
-        log_warning(logger, "Intento de liberar frame ya libre: %d", numero_frame);
+        log_debug(logger, "Intento de liberar frame ya libre: %d", numero_frame);
         pthread_mutex_unlock(&admin->mutex_frames);
         return MEMORIA_ERROR_DIRECCION_INVALIDA;
     }

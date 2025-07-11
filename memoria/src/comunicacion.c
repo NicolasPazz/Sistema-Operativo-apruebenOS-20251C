@@ -98,7 +98,7 @@ void procesar_conexion(void* void_args) {
             break;
 
         default:
-            log_warning(logger, "Handshake invalido recibido (fd=%d): %d", cliente_socket, handshake);
+            log_debug(logger, "Handshake invalido recibido (fd=%d): %d", cliente_socket, handshake);
             close(cliente_socket);
             return;
     }
@@ -112,7 +112,7 @@ void procesar_conexion(void* void_args) {
     log_debug(logger, "El cliente (fd=%d) se desconectó de %s", cliente_socket, server_name);
 
     if (cliente_socket == fd_kernel) {
-        log_warning(logger, "Se desconectó el Kernel. Finalizando Memoria...");
+        log_debug(logger, "Se desconectó el Kernel. Finalizando Memoria...");
         cerrar_programa();
         exit(EXIT_SUCCESS);
     }
@@ -160,7 +160,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                     log_debug(logger, "PID: %d - Instrucciones cargadas desde %s", pid, path_completo);
                     free(pid_key);
                 } else {
-                    log_warning(logger, "PID: %d - No se pudieron cargar instrucciones desde %s", pid, path_completo);
+                    log_debug(logger, "PID: %d - No se pudieron cargar instrucciones desde %s", pid, path_completo);
                 }
             
                 free(path_completo);
@@ -518,7 +518,7 @@ void procesar_write_op(int cliente_socket) {
     int direccion_fisica = *(int*)list_get(lista, 1);
     char* datos_str = (char*)list_get(lista, 2);
 
-    log_trace(logger, VERDE("## PID: %d - Escritura - Dir. Física: %d - Tamaño: %ld"),
+    log_info(logger, VERDE("## PID: %d - Escritura - Dir. Física: %d - Tamaño: %ld"),
                 pid, direccion_fisica, strlen(datos_str));
 
     actualizar_metricas(pid, "MEMORY_WRITE");
@@ -546,7 +546,7 @@ void procesar_read_op(int cliente_socket) {
     int size = *(int*)list_get(lista, 1);
     int pid = *(int*)list_get(lista, 2);
 
-    log_trace(logger, VERDE("## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d"),
+    log_info(logger, VERDE("## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d"),
                 pid, direccion_fisica, size);
 
     actualizar_metricas(pid, "MEMORY_READ");

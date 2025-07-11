@@ -1,6 +1,7 @@
 #include "../headers/io.h"
 #include <signal.h>
 
+char* nombre_io;
 // Manejador de señales para terminación limpia
 void signal_handler(int sig) {
     if (sig == SIGINT) {
@@ -20,7 +21,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    char* nombre_io = argv[1];
+    nombre_io = argv[1];
 
     iniciar_config_io();
     iniciar_logger_io();
@@ -58,7 +59,7 @@ int main(int argc, char* argv[]) {
 
                 log_debug(io_log, "PID recibido: %d | Tiempo de IO: %d | Dispositivo: %s", pid, tiempo_io, nombre_io);
 
-                log_info(io_log, VERDE("## (PID: %d) - Inicio de IO - Tiempo: %d"), pid, tiempo_io);
+                log_info(io_log, VERDE("## PID: %d - Inicio de IO - Tiempo: %d"), pid, tiempo_io);
                 log_trace(io_log, "Simulando operación de I/O para PID %d durante %.d milisegundos...", pid, tiempo_io);
 
                 double inicio = get_time();
@@ -70,7 +71,7 @@ int main(int argc, char* argv[]) {
                     terminar_io();
                     exit(EXIT_FAILURE);
                 }
-                log_info(io_log, VERDE("## (PID: %d) - Fin de IO"), pid);
+                log_info(io_log, VERDE("## PID: %d - Fin de IO"), pid);
                 log_debug(io_log, "Operación de I/O para PID %d finalizada en %.2f milisegundos", pid, get_time() - inicio);
             
                 op_code finalizado = IO_FINALIZADA_OP;
@@ -86,7 +87,7 @@ int main(int argc, char* argv[]) {
                 break;
             }
             default:
-                log_warning(io_log, "Se desconectó el Kernel. Finalizando IO...");
+                log_debug(io_log, "Se desconectó el Kernel. Finalizando IO...");
                 terminar_io();
                 exit(EXIT_SUCCESS);
                 break;

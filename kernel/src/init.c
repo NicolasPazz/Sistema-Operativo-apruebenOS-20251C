@@ -536,7 +536,7 @@ void* atender_cpu_dispatch(void* arg) {
                 break;
                 
             default:
-                log_error(kernel_log, "(PID: %d) Código op desconocido recibido de Dispatch fd %d: %d", pid, fd_cpu_dispatch, cop);
+                log_error(kernel_log, "(%d) Código op desconocido recibido de Dispatch fd %d: %d", pid, fd_cpu_dispatch, cop);
                 break;
         }
 
@@ -714,7 +714,7 @@ void* atender_io(void* arg) {
 
                 if (pcb_fin->Estado == SUSP_BLOCKED) {
                     log_info(kernel_log, AMARILLO("## (%d) finalizó IO y pasa a SUSP_READY"), pid_finalizado);
-                    log_trace(kernel_log, AZUL("[PLANI MP] ## (PID: %d) finalizó IO y pasa a SUSP_READY"), pid_finalizado);
+                    log_trace(kernel_log, AZUL("[PLANI MP] ## (%d) finalizó IO y pasa a SUSP_READY"), pid_finalizado);
                     cambiar_estado_pcb(pcb_fin, SUSP_READY);
                     // TODO REPLANIFICAR
                 } else {

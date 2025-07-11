@@ -31,7 +31,9 @@ void iniciar_config_io() {
 }
 
 void iniciar_logger_io() {
-    io_log = iniciar_logger("io/io.log", "IO", 1, log_level_from_string(LOG_LEVEL));
+    char nombre_logger[64];
+    snprintf(nombre_logger, sizeof(nombre_logger), "IO_%s", nombre_io);
+    io_log = iniciar_logger("io/io.log", nombre_logger, 1, log_level_from_string(LOG_LEVEL));
     if (io_log == NULL) {
         printf("Error al iniciar IO logs\n");
     } else {
@@ -80,7 +82,7 @@ void terminar_io() {
         if (close(fd_kernel_io) == 0) {
             log_trace(io_log, "✓ Conexión con Kernel cerrada correctamente");
         } else {
-            log_warning(io_log, "⚠ Error al cerrar conexión con Kernel: %s", strerror(errno));
+            log_debug(io_log, "⚠ Error al cerrar conexión con Kernel: %s", strerror(errno));
         }
         fd_kernel_io = -1;
     } else {
