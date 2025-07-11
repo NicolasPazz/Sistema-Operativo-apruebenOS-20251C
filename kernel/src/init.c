@@ -43,7 +43,7 @@ t_list *cola_blocked;
 t_list *cola_susp_ready;
 t_list *cola_susp_blocked;
 t_list *cola_exit;
-t_list *cola_procesos; // Cola con TODOS los procesos sin importar el estado (Procesos totales del sistema)
+t_list *cola_procesos;     // Cola con TODOS los procesos sin importar el estado (Procesos totales del sistema)
 t_list *pcbs_bloqueados_por_dump_memory;
 t_list *pcbs_esperando_io;
 t_queue *cola_interrupciones;
@@ -505,7 +505,7 @@ void *atender_cpu_dispatch(void *arg)
             log_debug(kernel_log, "atender_cpu_dispatch: bloqueando mutex_lista_cpus para limpiar PID de la CPU (fd=%d)", fd_cpu_dispatch);
 
             cpu_actual->pid = -1;                // Limpiar PID de la CPU
-            cpu_actual->instruccion_actual = -1; // Limpiar instrucción actual
+            cpu_actual->instruccion_actual = -1;     // Limpiar instrucción actual
             pthread_mutex_unlock(&mutex_lista_cpus);
 
             // Liberar CPU para que el planificador pueda usarla
@@ -527,15 +527,14 @@ void *atender_cpu_dispatch(void *arg)
             t_list *parametros_dump = recibir_contenido_paquete(fd_cpu_dispatch);
             if (!parametros_dump || list_size(parametros_dump) < 2)
             {
-                log_error(kernel_log, "DUMP_MEMORY_OP: Error al recibir parámetros desde CPU Dispatch. Esperados: 2, recibidos: %d",
-                          parametros_dump ? list_size(parametros_dump) : 0);
+                log_error(kernel_log, "DUMP_MEMORY_OP: Error al recibir parámetros desde CPU Dispatch. Esperados: 2, recibidos: %d", parametros_dump ? list_size(parametros_dump) : 0);
                 if (parametros_dump)
                     list_destroy_and_destroy_elements(parametros_dump, free);
                 break;
             }
 
             int PID = *(int *)list_get(parametros_dump, 0);
-            int PC_actualizado = *(int *)list_get(parametros_dump, 1); // ✅ RECIBIR PC ACTUALIZADO
+            int PC_actualizado = *(int *)list_get(parametros_dump, 1);     // ✅ RECIBIR PC ACTUALIZADO
 
             // Obtener el PCB del proceso
             t_pcb *pcb_dump = buscar_pcb(PID);
@@ -551,7 +550,7 @@ void *atender_cpu_dispatch(void *arg)
             log_debug(kernel_log, "atender_cpu_dispatch: bloqueando mutex_lista_cpus para limpiar PID de la CPU (fd=%d)", fd_cpu_dispatch);
 
             cpu_actual->pid = -1;                // Limpiar PID de la CPU
-            cpu_actual->instruccion_actual = -1; // Limpiar instrucción actual
+            cpu_actual->instruccion_actual = -1;     // Limpiar instrucción actual
             pthread_mutex_unlock(&mutex_lista_cpus);
 
             // Liberar CPU para que el planificador pueda usarla
@@ -579,7 +578,7 @@ void *atender_cpu_dispatch(void *arg)
         pthread_mutex_lock(&mutex_lista_cpus);
         log_debug(kernel_log, "atender_cpu_dispatch: bloqueando mutex_lista_cpus para limpiar instrucción actual de la CPU (fd=%d)", fd_cpu_dispatch);
 
-        cpu_actual->instruccion_actual = -1; // Valor inválido para indicar que está libre
+        cpu_actual->instruccion_actual = -1;     // Valor inválido para indicar que está libre
         pthread_mutex_unlock(&mutex_lista_cpus);
     }
 
@@ -783,8 +782,7 @@ void *atender_io(void *arg)
             break;
         }
         default:
-            log_error(kernel_log, "Código op desconocido recibido desde IO '%s' (fd=%d): %d",
-                      dispositivo_io->nombre, fd_io, cop);
+            log_error(kernel_log, "Código op desconocido recibido desde IO '%s' (fd=%d): %d", dispositivo_io->nombre, fd_io, cop);
             terminar_kernel();
             exit(EXIT_FAILURE);
             break;
@@ -885,7 +883,7 @@ void asignar_proceso(io *dispositivo, t_pcb_io *proceso)
 
     // Crear paquete serializado
     t_paquete *paquete = crear_paquete_op(IO_OP);
-    agregar_a_paquete(paquete, dispositivo->nombre, strlen(dispositivo->nombre) + 1); // nombre de la IO
+    agregar_a_paquete(paquete, dispositivo->nombre, strlen(dispositivo->nombre) + 1);     // nombre de la IO
     agregar_entero_a_paquete(paquete, proceso->tiempo_a_usar);                        // tiempo
     agregar_entero_a_paquete(paquete, proceso->pcb->PID);                             // pid
 

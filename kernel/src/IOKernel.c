@@ -120,19 +120,16 @@ void bloquear_pcb_por_io(char *nombre_io, t_pcb *pcb, int tiempo_a_usar)
     {
         // Si la IO no está disponible, se agrega a la lista de bloqueados por IO
         log_trace(kernel_log, "No hay IO disponible con el nombre '%s'", nombre_io);
-        log_debug(kernel_log, "bloquear_pcb_por_io: esperando mutex_pcbs_esperando_io para agregar PCB PID=%d a la lista de bloqueados por IO '%s' por %d ms",
-                  pcb->PID, nombre_io, tiempo_a_usar);
+        log_debug(kernel_log, "bloquear_pcb_por_io: esperando mutex_pcbs_esperando_io para agregar PCB PID=%d a la lista de bloqueados por IO '%s' por %d ms", pcb->PID, nombre_io, tiempo_a_usar);
         pthread_mutex_lock(&mutex_pcbs_esperando_io);
-        log_debug(kernel_log, "bloquear_pcb_por_io: bloqueando mutex_pcbs_esperando_io para agregar PCB PID=%d a la lista de bloqueados por IO '%s' por %d ms",
-                  pcb->PID, nombre_io, tiempo_a_usar);
+        log_debug(kernel_log, "bloquear_pcb_por_io: bloqueando mutex_pcbs_esperando_io para agregar PCB PID=%d a la lista de bloqueados por IO '%s' por %d ms", pcb->PID, nombre_io, tiempo_a_usar);
         t_pcb_io *pcb_io = malloc(sizeof(t_pcb_io));
         pcb_io->pcb = pcb;
         pcb_io->io = get_io(nombre_io);
         pcb_io->tiempo_a_usar = tiempo_a_usar;
         list_add(pcbs_esperando_io, pcb_io);
         pthread_mutex_unlock(&mutex_pcbs_esperando_io);
-        log_trace(kernel_log, "PCB PID=%d agregado a la lista de bloqueados por IO '%s' por %d ms",
-                  pcb->PID, nombre_io, tiempo_a_usar);
+        log_trace(kernel_log, "PCB PID=%d agregado a la lista de bloqueados por IO '%s' por %d ms", pcb->PID, nombre_io, tiempo_a_usar);
     }
 }
 
@@ -144,7 +141,7 @@ void enviar_io(io *dispositivo, t_pcb *pcb, int tiempo_a_usar)
 
     // Crear paquete serializado
     t_paquete *paquete = crear_paquete_op(IO_OP);
-    agregar_a_paquete(paquete, dispositivo->nombre, strlen(dispositivo->nombre) + 1); // nombre de la IO
+    agregar_a_paquete(paquete, dispositivo->nombre, strlen(dispositivo->nombre) + 1);     // nombre de la IO
     agregar_entero_a_paquete(paquete, tiempo_a_usar);                                 // tiempo
     agregar_entero_a_paquete(paquete, pcb->PID);                                      // pid
 

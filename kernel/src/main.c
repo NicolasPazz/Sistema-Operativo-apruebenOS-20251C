@@ -46,9 +46,7 @@ int main(int argc, char *argv[])
 
     if (argc < 3 || argc > 5)
     {
-        fprintf(stderr,
-                "Uso: %s <archivo_pseudocodigo> <tamanio_proceso> [kernel.config]\n",
-                argv[0]);
+        fprintf(stderr, "Uso: %s <archivo_pseudocodigo> <tamanio_proceso> [kernel.config]\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 

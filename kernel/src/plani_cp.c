@@ -84,8 +84,7 @@ t_pcb *elegir_por_sjf()
 
     if (seleccionado)
     {
-        log_trace(kernel_log, "SJF: Proceso elegido PID=%d con estimación=%.3f",
-                  seleccionado->PID, seleccionado->estimacion_rafaga);
+        log_trace(kernel_log, "SJF: Proceso elegido PID=%d con estimación=%.3f", seleccionado->PID, seleccionado->estimacion_rafaga);
     }
     else
     {
@@ -137,8 +136,7 @@ t_pcb *elegir_por_srt()
         exit(EXIT_FAILURE);
     }
 
-    log_trace(kernel_log, "SRT: Proceso candidato elegido PID=%d con rafaga restante=%.3f ms",
-              candidato_ready->PID, candidato_ready->estimacion_rafaga);
+    log_trace(kernel_log, "SRT: Proceso candidato elegido PID=%d con rafaga restante=%.3f ms", candidato_ready->PID, candidato_ready->estimacion_rafaga);
 
     log_debug(kernel_log, "SRT: esperando mutex_lista_cpus para buscar CPU disponible o con mayor rafaga restante");
     pthread_mutex_lock(&mutex_lista_cpus);
@@ -158,7 +156,7 @@ t_pcb *elegir_por_srt()
         if (c->pid == -1)
         {
             cpu_libre = true;
-            break; // hay una CPU libre
+            break;     // hay una CPU libre
         }
     }
     if (!cpu_libre)
@@ -188,18 +186,18 @@ t_pcb *elegir_por_srt()
     if (cpu_libre)
     {
         log_trace(kernel_log, "SRT: Hay CPU libre para ejecutar el proceso READY seleccionado (PID=%d)", candidato_ready->PID);
-        return candidato_ready; // Se puede asignar el proceso ahora
+        return candidato_ready;     // Se puede asignar el proceso ahora
     }
     else if (cpu_con_mayor_rafaga_restante)
     {
         log_trace(kernel_log, "SRT: Hay CPU ocupada con un proceso con mayor rafaga restante que el proceso READY seleccionado (PID=%d)", candidato_ready->PID);
-        return candidato_ready; // Se puede asignar el proceso ahora, pero se deberadesalojar
+        return candidato_ready;     // Se puede asignar el proceso ahora, pero se deberadesalojar
     }
     else
     { // Si no hay CPU libre ni una ejecutando un proceso con mayor rafaga restante
         // replanificar cuando haya una cpu libre o entre un proceso en ready?
         log_trace(kernel_log, "SRT: No hay CPU libre ni con mayor rafaga restante que el proceso READY seleccionado (PID=%d), se reintentará cuando se cumplan las condiciones", candidato_ready->PID);
-        return NULL; // No se puede asignar el proceso ahora
+        return NULL;     // No se puede asignar el proceso ahora
     }
 }
 
@@ -239,23 +237,17 @@ void *menor_rafaga_restante(void *a, void *b)
     // Comparar ráfagas restantes
     if (restante_a < restante_b)
     {
-        log_trace(kernel_log,
-                  "PID %d tiene menor rafaga restante (%.3f ms) que PID %d (%.3f ms)",
-                  pcb_a->PID, restante_a, pcb_b->PID, restante_b);
+        log_trace(kernel_log, "PID %d tiene menor rafaga restante (%.3f ms) que PID %d (%.3f ms)", pcb_a->PID, restante_a, pcb_b->PID, restante_b);
         return pcb_a;
     }
     if (restante_b < restante_a)
     {
-        log_trace(kernel_log,
-                  "PID %d tiene menor rafaga restante (%.3f ms) que PID %d (%.3f ms)",
-                  pcb_b->PID, restante_b, pcb_a->PID, restante_a);
+        log_trace(kernel_log, "PID %d tiene menor rafaga restante (%.3f ms) que PID %d (%.3f ms)", pcb_b->PID, restante_b, pcb_a->PID, restante_a);
         return pcb_b;
     }
 
     // En caso de empate, devolver el primero que llegó (FIFO)
-    log_trace(kernel_log,
-              "Empate de rafaga restante entre PID %d y PID %d. Se elige FIFO (PID %d)",
-              pcb_a->PID, pcb_b->PID, pcb_a->PID);
+    log_trace(kernel_log, "Empate de rafaga restante entre PID %d y PID %d. Se elige FIFO (PID %d)", pcb_a->PID, pcb_b->PID, pcb_a->PID);
     return pcb_a;
 }
 
@@ -289,9 +281,7 @@ void dispatch(t_pcb *proceso_a_ejecutar)
                 }
             }
         }
-        log_trace(kernel_log, "Dispatch: CPU %d - tipo=%d, pid=%d, fd=%d, estado=%s",
-                  c->id, c->tipo_conexion, c->pid, c->fd,
-                  c->tipo_conexion == CPU_DISPATCH ? (c->pid == -1 ? "LIBRE" : "OCUPADA") : "NO-DISPATCH");
+        log_trace(kernel_log, "Dispatch: CPU %d - tipo=%d, pid=%d, fd=%d, estado=%s", c->id, c->tipo_conexion, c->pid, c->fd, c->tipo_conexion == CPU_DISPATCH ? (c->pid == -1 ? "LIBRE" : "OCUPADA") : "NO-DISPATCH");
     }
 
     log_trace(kernel_log, "Dispatch: Total CPUs=%d, CPUs DISPATCH=%d, CPUs libres=%d", total_cpus, cpus_dispatch, cpus_libres);
@@ -332,8 +322,7 @@ void dispatch(t_pcb *proceso_a_ejecutar)
             }
             // Desalojar
             /*if(!interrupt(cpu_disponible, proceso_a_ejecutar)) {
-                log_error(kernel_log, "Dispatch: ✗ Error al enviar interrupción a CPU %d para desalojar PID %d",
-                          cpu_disponible->id, proceso_a_ejecutar->PID);
+                log_error(kernel_log, "Dispatch: ✗ Error al enviar interrupción a CPU %d para desalojar PID %d", cpu_disponible->id, proceso_a_ejecutar->PID);
                 terminar_kernel();
                 exit(EXIT_FAILURE);
             }
@@ -348,10 +337,7 @@ void dispatch(t_pcb *proceso_a_ejecutar)
             log_debug(kernel_log, "DISPATCH: bloqueando mutex_cola_interrupciones para encolar interrupción");
             queue_push(cola_interrupciones, nueva);
             pthread_mutex_unlock(&mutex_cola_interrupciones);
-            log_trace(kernel_log,
-                      "[INTERRUPT]: Interrupción encolada para desalojar CPU %d (desaloja PID=%d para correr PID=%d)",
-                      cpu_disponible->id,
-                      cpu_disponible->pid,    // PID actual en esa CPU
+            log_trace(kernel_log, "[INTERRUPT]: Interrupción encolada para desalojar CPU %d (desaloja PID=%d para correr PID=%d)", cpu_disponible->id, cpu_disponible->pid, // PID actual en esa CPU
                       proceso_a_ejecutar->PID // nuevo PID a ejecutar
             );
 
@@ -359,7 +345,7 @@ void dispatch(t_pcb *proceso_a_ejecutar)
             log_debug(kernel_log, "[INTERRUPT]: semaforo INTERRUPCIONES aumentado para procesar interrupción");
 
             pthread_mutex_unlock(&mutex_lista_cpus);
-            return; // Esperar a que se procese la interrupción
+            return;     // Esperar a que se procese la interrupción
         }
         else
         {
@@ -385,8 +371,7 @@ void dispatch(t_pcb *proceso_a_ejecutar)
     enviar_paquete(paquete, cpu_disponible->fd);
     eliminar_paquete(paquete);
 
-    log_trace(kernel_log, "Dispatch: Proceso %d despachado a CPU %d (PC=%d)",
-              proceso_a_ejecutar->PID, cpu_disponible->id, proceso_a_ejecutar->PC);
+    log_trace(kernel_log, "Dispatch: Proceso %d despachado a CPU %d (PC=%d)", proceso_a_ejecutar->PID, cpu_disponible->id, proceso_a_ejecutar->PC);
 }
 
 void solicitar_replanificacion_srt(void)
@@ -444,11 +429,7 @@ void *interrupt_handler(void *arg)
             exit(EXIT_FAILURE);
         }
 
-        log_trace(kernel_log,
-                  VERDE("[INTERRUPT]: Interrupt handler: Enviando interrupción a CPU %d (desaloja PID=%d para correr PID=%d)"),
-                  intr->cpu_a_desalojar->id,
-                  intr->cpu_a_desalojar->pid,
-                  intr->pid_a_ejecutar);
+        log_trace(kernel_log, VERDE("[INTERRUPT]: Interrupt handler: Enviando interrupción a CPU %d (desaloja PID=%d para correr PID=%d)"), intr->cpu_a_desalojar->id, intr->cpu_a_desalojar->pid, intr->pid_a_ejecutar);
 
         // Enviar interrupción con el PID actualmente ejecutando en la CPU
         t_paquete *paquete = crear_paquete_op(INTERRUPCION_OP);
@@ -487,8 +468,7 @@ void *interrupt_handler(void *arg)
 
             if (pid_recibido != intr->cpu_a_desalojar->pid)
             {
-                log_error(kernel_log, "[INTERRUPT]: PID recibido (%d) no coincide con PID esperado (%d)",
-                          pid_recibido, intr->cpu_a_desalojar->pid);
+                log_error(kernel_log, "[INTERRUPT]: PID recibido (%d) no coincide con PID esperado (%d)", pid_recibido, intr->cpu_a_desalojar->pid);
                 terminar_kernel();
                 exit(EXIT_FAILURE);
             }
@@ -502,7 +482,7 @@ void *interrupt_handler(void *arg)
 
             // Limpiar CPU desalojada
             intr->cpu_a_desalojar->pid = -1;
-            intr->cpu_a_desalojar->instruccion_actual = -1; // Resetear instrucción actual
+            intr->cpu_a_desalojar->instruccion_actual = -1;     // Resetear instrucción actual
             log_trace(kernel_log, "Interrupt handler: CPU %d liberada", intr->cpu_a_desalojar->id);
             cambiar_estado_pcb(pcb, READY);
             solicitar_replanificacion_srt();

@@ -70,15 +70,7 @@ void mostrar_metrica(const char *nombre, int *metrica)
 
 void mostrar_colas_estados()
 {
-    log_trace(kernel_log, "Colas -> [NEW: %d, READY: %d, EXEC: %d, BLOCK: %d, SUSP.BLOCK: %d, SUSP.READY: %d, EXIT: %d] | Procesos en total: %d",
-              list_size(cola_new),
-              list_size(cola_ready),
-              list_size(cola_running),
-              list_size(cola_blocked),
-              list_size(cola_susp_blocked),
-              list_size(cola_susp_ready),
-              list_size(cola_exit),
-              list_size(cola_procesos));
+    log_trace(kernel_log, "Colas -> [NEW: %d, READY: %d, EXEC: %d, BLOCK: %d, SUSP.BLOCK: %d, SUSP.READY: %d, EXIT: %d] | Procesos en total: %d", list_size(cola_new), list_size(cola_ready), list_size(cola_running), list_size(cola_blocked), list_size(cola_susp_blocked), list_size(cola_susp_ready), list_size(cola_exit), list_size(cola_procesos));
 }
 
 void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
@@ -92,10 +84,7 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
 
     if (!transicion_valida(PCB->Estado, nuevo_estado_enum))
     {
-        log_error(kernel_log, "cambiar_estado_pcb: Transicion no valida en el PID %d: %s → %s",
-                  PCB->PID,
-                  estado_to_string(PCB->Estado),
-                  estado_to_string(nuevo_estado_enum));
+        log_error(kernel_log, "cambiar_estado_pcb: Transicion no valida en el PID %d: %s → %s", PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
@@ -119,10 +108,7 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
             exit(EXIT_FAILURE);
         }
 
-        log_info(kernel_log, AZUL("## (%u) Pasa del estado ") VERDE("%s") AZUL(" al estado ") VERDE("%s"),
-                 PCB->PID,
-                 estado_to_string(PCB->Estado),
-                 estado_to_string(nuevo_estado_enum));
+        log_info(kernel_log, AZUL("## (%u) Pasa del estado ") VERDE("%s") AZUL(" al estado ") VERDE("%s"), PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
 
         bloquear_cola_por_estado(PCB->Estado);
         list_remove_element(cola_origen, PCB);
@@ -134,7 +120,7 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
         if (cronometro != NULL)
         {
             temporal_stop(cronometro);
-            int64_t tiempo = temporal_gettime(cronometro); // 10 seg
+            int64_t tiempo = temporal_gettime(cronometro);     // 10 seg
 
             // Guardar el tiempo en el estado ANTERIOR
             PCB->MT[PCB->Estado] += (int)tiempo;
@@ -183,13 +169,13 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
 
         if (PCB->Estado == SUSP_READY)
         {
-            sem_post(&sem_susp_ready_vacia); // Sumar 1 al semaforo
+            sem_post(&sem_susp_ready_vacia);     // Sumar 1 al semaforo
             log_debug(kernel_log, "cambiar_estado_pcb: Semaforo SUSP READY VACIA aumentado");
         }
 
         // Cambiar Estado y actualizar Metricas de Estados
         PCB->Estado = nuevo_estado_enum;
-        PCB->ME[nuevo_estado_enum] += 1; // Se suma 1 en las Metricas de estado del nuevo estado
+        PCB->ME[nuevo_estado_enum] += 1;     // Se suma 1 en las Metricas de estado del nuevo estado
     }
     else
     {
@@ -204,7 +190,7 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
 
         // Cambiar Estado y actualizar Metricas de Estados
         PCB->Estado = nuevo_estado_enum;
-        PCB->ME[nuevo_estado_enum] += 1; // Se suma 1 en las Metricas de estado del nuevo estado
+        PCB->ME[nuevo_estado_enum] += 1;     // Se suma 1 en las Metricas de estado del nuevo estado
         bloquear_cola_por_estado(PCB->Estado);
         list_add(cola_procesos, PCB);
         liberar_cola_por_estado(PCB->Estado);
@@ -239,7 +225,7 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
         sem_post(&sem_proceso_a_susp_ready);
         log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a SUSP READY aumentado");
         log_debug(kernel_log, "cambiar_estado_pcb: Semaforo SUSP READY VACIA disminuido");
-        sem_wait(&sem_susp_ready_vacia); // Restar 1 al semaforo
+        sem_wait(&sem_susp_ready_vacia);     // Restar 1 al semaforo
         break;
     case SUSP_BLOCKED:
         sem_post(&sem_proceso_a_susp_blocked);

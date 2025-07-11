@@ -7,7 +7,7 @@ void *timer_suspension(void *v_arg)
     bool *flag = arg->vigente;
     int pid = arg->pid;
 
-    usleep(TIEMPO_SUSPENSION * 1000); // usleep usa microsegundos: 1 ms = 1000 µs
+    usleep(TIEMPO_SUSPENSION * 1000);     // usleep usa microsegundos: 1 ms = 1000 µs
 
     if (!pcb)
     {
@@ -91,7 +91,7 @@ void iniciar_timer_suspension(t_pcb *pcb)
         *(pcb->timer_flag) = false;
     }
 
-    pcb->timer_flag = flag; // mutex?
+    pcb->timer_flag = flag;     // mutex?
 
     t_timer_arg *arg = malloc(sizeof(t_timer_arg));
     arg->pcb = pcb;

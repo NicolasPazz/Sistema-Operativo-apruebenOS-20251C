@@ -68,7 +68,7 @@ void fin_io(io *dispositivo, int pid_finalizado);
  * @param pcb_a_finalizar: PCB del proceso a finalizar
  */
 void EXIT(t_pcb *pcb_a_finalizar);
-t_pcb_io *buscar_y_remover_pcb_io_por_dispositivo_y_pid(io *dispositivo, int pid); // Busca y remueve PCB de la lista de bloqueados por IO
+t_pcb_io *buscar_y_remover_pcb_io_por_dispositivo_y_pid(io *dispositivo, int pid);     // Busca y remueve PCB de la lista de bloqueados por IO
 
 /**
  * @brief Busca un dispositivo IO por su file descriptor

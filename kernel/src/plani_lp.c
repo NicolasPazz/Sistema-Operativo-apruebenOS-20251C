@@ -66,8 +66,7 @@ void *planificador_largo_plazo(void *arg)
 
         if (!pcb)
         {
-            log_error(kernel_log, "planificador_largo_plazo: No se pudo obtener un PCB de la cola %s",
-                      estado == NEW ? "NEW" : "SUSP_READY");
+            log_error(kernel_log, "planificador_largo_plazo: No se pudo obtener un PCB de la cola %s", estado == NEW ? "NEW" : "SUSP_READY");
             terminar_kernel();
             exit(EXIT_FAILURE);
         }
@@ -128,7 +127,7 @@ void *planificador_largo_plazo(void *arg)
                 {
                     log_trace(kernel_log, "planificador_largo_plazo: Error al inicializar proceso PID %d en memoria", pcb->PID);
                     liberar_cola_por_estado(estado);
-                    continue; // No se pudo inicializar, esperar una replanificacion
+                    continue;     // No se pudo inicializar, esperar una replanificacion
                 }
             }
         }

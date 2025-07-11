@@ -21,15 +21,15 @@ void INIT_PROC(char *nombre_archivo, int tam_memoria)
 
     // Crear nuevo PCB
     t_pcb *nuevo_proceso = malloc(sizeof(t_pcb));
-    memset(nuevo_proceso, 0, sizeof(t_pcb)); // Inicializar todo en 0
+    memset(nuevo_proceso, 0, sizeof(t_pcb));     // Inicializar todo en 0
     nuevo_proceso->PID = obtener_siguiente_pid();
     nuevo_proceso->Estado = INIT;
     nuevo_proceso->tamanio_memoria = tam_memoria;
     nuevo_proceso->path = strdup(nombre_archivo);
-    nuevo_proceso->PC = 1; // Inicializar PC a 1
+    nuevo_proceso->PC = 1;     // Inicializar PC a 1
     nuevo_proceso->estimacion_rafaga = ESTIMACION_INICIAL;
     nuevo_proceso->tiempo_inicio_exec = -1;    // Inicializar tiempo de inicio exec a -1
-    nuevo_proceso->tiempo_inicio_blocked = -1; // Inicializar tiempo de inicio blocked a -1
+    nuevo_proceso->tiempo_inicio_blocked = -1;     // Inicializar tiempo de inicio blocked a -1
 
     log_trace(kernel_log, "INIT_PROC: proceso nuevo a la cola NEW");
     cambiar_estado_pcb(nuevo_proceso, NEW);
