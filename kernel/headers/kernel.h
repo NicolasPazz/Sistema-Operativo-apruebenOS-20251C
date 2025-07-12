@@ -4,10 +4,15 @@
 /////////////////////////////// Includes ///////////////////////////////
 
 #include "../../utils/headers/sockets.h"
+#include "procesos.h"
+#include "syscalls.h"
+#include "planificadores.h"
+#include "IOKernel.h"
+#include "CPUKernel.h"
+#include "MEMKernel.h"
 #include <signal.h>
 #include <unistd.h>
 #include <commons/collections/queue.h>
-#include "types.h"
 
 /////////////////////////////// Declaracion de variables globales ///////////////////////////////
 

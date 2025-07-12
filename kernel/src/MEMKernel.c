@@ -2,7 +2,9 @@
 #include "../headers/kernel.h"
 
 int conectar_memoria()
-{
+{   
+    log_trace(kernel_log, "Conectando a Memoria en %s:%s", IP_MEMORIA, PUERTO_MEMORIA);
+
     int fd = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, kernel_log);
     if (fd == -1)
     {
@@ -10,6 +12,8 @@ int conectar_memoria()
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
+
+    log_trace(kernel_log, "conectar_memoria: socket abierto");
 
     int handshake = HANDSHAKE_MEMORIA_KERNEL;
     if (send(fd, &handshake, sizeof(handshake), 0) <= 0)
@@ -20,7 +24,7 @@ int conectar_memoria()
         exit(EXIT_FAILURE);
     }
 
-    log_debug(kernel_log, "conectar_memoria: fd=%d OK", fd);
+    log_trace(kernel_log, "conectar_memoria: fd=%d OK", fd);
     return fd;
 }
 
@@ -31,7 +35,9 @@ void desconectar_memoria(int fd)
 }
 
 bool inicializar_proceso_en_memoria(t_pcb *pcb)
-{
+{   
+    log_trace(kernel_log, "Inicializando proceso en Memoria: PID %d", pcb->PID);
+
     int fd = conectar_memoria();
 
     t_paquete *paq = crear_paquete_op(INIT_PROC_OP);

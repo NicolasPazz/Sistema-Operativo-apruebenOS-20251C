@@ -5,6 +5,7 @@
 
 /////////////////////////////// Includes ///////////////////////////////
 
+#include "kernel.h"
 #include "types.h"
 #include <semaphore.h>
 

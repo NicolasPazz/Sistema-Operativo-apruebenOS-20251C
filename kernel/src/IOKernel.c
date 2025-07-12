@@ -1,5 +1,4 @@
 #include "../headers/IOKernel.h"
-#include "../headers/planificadores.h"
 
 // Busca un dispositivo IO por su nombre
 io *get_io(char *nombre_io)

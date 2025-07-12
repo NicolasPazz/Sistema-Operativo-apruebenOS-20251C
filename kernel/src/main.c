@@ -1,5 +1,4 @@
 #include "../headers/kernel.h"
-#include "../headers/planificadores.h"
 #include <dirent.h>
 
 // Manejador de señales para terminación limpia

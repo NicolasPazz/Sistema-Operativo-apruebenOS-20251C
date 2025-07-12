@@ -20,7 +20,8 @@ void *planificador_largo_plazo(void *arg)
             if (strcmp(ALGORITMO_INGRESO_A_READY, "FIFO") == 0)
             {
                 if (list_size(cola_new) == 1)
-                {
+                {   
+                    log_trace(kernel_log, "planificador_largo_plazo: Cola NEW con un solo proceso, eligiendo por FIFO");
                     pcb = elegir_por_fifo(cola_new);
                 }
                 else if (list_size(cola_new) > 1)
@@ -48,6 +49,8 @@ void *planificador_largo_plazo(void *arg)
                 exit(EXIT_FAILURE);
             }
 
+            log_trace(kernel_log, "planificador_largo_plazo: verificando pcb obtenido de la cola NEW");
+
             if (!pcb)
             {
                 log_error(kernel_log, "planificador_largo_plazo: No se pudo obtener un PCB de la cola NEW");
@@ -57,6 +60,8 @@ void *planificador_largo_plazo(void *arg)
                 exit(EXIT_FAILURE);
             }
 
+            log_trace(kernel_log, "planificador_largo_plazo: PCB con PID %d obtenido de la cola NEW", pcb->PID);
+
             if (!inicializar_proceso_en_memoria(pcb))
             {
                 aumentar_procesos_rechazados();
@@ -64,6 +69,8 @@ void *planificador_largo_plazo(void *arg)
                 pthread_mutex_unlock(&mutex_cola_susp_ready);
                 continue;
             }
+
+            log_trace(kernel_log, "planificador_largo_plazo: PCB con PID %d inicializado en memoria", pcb->PID);
 
             pthread_mutex_unlock(&mutex_cola_new);
             cambiar_estado_pcb(pcb, READY);
@@ -158,7 +165,7 @@ void verificar_procesos_rechazados()
     pthread_mutex_unlock(&mutex_cola_susp_ready);
 
     pthread_mutex_lock(&mutex_procesos_rechazados);
-    for (procesos_new_rechazados; procesos_new_rechazados > 0; procesos_new_rechazados--)
+    while (procesos_new_rechazados > 0)
     {
         t_pcb *pcb;
         if (strcmp(ALGORITMO_INGRESO_A_READY, "FIFO") == 0 || list_size(cola_new) == 1)
@@ -196,6 +203,7 @@ void verificar_procesos_rechazados()
 
         pthread_mutex_unlock(&mutex_cola_new);
         cambiar_estado_pcb(pcb, READY);
+        procesos_new_rechazados--;
     }
     pthread_mutex_unlock(&mutex_procesos_rechazados);
 }
@@ -236,7 +244,8 @@ t_pcb *elegir_por_fifo(t_list *cola_a_utilizar)
         return NULL;
     }
 
-    return (t_pcb *)list_get(cola_ready, 0);
+    log_trace(kernel_log, "FIFO: seleccionando el primer PCB de la cola");
+    return (t_pcb *)list_get(cola_a_utilizar, 0);
 }
 
 t_pcb *elegir_por_pmcp(t_list *cola_a_utilizar)
@@ -249,6 +258,7 @@ t_pcb *elegir_por_pmcp(t_list *cola_a_utilizar)
         return NULL;
     }
 
+    log_trace(kernel_log, "PMCP: seleccionando el PCB con menor tamaño de memoria");
     return (t_pcb *)list_get_minimum(cola_a_utilizar, menor_tamanio);
 }
 

@@ -5,6 +5,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include "kernel.h"
 #include "types.h"
 
 /////////////////////////////// Prototipos ///////////////////////////////

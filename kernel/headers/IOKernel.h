@@ -1,6 +1,8 @@
 #ifndef IOKERNEL_H_
 #define IOKERNEL_H_
 
+#include "syscalls.h"
+#include "kernel.h"
 #include "types.h"
 #include <semaphore.h>
 
