@@ -1,4 +1,5 @@
 #include "../headers/procesos.h"
+#include "../headers/planificadores.h"
 #include <commons/collections/list.h>
 
 /////////////////////////////// Funciones ///////////////////////////////

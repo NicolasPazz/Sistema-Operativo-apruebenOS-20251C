@@ -5,14 +5,13 @@
 
 #include <stdint.h>
 #include <stdio.h>
-#include "kernel.h"
 #include "types.h"
 
 /////////////////////////////// Prototipos ///////////////////////////////
 
 void mostrar_pcb(t_pcb *PCB);                           // Muestra por pantalla los valores de un PCB
 void mostrar_metrica(const char *nombre, int *metrica);     // Auxiliar para mostrar_pcb
-void mostrar_colas_estados(void);
+void mostrar_colas_estados();
 const char *estado_to_string(Estados estado);     // Asocia el valor del enum con el nombre del estado (Para imprimir el nombre en vez de un numero)
 void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum);
 bool transicion_valida(Estados actual, Estados destino);     // Valida transiciones de estados en base al diagrama de 7 estados

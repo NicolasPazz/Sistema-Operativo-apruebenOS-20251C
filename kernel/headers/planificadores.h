@@ -5,7 +5,6 @@
 
 /////////////////////////////// Includes ///////////////////////////////
 
-#include "kernel.h"
 #include "types.h"
 #include <semaphore.h>
 
@@ -22,6 +21,8 @@ extern pthread_mutex_t mutex_cola_exit;
 extern pthread_mutex_t mutex_cola_procesos;
 extern pthread_mutex_t mutex_pcbs_esperando_io;
 extern pthread_mutex_t mutex_cola_interrupciones;
+extern pthread_mutex_t mutex_planificador_lp;
+extern pthread_mutex_t mutex_procesos_rechazados;
 extern sem_t sem_proceso_a_new;
 extern sem_t sem_proceso_a_susp_ready;
 extern sem_t sem_proceso_a_susp_blocked;
@@ -50,7 +51,7 @@ extern estado_planificador estado_planificador_lp;
 
 //////////////////////////////////////////////////////////////
 
-t_pcb *elegir_por_fifo();
+t_pcb *elegir_por_fifo(t_list * cola_a_utilizar);
 void *menor_rafaga(void *a, void *b);
 t_pcb *elegir_por_sjf();
 t_pcb *elegir_por_srt();
@@ -59,18 +60,20 @@ void dispatch(t_pcb *proceso_a_ejecutar);
 bool interrupt(cpu *cpu_a_desalojar, t_pcb *proceso_a_ejecutar);
 double get_time();
 void *planificador_largo_plazo(void *arg);
-void activar_planificador_largo_plazo(void);
-void iniciar_planificadores(void);
-void iniciar_interrupt_handler(void);
+void activar_planificador_largo_plazo();
+void iniciar_planificadores();
+void iniciar_interrupt_handler();
 void *interrupt_handler(void *arg);
-void solicitar_replanificacion_srt(void);
+void solicitar_replanificacion_srt();
 void *planificador_largo_plazo(void *arg);
 void *menor_tamanio(void *a, void *b);
 t_pcb *elegir_por_pmcp();
 void *gestionar_exit(void *arg);
 void *planificador_corto_plazo(void *arg);
-bool hay_espacio_suficiente_memoria(int tamanio);
 int obtener_fd_interrupt(int id_cpu);
 void iniciar_timer_suspension(t_pcb *pcb);
+void aumentar_procesos_rechazados();
+void disminuir_procesos_rechazados();
+void verificar_procesos_rechazados();
 
 #endif /* PLANIFICADORES_H */

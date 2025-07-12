@@ -70,6 +70,8 @@ pthread_mutex_t mutex_cola_exit;
 pthread_mutex_t mutex_cola_procesos;
 pthread_mutex_t mutex_pcbs_esperando_io;
 pthread_mutex_t mutex_cola_interrupciones;
+pthread_mutex_t mutex_planificador_lp;
+pthread_mutex_t mutex_procesos_rechazados;
 sem_t sem_proceso_a_new;
 sem_t sem_proceso_a_susp_ready;
 sem_t sem_proceso_a_susp_blocked;
@@ -122,9 +124,9 @@ void iniciar_config_kernel(const char *path_cfg)
         printf("    PUERTO_ESCUCHA_IO          : %s\n", PUERTO_ESCUCHA_IO);
         printf("    ALGORITMO_CORTO_PLAZO      : %s\n", ALGORITMO_CORTO_PLAZO);
         printf("    ALGORITMO_INGRESO_A_READY  : %s\n", ALGORITMO_INGRESO_A_READY);
-        printf("    ALFA                       : %.0f\n", ALFA);
-        printf("    ESTIMACION_INICIAL         : %.0f\n", ESTIMACION_INICIAL);
-        printf("    TIEMPO_SUSPENSION          : %.0f\n", TIEMPO_SUSPENSION);
+        printf("    ALFA                       : %.3f\n", ALFA);
+        printf("    ESTIMACION_INICIAL         : %.3f\n", ESTIMACION_INICIAL);
+        printf("    TIEMPO_SUSPENSION          : %.3f\n", TIEMPO_SUSPENSION);
         printf("    LOG_LEVEL                  : %s\n\n", LOG_LEVEL);
     }
 }
@@ -154,6 +156,7 @@ void iniciar_sincronizacion_kernel()
     pthread_mutex_init(&mutex_lista_cpus, NULL);
     pthread_mutex_init(&mutex_ios, NULL);
     pthread_mutex_init(&mutex_conexiones, NULL);
+    pthread_mutex_init(&mutex_planificador_lp, NULL);
 
     pthread_mutex_init(&mutex_cola_new, NULL);
     pthread_mutex_init(&mutex_cola_susp_ready, NULL);
@@ -165,6 +168,7 @@ void iniciar_sincronizacion_kernel()
     pthread_mutex_init(&mutex_cola_procesos, NULL);
     pthread_mutex_init(&mutex_pcbs_esperando_io, NULL);
     pthread_mutex_init(&mutex_cola_interrupciones, NULL);
+    pthread_mutex_init(&mutex_procesos_rechazados, NULL);
 
     sem_init(&sem_proceso_a_new, 0, 0);
     sem_init(&sem_proceso_a_susp_ready, 0, 0);
@@ -227,6 +231,9 @@ void terminar_kernel()
     pthread_mutex_destroy(&mutex_cola_procesos);
     pthread_mutex_destroy(&mutex_pcbs_esperando_io);
     pthread_mutex_destroy(&mutex_cola_interrupciones);
+    pthread_mutex_unlock(&mutex_planificador_lp);
+    pthread_mutex_destroy(&mutex_planificador_lp);
+    pthread_mutex_destroy(&mutex_procesos_rechazados);
 
     sem_destroy(&sem_proceso_a_new);
     sem_destroy(&sem_proceso_a_susp_ready);
@@ -247,7 +254,6 @@ void terminar_kernel()
 
     close(fd_cpu_dispatch);
     close(fd_cpu_interrupt);
-    close(fd_memoria);
     close(fd_kernel_io);
     close(fd_io);
     close(fd_dispatch);

@@ -1,4 +1,5 @@
 #include "../headers/kernel.h"
+#include "../headers/planificadores.h"
 #include <dirent.h>
 
 // Manejador de señales para terminación limpia
@@ -12,7 +13,7 @@ void signal_handler(int sig)
     }
 }
 
-static void listar_configs_kernel(void)
+static void listar_configs_kernel()
 {
     DIR *d = opendir("kernel");
     if (!d)
@@ -73,9 +74,14 @@ int main(int argc, char *argv[])
     iniciar_estados_kernel();
     iniciar_diccionario_tiempos();
     iniciar_diccionario_archivos_por_pcb();
+
+    pthread_mutex_lock(&mutex_planificador_lp);
     iniciar_planificadores();
+
     if (strcmp(ALGORITMO_CORTO_PLAZO, "SRT") == 0)
+    {
         iniciar_interrupt_handler();
+    }
 
     char *archivo_pseudocodigo = argv[1];
     int tamanio_proceso = atoi(argv[2]);
@@ -91,7 +97,6 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
     pthread_detach(hilo_dispatch);
-    log_trace(kernel_log, "Hilo de servidor Dispatch creado correctamente");
 
     // Servidor de CPU (Interrupt)
     pthread_t hilo_interrupt;
@@ -102,7 +107,6 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
     pthread_detach(hilo_interrupt);
-    log_trace(kernel_log, "Hilo de servidor Interrupt creado correctamente");
 
     // Cliente de Memoria
     pthread_t hilo_memoria;
@@ -113,7 +117,6 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
     pthread_detach(hilo_memoria);
-    log_trace(kernel_log, "Hilo cliente de Memoria creado correctamente");
 
     // Servidor de IO
     pthread_t hilo_io;
@@ -124,7 +127,6 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
     pthread_detach(hilo_io);
-    log_trace(kernel_log, "Hilo de servidor IO creado correctamente");
 
     //////////////////////////// Esperar conexiones minimas ////////////////////////////
 
@@ -143,6 +145,11 @@ int main(int argc, char *argv[])
     }
 
     log_trace(kernel_log, "CPU y IO conectados. Continuando ejecucion");
+
+    //////////////////////////// Primer proceso ////////////////////////////
+
+    log_trace(kernel_log, "Creando proceso inicial:  Archivo: %s, Tamanio: %d", archivo_pseudocodigo, tamanio_proceso);
+    INIT_PROC(archivo_pseudocodigo, tamanio_proceso);
 
     //////////////////////////// Esperar enter ////////////////////////////
 
@@ -164,12 +171,7 @@ int main(int argc, char *argv[])
 
     log_trace(kernel_log, "Kernel ejecutandose. Presione Ctrl+C para terminar.");
 
-    //////////////////////////// Primer proceso ////////////////////////////
-
-    log_trace(kernel_log, "Creando proceso inicial:  Archivo: %s, Tamanio: %d", archivo_pseudocodigo, tamanio_proceso);
-    INIT_PROC(archivo_pseudocodigo, tamanio_proceso);
-
-    activar_planificador_largo_plazo();
+    pthread_mutex_unlock(&mutex_planificador_lp);
 
     while (1)
     {

@@ -27,7 +27,7 @@ void *planificador_corto_plazo(void *arg)
 
         if (strcmp(ALGORITMO_CORTO_PLAZO, "FIFO") == 0)
         {
-            proceso_elegido = elegir_por_fifo();
+            proceso_elegido = elegir_por_fifo(cola_ready);
         }
         else if (strcmp(ALGORITMO_CORTO_PLAZO, "SJF") == 0)
         {
@@ -321,7 +321,7 @@ void dispatch(t_pcb *proceso_a_ejecutar)
                 }
             }
             // Desalojar
-            /*if(!interrupt(cpu_disponible, proceso_a_ejecutar)) {
+            /*if (!interrupt(cpu_disponible, proceso_a_ejecutar)) {
                 log_error(kernel_log, "Dispatch: ✗ Error al enviar interrupción a CPU %d para desalojar PID %d", cpu_disponible->id, proceso_a_ejecutar->PID);
                 terminar_kernel();
                 exit(EXIT_FAILURE);
@@ -374,7 +374,7 @@ void dispatch(t_pcb *proceso_a_ejecutar)
     log_trace(kernel_log, "Dispatch: Proceso %d despachado a CPU %d (PC=%d)", proceso_a_ejecutar->PID, cpu_disponible->id, proceso_a_ejecutar->PC);
 }
 
-void solicitar_replanificacion_srt(void)
+void solicitar_replanificacion_srt()
 {
 
     if (strcmp(ALGORITMO_CORTO_PLAZO, "SRT") == 0 && list_size(cola_ready) > 0)
@@ -385,7 +385,7 @@ void solicitar_replanificacion_srt(void)
     }
 }
 
-void iniciar_interrupt_handler(void)
+void iniciar_interrupt_handler()
 {
     // Crear hilo para manejar interrupciones
     pthread_t hilo_interrupt_handler;
@@ -535,7 +535,7 @@ bool interrupt(cpu* cpu_a_desalojar, t_pcb *proceso_a_ejecutar) {
         }
         // ACtualizar pc del proceso ejecutando, cambiar estado a ready
         int offset = 0;
-        if(leer_entero(buffer, &offset) == proceso_a_ejecutar->PID) {
+        if (leer_entero(buffer, &offset) == proceso_a_ejecutar->PID) {
             log_trace(kernel_log, "Interrupción: Proceso %d desalojado de CPU %d", proceso_a_ejecutar->PID, cpu_a_desalojar->id);
             proceso_a_ejecutar->PC = leer_entero(buffer, &offset);
         } else {

@@ -1,6 +1,5 @@
 #ifndef CPUKERNEL_H_
 #define CPUKERNEL_H_
-#include "kernel.h"
 #include "types.h"
 
 /////////////////////////////// Prototipos ///////////////////////////////

@@ -2,10 +2,10 @@
 #include "../headers/planificadores.h"
 #include <time.h>
 
-t_temporal *tiempo_estado_actual;
+//t_temporal *tiempo_estado_actual;
 
 // Variable global para el siguiente PID
-static int siguiente_pid = 1;
+static int siguiente_pid = 0;
 
 // Función para obtener el siguiente PID disponible
 static int obtener_siguiente_pid()
@@ -26,10 +26,9 @@ void INIT_PROC(char *nombre_archivo, int tam_memoria)
     nuevo_proceso->Estado = INIT;
     nuevo_proceso->tamanio_memoria = tam_memoria;
     nuevo_proceso->path = strdup(nombre_archivo);
-    nuevo_proceso->PC = 1;     // Inicializar PC a 1
-    nuevo_proceso->estimacion_rafaga = ESTIMACION_INICIAL;
-    nuevo_proceso->tiempo_inicio_exec = -1;    // Inicializar tiempo de inicio exec a -1
-    nuevo_proceso->tiempo_inicio_blocked = -1;     // Inicializar tiempo de inicio blocked a -1
+     nuevo_proceso->estimacion_rafaga = ESTIMACION_INICIAL;
+    nuevo_proceso->tiempo_inicio_exec = -1;
+    nuevo_proceso->tiempo_inicio_blocked = -1;
 
     log_trace(kernel_log, "INIT_PROC: proceso nuevo a la cola NEW");
     cambiar_estado_pcb(nuevo_proceso, NEW);
@@ -131,12 +130,17 @@ void EXIT(t_pcb *pcb_a_finalizar)
         exit(EXIT_FAILURE);
     }
 
+    log_debug(kernel_log, "EXIT: esperando mutex_cola_exit para eliminar de cola exit PCB PID=%d", pcb_a_finalizar->PID);
+    pthread_mutex_lock(&mutex_cola_exit);
+    log_debug(kernel_log, "EXIT: bloqueando mutex_cola_exit para eliminar de cola exit PCB PID=%d", pcb_a_finalizar->PID);
+
     // Notificar a Memoria
     int cod_op = FINALIZAR_PROC_OP;
     if (send(fd_memoria, &cod_op, sizeof(int), 0) <= 0 ||
         send(fd_memoria, &pcb_a_finalizar->PID, sizeof(int), 0) <= 0)
     {
         log_error(kernel_log, "EXIT: Error al enviar FINALIZAR_PROC_OP a Memoria para PID %d", pcb_a_finalizar->PID);
+        pthread_mutex_unlock(&mutex_cola_exit);
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
@@ -146,6 +150,7 @@ void EXIT(t_pcb *pcb_a_finalizar)
     if (recv(fd_memoria, &confirmacion, sizeof(t_respuesta), 0) <= 0)
     {
         log_error(kernel_log, "EXIT: No se pudo recibir confirmación de Memoria para PID %d", pcb_a_finalizar->PID);
+        pthread_mutex_unlock(&mutex_cola_exit);
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
@@ -157,12 +162,14 @@ void EXIT(t_pcb *pcb_a_finalizar)
     else if (confirmacion == ERROR)
     {
         log_error(kernel_log, "EXIT: Memoria rechazó la finalización de PID %d", pcb_a_finalizar->PID);
+        pthread_mutex_unlock(&mutex_cola_exit);
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
     else
     {
         log_error(kernel_log, "EXIT: Respuesta desconocida de Memoria para PID %d", pcb_a_finalizar->PID);
+        pthread_mutex_unlock(&mutex_cola_exit);
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
@@ -172,9 +179,6 @@ void EXIT(t_pcb *pcb_a_finalizar)
     // loguear_metricas_estado(pcb_a_finalizar);
 
     // Eliminar de cola_exit, cola procesos, liberar pcb y cronometro
-    log_debug(kernel_log, "EXIT: esperando mutex_cola_exit para eliminar de cola exit PCB PID=%d", pcb_a_finalizar->PID);
-    pthread_mutex_lock(&mutex_cola_exit);
-    log_debug(kernel_log, "EXIT: bloqueando mutex_cola_exit para eliminar de cola exit PCB PID=%d", pcb_a_finalizar->PID);
     list_remove_element(cola_exit, pcb_a_finalizar);
     pthread_mutex_unlock(&mutex_cola_exit);
 

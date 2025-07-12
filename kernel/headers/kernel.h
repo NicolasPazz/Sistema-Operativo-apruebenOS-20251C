@@ -4,25 +4,18 @@
 /////////////////////////////// Includes ///////////////////////////////
 
 #include "../../utils/headers/sockets.h"
-#include "procesos.h"
-#include "syscalls.h"
-#include "planificadores.h"
-#include "IOKernel.h"
-#include "CPUKernel.h"
 #include <signal.h>
 #include <unistd.h>
 #include <commons/collections/queue.h>
+#include "types.h"
+
 /////////////////////////////// Declaracion de variables globales ///////////////////////////////
 
 // Logger
 extern t_log *kernel_log;
 
 // Cronometro para MT en PCB
-extern t_temporal *tiempo_estado_actual;
-extern t_dictionary *tiempos_por_pid;
-
-// Cronometro para MT en PCB
-extern t_temporal *tiempo_estado_actual;
+//extern t_temporal *tiempo_estado_actual;
 extern t_dictionary *tiempos_por_pid;
 extern t_dictionary *archivo_por_pcb;
 
