@@ -97,6 +97,43 @@ t_proceso_memoria* crear_proceso_memoria(int pid, int tamanio) {
         return NULL;
     }
 
+    // Forzar que todas las páginas estén presentes al crear el proceso
+    // int paginas_totales = proceso->estructura_paginas->paginas_totales;
+    // int marcos_disponibles = sistema_memoria->admin_marcos->frames_libres;
+    // if (marcos_disponibles < paginas_totales) {
+    //     log_error(logger, "PID: %d - No hay marcos suficientes para inicializar todas las páginas (%d requeridas, %d libres)", pid, paginas_totales, marcos_disponibles);
+    //     list_destroy_and_destroy_elements(proceso->instrucciones, free);
+    //     destruir_metricas_proceso(proceso->metricas);
+    //     destruir_estructura_paginas(proceso->estructura_paginas);
+    //     free(proceso);
+    //     return NULL;
+    // }
+    // for (int i = 0; i < paginas_totales; i++) {
+    //     int frame = asignar_marco_libre(pid, i);
+    //     if (frame == -1) {
+    //         log_error(logger, "PID: %d - Error al asignar marco para página %d al crear proceso", pid, i);
+    //         // Liberar recursos ya asignados
+    //         for (int j = 0; j < i; j++) {
+    //             t_entrada_tabla* entrada = buscar_entrada_tabla(proceso->estructura_paginas, j);
+    //             if (entrada && entrada->presente) {
+    //                 liberar_marco(entrada->numero_frame);
+    //                 entrada->presente = false;
+    //                 entrada->numero_frame = 0;
+    //             }
+    //         }
+    //         list_destroy_and_destroy_elements(proceso->instrucciones, free);
+    //         destruir_metricas_proceso(proceso->metricas);
+    //         destruir_estructura_paginas(proceso->estructura_paginas);
+    //         free(proceso);
+    //         return NULL;
+    //     }
+    //     t_entrada_tabla* entrada = buscar_entrada_tabla(proceso->estructura_paginas, i);
+    //     if (entrada) {
+    //         entrada->presente = true;
+    //         entrada->numero_frame = frame;
+    //         entrada->timestamp_acceso = time(NULL);
+    //     }
+    // }
     return proceso;
 }
 
@@ -131,6 +168,11 @@ t_resultado_memoria crear_proceso_en_memoria(int pid, int tamanio, char* nombre_
     // ========== VALIDACIÓN DE MEMORIA DISPONIBLE ==========
     pthread_mutex_lock(&sistema_memoria->admin_marcos->mutex_frames);
     int marcos_disponibles = sistema_memoria->admin_marcos->frames_libres;
+    int marcos_ocupados = sistema_memoria->admin_marcos->frames_ocupados;
+    int total_marcos = sistema_memoria->admin_marcos->cantidad_total_frames;
+    
+    log_trace(logger, "CREAR_PROCESO: PID %d - Estado de marcos: %d libres, %d ocupados, %d total", 
+             pid, marcos_disponibles, marcos_ocupados, total_marcos);
     
     if (marcos_disponibles < paginas_necesarias) {
         log_error(logger, "PID: %d - No hay suficiente memoria física (necesita %d páginas, disponibles %d)", 
@@ -197,7 +239,7 @@ t_resultado_memoria crear_proceso_en_memoria(int pid, int tamanio, char* nombre_
     }
 
     // ========== LOG OBLIGATORIO DE CREACIÓN ==========
-    log_info(logger, VERDE("## PID: %d - Proceso Creado - Tamaño: %d"), pid, tamanio);
+    log_info(logger, VERDE("## (PID: %d) - Proceso Creado - Tamaño: %d"), pid, tamanio);
     
     log_debug(logger, "PID: %d - Proceso creado exitosamente:", pid);
     log_debug(logger, "   - Páginas totales: %d", paginas_necesarias);
@@ -261,6 +303,8 @@ t_resultado_memoria finalizar_proceso_en_memoria(int pid) {
     char pid_str[16];
     sprintf(pid_str, "%d", pid);
     
+    log_trace(logger, "FINALIZAR_PROC: Iniciando finalización del proceso PID %d", pid);
+    
     pthread_mutex_lock(&sistema_memoria->mutex_procesos);
     
     // Verificar si el proceso existe
@@ -271,6 +315,8 @@ t_resultado_memoria finalizar_proceso_en_memoria(int pid) {
         return MEMORIA_ERROR_PROCESO_NO_ENCONTRADO;
     }
     
+    log_trace(logger, "FINALIZAR_PROC: Proceso PID %d encontrado, tamaño: %d bytes", pid, proceso->tamanio);
+    
     // Imprimir métricas antes de finalizar
     log_debug(logger, "FINALIZAR_PROC: Imprimiendo métricas para PID %d", pid);
     imprimir_metricas_proceso(pid);
@@ -280,6 +326,11 @@ t_resultado_memoria finalizar_proceso_en_memoria(int pid) {
     log_debug(logger, "FINALIZAR_PROC: Liberando marcos para PID %d", pid);
     liberar_marcos_proceso(pid);
     log_debug(logger, "FINALIZAR_PROC: Marcos liberados para PID %d", pid);
+
+    // Liberar espacio de SWAP asociado al proceso
+    log_debug(logger, "FINALIZAR_PROC: Liberando espacio de SWAP para PID %d", pid);
+    liberar_espacio_swap_proceso(pid);
+    log_debug(logger, "FINALIZAR_PROC: Espacio de SWAP liberado para PID %d", pid);
     
     // Actualizar estadísticas del sistema
     log_debug(logger, "FINALIZAR_PROC: Actualizando estadísticas del sistema para PID %d", pid);
@@ -299,6 +350,7 @@ t_resultado_memoria finalizar_proceso_en_memoria(int pid) {
     
     pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
     
+    log_trace(logger, "FINALIZAR_PROC: Proceso PID %d finalizado exitosamente", pid);
     log_trace(logger, "## PID: %d - Finaliza el proceso", pid);
     log_debug(logger, "FINALIZAR_PROC: Retornando MEMORIA_OK para PID %d", pid);
     return MEMORIA_OK;
@@ -323,34 +375,26 @@ t_resultado_memoria suspender_proceso_en_memoria(int pid) {
     }
     
     if (proceso->suspendido) {
-        log_debug(logger, "PID: %d - Proceso ya está suspendido", pid);
+        log_warning(logger, "PID: %d - Proceso ya está suspendido", pid);
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
         return MEMORIA_OK;
     }
     
-    // Escribir páginas del proceso a SWAP
-    t_resultado_memoria resultado = suspender_proceso_completo(pid);
-    if (resultado != MEMORIA_OK) {
-        log_error(logger, "PID: %d - Error al escribir proceso a SWAP", pid);
+    // Escribir páginas del proceso a SWAP, liberar marcos y marcar como no presente
+    int resultado = suspender_proceso_completo(pid);
+    if (resultado != 1) {
+        log_error(logger, "PID: %d - Error al suspender proceso a SWAP", pid);
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
-        return resultado;
+        return MEMORIA_ERROR_IO;
     }
     
-    // Liberar marcos físicos del proceso
-    liberar_marcos_proceso(pid);
-    
-    // Marcar proceso como suspendido
+    // Actualizar estadísticas globales
     proceso->suspendido = true;
     proceso->activo = false;
-    
-    // Actualizar estadísticas
     sistema_memoria->procesos_activos--;
     sistema_memoria->procesos_suspendidos++;
     sistema_memoria->memoria_utilizada -= proceso->tamanio;
     sistema_memoria->total_suspensiones++;
-    
-    // Incrementar métrica de bajadas a SWAP
-    incrementar_bajadas_swap(pid);
     
     pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
     
@@ -377,58 +421,29 @@ t_resultado_memoria reanudar_proceso_en_memoria(int pid) {
     }
     
     if (!proceso->suspendido) {
-        log_debug(logger, "PID: %d - Proceso no está suspendido", pid);
+        log_warning(logger, "PID: %d - Proceso no está suspendido", pid);
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
         return MEMORIA_OK;
     }
     
-    // Verificar si hay suficientes marcos libres
-    int paginas_necesarias = proceso->estructura_paginas->paginas_totales;
-    if (obtener_marcos_libres() < paginas_necesarias) {
-        log_error(logger, "PID: %d - Memoria insuficiente para reanudar. Necesarias: %d, Disponibles: %d", 
-                  pid, paginas_necesarias, obtener_marcos_libres());
+    // Lógica centralizada en manejo_swap.c
+    int resultado = reanudar_proceso_suspendido(pid);
+    if (resultado == 1) {
+        // Actualizar campos y métricas del proceso
+        proceso->suspendido = false;
+        proceso->activo = true;
+        sistema_memoria->procesos_activos++;
+        sistema_memoria->procesos_suspendidos--;
+        sistema_memoria->memoria_utilizada += proceso->tamanio;
+        sistema_memoria->total_reanudaciones++;
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
-        return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
-    }
-    
-    // Leer proceso desde SWAP
-    t_resultado_memoria resultado = reanudar_proceso_suspendido(pid);
-    if (resultado != MEMORIA_OK) {
-        log_error(logger, "PID: %d - Error al leer proceso desde SWAP", pid);
+        log_info(logger, "PID: %d - Proceso reanudado exitosamente (vía manejo_swap)", pid);
+        return MEMORIA_OK;
+    } else {
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
-        return resultado;
+        log_error(logger, "PID: %d - Error al reanudar proceso (vía manejo_swap)", pid);
+        return MEMORIA_ERROR_IO;
     }
-    
-    // Asignar nuevos marcos para todas las páginas
-    for (int i = 0; i < paginas_necesarias; i++) {
-        int numero_frame = asignar_marco_libre(pid, i);
-        if (numero_frame == -1) {
-            log_error(logger, "PID: %d - Error al asignar marco para página %d", pid, i);
-            pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
-            return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
-        }
-        
-        // Actualizar entrada en tabla de páginas
-        configurar_entrada_pagina(proceso->estructura_paginas, i, numero_frame);
-    }
-    
-    // Marcar proceso como activo
-    proceso->suspendido = false;
-    proceso->activo = true;
-    
-    // Actualizar estadísticas
-    sistema_memoria->procesos_activos++;
-    sistema_memoria->procesos_suspendidos--;
-    sistema_memoria->memoria_utilizada += proceso->tamanio;
-    sistema_memoria->total_reanudaciones++;
-    
-    // Incrementar métrica de subidas a memoria principal
-    incrementar_subidas_memoria_principal(pid);
-    
-    pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
-    
-    log_trace(logger, "## PID: %d - Proceso reanudado exitosamente", pid);
-    return MEMORIA_OK;
 }
 
 // ============================================================================
@@ -646,7 +661,7 @@ static t_resultado_memoria liberar_marco_interno(int numero_frame) {
     t_frame* frame = &admin->frames[numero_frame];
     
     if (!frame->ocupado) {
-        log_debug(logger, "Intento de liberar frame ya libre: %d", numero_frame);
+        log_warning(logger, "Intento de liberar frame ya libre: %d", numero_frame);
         return MEMORIA_ERROR_DIRECCION_INVALIDA;
     }
     
@@ -689,6 +704,12 @@ static void liberar_marcos_proceso(int pid) {
     pthread_mutex_lock(&sistema_memoria->admin_marcos->mutex_frames);
     log_debug(logger, "LIBERAR_MARCOS: Mutex adquirido para PID %d", pid);
 
+    // Log del estado actual de marcos antes de liberar
+    log_debug(logger, "LIBERAR_MARCOS: Estado actual - Total frames: %d, Libres: %d, Ocupados: %d", 
+              sistema_memoria->admin_marcos->cantidad_total_frames,
+              sistema_memoria->admin_marcos->frames_libres,
+              sistema_memoria->admin_marcos->frames_ocupados);
+
     int marcos_liberados = 0;
     for (int i = 0; i < sistema_memoria->admin_marcos->cantidad_total_frames; i++) {
         t_frame* frame = &sistema_memoria->admin_marcos->frames[i];
@@ -700,13 +721,19 @@ static void liberar_marcos_proceso(int pid) {
         }
     }
 
+    // Log del estado final de marcos después de liberar
+    log_debug(logger, "LIBERAR_MARCOS: Estado final - Total frames: %d, Libres: %d, Ocupados: %d", 
+              sistema_memoria->admin_marcos->cantidad_total_frames,
+              sistema_memoria->admin_marcos->frames_libres,
+              sistema_memoria->admin_marcos->frames_ocupados);
+
     log_debug(logger, "LIBERAR_MARCOS: Total de marcos liberados para PID %d: %d", pid, marcos_liberados);
     pthread_mutex_unlock(&sistema_memoria->admin_marcos->mutex_frames);
     log_debug(logger, "LIBERAR_MARCOS: Mutex liberado para PID %d", pid);
 }
 
 void* acceso_espacio_usuario_lectura(int pid, int direccion_fisica, int tamanio) {
-    log_info(logger, VERDE("(%d) - Lectura - Dir. Física: %d - Tamaño: %d"), 
+    log_info(logger, VERDE("(PID: %d) - Lectura - Dir. Física: %d - Tamaño: %d"), 
              pid, direccion_fisica, tamanio);
     
     // Validar parámetros
@@ -736,7 +763,7 @@ void* acceso_espacio_usuario_lectura(int pid, int direccion_fisica, int tamanio)
         *pag = direccion_fisica / cfg->TAM_PAGINA;
         list_add(paginas_bloqueadas, pag);
     } else {
-        log_debug(logger, "PID: %d - No se pudo bloquear página %d para lectura", pid, direccion_fisica / cfg->TAM_PAGINA);
+        log_warning(logger, "PID: %d - No se pudo bloquear página %d para lectura", pid, direccion_fisica / cfg->TAM_PAGINA);
         return NULL;
     }
     
@@ -797,7 +824,7 @@ void* acceso_espacio_usuario_lectura(int pid, int direccion_fisica, int tamanio)
     desbloquear_marco_por_pagina(pid, *pag, "LECTURA_ESPACIO_USUARIO");
     list_destroy_and_destroy_elements(paginas_bloqueadas, free);
     
-    log_info(logger, VERDE("## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d"), 
+    log_info(logger, VERDE("## (PID: %d) - Lectura - Dir. Física: %d - Tamaño: %d"), 
              pid, direccion_fisica, tamanio);
     
     return valor_leido;
@@ -809,7 +836,7 @@ void* acceso_espacio_usuario_lectura(int pid, int direccion_fisica, int tamanio)
  * En caso satisfactorio se responderá un mensaje de 'OK'.
  */
 bool acceso_espacio_usuario_escritura(int pid, int direccion_fisica, int tamanio, void* datos) {
-    log_info(logger, VERDE("(%d) - Escritura - Dir. Física: %d - Tamaño: %d"), 
+    log_info(logger, VERDE("(PID: %d) - Escritura - Dir. Física: %d - Tamaño: %d"), 
              pid, direccion_fisica, tamanio);
     
     // Validar parámetros
@@ -841,7 +868,7 @@ bool acceso_espacio_usuario_escritura(int pid, int direccion_fisica, int tamanio
         *pag = direccion_fisica / cfg->TAM_PAGINA;
         list_add(paginas_bloqueadas, pag);
     } else {
-        log_debug(logger, "PID: %d - No se pudo bloquear página %d para escritura", pid, direccion_fisica / cfg->TAM_PAGINA);
+        log_warning(logger, "PID: %d - No se pudo bloquear página %d para escritura", pid, direccion_fisica / cfg->TAM_PAGINA);
         return false;
     }
     
@@ -860,7 +887,7 @@ bool acceso_espacio_usuario_escritura(int pid, int direccion_fisica, int tamanio
     desbloquear_marco_por_pagina(pid, *pag, "ESCRITURA_ESPACIO_USUARIO");
     list_destroy_and_destroy_elements(paginas_bloqueadas, free);
     
-    log_info(logger, VERDE("## PID: %d - Escritura - Dir. Física: %d - Tamaño: %d"), 
+    log_info(logger, VERDE("## (PID: %d) - Escritura - Dir. Física: %d - Tamaño: %d"), 
              pid, direccion_fisica, tamanio);
     
     return true;
@@ -873,7 +900,7 @@ bool acceso_espacio_usuario_escritura(int pid, int direccion_fisica, int tamanio
  * coincidir con la posición del byte 0 de la página.
  */
 void* leer_pagina_completa(int pid, int direccion_base_pagina) {
-    log_debug(logger, "PID: %d - Leer página completa - Dir. Base Página: %d", pid, direccion_base_pagina);
+    log_info(logger, "PID: %d - Leer página completa - Dir. Base Página: %d", pid, direccion_base_pagina);
     
     // Validar que la dirección coincide con el byte 0 de una página
     if (direccion_base_pagina % cfg->TAM_PAGINA != 0) {
@@ -954,7 +981,7 @@ void* leer_pagina_completa(int pid, int direccion_base_pagina) {
  * Usuario y se responderá como OK.
  */
 bool actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido_pagina) {
-    log_info(logger, "(%d) - Actualizar página completa - Dir. Física: %d", pid, direccion_fisica);
+    log_info(logger, "(PID: %d) - Actualizar página completa - Dir. Física: %d", pid, direccion_fisica);
     
     // Validar parámetros
     if (contenido_pagina == NULL) {
@@ -1111,4 +1138,5 @@ int calcular_numero_pagina_desde_entradas(int* entradas, int cantidad_niveles, i
     
     return numero_pagina;
 }
+
 

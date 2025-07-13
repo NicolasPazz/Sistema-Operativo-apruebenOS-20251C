@@ -20,4 +20,6 @@ cpu *get_cpu_from_fd(int fd);
  */
 cpu *buscar_y_remover_cpu_por_fd(int fd);
 
+void liberar_cpu(cpu *cpu_a_eliminar);
+
 #endif /* CPUKERNEL_H_ */

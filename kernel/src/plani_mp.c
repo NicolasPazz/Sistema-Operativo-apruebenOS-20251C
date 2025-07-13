@@ -52,15 +52,11 @@ void *timer_suspension(void *v_arg)
 
     log_trace(kernel_log, AZUL("[PLANI MP] Timer de suspensión expirado para PID=%d"), pcb->PID);
 
-    t_paquete *paquete = crear_paquete_op(SUSPENDER_PROCESO_OP);
-    agregar_entero_a_paquete(paquete, pcb->PID);
-    enviar_paquete(paquete, fd_memoria);
-    eliminar_paquete(paquete);
-
-    t_respuesta respuesta;
-    if (recv(fd_memoria, &respuesta, sizeof(t_respuesta), 0) <= 0 || respuesta != OK)
+    if(!suspender_proceso(pcb)) 
     {
-        log_error(kernel_log, "[PLANI MP] Error al suspender proceso PID %d", pcb->PID);
+        log_error(kernel_log, "No se pudo suspender el proceso PID=%d", pcb->PID);
+        if (flag) free(flag);
+        free(arg);
         terminar_kernel();
         exit(EXIT_FAILURE);
     }

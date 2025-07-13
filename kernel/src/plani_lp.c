@@ -73,6 +73,7 @@ void *planificador_largo_plazo(void *arg)
             log_trace(kernel_log, "planificador_largo_plazo: PCB con PID %d inicializado en memoria", pcb->PID);
 
             pthread_mutex_unlock(&mutex_cola_new);
+            pthread_mutex_unlock(&mutex_cola_susp_ready);
             cambiar_estado_pcb(pcb, READY);
         }
         else
@@ -113,6 +114,7 @@ void *gestionar_exit(void *arg)
         }
 
         pthread_mutex_unlock(&mutex_cola_exit);
+
         EXIT(pcb);
 
         verificar_procesos_rechazados();

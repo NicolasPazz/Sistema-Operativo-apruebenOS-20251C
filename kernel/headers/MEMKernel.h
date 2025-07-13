@@ -7,4 +7,4 @@ bool inicializar_proceso_en_memoria(t_pcb *pcb);
 bool hay_espacio_suficiente_memoria(int tamanio);
 bool suspender_proceso(t_pcb *pcb);
 bool desuspender_proceso(t_pcb *pcb);
-
+bool finalizar_proceso_en_memoria(int pid);

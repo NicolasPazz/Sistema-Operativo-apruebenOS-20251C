@@ -232,7 +232,7 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
         log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a SUSP BLOCKED aumentado");
         break;
     case EXIT_ESTADO:
-        loguear_metricas_estado(PCB);
+        //loguear_metricas_estado(PCB);
         sem_post(&sem_proceso_a_exit);
         log_debug(kernel_log, "cambiar_estado_pcb: Semaforo a EXIT aumentado");
         break;
@@ -439,4 +439,27 @@ t_pcb *buscar_y_remover_pcb_por_pid(t_list *cola, int pid)
     // No se encontró el PCB
     log_debug(kernel_log, "buscar_y_remover_pcb_por_pid: No se encontró PCB con PID %d en la cola", pid);
     return NULL;
+}
+
+void liberar_pcb(t_pcb *pcb)
+{
+    if (!pcb)
+    {
+        log_error(kernel_log, "liberar_pcb: PCB es NULL");
+        return;
+    }
+
+    list_remove_element(cola_exit, pcb);
+    pthread_mutex_unlock(&mutex_cola_exit);
+
+    pthread_mutex_lock(&mutex_cola_procesos);
+    list_remove_element(cola_procesos, pcb);
+    pthread_mutex_unlock(&mutex_cola_procesos);
+
+    char *pid_key = string_itoa(pcb->PID);
+    dictionary_remove_and_destroy(tiempos_por_pid, pid_key, (void *)temporal_destroy);
+    free(pid_key);
+
+    free(pcb->path);
+    free(pcb);
 }

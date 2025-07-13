@@ -89,4 +89,6 @@ io *buscar_y_remover_io_por_fd(int fd);
  */
 io *buscar_io_por_nombre(char *nombre);
 
+void verificar_procesos_restantes();
+
 #endif /* SYSCALLS_H */

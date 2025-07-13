@@ -72,8 +72,15 @@ void calcular_indices_multinivel(int numero_pagina, int cantidad_niveles, int en
             divisor *= entradas_por_tabla;
         indices[nivel] = (numero_pagina / divisor) % entradas_por_tabla;
     }
-    log_debug(logger, "calcular_indices_multinivel: num_pag=%d indices=[%d,%d,%d]", 
-        numero_pagina, indices[0], indices[1], indices[2]); // ajusta cantidad_niveles según tu config
+    // Loguear solo los índices válidos
+    char indices_str[128] = {0};
+    char temp[16];
+    for (int i = 0; i < cantidad_niveles; i++) {
+        sprintf(temp, "%d", indices[i]);
+        strcat(indices_str, temp);
+        if (i < cantidad_niveles - 1) strcat(indices_str, ",");
+    }
+    log_debug(logger, "calcular_indices_multinivel: num_pag=%d indices=[%s]", numero_pagina, indices_str);
 }
 
 // ============== FUNCIONES DE LOGGING Y COMUNICACIÓN ==============
@@ -86,7 +93,7 @@ void log_instruccion_obtenida(int pid, int pc, t_instruccion* instruccion) {
             string_append_with_format(&args_log, " %s", instruccion->parametros3);
         }
     }
-    log_info(logger, VERDE("## PID: %d - Obtener instrucción: %d - Instrucción: %s%s"), 
+    log_info(logger, VERDE("## (PID: %d) - Obtener instrucción: %d - Instrucción: %s%s"), 
              pid, pc, instruccion->parametros1, args_log);
     free(args_log);
 }
@@ -356,7 +363,7 @@ t_entrada_tabla* buscar_entrada_tabla(t_estructura_paginas* estructura, int nume
 // ============== FUNCIONES DE PROCESAMIENTO DE MEMORIA ==============
 
 t_resultado_memoria procesar_memory_dump(int pid) {
-    log_info(logger, VERDE("## PID: %d - Memory Dump solicitado"), pid);
+    log_info(logger, VERDE("## (PID: %d) - Memory Dump solicitado"), pid);
     
     // Verificar que el proceso existe
     if (!proceso_existe(pid)) {
@@ -419,11 +426,11 @@ t_resultado_memoria procesar_memory_dump(int pid) {
     fclose(archivo_dump);
     
     // Logs finales
-    log_debug(logger, "## PID: %d - Memory Dump generado exitosamente", pid);
-    log_debug(logger, "   - Archivo: %s", nombre_archivo);
-    log_debug(logger, "   - Tamaño del proceso: %d bytes", proceso->tamanio);
-    log_debug(logger, "   - Páginas escritas: %d", cantidad_marcos);
-    log_debug(logger, "   - Bytes totales escritos: %zu", bytes_escritos_total);
+    log_info(logger, "## PID: %d - Memory Dump generado exitosamente", pid);
+    log_info(logger, "   - Archivo: %s", nombre_archivo);
+    log_info(logger, "   - Tamaño del proceso: %d bytes", proceso->tamanio);
+    log_info(logger, "   - Páginas escritas: %d", cantidad_marcos);
+    log_info(logger, "   - Bytes totales escritos: %zu", bytes_escritos_total);
     
     free(nombre_archivo);
     return MEMORIA_OK;
@@ -464,7 +471,7 @@ t_resultado_memoria asignar_marcos_proceso(int pid) {
         log_trace(logger, "PID: %d - Página %d asignada al marco %d", pid, numero_pagina, numero_frame);
     }
     
-    log_debug(logger, "PID: %d - Asignación de marcos completada exitosamente - %d marcos asignados", 
+    log_info(logger, "PID: %d - Asignación de marcos completada exitosamente - %d marcos asignados", 
              pid, marcos_asignados);
     
     return MEMORIA_OK;
@@ -478,7 +485,7 @@ void enviar_instruccion_a_cpu(int fd, int pid, int pc, char* p1, char* p2, char*
     char* param3 = p3 ? p3 : "";
 
     // Log de los parámetros que se envían
-    log_debug(logger, COLOR1("[PEDIR_INSTRUCCION]")" Enviando a CPU -> param1: '%s', param2: '%s', param3: '%s'", param1, param2, param3);
+    log_info(logger, COLOR1("[PEDIR_INSTRUCCION]")" Enviando a CPU -> param1: '%s', param2: '%s', param3: '%s'", param1, param2, param3);
 
     t_paquete* paquete = crear_paquete_op(INSTRUCCION_A_CPU_OP);
     agregar_string_a_paquete(paquete, param1);

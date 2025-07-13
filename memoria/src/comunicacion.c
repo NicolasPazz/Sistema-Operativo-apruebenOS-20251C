@@ -17,7 +17,6 @@
 #include "../../utils/headers/types.h"
 
 /////////////////////////////// Inicializacion de variables globales ///////////////////////////////
-
 int fd_memoria;
 int fd_kernel;
 int fd_cpu;
@@ -99,7 +98,7 @@ void procesar_conexion(void* void_args) {
             break;
 
         default:
-            log_debug(logger, "Handshake invalido recibido (fd=%d): %d", cliente_socket, handshake);
+            log_warning(logger, "Handshake invalido recibido (fd=%d): %d", cliente_socket, handshake);
             close(cliente_socket);
             return;
     }
@@ -111,12 +110,6 @@ void procesar_conexion(void* void_args) {
     }
 
     log_debug(logger, "El cliente (fd=%d) se desconectó de %s", cliente_socket, server_name);
-
-    if (cliente_socket == fd_kernel) {
-        log_debug(logger, "Se desconectó el Kernel. Finalizando Memoria...");
-        cerrar_programa();
-        exit(EXIT_SUCCESS);
-    }
 
     close(cliente_socket);
 }
@@ -161,7 +154,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                     log_debug(logger, "PID: %d - Instrucciones cargadas desde %s", pid, path_completo);
                     free(pid_key);
                 } else {
-                    log_debug(logger, "PID: %d - No se pudieron cargar instrucciones desde %s", pid, path_completo);
+                    log_warning(logger, "PID: %d - No se pudieron cargar instrucciones desde %s", pid, path_completo);
                 }
             
                 free(path_completo);
@@ -201,28 +194,24 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             break;
         }
         case FINALIZAR_PROC_OP: {
-            log_debug(logger, "FINALIZAR_PROC_OP recibido");
-
-            // Recibir PID directamente con recv (como lo envía el Kernel)
-            int pid;
-            if (recv(cliente_socket, &pid, sizeof(int), 0) <= 0) {
-                log_error(logger, "Error al recibir PID para FINALIZAR_PROC_OP");
+            log_debug(logger, "FINALIZAR_PROC_OP recibido (paquete)");
+            t_list* lista = recibir_contenido_paquete(cliente_socket);
+            if (!lista || list_size(lista) < 1) {
+                log_error(logger, "FINALIZAR_PROC_OP: Error al recibir paquete o paquete vacío");
+                if (lista) list_destroy_and_destroy_elements(lista, free);
                 return;
-            }                
-            
+            }
+            int pid = *(int*)list_get(lista, 0);
+            log_debug(logger, "FINALIZAR_PROC_OP: PID recibido en paquete: %d", pid);
+            list_destroy_and_destroy_elements(lista, free);
             log_trace(logger, "Finalización de proceso solicitada - PID: %d", pid);
-            
-            // Finalizar el proceso usando la función principal que maneja métricas
             log_debug(logger, "FINALIZAR_PROC_OP: Llamando a finalizar_proceso_en_memoria para PID %d", pid);
             t_resultado_memoria resultado = finalizar_proceso_en_memoria(pid);
             log_debug(logger, "FINALIZAR_PROC_OP: finalizar_proceso_en_memoria retornó %d para PID %d", resultado, pid);
-            
-            // Enviar respuesta
             t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
-            log_debug(logger, "FINALIZAR_PROC_OP: Preparando envío de respuesta %s a cliente (fd=%d)", 
-                    (respuesta == OK) ? "OK" : "ERROR", cliente_socket);
-            send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
-            log_debug(logger, "FINALIZAR_PROC_OP: Respuesta enviada exitosamente");
+            log_debug(logger, "FINALIZAR_PROC_OP: Preparando envío de respuesta %s a cliente (fd=%d)", (respuesta == OK) ? "OK" : "ERROR", cliente_socket);
+            int bytes_sent = send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
+            log_debug(logger, "FINALIZAR_PROC_OP: Respuesta enviada (%d bytes) exitosamente", bytes_sent);
             break;
         }
         case PEDIR_INSTRUCCION_OP: {
@@ -467,17 +456,23 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         case SUSPENDER_PROCESO_OP: {
             log_trace(logger, "SUSPENDER_PROCESO_OP recibido");
 
-            // Recibir PID del proceso a suspender
-            int pid;
-            recv_data(cliente_socket, &pid, sizeof(int));
-            
+            // Recibir paquete con el PID
+            t_list* parametros = recibir_contenido_paquete(cliente_socket);
+            if (!parametros || list_size(parametros) < 1) {
+                log_error(logger, "SUSPENDER_PROCESO_OP: Error al recibir paquete o paquete vacío");
+                if (parametros) list_destroy_and_destroy_elements(parametros, free);
+                return;
+            }
+            int pid = *(int*)list_get(parametros, 0);
+            list_destroy_and_destroy_elements(parametros, free);
+
             log_trace(logger, "Suspensión de proceso solicitada - PID: %d", pid);
-            
+
             t_resultado_memoria resultado = suspender_proceso_en_memoria(pid);
-            
+
             t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
             send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
-            
+
             log_trace(logger, "Suspensión de proceso %s - PID: %d",
                     (respuesta == OK) ? "exitosa" : "fallida", pid);
             break;
@@ -485,18 +480,34 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         case DESUSPENDER_PROCESO_OP: {
             log_trace(logger, "DESUSPENDER_PROCESO_OP recibido");
 
-            int pid;
-            recv_data(cliente_socket, &pid, sizeof(int));
-            
+            // Recibir paquete con el PID
+            t_list* parametros = recibir_contenido_paquete(cliente_socket);
+            if (!parametros || list_size(parametros) < 1) {
+                log_error(logger, "DESUSPENDER_PROCESO_OP: Error al recibir paquete o paquete vacío");
+                if (parametros) list_destroy_and_destroy_elements(parametros, free);
+                return;
+            }
+            int pid = *(int*)list_get(parametros, 0);
+            list_destroy_and_destroy_elements(parametros, free);
+
             log_trace(logger, "Des-suspensión de proceso solicitada - PID: %d", pid);
-            
+
             t_resultado_memoria resultado = reanudar_proceso_en_memoria(pid);
-            
+
             t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
             send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
-            
+
             log_trace(logger, "Des-suspensión de proceso %s - PID: %d",
                     (respuesta == OK) ? "exitosa" : "fallida", pid);
+            break;
+        }
+        case SHUTDOWN_OP: {
+            log_info(logger, "SHUTDOWN_OP recibido - Finalizando Memoria");
+            // Cerrar todas las conexiones y liberar recursos
+            if (fd_kernel != -1) close(fd_kernel);
+            if (fd_cpu != -1) close(fd_cpu);
+            if (fd_memoria != -1) close(fd_memoria);
+            exit(EXIT_SUCCESS);
             break;
         }
         default: { 
@@ -519,7 +530,7 @@ void procesar_write_op(int cliente_socket) {
     int direccion_fisica = *(int*)list_get(lista, 1);
     char* datos_str = (char*)list_get(lista, 2);
 
-    log_info(logger, VERDE("## PID: %d - Escritura - Dir. Física: %d - Tamaño: %ld"),
+    log_trace(logger, VERDE("## PID: %d - Escritura - Dir. Física: %d - Tamaño: %ld"),
                 pid, direccion_fisica, strlen(datos_str));
 
     actualizar_metricas(pid, "MEMORY_WRITE");
@@ -547,7 +558,7 @@ void procesar_read_op(int cliente_socket) {
     int size = *(int*)list_get(lista, 1);
     int pid = *(int*)list_get(lista, 2);
 
-    log_info(logger, VERDE("## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d"),
+    log_trace(logger, VERDE("## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d"),
                 pid, direccion_fisica, size);
 
     actualizar_metricas(pid, "MEMORY_READ");

@@ -22,10 +22,15 @@ void destruir_tabla_paginas_recursiva(t_tabla_paginas* tabla);
 // FUNCIONES DE INICIALIZACIÓN PRINCIPAL
 // ============================================================================
 
-int cargar_configuracion_memoria(const char *path_cfg) {
-    t_config *cfg_file = iniciar_config((char *)path_cfg);
+int cargar_configuracion(char* path) {
+    t_config* cfg_file = config_create(path);
 
-    char *properties[] = {
+    if (cfg_file == NULL) {
+        printf("No se encontro el archivo de configuracion: %s\n", path);
+        return 0;
+    }
+
+    char* properties[] = {
         "PUERTO_ESCUCHA",
         "TAM_MEMORIA",
         "TAM_PAGINA",
@@ -47,38 +52,26 @@ int cargar_configuracion_memoria(const char *path_cfg) {
     }
 
     cfg = malloc(sizeof(t_config_memoria));
-    if (!cfg) {
-        puts("Error al asignar memoria para la configuracion.");
+    if (cfg == NULL) {
+        printf("Error al asignar memoria para la configuracion\n");
         config_destroy(cfg_file);
         return 0;
     }
 
-    cfg->PUERTO_ESCUCHA      = config_get_int_value   (cfg_file, "PUERTO_ESCUCHA");
-    cfg->TAM_MEMORIA         = config_get_int_value   (cfg_file, "TAM_MEMORIA");
-    cfg->TAM_PAGINA          = config_get_int_value   (cfg_file, "TAM_PAGINA");
-    cfg->ENTRADAS_POR_TABLA  = config_get_int_value   (cfg_file, "ENTRADAS_POR_TABLA");
-    cfg->CANTIDAD_NIVELES    = config_get_int_value   (cfg_file, "CANTIDAD_NIVELES");
-    cfg->RETARDO_MEMORIA     = config_get_int_value   (cfg_file, "RETARDO_MEMORIA");
-    cfg->PATH_SWAPFILE       = strdup(config_get_string_value(cfg_file, "PATH_SWAPFILE"));
-    cfg->RETARDO_SWAP        = config_get_int_value   (cfg_file, "RETARDO_SWAP");
-    cfg->LOG_LEVEL           = strdup(config_get_string_value(cfg_file, "LOG_LEVEL"));
-    cfg->DUMP_PATH           = strdup(config_get_string_value(cfg_file, "DUMP_PATH"));
-    cfg->PATH_INSTRUCCIONES  = strdup(config_get_string_value(cfg_file, "PATH_INSTRUCCIONES"));
+    cfg->PUERTO_ESCUCHA = config_get_int_value(cfg_file, "PUERTO_ESCUCHA");
+    cfg->TAM_MEMORIA = config_get_int_value(cfg_file, "TAM_MEMORIA");
+    cfg->TAM_PAGINA = config_get_int_value(cfg_file, "TAM_PAGINA");
+    cfg->ENTRADAS_POR_TABLA = config_get_int_value(cfg_file, "ENTRADAS_POR_TABLA");
+    cfg->CANTIDAD_NIVELES = config_get_int_value(cfg_file, "CANTIDAD_NIVELES");
+    cfg->RETARDO_MEMORIA = config_get_int_value(cfg_file, "RETARDO_MEMORIA");
+    cfg->PATH_SWAPFILE = strdup(config_get_string_value(cfg_file, "PATH_SWAPFILE"));
+    cfg->RETARDO_SWAP = config_get_int_value(cfg_file, "RETARDO_SWAP");
+    cfg->LOG_LEVEL = strdup(config_get_string_value(cfg_file, "LOG_LEVEL"));
+    cfg->DUMP_PATH = strdup(config_get_string_value(cfg_file, "DUMP_PATH"));
+    cfg->PATH_INSTRUCCIONES = strdup(config_get_string_value(cfg_file, "PATH_INSTRUCCIONES"));
 
+    //printf("Archivo de configuracion cargado correctamente\n");
     config_destroy(cfg_file);
-
-    printf("        Config leída: %s\n", path_cfg);
-    printf("    PUERTO_ESCUCHA      : %d\n", cfg->PUERTO_ESCUCHA);
-    printf("    TAM_MEMORIA         : %d\n", cfg->TAM_MEMORIA);
-    printf("    TAM_PAGINA          : %d\n", cfg->TAM_PAGINA);
-    printf("    ENTRADAS_POR_TABLA  : %d\n", cfg->ENTRADAS_POR_TABLA);
-    printf("    CANTIDAD_NIVELES    : %d\n", cfg->CANTIDAD_NIVELES);
-    printf("    RETARDO_MEMORIA     : %d\n", cfg->RETARDO_MEMORIA);
-    printf("    PATH_SWAPFILE       : %s\n", cfg->PATH_SWAPFILE);
-    printf("    RETARDO_SWAP        : %d\n", cfg->RETARDO_SWAP);
-    printf("    LOG_LEVEL           : %s\n", cfg->LOG_LEVEL);
-    printf("    DUMP_PATH           : %s\n", cfg->DUMP_PATH);
-    printf("    PATH_INSTRUCCIONES  : %s\n\n", cfg->PATH_INSTRUCCIONES);
 
     return 1;
 }
@@ -222,7 +215,7 @@ int asignar_marco_libre(int pid, int numero_pagina) {
     
     // Verificar si hay marcos disponibles
     if (admin->frames_libres == 0 || list_is_empty(admin->lista_frames_libres)) {
-        log_debug(logger, "## No hay marcos libres disponibles - PID: %d, Página: %d", pid, numero_pagina);
+        log_warning(logger, "## No hay marcos libres disponibles - PID: %d, Página: %d", pid, numero_pagina);
         pthread_mutex_unlock(&admin->mutex_frames);
         return -1;
     }
@@ -250,6 +243,7 @@ int asignar_marco_libre(int pid, int numero_pagina) {
     pthread_mutex_unlock(&admin->mutex_frames);
     
     log_trace(logger, "## Marco asignado - Frame: %d, PID: %d, Página: %d", numero_frame, pid, numero_pagina);
+    log_trace(logger, "[MARCOS] Total de marcos libres tras asignar: %d", admin->frames_libres);
     return numero_frame;
 }
 
@@ -271,15 +265,14 @@ t_resultado_memoria liberar_marco(int numero_frame) {
     t_frame* frame = &admin->frames[numero_frame];
     
     if (!frame->ocupado) {
-        log_debug(logger, "Intento de liberar frame ya libre: %d", numero_frame);
-        pthread_mutex_unlock(&admin->mutex_frames);
-        return MEMORIA_ERROR_DIRECCION_INVALIDA;
+        log_warning(logger, "Intento de liberar frame ya libre: %d (FORZANDO LIBERACIÓN DE TODAS FORMAS)", numero_frame);
+        // No return: continuar y limpiar igual
     }
     
     int pid_anterior = frame->pid_propietario;
     int pagina_anterior = frame->numero_pagina;
     
-    // Limpiar el frame
+    // Limpiar el frame SIEMPRE
     frame->ocupado = false;
     frame->pid_propietario = -1;
     frame->numero_pagina = -1;
@@ -291,12 +284,22 @@ t_resultado_memoria liberar_marco(int numero_frame) {
     // Actualizar bitmap (marcar como libre)
     bitarray_clean_bit(admin->bitmap_frames, numero_frame);
     
-    // Agregar a lista de frames libres
+    // Agregar a lista de frames libres SOLO si no estaba ya
+    bool ya_en_lista = false;
+    for (int i = 0; i < list_size(admin->lista_frames_libres); i++) {
+        int* f = list_get(admin->lista_frames_libres, i);
+        if (*f == numero_frame) {
+            ya_en_lista = true;
+            break;
+        }
+    }
+    if (!ya_en_lista) {
     int* frame_num = malloc(sizeof(int));
     *frame_num = numero_frame;
     list_add(admin->lista_frames_libres, frame_num);
+    }
     
-    // Actualizar contadores
+    // Actualizar contadores SIEMPRE
     admin->frames_libres++;
     admin->frames_ocupados--;
     admin->total_liberaciones++;
@@ -304,6 +307,7 @@ t_resultado_memoria liberar_marco(int numero_frame) {
     pthread_mutex_unlock(&admin->mutex_frames);
     
     log_trace(logger, "## Marco liberado - Frame: %d (era PID: %d, Página: %d)", numero_frame, pid_anterior, pagina_anterior);
+    log_trace(logger, "[MARCOS] Total de marcos libres tras liberar: %d", admin->frames_libres);
     return MEMORIA_OK;
 }
 
@@ -580,10 +584,10 @@ void finalizar_sistema_memoria(void) {
         dictionary_destroy_and_destroy_elements(sistema_memoria->procesos, (void*)destruir_proceso);
     }
     if (sistema_memoria->estructuras_paginas) {
-        dictionary_destroy_and_destroy_elements(sistema_memoria->estructuras_paginas, (void*)destruir_estructura_paginas);
+        dictionary_destroy(sistema_memoria->estructuras_paginas); // NO destruir elementos
     }
     if (sistema_memoria->metricas_procesos) {
-        dictionary_destroy_and_destroy_elements(sistema_memoria->metricas_procesos, (void*)destruir_metricas_proceso);
+        dictionary_destroy(sistema_memoria->metricas_procesos); // NO destruir elementos
     }
     if (sistema_memoria->process_instructions) {
         liberar_instrucciones_dictionary(sistema_memoria->process_instructions);

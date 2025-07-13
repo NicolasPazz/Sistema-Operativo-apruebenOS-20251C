@@ -43,7 +43,7 @@ t_list *cola_blocked;
 t_list *cola_susp_ready;
 t_list *cola_susp_blocked;
 t_list *cola_exit;
-t_list *cola_procesos;     // Cola con TODOS los procesos sin importar el estado (Procesos totales del sistema)
+t_list *cola_procesos; // Cola con TODOS los procesos sin importar el estado (Procesos totales del sistema)
 t_list *pcbs_bloqueados_por_dump_memory;
 t_list *pcbs_esperando_io;
 t_queue *cola_interrupciones;
@@ -375,11 +375,14 @@ void *atender_cpu_dispatch(void *arg)
             close(fd_cpu_dispatch);
             return NULL;
         }
+
         log_debug(kernel_log, "atender_cpu_dispatch: esperando mutex_lista_cpus para procesar operación %d en CPU ID=%d", cop, cpu_actual->id);
         pthread_mutex_lock(&mutex_lista_cpus);
         log_debug(kernel_log, "atender_cpu_dispatch: bloqueando mutex_lista_cpus para procesar operación %d en CPU ID=%d", cop, cpu_actual->id);
+
         cpu_actual->instruccion_actual = cop;
         int pid = cpu_actual->pid;
+
         pthread_mutex_unlock(&mutex_lista_cpus);
 
         log_trace(kernel_log, "atender_cpu_dispatch: CPU ID=%d está procesando operación %d para pid %d", cpu_actual->id, cop, pid);
@@ -439,16 +442,7 @@ void *atender_cpu_dispatch(void *arg)
             // Actualizar el PC con el que me dijo CPU
             pcb_a_io->PC = PC;
 
-            log_debug(kernel_log, "atender_cpu_dispatch: esperando mutex_lista_cpus para buscar PCB con PID=%d", pid);
-            pthread_mutex_lock(&mutex_lista_cpus);
-            log_debug(kernel_log, "atender_cpu_dispatch: bloqueando mutex_lista_cpus para buscar PCB con PID=%d", pid);
-
-            cpu_actual->pid = -1;
-            cpu_actual->instruccion_actual = -1;
-            pthread_mutex_unlock(&mutex_lista_cpus);
-
-            sem_post(&sem_cpu_disponible);
-            log_debug(kernel_log, "atender_cpu_dispatch: Semáforo CPU DISPONIBLE aumentado por IO (fd=%d)", fd_cpu_dispatch);
+            liberar_cpu(cpu_actual);
 
             solicitar_replanificacion_srt();
             log_trace(kernel_log, "atender_cpu_dispatch_IO: replanificacion solicitada");
@@ -467,53 +461,21 @@ void *atender_cpu_dispatch(void *arg)
             log_info(kernel_log, VERDE("## (%d) Solicitó syscall: ") ROJO("EXIT"), pid);
             log_trace(kernel_log, "EXIT_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
 
-            // Obtener PID del proceso que está ejecutando esta CPU
-            log_debug(kernel_log, "atender_cpu_dispatch: esperando mutex_lista_cpus para obtener PID de la CPU (fd=%d)", fd_cpu_dispatch);
-            pthread_mutex_lock(&mutex_lista_cpus);
-            log_debug(kernel_log, "atender_cpu_dispatch: bloqueando mutex_lista_cpus para obtener PID de la CPU (fd=%d)", fd_cpu_dispatch);
-
-            int pid_exit = cpu_actual->pid;
-            pthread_mutex_unlock(&mutex_lista_cpus);
-
-            log_trace(kernel_log, "EXIT_OP asociado a PID=%d", pid);
-
-            // Buscar y remover PCB de RUNNING usando función centralizada
-            log_debug(kernel_log, "atender_cpu_dispatch: esperando mutex_cola_running para buscar PCB con PID=%d", pid_exit);
-            pthread_mutex_lock(&mutex_cola_running);
-            log_debug(kernel_log, "atender_cpu_dispatch: bloqueando mutex_cola_running para buscar PCB con PID=%d", pid_exit);
-            t_pcb *pcb_a_finalizar = buscar_y_remover_pcb_por_pid(cola_running, pid_exit);
-            pthread_mutex_unlock(&mutex_cola_running);
-
-            // Confirmar que se encontró el PCB
+            t_pcb *pcb_a_finalizar = buscar_pcb(pid);
             if (pcb_a_finalizar)
             {
-                // Cambiar estado y finalizar
                 cambiar_estado_pcb(pcb_a_finalizar, EXIT_ESTADO);
             }
             else
             {
-                log_error(kernel_log, "EXIT: No se encontró PCB para PID=%d en RUNNING", pid_exit);
+                log_error(kernel_log, "EXIT: No se encontró PCB para PID=%d en RUNNING", pid);
                 terminar_kernel();
                 exit(EXIT_FAILURE);
             }
 
-            // Limpiar PID de la CPU asociada
-            log_debug(kernel_log, "atender_cpu_dispatch: esperando mutex_lista_cpus para limpiar PID de la CPU (fd=%d)", fd_cpu_dispatch);
-            pthread_mutex_lock(&mutex_lista_cpus);
-            log_debug(kernel_log, "atender_cpu_dispatch: bloqueando mutex_lista_cpus para limpiar PID de la CPU (fd=%d)", fd_cpu_dispatch);
-
-            cpu_actual->pid = -1;                // Limpiar PID de la CPU
-            cpu_actual->instruccion_actual = -1;     // Limpiar instrucción actual
-            pthread_mutex_unlock(&mutex_lista_cpus);
-
-            // Liberar CPU para que el planificador pueda usarla
-            sem_post(&sem_cpu_disponible);
-            log_debug(kernel_log, "atender_cpu_dispatch: Semáforo CPU DISPONIBLE aumentado por CPU liberada (fd=%d)", fd_cpu_dispatch);
-
+            liberar_cpu(cpu_actual);
             solicitar_replanificacion_srt();
             log_trace(kernel_log, "atender_cpu_dispatch_EXIT: replanificacion solicitada");
-
-            log_trace(kernel_log, "EXIT: Semáforo CPU DISPONIBLE aumentado por CPU liberada");
 
             break;
 
@@ -532,7 +494,7 @@ void *atender_cpu_dispatch(void *arg)
             }
 
             int PID = *(int *)list_get(parametros_dump, 0);
-            int PC_actualizado = *(int *)list_get(parametros_dump, 1);     // ✅ RECIBIR PC ACTUALIZADO
+            int PC_actualizado = *(int *)list_get(parametros_dump, 1); // ✅ RECIBIR PC ACTUALIZADO
 
             // Obtener el PCB del proceso
             t_pcb *pcb_dump = buscar_pcb(PID);
@@ -543,17 +505,7 @@ void *atender_cpu_dispatch(void *arg)
 
             // ========== LIBERAR CPU (IGUAL QUE EXIT E IO) ==========
             // Limpiar PID de la CPU asociada
-            log_debug(kernel_log, "atender_cpu_dispatch: esperando mutex_lista_cpus para limpiar PID de la CPU (fd=%d)", fd_cpu_dispatch);
-            pthread_mutex_lock(&mutex_lista_cpus);
-            log_debug(kernel_log, "atender_cpu_dispatch: bloqueando mutex_lista_cpus para limpiar PID de la CPU (fd=%d)", fd_cpu_dispatch);
-
-            cpu_actual->pid = -1;                // Limpiar PID de la CPU
-            cpu_actual->instruccion_actual = -1;     // Limpiar instrucción actual
-            pthread_mutex_unlock(&mutex_lista_cpus);
-
-            // Liberar CPU para que el planificador pueda usarla
-            sem_post(&sem_cpu_disponible);
-            log_debug(kernel_log, "atender_cpu_dispatch_DUMP: Semáforo CPU DISPONIBLE aumentado por CPU liberada (fd=%d)", fd_cpu_dispatch);
+            liberar_cpu(cpu_actual);
 
             solicitar_replanificacion_srt();
             log_trace(kernel_log, "atender_cpu_dispatch_DUMP: replanificacion solicitada");
@@ -576,7 +528,7 @@ void *atender_cpu_dispatch(void *arg)
         pthread_mutex_lock(&mutex_lista_cpus);
         log_debug(kernel_log, "atender_cpu_dispatch: bloqueando mutex_lista_cpus para limpiar instrucción actual de la CPU (fd=%d)", fd_cpu_dispatch);
 
-        cpu_actual->instruccion_actual = -1;     // Valor inválido para indicar que está libre
+        cpu_actual->instruccion_actual = -1; // Valor inválido para indicar que está libre
         pthread_mutex_unlock(&mutex_lista_cpus);
     }
 
@@ -881,7 +833,7 @@ void asignar_proceso(io *dispositivo, t_pcb_io *proceso)
 
     // Crear paquete serializado
     t_paquete *paquete = crear_paquete_op(IO_OP);
-    agregar_a_paquete(paquete, dispositivo->nombre, strlen(dispositivo->nombre) + 1);     // nombre de la IO
+    agregar_a_paquete(paquete, dispositivo->nombre, strlen(dispositivo->nombre) + 1); // nombre de la IO
     agregar_entero_a_paquete(paquete, proceso->tiempo_a_usar);                        // tiempo
     agregar_entero_a_paquete(paquete, proceso->pcb->PID);                             // pid
 

@@ -26,12 +26,14 @@
  * @return Puntero al administrador creado o NULL si hay error
  */
 t_administrador_marcos* crear_administrador_marcos(int cantidad_frames, int tam_pagina);
+
 /**
  * @brief Destruye el administrador de marcos y libera recursos
  * 
  * @param admin Puntero al administrador a destruir
  */
 void destruir_administrador_marcos(t_administrador_marcos* admin);
+
 /**
  * @brief Asigna un marco libre del pool centralizado
  * 
@@ -43,12 +45,14 @@ void destruir_administrador_marcos(t_administrador_marcos* admin);
  * @return Número de marco asignado o -1 si no hay marcos disponibles
  */
 int asignar_marco_libre(int pid, int numero_pagina);
+
 /**
  * @brief Libera un marco específico
  * @param numero_frame Número del marco a liberar
  * @return Resultado de la operación
  */
 t_resultado_memoria liberar_marco(int numero_frame);
+
 /**
  * @brief Obtiene información de un marco específico
  * 
@@ -56,12 +60,14 @@ t_resultado_memoria liberar_marco(int numero_frame);
  * @return Puntero al frame o NULL si no existe
  */
 t_frame* obtener_frame(int numero_frame);
+
 /**
  * @brief Obtiene la cantidad de marcos libres disponibles
  * 
  * @return Cantidad de marcos libres
  */
 int obtener_marcos_libres(void);
+
 /**
  * @brief Obtiene estadísticas del administrador de marcos
  * 
@@ -70,6 +76,7 @@ int obtener_marcos_libres(void);
  * @param frames_ocupados Puntero donde almacenar frames ocupados
  */
 void obtener_estadisticas_marcos(int* total_frames, int* frames_libres, int* frames_ocupados);
+
 // ============================================================================
 // FUNCIONES DE GESTIÓN DE PROCESOS EN MEMORIA
 // ============================================================================
@@ -86,6 +93,7 @@ void obtener_estadisticas_marcos(int* total_frames, int* frames_libres, int* fra
  * @return MEMORIA_OK si se creó correctamente, error en caso contrario
  */
 t_resultado_memoria crear_proceso_en_memoria(int pid, int tamanio, char* nombre_archivo);
+
 /**
  * @brief Asigna marcos físicos a todas las páginas de un proceso
  * 
@@ -96,6 +104,7 @@ t_resultado_memoria crear_proceso_en_memoria(int pid, int tamanio, char* nombre_
  * @return MEMORIA_OK si se asignaron todos los marcos, error en caso contrario
  */
 t_resultado_memoria asignar_marcos_proceso(int pid);
+
 /**
  * @brief Finaliza un proceso y libera todos sus recursos
  * 
@@ -106,6 +115,7 @@ t_resultado_memoria asignar_marcos_proceso(int pid);
  * @return MEMORIA_OK si se finalizó correctamente, error en caso contrario
  */
 t_resultado_memoria finalizar_proceso_en_memoria(int pid);
+
 /**
  * @brief Verifica si un proceso existe y está activo
  * 
@@ -113,6 +123,7 @@ t_resultado_memoria finalizar_proceso_en_memoria(int pid);
  * @return true si existe y está activo, false en caso contrario
  */
 bool proceso_existe(int pid);
+
 /**
  * @brief Obtiene información completa de un proceso
  * 
@@ -120,6 +131,7 @@ bool proceso_existe(int pid);
  * @return Puntero al proceso o NULL si no existe
  */
 t_proceso_memoria* obtener_proceso(int pid);
+
 // ============================================================================
 // FUNCIONES DE PAGINACIÓN JERÁRQUICA MULTINIVEL
 // ============================================================================
@@ -135,6 +147,7 @@ t_proceso_memoria* obtener_proceso(int pid);
  * @return Puntero a la estructura creada o NULL si hay error
  */
 t_estructura_paginas* crear_estructura_paginas(int pid, int tamanio_proceso);
+
 /**
  * @brief Destruye la estructura de paginación de un proceso
  * 
@@ -143,6 +156,7 @@ t_estructura_paginas* crear_estructura_paginas(int pid, int tamanio_proceso);
  * @param estructura Puntero a la estructura a destruir
  */
 void destruir_estructura_paginas(t_estructura_paginas* estructura);
+
 /**
  * @brief Busca la entrada de tabla correspondiente a una página lógica
  * 
@@ -154,6 +168,7 @@ void destruir_estructura_paginas(t_estructura_paginas* estructura);
  * @return Puntero a la entrada encontrada o NULL si no existe
  */
 t_entrada_tabla* buscar_entrada_tabla(t_estructura_paginas* estructura, int numero_pagina);
+
 /**
  * @brief Crea las tablas intermedias necesarias para una página
  * 
@@ -165,6 +180,7 @@ t_entrada_tabla* buscar_entrada_tabla(t_estructura_paginas* estructura, int nume
  * @return Puntero a la entrada de tabla creada o NULL si hay error
  */
 t_entrada_tabla* crear_entrada_tabla_si_no_existe(t_estructura_paginas* estructura, int numero_pagina);
+
 /**
  * @brief Calcula los índices de tabla para una página en la jerarquía
  * 
@@ -178,6 +194,7 @@ t_entrada_tabla* crear_entrada_tabla_si_no_existe(t_estructura_paginas* estructu
  */
 void calcular_indices_jerarquia(int numero_pagina, int entradas_por_tabla, 
                                 int cantidad_niveles, int* indices);
+
 /**
  * @brief Configura una entrada de página con un marco específico
  * @param estructura Estructura de páginas del proceso
@@ -186,6 +203,7 @@ void calcular_indices_jerarquia(int numero_pagina, int entradas_por_tabla,
  * @return Resultado de la operación
  */
 t_resultado_memoria configurar_entrada_pagina(t_estructura_paginas* estructura, int numero_pagina, int numero_frame);
+
 // ============================================================================
 // FUNCIONES DE ACCESO A MEMORIA FÍSICA
 // ============================================================================
@@ -199,6 +217,7 @@ t_resultado_memoria configurar_entrada_pagina(t_estructura_paginas* estructura, 
  * @return MEMORIA_OK si se leyó correctamente, error en caso contrario
  */
 t_resultado_memoria leer_memoria_fisica(uint32_t direccion_fisica, int tamanio, void* buffer);
+
 /**
  * @brief Escribe datos en una dirección física específica
  * 
@@ -208,6 +227,7 @@ t_resultado_memoria leer_memoria_fisica(uint32_t direccion_fisica, int tamanio, 
  * @return MEMORIA_OK si se escribió correctamente, error en caso contrario
  */
 t_resultado_memoria escribir_memoria_fisica(uint32_t direccion_fisica, void* datos, int tamanio);
+
 /**
  * @brief Lee una página completa de un marco específico
  * 
@@ -216,6 +236,7 @@ t_resultado_memoria escribir_memoria_fisica(uint32_t direccion_fisica, void* dat
  * @return MEMORIA_OK si se leyó correctamente, error en caso contrario
  */
 t_resultado_memoria leer_pagina_memoria(int numero_frame, void* buffer);
+
 /**
  * @brief Escribe una página completa en un marco específico
  * 
@@ -224,6 +245,7 @@ t_resultado_memoria leer_pagina_memoria(int numero_frame, void* buffer);
  * @return MEMORIA_OK si se escribió correctamente, error en caso contrario
  */
 t_resultado_memoria escribir_pagina_memoria(int numero_frame, void* contenido);
+
 // ============================================================================
 // FUNCIONES DE SUSPENSIÓN Y REANUDACIÓN (SWAP)
 // ============================================================================
@@ -238,6 +260,7 @@ t_resultado_memoria escribir_pagina_memoria(int numero_frame, void* contenido);
  * @return MEMORIA_OK si se suspendió correctamente, error en caso contrario
  */
 t_resultado_memoria suspender_proceso_en_memoria(int pid);
+
 /**
  * @brief Reanuda un proceso cargando sus páginas desde SWAP (wrapper de alto nivel)
  * 
@@ -248,6 +271,7 @@ t_resultado_memoria suspender_proceso_en_memoria(int pid);
  * @return MEMORIA_OK si se reanudó correctamente, error en caso contrario
  */
 t_resultado_memoria reanudar_proceso_en_memoria(int pid);
+
 /**
  * @brief Suspende un proceso completo escribiendo todas sus páginas a SWAP
  * 
@@ -258,6 +282,7 @@ t_resultado_memoria reanudar_proceso_en_memoria(int pid);
  * @return 1 si se suspendió correctamente, 0 en caso de error
  */
 int suspender_proceso_completo(int pid);
+
 /**
  * @brief Reanuda un proceso suspendido cargando sus páginas desde SWAP
  * 
@@ -268,6 +293,7 @@ int suspender_proceso_completo(int pid);
  * @return 1 si se reanudó correctamente, 0 en caso de error
  */
 int reanudar_proceso_suspendido(int pid);
+
 /**
  * @brief Verifica si un proceso está suspendido
  * 
@@ -275,6 +301,7 @@ int reanudar_proceso_suspendido(int pid);
  * @return true si el proceso está suspendido, false en caso contrario
  */
 bool proceso_esta_suspendido(int pid);
+
 // ============================================================================
 // FUNCIONES DE ACCESO A MEMORIA FÍSICA - AUXILIARES
 // ============================================================================
@@ -285,18 +312,21 @@ bool proceso_esta_suspendido(int pid);
  * @param proceso Puntero al proceso a destruir
  */
 void destruir_proceso(t_proceso_memoria* proceso);
+
 /**
  * @brief Destruye las métricas de un proceso
  * 
  * @param metricas Puntero a las métricas a destruir
  */
 void destruir_metricas_proceso(t_metricas_proceso* metricas);
+
 /**
  * @brief Destruye recursivamente una tabla de páginas
  * 
  * @param tabla Puntero a la tabla a destruir
  */
 void destruir_tabla_paginas_recursiva(t_tabla_paginas* tabla);
+
 // ============================================================================
 // FUNCIONES DE MÉTRICAS - Las 6 métricas EXACTAS de la consigna
 // ============================================================================
@@ -306,37 +336,44 @@ void destruir_tabla_paginas_recursiva(t_tabla_paginas* tabla);
  * @param pid PID del proceso
  */
 void incrementar_accesos_tabla_paginas(int pid);
+
 /**
  * @brief Incrementa el contador de instrucciones solicitadas
  * @param pid PID del proceso
  */
 void incrementar_instrucciones_solicitadas(int pid);
+
 /**
  * @brief Incrementa el contador de bajadas a SWAP
  * @param pid PID del proceso
  */
 void incrementar_bajadas_swap(int pid);
+
 /**
  * @brief Incrementa el contador de subidas a Memoria Principal
  * @param pid PID del proceso
  */
 void incrementar_subidas_memoria_principal(int pid);
+
 /**
  * @brief Incrementa el contador de lecturas de memoria
  * @param pid PID del proceso
  */
 void incrementar_lecturas_memoria(int pid);
+
 /**
  * @brief Incrementa el contador de escrituras de memoria
  * @param pid PID del proceso
  */
 void incrementar_escrituras_memoria(int pid);
+
 /**
  * @brief Obtiene las métricas de un proceso
  * @param pid PID del proceso
  * @return Puntero a las métricas o NULL si no existe
  */
 t_metricas_proceso* obtener_metricas_proceso(int pid);
+
 /**
  * @brief Imprime las métricas de un proceso según formato de consigna
  * 
@@ -346,6 +383,7 @@ t_metricas_proceso* obtener_metricas_proceso(int pid);
  * @param pid PID del proceso
  */
 void imprimir_metricas_proceso(int pid);
+
 // ============================================================================
 // FUNCIONES DE INSTRUCCIONES
 // ============================================================================
@@ -362,6 +400,7 @@ void imprimir_metricas_proceso(int pid);
  * @return MEMORIA_OK si se cargaron correctamente, error en caso contrario
  */
 t_resultado_memoria cargar_instrucciones_proceso(int pid, char* nombre_archivo);
+
 /**
  * @brief Obtiene una instrucción específica de un proceso
  * 
@@ -370,18 +409,21 @@ t_resultado_memoria cargar_instrucciones_proceso(int pid, char* nombre_archivo);
  * @return Puntero a la instrucción o NULL si no existe
  */
 t_instruccion* obtener_instruccion_proceso(int pid, int pc);
+
 /**
  * @brief Libera las instrucciones de un proceso
  * 
  * @param instrucciones Lista de instrucciones a liberar
  */
 void liberar_instrucciones_proceso(t_list* instrucciones);
+
 /**
  * @brief Libera una instrucción individual
  * 
  * @param instruccion Puntero a la instrucción a liberar
  */
 void liberar_instruccion(t_instruccion* instruccion);
+
 // ============================================================================
 // FUNCIONES DE DUMP DE MEMORIA
 // ============================================================================
@@ -396,6 +438,7 @@ void liberar_instruccion(t_instruccion* instruccion);
  * @return MEMORIA_OK si se generó correctamente, error en caso contrario
  */
 t_resultado_memoria generar_dump_proceso(int pid);
+
 // ============================================================================
 // FUNCIONES DE UTILIDAD Y VALIDACIÓN
 // ============================================================================
@@ -408,6 +451,7 @@ t_resultado_memoria generar_dump_proceso(int pid);
  * @return true si es válida, false en caso contrario
  */
 bool validar_direccion_logica(int pid, uint32_t direccion_logica);
+
 /**
  * @brief Calcula el número de página de una dirección lógica
  * 
@@ -416,6 +460,7 @@ bool validar_direccion_logica(int pid, uint32_t direccion_logica);
  * @return Número de página
  */
 int calcular_numero_pagina(uint32_t direccion_logica, int tam_pagina);
+
 /**
  * @brief Calcula el desplazamiento dentro de una página
  * 
@@ -424,14 +469,18 @@ int calcular_numero_pagina(uint32_t direccion_logica, int tam_pagina);
  * @return Desplazamiento dentro de la página
  */
 int calcular_desplazamiento(uint32_t direccion_logica, int tam_pagina);
+
 /**
  * @brief Aplica el retardo configurado de acceso a memoria
  */
 void aplicar_retardo_memoria(void);
+
 /**
  * @brief Aplica el retardo configurado de acceso a SWAP
  */
 void aplicar_retardo_swap(void);
+
+
 // ============================================================================
 // FUNCIONES DE INICIALIZACIÓN Y FINALIZACIÓN
 // ============================================================================
@@ -445,23 +494,29 @@ void aplicar_retardo_swap(void);
  * @return MEMORIA_OK si se inicializó correctamente, error en caso contrario
  */
 t_resultado_memoria inicializar_sistema_memoria_completo(void);
+
 /**
  * @brief Finaliza el sistema de memoria y libera todos los recursos
  */
 void finalizar_sistema_memoria(void);
+
 // ============================================================================
 // FUNCIONES DE ACCESO A MEMORIA SEGÚN CONSIGNA
 // ============================================================================
 
 // 1. Acceso a tabla de páginas - devuelve número de marco
 int acceso_tabla_paginas(int pid, int numero_pagina);
+
 // 2. Acceso a espacio de usuario - lectura/escritura
 void* acceso_espacio_usuario_lectura(int pid, int direccion_fisica, int tamanio);
 bool acceso_espacio_usuario_escritura(int pid, int direccion_fisica, int tamanio, void* datos);
+
 // 3. Leer página completa desde dirección base de página
 void* leer_pagina_completa(int pid, int direccion_base_pagina);
+
 // 4. Actualizar página completa en dirección física
 bool actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido_pagina);
+
 // ============================================================================
 // FUNCIONES DE NAVEGACIÓN Y UTILIDADES
 // ============================================================================
@@ -472,6 +527,7 @@ bool actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido_p
  * @param proceso Puntero al proceso a liberar
  */
 void liberar_proceso_memoria(t_proceso_memoria* proceso);
+
 // ============================================================================
 // FUNCIONES DE COMUNICACIÓN Y DELEGACIÓN
 // ============================================================================
@@ -483,6 +539,7 @@ void liberar_proceso_memoria(t_proceso_memoria* proceso);
  * @return MEMORIA_OK si se procesó correctamente, error en caso contrario
  */
 t_resultado_memoria procesar_memory_dump(int pid);
+
 /**
  * @brief Verifica si hay espacio disponible para un tamaño dado
  * 
@@ -490,6 +547,9 @@ t_resultado_memoria procesar_memory_dump(int pid);
  * @return true si hay espacio suficiente, false en caso contrario
  */
 bool verificar_espacio_disponible(int tamanio);
+
+
+
 /**
  * @brief Función inversa de calcular_indices_multinivel
  * @param entradas Array con las entradas de cada nivel

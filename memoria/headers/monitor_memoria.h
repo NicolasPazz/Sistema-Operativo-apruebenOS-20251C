@@ -14,18 +14,21 @@
  * @return true si hay espacio disponible, false en caso contrario
  */
 bool verificar_espacio_disponible(int tamanio);
+
 /**
  * @brief Verifica si un proceso existe en el sistema de memoria
  * @param pid PID del proceso a verificar
  * @return true si el proceso existe, false en caso contrario
  */
 bool proceso_existe(int pid);
+
 /**
  * @brief Obtiene un proceso de memoria por su PID
  * @param pid PID del proceso
  * @return Puntero al proceso o NULL si no existe
  */
 t_proceso_memoria* obtener_proceso(int pid);
+
 // ============== FUNCIONES DE CÁLCULO Y UTILIDADES MATEMÁTICAS ==============
 
 /**
@@ -36,6 +39,7 @@ t_proceso_memoria* obtener_proceso(int pid);
  * @param indices Array donde se almacenarán los índices calculados
  */
 void calcular_indices_multinivel(int numero_pagina, int cantidad_niveles, int entradas_por_tabla, int* indices);
+
 /**
  * @brief Busca una entrada de tabla para una página específica
  * @param estructura Estructura de páginas del proceso
@@ -43,6 +47,7 @@ void calcular_indices_multinivel(int numero_pagina, int cantidad_niveles, int en
  * @return Puntero a la entrada de tabla o NULL si no existe
  */
 t_entrada_tabla* buscar_entrada_tabla(t_estructura_paginas* estructura, int numero_pagina);
+
 // ============== FUNCIONES DE LOGGING Y COMUNICACIÓN ==============
 
 /**
@@ -52,6 +57,7 @@ t_entrada_tabla* buscar_entrada_tabla(t_estructura_paginas* estructura, int nume
  * @param instruccion Instrucción obtenida
  */
 void log_instruccion_obtenida(int pid, int pc, t_instruccion* instruccion);
+
 // ============== FUNCIONES DE SERIALIZACIÓN ==============
 
 /**
@@ -62,6 +68,7 @@ void log_instruccion_obtenida(int pid, int pc, t_instruccion* instruccion);
  * @return Nuevo offset después de la serialización
  */
 int serializar_string(void* buffer, int offset, char* string);
+
 /**
  * @brief Calcula el tamaño total necesario para serializar 3 strings
  * @param p1 
@@ -70,6 +77,7 @@ int serializar_string(void* buffer, int offset, char* string);
  * @return Tamaño total en bytes
  */
 int calcular_tamanio_buffer_instruccion(char* p1, char* p2, char* p3);
+
 /**
  * @brief Crea un buffer serializado con 3 strings para enviar a CPU
  * @param p1 
@@ -79,12 +87,14 @@ int calcular_tamanio_buffer_instruccion(char* p1, char* p2, char* p3);
  * @return Buffer serializado (debe ser liberado por el caller)
  */
 void* crear_buffer_instruccion(char* p1, char* p2, char* p3, int* size_out);
+
 /**
  * @brief Crea un buffer de error con 3 strings vacíos
  * @param size_out Tamaño del buffer creado
  * @return Buffer de error (debe ser liberado por el caller)
  */
 void* crear_buffer_error_instruccion(int* size_out);
+
 // ============== FUNCIONES DE COMUNICACIÓN DE RED ==============
 
 /**
@@ -95,6 +105,7 @@ void* crear_buffer_error_instruccion(int* size_out);
  * @return true si se envió correctamente, false en caso de error
  */
 bool enviar_buffer_a_socket(int cliente_socket, void* buffer, int size);
+
 /**
  * @brief Procesa y envía una instrucción válida a la CPU
  * @param pid PID del proceso
@@ -103,6 +114,7 @@ bool enviar_buffer_a_socket(int cliente_socket, void* buffer, int size);
  * @param cliente_socket Socket del cliente CPU
  */
 void procesar_y_enviar_instruccion_valida(int pid, int pc, t_instruccion* instruccion, int cliente_socket);
+
 /**
  * @brief Procesa y envía un error cuando no se puede obtener la instrucción
  * @param pid PID del proceso
@@ -110,17 +122,20 @@ void procesar_y_enviar_instruccion_valida(int pid, int pc, t_instruccion* instru
  * @param cliente_socket Socket del cliente CPU
  */
 void procesar_y_enviar_error_instruccion(int pid, int pc, int cliente_socket);
+
 // ============== FUNCIONES DE UTILIDADES DE MEMORIA ==============
 
 /**
  * @brief Aplica el retardo configurado para acceso a memoria
  */
 void aplicar_retardo_memoria(void);
+
 /**
  * @brief Libera una instrucción y sus parámetros
  * @param instruccion Instrucción a liberar
  */
 void liberar_instruccion(t_instruccion* instruccion);
+
 // ============== FUNCIONES DE CREACIÓN DE ESTRUCTURAS ==============
 
 /**
@@ -129,6 +144,7 @@ void liberar_instruccion(t_instruccion* instruccion);
  * @return Puntero a la tabla creada o NULL en caso de error
  */
 t_tabla_paginas* crear_tabla_paginas(int nivel);
+
 // ============== FUNCIONES DE LECTURA Y ESCRITURA DE MARCOS ==============
 
 /**
@@ -138,6 +154,7 @@ t_tabla_paginas* crear_tabla_paginas(int nivel);
  * @return true si se leyó correctamente, false en caso de error
  */
 bool leer_contenido_marco(int numero_frame, void* buffer);
+
 /**
  * @brief Obtiene todos los marcos asignados a un proceso
  * @param pid PID del proceso
@@ -146,18 +163,21 @@ bool leer_contenido_marco(int numero_frame, void* buffer);
  * @return true si se obtuvieron correctamente, false en caso de error
  */
 bool obtener_marcos_proceso(int pid, int* marcos_out, int* cantidad_marcos_out);
+
 /**
  * @brief Procesa una solicitud de memory dump
  * @param pid PID del proceso
  * @return Resultado de la operación
  */
 t_resultado_memoria procesar_memory_dump(int pid);
+
 /**
  * @brief Asigna marcos de memoria para un proceso
  * @param pid PID del proceso
  * @return Resultado de la operación
  */
 t_resultado_memoria asignar_marcos_proceso(int pid);
+
 /**
  * @brief Envía una instrucción a la CPU
  * @param cliente_socket Socket del cliente

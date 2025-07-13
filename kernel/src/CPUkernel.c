@@ -80,3 +80,19 @@ int obtener_fd_interrupt(int id_cpu)
     terminar_kernel();
     exit(EXIT_FAILURE);
 }
+
+void liberar_cpu(cpu *cpu_a_eliminar)
+{
+    // Limpiar PID de la CPU asociada
+    log_debug(kernel_log, "esperando mutex_lista_cpus para limpiar PID de la CPU (fd=%d)", cpu_a_eliminar->fd);
+    pthread_mutex_lock(&mutex_lista_cpus);
+    log_debug(kernel_log, "bloqueando mutex_lista_cpus para limpiar PID de la CPU (fd=%d)", cpu_a_eliminar->fd);
+
+    cpu_a_eliminar->pid = -1;                // Limpiar PID de la CPU
+    cpu_a_eliminar->instruccion_actual = -1; // Limpiar instrucción actual
+    pthread_mutex_unlock(&mutex_lista_cpus);
+
+    // Liberar CPU para que el planificador pueda usarla
+    sem_post(&sem_cpu_disponible);
+    log_debug(kernel_log, "Semáforo CPU DISPONIBLE aumentado por CPU liberada (fd=%d)", cpu_a_eliminar->fd);
+}

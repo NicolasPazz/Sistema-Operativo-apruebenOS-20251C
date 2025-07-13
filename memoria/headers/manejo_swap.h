@@ -20,6 +20,7 @@
  * @return 1 si la suspensión fue exitosa, 0 en caso de error
  */
 int suspender_proceso_completo(int pid);
+
 /**
  * @brief Reanuda un proceso suspendido cargando todas sus páginas desde SWAP
  * 
@@ -27,6 +28,7 @@ int suspender_proceso_completo(int pid);
  * @return 1 si la reanudación fue exitosa, 0 en caso de error
  */
 int reanudar_proceso_suspendido(int pid);
+
 // ============================================================================
 // FUNCIONES DE GESTIÓN DE PÁGINAS EN SWAP
 // ============================================================================
@@ -40,6 +42,7 @@ int reanudar_proceso_suspendido(int pid);
  * @return 1 si la escritura fue exitosa, 0 en caso de error
  */
 int escribir_pagina_proceso_swap(int pid, int numero_pagina, void* contenido);
+
 /**
  * @brief Lee una página específica de un proceso desde SWAP
  * 
@@ -48,6 +51,7 @@ int escribir_pagina_proceso_swap(int pid, int numero_pagina, void* contenido);
  * @return Puntero al contenido de la página, NULL en caso de error
  */
 void* leer_pagina_proceso_swap(int pid, int numero_pagina);
+
 // ============================================================================
 // FUNCIONES DE GESTIÓN DE ESPACIO EN SWAP
 // ============================================================================
@@ -59,12 +63,14 @@ void* leer_pagina_proceso_swap(int pid, int numero_pagina);
  * @return 1 si hay espacio suficiente, 0 en caso contrario
  */
 int asignar_espacio_swap_proceso(int pid);
+
 /**
  * @brief Libera todo el espacio de SWAP ocupado por un proceso
  * 
  * @param pid PID del proceso
  */
 void liberar_espacio_swap_proceso(int pid);
+
 /**
  * @brief Verifica si un proceso tiene páginas almacenadas en SWAP
  * 
@@ -72,6 +78,7 @@ void liberar_espacio_swap_proceso(int pid);
  * @return true si el proceso tiene páginas en SWAP, false en caso contrario
  */
 bool proceso_tiene_paginas_en_swap(int pid);
+
 // ============================================================================
 // FUNCIONES AUXILIARES PARA GESTIÓN SWAP
 // ============================================================================
@@ -83,6 +90,7 @@ bool proceso_tiene_paginas_en_swap(int pid);
  * @return true si está suspendido, false en caso contrario
  */
 bool proceso_esta_suspendido(int pid);
+
 /**
  * @brief Obtiene la cantidad de páginas que tiene un proceso en SWAP
  * 
@@ -90,6 +98,7 @@ bool proceso_esta_suspendido(int pid);
  * @return Cantidad de páginas en SWAP o 0 si no hay
  */
 int obtener_paginas_en_swap(int pid);
+
 /**
  * @brief Obtiene estadísticas del sistema SWAP
  * 
@@ -97,6 +106,7 @@ int obtener_paginas_en_swap(int pid);
  * @param espacio_usado_out Puntero donde almacenar espacio usado en bytes
  */
 void obtener_estadisticas_swap(int* total_entradas_out, size_t* espacio_usado_out);
+
 /**
  * @brief Lista todos los procesos que están actualmente en SWAP
  * 
