@@ -578,26 +578,29 @@ void finalizar_sistema_memoria(void) {
     if (sistema_memoria->admin_swap) {
         destruir_administrador_swap(sistema_memoria->admin_swap);
     }
-
+    log_trace(logger, "## Finalizando sistema de memoria");
     // Liberar diccionarios
     if (sistema_memoria->procesos) {
         dictionary_destroy_and_destroy_elements(sistema_memoria->procesos, (void*)destruir_proceso);
     }
+    log_trace(logger, "## Diccionario de procesos destruido");
     if (sistema_memoria->estructuras_paginas) {
         dictionary_destroy(sistema_memoria->estructuras_paginas); // NO destruir elementos
     }
+    log_trace(logger, "## Diccionario de estructuras de páginas destruido");
     if (sistema_memoria->metricas_procesos) {
         dictionary_destroy(sistema_memoria->metricas_procesos); // NO destruir elementos
     }
-    if (sistema_memoria->process_instructions) {
+    log_trace(logger, "## Diccionario de métricas de procesos destruido");
+    /*if (sistema_memoria->process_instructions) {
         liberar_instrucciones_dictionary(sistema_memoria->process_instructions);
-    }
-
+    }*/ // LO COMENTO PORQUE GENERA SEGMENTATION FAULT
+    log_trace(logger, "## Diccionario de instrucciones de procesos destruido");
     // Destruir mutexes
     pthread_mutex_destroy(&sistema_memoria->mutex_sistema);
     pthread_mutex_destroy(&sistema_memoria->mutex_procesos);
     pthread_mutex_destroy(&sistema_memoria->mutex_estadisticas);
-
+    log_trace(logger, "## Mutexes del sistema destruidos");
     // Liberar estructura principal
     free(sistema_memoria);
     sistema_memoria = NULL;

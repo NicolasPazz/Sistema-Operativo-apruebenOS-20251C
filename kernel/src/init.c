@@ -265,7 +265,7 @@ void terminar_kernel()
 //                                            MEMORIA                                           //
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
-void *hilo_cliente_memoria(void *_)
+/*void *hilo_cliente_memoria(void *_)
 {
     fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, kernel_log);
 
@@ -288,7 +288,7 @@ void *hilo_cliente_memoria(void *_)
     log_trace(kernel_log, "HANDSHAKE_MEMORIA_KERNEL: Kernel conectado correctamente a Memoria (fd=%d)", fd_memoria);
 
     return NULL;
-}
+}*/
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 

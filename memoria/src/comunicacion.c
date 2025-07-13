@@ -104,6 +104,7 @@ void procesar_conexion(void* void_args) {
     }
     log_trace(logger, "Conexion procesada exitosamente para %s (fd=%d)", server_name, cliente_socket);
 
+    // No hay que crear un hilo para cada cliente? no se pueden atender peticiones concurrentes si no
     op_code cop;
     while ( (cop = recibir_operacion(cliente_socket)) != -1 ) {
         procesar_cod_ops(cop, cliente_socket);
@@ -112,6 +113,8 @@ void procesar_conexion(void* void_args) {
     log_debug(logger, "El cliente (fd=%d) se desconectó de %s", cliente_socket, server_name);
 
     close(cliente_socket);
+
+    // Si no quedan cpus conectadas, terminar memoria
 }
 
 void procesar_cod_ops(op_code cop, int cliente_socket) {

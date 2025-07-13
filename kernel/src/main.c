@@ -107,16 +107,6 @@ int main(int argc, char *argv[])
     }
     pthread_detach(hilo_interrupt);
 
-    // Cliente de Memoria
-    /*hread_t hilo_memoria;
-    if (pthread_create(&hilo_memoria, NULL, hilo_cliente_memoria, NULL) != 0)
-    {
-        log_error(kernel_log, "Error al crear hilo cliente de Memoria");
-        terminar_kernel();
-        exit(EXIT_FAILURE);
-    }
-    pthread_detach(hilo_memoria);*/
-
     // Servidor de IO
     pthread_t hilo_io;
     if (pthread_create(&hilo_io, NULL, hilo_servidor_io, NULL) != 0)
