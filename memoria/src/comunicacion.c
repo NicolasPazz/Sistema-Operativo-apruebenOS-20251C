@@ -23,6 +23,7 @@ int fd_cpu;
 extern t_log* logger;
 extern t_config_memoria* cfg;
 extern t_sistema_memoria* sistema_memoria;
+int cpus_conectadas = 0;
 
 typedef struct {
     int fd;
@@ -86,6 +87,7 @@ void procesar_conexion(void* void_args) {
         close(cliente_socket);
         return;
     }
+    bool es_cpu = false;  
     switch (handshake) {
         case HANDSHAKE_MEMORIA_KERNEL:
             log_info(logger, VERDE("## Kernel Conectado - FD del socket: %d"), cliente_socket);
@@ -94,7 +96,9 @@ void procesar_conexion(void* void_args) {
 
         case HANDSHAKE_MEMORIA_CPU:
             log_trace(logger, VERDE("## CPU Conectado - FD del socket: %d"), cliente_socket);
-            fd_cpu = cliente_socket;
+            es_cpu = true;  
+            cpus_conectadas++;
+            fd_cpu = cliente_socket; // Se sobreescribe fd_cpu si hay múltiples CPUs?
             break;
 
         default:
@@ -104,7 +108,6 @@ void procesar_conexion(void* void_args) {
     }
     log_trace(logger, "Conexion procesada exitosamente para %s (fd=%d)", server_name, cliente_socket);
 
-    // No hay que crear un hilo para cada cliente? no se pueden atender peticiones concurrentes si no
     op_code cop;
     while ( (cop = recibir_operacion(cliente_socket)) != -1 ) {
         procesar_cod_ops(cop, cliente_socket);
@@ -114,7 +117,15 @@ void procesar_conexion(void* void_args) {
 
     close(cliente_socket);
 
-    // Si no quedan cpus conectadas, terminar memoria
+    if (es_cpu) {
+        cpus_conectadas--;
+
+        if (cpus_conectadas == 0) {
+            log_info(logger, "## Última CPU desconectada ⇒ cerrando Memoria");
+            finalizar_sistema_memoria();
+            exit(EXIT_SUCCESS);
+        }
+    }
 }
 
 void procesar_cod_ops(op_code cop, int cliente_socket) {
