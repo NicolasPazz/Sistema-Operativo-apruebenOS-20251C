@@ -212,7 +212,7 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
     case READY:
         sem_post(&sem_proceso_a_ready);
         sem_post(&sem_planificador_cp);
-        log_trace(kernel_log, "cambiar_estado_pcb: replanificacion solicitada");
+        log_trace(kernel_log, "[PLANI CP] Replanificación solicitada por proceso a READY (PID=%d)", PCB->PID);
         log_trace(kernel_log, "cambiar_estado_pcb: Semaforo a READY aumentado");
         break;
     case EXEC:

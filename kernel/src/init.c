@@ -312,7 +312,7 @@ void *hilo_servidor_dispatch(void *_)
         {
             log_error(kernel_log, "Error al crear hilo para atender CPU Dispatch (fd=%d)", fd_cpu_dispatch);
             pthread_mutex_lock(&mutex_lista_cpus);
-            list_remove(lista_cpus, nueva_cpu);
+            list_remove_element(lista_cpus, nueva_cpu);
             cpu_libre--;
             pthread_mutex_unlock(&mutex_lista_cpus);
             close(fd_cpu_dispatch);
@@ -323,7 +323,8 @@ void *hilo_servidor_dispatch(void *_)
         pthread_detach(hilo);
 
         sem_post(&sem_planificador_cp);
-
+        log_trace(kernel_log, "[PLANI CP] Replanificación solicitada por nueva CPU Dispatch (fd=%d, ID=%d)", fd_cpu_dispatch, id_cpu);
+        
         log_trace(kernel_log, "hilo_servidor_dispatch: esperando mutex_conexiones para marcar CPU como conectada (fd=%d)", fd_cpu_dispatch);
         pthread_mutex_lock(&mutex_conexiones);
         log_trace(kernel_log, "hilo_servidor_dispatch: bloqueando mutex_conexiones para marcar CPU como conectada (fd=%d)", fd_cpu_dispatch);
@@ -345,44 +346,44 @@ void *atender_cpu_dispatch(void *arg)
     while ((cop = recibir_operacion(fd_cpu_dispatch)) != -1)
     {
 
+        log_trace(kernel_log, "[SERVIDOR DISPATCH] esperando mutex_lista_cpus para procesar operación");
+        pthread_mutex_lock(&mutex_lista_cpus);
+        log_trace(kernel_log, "[SERVIDOR DISPATCH] bloqueando mutex_lista_cpus para procesar operación");
+
         cpu *cpu_actual = get_cpu_from_fd(fd_cpu_dispatch);
 
         if (!cpu_actual)
         {
-            log_error(kernel_log, "atender_cpu_dispatch: No se encontró CPU asociada al fd=%d", fd_cpu_dispatch);
+            log_error(kernel_log, "[SERVIDOR DISPATCH] No se encontró CPU asociada al fd=%d", fd_cpu_dispatch);
             close(fd_cpu_dispatch);
             return NULL;
         }
-
-        log_trace(kernel_log, "atender_cpu_dispatch: esperando mutex_lista_cpus para procesar operación");
-        pthread_mutex_lock(&mutex_lista_cpus);
-        log_trace(kernel_log, "atender_cpu_dispatch: bloqueando mutex_lista_cpus para procesar operación");
 
         cpu_actual->instruccion_actual = cop;
         int pid = cpu_actual->pid;
 
         pthread_mutex_unlock(&mutex_lista_cpus);
 
-        log_trace(kernel_log, "atender_cpu_dispatch: CPU ID=%d está procesando operación %d para pid %d", cpu_actual->id, cop, pid);
+        log_trace(kernel_log, "[SERVIDOR DISPATCH] CPU ID=%d está procesando operación %d para pid %d", cpu_actual->id, cop, pid);
 
         switch (cop)
         {
         case INIT_PROC_OP:
         {
             log_info(kernel_log, VERDE("## (%d) Solicitó syscall: ") ROJO("INIT_PROC"), pid);
-            log_trace(kernel_log, "INIT_PROC_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
+            log_trace(kernel_log, "[SERVIDOR DISPATCH] INIT_PROC_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
 
             t_list *parametros_init_proc = recibir_contenido_paquete(fd_cpu_dispatch);
             if (!parametros_init_proc || list_size(parametros_init_proc) < 2)
             {
-                log_error(kernel_log, "Error al recibir parámetros para INIT_PROC_OP desde CPU Dispatch");
+                log_error(kernel_log, "[SERVIDOR DISPATCH] Error al recibir parámetros para INIT_PROC_OP desde CPU Dispatch");
                 terminar_kernel();
                 exit(EXIT_FAILURE);
             }
 
             char *nombre = (char *)list_get(parametros_init_proc, 0);
             int size = *(int *)list_get(parametros_init_proc, 1);
-            log_trace(kernel_log, "INIT_PROC_OP recibido de CPU Dispatch (fd=%d) con nombre '%s', tamaño %d", fd_cpu_dispatch, nombre, size);
+            log_trace(kernel_log, "[SERVIDOR DISPATCH] INIT_PROC_OP recibido de CPU Dispatch (fd=%d) con nombre '%s', tamaño %d", fd_cpu_dispatch, nombre, size);
 
             INIT_PROC(nombre, size);
 
@@ -397,7 +398,7 @@ void *atender_cpu_dispatch(void *arg)
             t_list *parametros_io = recibir_contenido_paquete(fd_cpu_dispatch);
             if (!parametros_io || list_size(parametros_io) < 3)
             {
-                log_error(kernel_log, "Error al recibir parámetros para IO_OP desde CPU Dispatch");
+                log_error(kernel_log, "[SERVIDOR DISPATCH] Error al recibir parámetros para IO_OP desde CPU Dispatch");
                 terminar_kernel();
                 exit(EXIT_FAILURE);
             }
@@ -406,7 +407,7 @@ void *atender_cpu_dispatch(void *arg)
             int cant_tiempo = *(int *)list_get(parametros_io, 1);
             int PC = *(int *)list_get(parametros_io, 2);
 
-            log_trace(kernel_log, "IO_OP recibido de CPU Dispatch (fd=%d) con nombre '%s', tiempo %d ms, PC %d", fd_cpu_dispatch, nombre_IO, cant_tiempo, PC);
+            log_trace(kernel_log, "[SERVIDOR DISPATCH] IO_OP recibido de CPU Dispatch (fd=%d) con nombre '%s', tiempo %d ms, PC %d", fd_cpu_dispatch, nombre_IO, cant_tiempo, PC);
 
             t_pcb *pcb_a_io = buscar_pcb(pid);
             pcb_a_io->PC = PC;
@@ -421,7 +422,7 @@ void *atender_cpu_dispatch(void *arg)
 
         case EXIT_OP:
             log_info(kernel_log, VERDE("## (%d) Solicitó syscall: ") ROJO("EXIT"), pid);
-            log_trace(kernel_log, "EXIT_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
+            log_trace(kernel_log, "[SERVIDOR DISPATCH] EXIT_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
 
             t_pcb *pcb_a_finalizar = buscar_pcb(pid);
             cambiar_estado_pcb(pcb_a_finalizar, EXIT_ESTADO);
@@ -432,12 +433,12 @@ void *atender_cpu_dispatch(void *arg)
 
         case DUMP_MEMORY_OP:
             log_info(kernel_log, VERDE("## (%d) Solicitó syscall: ") ROJO("DUMP_MEMORY"), pid);
-            log_trace(kernel_log, "DUMP_MEMORY_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
+            log_trace(kernel_log, "[SERVIDOR DISPATCH] DUMP_MEMORY_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
 
             t_list *parametros_dump = recibir_contenido_paquete(fd_cpu_dispatch);
             if (!parametros_dump || list_size(parametros_dump) < 2)
             {
-                log_error(kernel_log, "DUMP_MEMORY_OP: Error al recibir parámetros desde CPU Dispatch. Esperados: 2, recibidos: %d", parametros_dump ? list_size(parametros_dump) : 0);
+                log_error(kernel_log, "[SERVIDOR DISPATCH] DUMP_MEMORY_OP: Error al recibir parámetros desde CPU Dispatch. Esperados: 2, recibidos: %d", parametros_dump ? list_size(parametros_dump) : 0);
                 if (parametros_dump)
                     list_destroy_and_destroy_elements(parametros_dump, free);
                 terminar_kernel();
@@ -449,7 +450,7 @@ void *atender_cpu_dispatch(void *arg)
 
             if (PID != pid)
             {
-                log_error(kernel_log, "DUMP_MEMORY_OP: PID recibido (%d) no coincide con PID de la CPU Dispatch (%d)", PID, pid);
+                log_error(kernel_log, "[SERVIDOR DISPATCH] DUMP_MEMORY_OP: PID recibido (%d) no coincide con PID de la CPU Dispatch (%d)", PID, pid);
                 list_destroy_and_destroy_elements(parametros_dump, free);
                 terminar_kernel();
                 exit(EXIT_FAILURE);
@@ -467,20 +468,20 @@ void *atender_cpu_dispatch(void *arg)
             break;
 
         default:
-            log_error(kernel_log, "(%d) Código op desconocido recibido de Dispatch fd %d: %d", pid, fd_cpu_dispatch, cop);
+            log_error(kernel_log, "[SERVIDOR DISPATCH] (%d) Código op desconocido recibido de Dispatch fd %d: %d", pid, fd_cpu_dispatch, cop);
             break;
         }
 
         // Limpiar la instrucción actual de la CPU
-        log_trace(kernel_log, "atender_cpu_dispatch: esperando mutex_lista_cpus para limpiar instrucción actual de la CPU (fd=%d)", fd_cpu_dispatch);
+        log_trace(kernel_log, "[SERVIDOR DISPATCH] esperando mutex_lista_cpus para limpiar instrucción actual de la CPU (fd=%d)", fd_cpu_dispatch);
         pthread_mutex_lock(&mutex_lista_cpus);
-        log_trace(kernel_log, "atender_cpu_dispatch: bloqueando mutex_lista_cpus para limpiar instrucción actual de la CPU (fd=%d)", fd_cpu_dispatch);
+        log_trace(kernel_log, "[SERVIDOR DISPATCH] bloqueando mutex_lista_cpus para limpiar instrucción actual de la CPU (fd=%d)", fd_cpu_dispatch);
 
         cpu_actual->instruccion_actual = -1; // Valor inválido para indicar que está libre
         pthread_mutex_unlock(&mutex_lista_cpus);
     }
 
-    log_warning(kernel_log, "CPU Dispatch desconectada (fd=%d)", fd_cpu_dispatch);
+    log_warning(kernel_log, "[SERVIDOR DISPATCH] CPU Dispatch desconectada (fd=%d)", fd_cpu_dispatch);
 
     pthread_mutex_lock(&mutex_lista_cpus);
     cpu_libre--;
@@ -488,7 +489,7 @@ void *atender_cpu_dispatch(void *arg)
 
     if (!cpu_eliminada)
     {
-        log_error(kernel_log, "atender_cpu_dispatch: No se encontró CPU asociada al fd=%d al desconectar", fd_cpu_dispatch);
+        log_error(kernel_log, "[SERVIDOR DISPATCH] No se encontró CPU asociada al fd=%d al desconectar", fd_cpu_dispatch);
         pthread_mutex_unlock(&mutex_lista_cpus);
         return NULL;
     }
@@ -514,7 +515,7 @@ void *hilo_servidor_interrupt(void *_)
         int fd_cpu_interrupt = esperar_cliente(fd_interrupt, kernel_log);
         if (fd_cpu_interrupt == -1)
         {
-            log_error(kernel_log, "hilo_servidor_interrupt: Error al recibir cliente");
+            log_error(kernel_log, "[SERVIDOR INTERRUPT] Error al recibir cliente");
             continue;
         }
 
@@ -527,13 +528,13 @@ void *hilo_servidor_interrupt(void *_)
         int id_cpu;
         if (recv(fd_cpu_interrupt, &id_cpu, sizeof(int), 0) <= 0)
         {
-            log_warning(kernel_log, "hilo_servidor_interrupt: CPU desconectada en canal INTERRUPT (fd=%d)", fd_cpu_interrupt);
+            log_warning(kernel_log, "[SERVIDOR INTERRUPT] CPU desconectada en canal INTERRUPT (fd=%d)", fd_cpu_interrupt);
             pthread_mutex_lock(&mutex_lista_cpus);
             cpu *cpu_eliminada = buscar_y_remover_cpu_por_fd(fd_cpu_interrupt);
 
             if (!cpu_eliminada)
             {
-                log_error(kernel_log, "hilo_servidor_interrupt: No se encontró CPU asociada al fd=%d al desconectar", fd_cpu_interrupt);
+                log_error(kernel_log, "[SERVIDOR INTERRUPT] No se encontró CPU asociada al fd=%d al desconectar", fd_cpu_interrupt);
                 pthread_mutex_unlock(&mutex_lista_cpus);
                 return NULL;
             }
@@ -552,14 +553,14 @@ void *hilo_servidor_interrupt(void *_)
         nueva_cpu->pid = -1;
         nueva_cpu->instruccion_actual = -1;
 
-        log_trace(kernel_log, "hilo_servidor_interrupt: esperando mutex_lista_cpus para agregar nueva CPU (fd=%d, ID=%d)", fd_cpu_interrupt, id_cpu);
+        log_trace(kernel_log, "[SERVIDOR INTERRUPT] esperando mutex_lista_cpus para agregar nueva CPU (fd=%d, ID=%d)", fd_cpu_interrupt, id_cpu);
         pthread_mutex_lock(&mutex_lista_cpus);
-        log_trace(kernel_log, "hilo_servidor_interrupt: bloqueando mutex_lista_cpus para agregar nueva CPU (fd=%d, ID=%d)", fd_cpu_interrupt, id_cpu);
+        log_trace(kernel_log, "[SERVIDOR INTERRUPT] bloqueando mutex_lista_cpus para agregar nueva CPU (fd=%d, ID=%d)", fd_cpu_interrupt, id_cpu);
 
         list_add(lista_cpus, nueva_cpu);
         pthread_mutex_unlock(&mutex_lista_cpus);
 
-        log_trace(kernel_log, "HANDSHAKE_CPU_KERNEL_INTERRUPT: CPU conectada exitosamente a Interrupt (fd=%d), ID=%d", nueva_cpu->fd, nueva_cpu->id);
+        log_trace(kernel_log, "[SERVIDOR INTERRUPT] CPU conectada exitosamente a Interrupt (fd=%d), ID=%d", nueva_cpu->fd, nueva_cpu->id);
     }
 
     return NULL;
@@ -578,7 +579,7 @@ void *hilo_servidor_io(void *_)
         int fd_io = esperar_cliente(fd_kernel_io, kernel_log);
         if (fd_io == -1)
         {
-            log_error(kernel_log, "hilo_servidor_io: Error al recibir cliente");
+            log_error(kernel_log, "[SERVIDOR IO] Error al recibir cliente");
             terminar_kernel();
             exit(EXIT_FAILURE);
         }
@@ -590,12 +591,12 @@ void *hilo_servidor_io(void *_)
             exit(EXIT_FAILURE);
         }
 
-        log_trace(kernel_log, "hilo_servidor_io: HANDSHAKE_IO_KERNEL recibido de IO (fd=%d)", fd_io);
+        log_trace(kernel_log, "[SERVIDOR IO] HANDSHAKE_IO_KERNEL recibido de IO (fd=%d)", fd_io);
 
         char nombre_io[256];
         if (recv(fd_io, nombre_io, sizeof(nombre_io), 0) <= 0)
         {
-            log_error(kernel_log, "hilo_servidor_io: Error al recibir nombre de IO");
+            log_error(kernel_log, "[SERVIDOR IO] Error al recibir nombre de IO");
             close(fd_io);
             terminar_kernel();
             exit(EXIT_FAILURE);
@@ -607,19 +608,19 @@ void *hilo_servidor_io(void *_)
         nueva_io->estado = IO_OCUPADO;
         nueva_io->proceso_actual = NULL;
 
-        log_trace(kernel_log, "hilo_servidor_io: esperando mutex_ios para agregar nueva IO (fd=%d, nombre='%s')", fd_io, nueva_io->nombre);
+        log_trace(kernel_log, "[SERVIDOR IO] esperando mutex_ios para agregar nueva IO (fd=%d, nombre='%s')", fd_io, nueva_io->nombre);
         pthread_mutex_lock(&mutex_ios);
-        log_trace(kernel_log, "hilo_servidor_io: bloqueando mutex_ios para agregar nueva IO (fd=%d, nombre='%s')", fd_io, nueva_io->nombre);
+        log_trace(kernel_log, "[SERVIDOR IO] bloqueando mutex_ios para agregar nueva IO (fd=%d, nombre='%s')", fd_io, nueva_io->nombre);
         list_add(lista_ios, nueva_io);
         pthread_mutex_unlock(&mutex_ios);
 
-        log_trace(kernel_log, "hilo_servidor_io: esperando mutex_conexiones para verificar procesos bloqueados en IO '%s'", nueva_io->nombre);
+        log_trace(kernel_log, "[SERVIDOR IO] esperando mutex_conexiones para verificar procesos bloqueados en IO '%s'", nueva_io->nombre);
         pthread_mutex_lock(&mutex_conexiones);
-        log_trace(kernel_log, "hilo_servidor_io: bloqueando mutex_conexiones para verificar procesos bloqueados en IO '%s'", nueva_io->nombre);
+        log_trace(kernel_log, "[SERVIDOR IO] bloqueando mutex_conexiones para verificar procesos bloqueados en IO '%s'", nueva_io->nombre);
         conectado_io = true;
         pthread_mutex_unlock(&mutex_conexiones);
 
-        log_trace(kernel_log, "hilo_servidor_io: HANDSHAKE_IO_KERNEL: IO '%s' conectada exitosamente (fd=%d)", nueva_io->nombre, fd_io);
+        log_trace(kernel_log, "[SERVIDOR IO] IO '%s' conectada exitosamente (fd=%d)", nueva_io->nombre, fd_io);
 
         int *arg = malloc(sizeof(int));
         *arg = fd_io;
@@ -637,26 +638,26 @@ void *atender_io(void *arg)
     free(arg);
 
     // Encontrar la IO asociada a este file descriptor usando función centralizada
-    log_trace(kernel_log, "atender_io: esperando mutex_ios para buscar IO por fd=%d", fd_io);
+    log_trace(kernel_log, "[SERVIDOR IO] esperando mutex_ios para buscar IO por fd=%d", fd_io);
     pthread_mutex_lock(&mutex_ios);
-    log_trace(kernel_log, "atender_io: bloqueando mutex_ios para buscar IO por fd=%d", fd_io);
+    log_trace(kernel_log, "[SERVIDOR IO] bloqueando mutex_ios para buscar IO por fd=%d", fd_io);
 
     io *dispositivo_io = buscar_io_por_fd(fd_io);
     pthread_mutex_unlock(&mutex_ios);
 
     if (!dispositivo_io)
     {
-        log_error(kernel_log, "atender_io: No se encontró IO con fd=%d", fd_io);
+        log_error(kernel_log, "[SERVIDOR IO] No se encontró IO con fd=%d", fd_io);
         close(fd_io);
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
 
     // Verificar si hay procesos encolados para dicha IO y enviarlo a la misma
-    log_trace(kernel_log, "IO correctamente conectada (fd=%d, nombre='%s'), verificando si hay procesos esperando", fd_io, dispositivo_io->nombre);
+    log_trace(kernel_log, "[SERVIDOR IO] IO correctamente conectada (fd=%d, nombre='%s'), verificando si hay procesos esperando", fd_io, dispositivo_io->nombre);
     verificar_procesos_bloqueados(dispositivo_io);
 
-    log_trace(kernel_log, "Atendiendo IO '%s' (fd=%d)", dispositivo_io->nombre, fd_io);
+    log_trace(kernel_log, "[SERVIDOR IO] Atendiendo IO '%s' (fd=%d)", dispositivo_io->nombre, fd_io);
 
     op_code cop;
     while (recv(fd_io, &cop, sizeof(op_code), 0) > 0)
@@ -668,7 +669,7 @@ void *atender_io(void *arg)
             int pid_finalizado;
             if (recv(fd_io, &pid_finalizado, sizeof(int), 0) != sizeof(int))
             {
-                log_error(kernel_log, "Error al recibir PID finalizado de IO '%s'", dispositivo_io->nombre);
+                log_error(kernel_log, "[SERVIDOR IO] Error al recibir PID finalizado de IO '%s'", dispositivo_io->nombre);
                 continue;
             }
             t_pcb *pcb_fin = buscar_pcb(pid_finalizado);
@@ -676,7 +677,7 @@ void *atender_io(void *arg)
             if (pcb_fin->Estado == SUSP_BLOCKED)
             {
                 log_info(kernel_log, AMARILLO("## (%d) finalizó IO y pasa a SUSP_READY"), pid_finalizado);
-                log_trace(kernel_log, AZUL("[PLANI MP] ## (%d) finalizó IO y pasa a SUSP_READY"), pid_finalizado);
+                log_trace(kernel_log, AZUL("[SERVIDOR IO] ## (%d) finalizó IO y pasa a SUSP_READY"), pid_finalizado);
                 cambiar_estado_pcb(pcb_fin, SUSP_READY);
                 // TODO REPLANIFICAR
             }
@@ -691,7 +692,7 @@ void *atender_io(void *arg)
             break;
         }
         default:
-            log_error(kernel_log, "Código op desconocido recibido desde IO '%s' (fd=%d): %d", dispositivo_io->nombre, fd_io, cop);
+            log_error(kernel_log, "[SERVIDOR IO] Código op desconocido recibido desde IO '%s' (fd=%d): %d", dispositivo_io->nombre, fd_io, cop);
             terminar_kernel();
             exit(EXIT_FAILURE);
             break;
@@ -699,23 +700,23 @@ void *atender_io(void *arg)
     }
 
     // Evitar que nuevos procesos se envíen a esta IO
-    log_trace(kernel_log, "atender_io: esperando mutex_ios para marcar IO '%s' como OCUPADA (fd=%d)", dispositivo_io->nombre, fd_io);
+    log_trace(kernel_log, "[SERVIDOR IO] esperando mutex_ios para marcar IO '%s' como OCUPADA (fd=%d)", dispositivo_io->nombre, fd_io);
     pthread_mutex_lock(&mutex_ios);
-    log_trace(kernel_log, "atender_io: bloqueando mutex_ios para marcar IO '%s' como OCUPADA (fd=%d)", dispositivo_io->nombre, fd_io);
+    log_trace(kernel_log, "[SERVIDOR IO] bloqueando mutex_ios para marcar IO '%s' como OCUPADA (fd=%d)", dispositivo_io->nombre, fd_io);
 
     dispositivo_io->estado = IO_OCUPADO;
     pthread_mutex_unlock(&mutex_ios);
 
     // IO desconectada
-    log_trace(kernel_log, "IO '%s' desconectada (fd=%d)", dispositivo_io->nombre, fd_io);
+    log_trace(kernel_log, "[SERVIDOR IO] IO '%s' desconectada (fd=%d)", dispositivo_io->nombre, fd_io);
 
     // Mover a EXIT los procesos relacionados
     exit_procesos_relacionados(dispositivo_io);
 
     // Eliminar la IO de la lista global
-    log_trace(kernel_log, "atender_io: esperando mutex_ios para eliminar IO '%s' (fd=%d) de la lista", dispositivo_io->nombre, fd_io);
+    log_trace(kernel_log, "[SERVIDOR IO] esperando mutex_ios para eliminar IO '%s' (fd=%d) de la lista", dispositivo_io->nombre, fd_io);
     pthread_mutex_lock(&mutex_ios);
-    log_trace(kernel_log, "atender_io: bloqueando mutex_ios para eliminar IO '%s' (fd=%d) de la lista", dispositivo_io->nombre, fd_io);
+    log_trace(kernel_log, "[SERVIDOR IO] bloqueando mutex_ios para eliminar IO '%s' (fd=%d) de la lista", dispositivo_io->nombre, fd_io);
     for (int i = 0; i < list_size(lista_ios); i++)
     {
         if (list_get(lista_ios, i) == dispositivo_io)

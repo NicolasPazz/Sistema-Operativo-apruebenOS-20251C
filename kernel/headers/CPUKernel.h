@@ -27,8 +27,10 @@ void ejecutar_proceso(cpu *cpu_disponible, t_pcb *proceso_a_ejecutar);
 
 cpu *hay_cpu_rafaga_restante_mayor();
 
-cpu *get_cpu_interrupt_by_pid(int pid);
+cpu *get_cpu_dispatch_by_pid(int pid);
 
 void interrumpir_ejecucion(cpu *cpu_a_desalojar);
+
+int get_exec_pid_from_id(int id);
 
 #endif /* CPUKERNEL_H_ */

@@ -3,10 +3,6 @@
 // Encuentra la CPU por su fd
 cpu *get_cpu_from_fd(int fd)
 {
-    log_trace(kernel_log, "get_cpu_from_fd: esperando mutex_lista_cpus para buscar CPU por fd=%d", fd);
-    pthread_mutex_lock(&mutex_lista_cpus);
-    log_trace(kernel_log, "get_cpu_from_fd: bloqueando mutex_lista_cpus para buscar CPU por fd=%d", fd);
-
     cpu *cpu_asociada = NULL;
     for (int i = 0; i < list_size(lista_cpus); i++)
     {
@@ -17,8 +13,6 @@ cpu *get_cpu_from_fd(int fd)
             break;
         }
     }
-
-    pthread_mutex_unlock(&mutex_lista_cpus);
 
     if (!cpu_asociada)
     {
@@ -89,7 +83,7 @@ void liberar_cpu(cpu *cpu_a_eliminar)
 
     // Liberar CPU para que el planificador pueda usarla
     sem_post(&sem_planificador_cp);
-    log_trace(kernel_log, "Semáforo planificador CP aumentado por CPU liberada (fd=%d)", cpu_a_eliminar->fd);
+    log_trace(kernel_log, "[PLANI CP] Replanificación solicitada por liberación de CPU (fd=%d, ID=%d)", cpu_a_eliminar->fd, cpu_a_eliminar->id);
 }
 
 cpu *proxima_cpu_libre()
@@ -129,7 +123,7 @@ void ejecutar_proceso(cpu *cpu_disponible, t_pcb *proceso_a_ejecutar)
     cpu_disponible->pid = proceso_a_ejecutar->PID;
     cpu_disponible->instruccion_actual = EXEC_OP;
     cpu_libre--;
-    
+
     cambiar_estado_pcb(proceso_a_ejecutar, EXEC);
 
     t_paquete *paquete = crear_paquete_op(EXEC_OP);
@@ -164,10 +158,9 @@ cpu *hay_cpu_rafaga_restante_mayor()
 
     if (list_is_empty(cola_running))
     {
-        log_error(kernel_log, "hay_cpu_rafaga_restante_mayor: Cola RUNNING está vacía (no hay procesos ejecutándose ni cpu_libre)");
+        log_debug(kernel_log, "hay_cpu_rafaga_restante_mayor: Cola RUNNING está vacía (no hay procesos ejecutándose ni cpu_libre)");
         pthread_mutex_unlock(&mutex_cola_running);
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        return NULL;
     }
 
     int cantidad_exec = list_size(cola_running);
@@ -202,27 +195,27 @@ cpu *hay_cpu_rafaga_restante_mayor()
     {
         log_trace(kernel_log, "hay_cpu_rafaga_restante_mayor: Proceso READY PID=%d tiene rafaga restante menor que el proceso RUNNING PID=%d", candidato_ready->PID, candidato_exec->PID);
         pthread_mutex_unlock(&mutex_cola_running);
-        return (cpu *)get_cpu_interrupt_by_pid(candidato_exec->PID);
+        return (cpu *)get_cpu_dispatch_by_pid(candidato_exec->PID);
     }
 
     pthread_mutex_unlock(&mutex_cola_running);
     return NULL;
 }
 
-cpu *get_cpu_interrupt_by_pid(int pid)
+cpu *get_cpu_dispatch_by_pid(int pid)
 {
-
     cpu *cpu_asociada = NULL;
     int cantidad_cpus = list_size(lista_cpus);
     for (int i = 0; i < cantidad_cpus; i++)
     {
         cpu *c = list_get(lista_cpus, i);
-        if (c->tipo_conexion == CPU_INTERRUPT && c->pid == pid)
+        if (c->tipo_conexion == CPU_DISPATCH && c->pid == pid)
         {
             cpu_asociada = c;
             break;
         }
     }
+
     if (!cpu_asociada)
     {
         log_error(kernel_log, "No se encontró CPU asociada al PID=%d", pid);
@@ -234,18 +227,24 @@ cpu *get_cpu_interrupt_by_pid(int pid)
 
 void interrumpir_ejecucion(cpu *cpu_a_desalojar)
 {
-    int fd_interrupt = cpu_a_desalojar->fd;
+    pthread_mutex_lock(&mutex_lista_cpus);
+
+    int fd_interrupt = obtener_fd_interrupt(cpu_a_desalojar->id);
     if (fd_interrupt < 0)
     {
         log_error(kernel_log, VERDE("[INTERRUPT] No se encontró fd_interrupt para CPU %d"), cpu_a_desalojar->id);
+        pthread_mutex_unlock(&mutex_lista_cpus);
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
+    int pid_exec = cpu_a_desalojar->pid;
+
+    pthread_mutex_unlock(&mutex_lista_cpus);
 
     log_trace(kernel_log, VERDE("[INTERRUPT] Enviando interrupción a CPU %d (fd=%d)"), cpu_a_desalojar->id, fd_interrupt);
 
     t_paquete *paquete = crear_paquete_op(INTERRUPCION_OP);
-    agregar_entero_a_paquete(paquete, cpu_a_desalojar->pid);
+    agregar_entero_a_paquete(paquete, pid_exec);
     enviar_paquete(paquete, fd_interrupt);
     eliminar_paquete(paquete);
 
@@ -277,9 +276,9 @@ void interrumpir_ejecucion(cpu *cpu_a_desalojar)
         int nuevo_pc = *(int *)list_get(contenido, 1);
         list_destroy_and_destroy_elements(contenido, free);
 
-        if (pid_recibido != cpu_a_desalojar->pid)
+        if (pid_recibido != pid_exec)
         {
-            log_error(kernel_log, "[INTERRUPT] PID recibido (%d) no coincide con PID esperado (%d)", pid_recibido, cpu_a_desalojar->pid);
+            log_error(kernel_log, "[INTERRUPT] PID recibido (%d) no coincide con PID esperado (%d)", pid_recibido, pid_exec);
             terminar_kernel();
             exit(EXIT_FAILURE);
         }
@@ -302,4 +301,27 @@ void interrumpir_ejecucion(cpu *cpu_a_desalojar)
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
+}
+
+int get_exec_pid_from_id(int id)
+{
+    cpu *cpu_asociada = NULL;
+    int cantidad_cpus = list_size(lista_cpus);
+    for (int i = 0; i < cantidad_cpus; i++)
+    {
+        cpu *c = list_get(lista_cpus, i);
+        if (c->tipo_conexion == CPU_DISPATCH && c->id == id)
+        {
+            cpu_asociada = c;
+            break;
+        }
+    }
+    if (!cpu_asociada)
+    {
+        log_error(kernel_log, "get_exec_pid_from_id: No se encontró CPU asociada al ID=%d", id);
+        terminar_kernel();
+        exit(EXIT_FAILURE);
+    }
+
+    return cpu_asociada->pid;
 }

@@ -18,6 +18,7 @@ void *planificador_corto_plazo(void *arg)
         t_pcb *proceso_a_ejecutar;
 
         pthread_mutex_lock(&mutex_lista_cpus);
+        mostrar_colas_estados();
         if (strcmp(ALGORITMO_CORTO_PLAZO, "FIFO") == 0)
         {
             if (cpu_libre)
@@ -59,7 +60,6 @@ void *planificador_corto_plazo(void *arg)
             else if ((cpu_mayor_rafaga = hay_cpu_rafaga_restante_mayor()) != NULL)
             {
                 log_trace(kernel_log, "[PLANI CP] [SRT] Hay CPU con rafaga restante mayor, eligiendo proceso");
-                // ENCOLAR INTERRUPCION Y AVISAR A HILO INTERRUPT
                 interrupt(cpu_mayor_rafaga);
                 pthread_mutex_unlock(&mutex_lista_cpus);
                 pthread_mutex_unlock(&mutex_cola_ready);
@@ -113,7 +113,7 @@ void dispatch(t_pcb *proceso_a_ejecutar)
 
     ejecutar_proceso(cpu_disponible, proceso_a_ejecutar);
     pthread_mutex_unlock(&mutex_lista_cpus);
-    
+
     log_trace(kernel_log, "[DISPATCH] Proceso %d despachado a CPU %d (PC=%d)", proceso_a_ejecutar->PID, cpu_disponible->id, proceso_a_ejecutar->PC);
 }
 

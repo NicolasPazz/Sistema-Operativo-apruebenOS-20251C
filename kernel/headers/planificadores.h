@@ -49,7 +49,7 @@ t_pcb *elegir_por_sjf();
 t_pcb *elegir_por_srt(t_list *cola_a_evaluar);
 void *menor_rafaga_restante(void *a, void *b);
 void dispatch(t_pcb *proceso_a_ejecutar);
-bool interrupt(cpu *cpu_a_desalojar);
+void interrupt(cpu *cpu_a_desalojar);
 double get_time();
 void *planificador_largo_plazo(void *arg);
 void activar_planificador_largo_plazo();

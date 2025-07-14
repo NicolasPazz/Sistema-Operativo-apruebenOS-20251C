@@ -41,7 +41,7 @@ void *interrupt_handler(void *arg)
     }
 }
 
-bool interrupt(cpu *cpu_a_desalojar)
+void interrupt(cpu *cpu_a_desalojar)
 {
     t_interrupcion *nueva = malloc(sizeof(t_interrupcion));
     nueva->cpu_a_desalojar = cpu_a_desalojar;
