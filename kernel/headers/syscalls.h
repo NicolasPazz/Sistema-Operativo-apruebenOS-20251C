@@ -1,12 +1,8 @@
 #ifndef SYSCALLS_H
 #define SYSCALLS_H
 
-/////////////////////////////// Includes ///////////////////////////////
-
 #include "kernel.h"
 #include "types.h"
-
-/////////////////////////////// Prototipos ///////////////////////////////
 
 /**
  * @brief Crea un proceso y lo deja en estado NEW
@@ -88,7 +84,5 @@ io *buscar_y_remover_io_por_fd(int fd);
  * @return Puntero al dispositivo IO encontrado, NULL si no se encuentra
  */
 io *buscar_io_por_nombre(char *nombre);
-
-void verificar_procesos_restantes();
 
 #endif /* SYSCALLS_H */

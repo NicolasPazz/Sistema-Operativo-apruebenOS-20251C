@@ -6,7 +6,6 @@
 #include "types.h"
 #include <semaphore.h>
 
-// Funciones auxiliares de IO
 io *get_io(char *nombre_io);
 io *buscar_io_por_fd(int fd);
 io *buscar_io_por_nombre(char *nombre);

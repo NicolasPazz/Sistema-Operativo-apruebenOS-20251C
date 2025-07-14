@@ -39,3 +39,17 @@ double get_time()
     gettimeofday(&tv, NULL);
     return tv.tv_sec * 1000.0 + tv.tv_usec / 1000.0;
 }
+
+t_pcb *elegir_por_fifo(t_list *cola_a_utilizar)
+{
+    log_trace(kernel_log, "ELIGIENDO POR FIFO");
+
+    if (list_is_empty(cola_a_utilizar))
+    {
+        log_error(kernel_log, "[FIFO] cola_a_utilizar vacía");
+        return NULL;
+    }
+
+    log_trace(kernel_log, "[FIFO] seleccionando el primer PCB de la cola");
+    return (t_pcb *)list_get(cola_a_utilizar, 0);
+}

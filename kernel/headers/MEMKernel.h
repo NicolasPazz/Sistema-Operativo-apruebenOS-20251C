@@ -1,3 +1,6 @@
+#ifndef KERNEL_HEADERS_MEMKERNEL_H
+#define KERNEL_HEADERS_MEMKERNEL_H
+
 #include "types.h"
 #include "../../utils/headers/sockets.h"
 
@@ -8,3 +11,6 @@ bool hay_espacio_suficiente_memoria(int tamanio);
 bool suspender_proceso(t_pcb *pcb);
 bool desuspender_proceso(t_pcb *pcb);
 bool finalizar_proceso_en_memoria(int pid);
+bool dump_memory(int pid);
+
+#endif /* KERNEL_HEADERS_MEMKERNEL_H */

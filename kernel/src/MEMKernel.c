@@ -62,13 +62,11 @@ bool inicializar_proceso_en_memoria(t_pcb *pcb)
 
     if (rsp == OK)
     {
-        log_trace(kernel_log,
-                  "INIT_PROC_OP: PID %d inicializado en Memoria", pcb->PID);
+        log_trace(kernel_log, "INIT_PROC_OP: PID %d inicializado en Memoria", pcb->PID);
         return true;
     }
 
-    log_trace(kernel_log,
-              "INIT_PROC_OP: Memoria sin espacio para PID %d", pcb->PID);
+    log_trace(kernel_log, "INIT_PROC_OP: Memoria sin espacio para PID %d", pcb->PID);
     return false;
 }
 
@@ -121,7 +119,7 @@ static bool enviar_op_memoria(int op_code, int pid)
     if (recv(fd, &rsp, sizeof(rsp), MSG_WAITALL) <= 0 ||
         (rsp != OK && rsp != ERROR))
     {
-        log_error(kernel_log, "Error al recibir respuesta de Memoria para PID %d", pid);
+        log_error(kernel_log, "Error al recibir respuesta de Memoria para OP %d y PID %d", op_code, pid);
         desconectar_memoria(fd);
         terminar_kernel();
         exit(EXIT_FAILURE);
@@ -152,4 +150,9 @@ bool desuspender_proceso(t_pcb *pcb)
 bool finalizar_proceso_en_memoria(int pid)
 {
     return enviar_op_memoria(FINALIZAR_PROC_OP, pid);
+}
+
+bool dump_memory(int pid)
+{
+    return enviar_op_memoria(DUMP_MEMORY_OP, pid);
 }
