@@ -114,7 +114,6 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
         list_remove_element(cola_origen, PCB);
         liberar_cola_por_estado(PCB->Estado);
 
-        // Actualizar Metricas de Tiempo antes de cambiar de Estado
         char *pid_key = string_itoa(PCB->PID);
         t_temporal *cronometro = dictionary_get(tiempos_por_pid, pid_key);
 
@@ -123,33 +122,28 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
             temporal_stop(cronometro);
             int64_t tiempo = temporal_gettime(cronometro);
 
-            // Guardar el tiempo en el estado ANTERIOR
             PCB->MT[PCB->Estado] += (int)tiempo;
             log_trace(kernel_log, "Se actualizo el MT en el estado %s del PID %d con %ld", estado_to_string(PCB->Estado), PCB->PID, tiempo);
             temporal_destroy(cronometro);
         }
-        // Iniciar siempre un cronómetro para el nuevo estado
         cronometro = temporal_create();
         dictionary_put(tiempos_por_pid, pid_key, cronometro);
         free(pid_key);
 
-        // Si pasa al Estado EXEC hay que actualizar el tiempo_inicio_exec
         if (nuevo_estado_enum == EXEC)
         {
             PCB->tiempo_inicio_exec = get_time();
         }
         else if (PCB->Estado == EXEC)
         {
-            // calculo la estimacion proxima
             log_trace(kernel_log, "cambiar_estado_pcb: estimacion rafaga anterior del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
             double rafaga_real = get_time() - PCB->tiempo_inicio_exec;
+
             log_trace(kernel_log, "cambiar_estado_pcb: Rafaga real del PID %d: %.3f", PCB->PID, rafaga_real);
             PCB->estimacion_rafaga = ALFA * rafaga_real + (1.0 - ALFA) * PCB->estimacion_rafaga;
+
             log_trace(kernel_log, "cambiar_estado_pcb: Nueva estimacion de rafaga del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
-            // reiniciar el tiempo de inicio
             PCB->tiempo_inicio_exec = -1;
-
-
         }
 
         if (nuevo_estado_enum == BLOCKED)
@@ -159,9 +153,7 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
         }
         else if (PCB->Estado == BLOCKED)
         {
-            // reiniciar el tiempo de inicio
             PCB->tiempo_inicio_blocked = -1;
-            // invalidar el timer vigente
             if (PCB->timer_flag)
             {
                 *(PCB->timer_flag) = false;
@@ -169,15 +161,8 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
             }
         }
 
-        if (PCB->Estado == SUSP_READY)
-        {
-            sem_post(&sem_susp_ready_vacia);     // Sumar 1 al semaforo
-            log_trace(kernel_log, "cambiar_estado_pcb: Semaforo SUSP READY VACIA aumentado");
-        }
-
-        // Cambiar Estado y actualizar Metricas de Estados
         PCB->Estado = nuevo_estado_enum;
-        PCB->ME[nuevo_estado_enum] += 1;     // Se suma 1 en las Metricas de estado del nuevo estado
+        PCB->ME[nuevo_estado_enum] += 1;
     }
     else
     {
@@ -192,7 +177,7 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
 
         // Cambiar Estado y actualizar Metricas de Estados
         PCB->Estado = nuevo_estado_enum;
-        PCB->ME[nuevo_estado_enum] += 1;     // Se suma 1 en las Metricas de estado del nuevo estado
+        PCB->ME[nuevo_estado_enum] += 1; // Se suma 1 en las Metricas de estado del nuevo estado
         bloquear_cola_por_estado(PCB->Estado);
         list_add(cola_procesos, PCB);
         liberar_cola_por_estado(PCB->Estado);
@@ -227,7 +212,6 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
         sem_post(&sem_proceso_a_susp_ready);
         log_trace(kernel_log, "cambiar_estado_pcb: Semaforo a SUSP READY aumentado");
         log_trace(kernel_log, "cambiar_estado_pcb: Semaforo SUSP READY VACIA disminuido");
-        sem_wait(&sem_susp_ready_vacia);     // Restar 1 al semaforo
         break;
     case SUSP_BLOCKED:
         sem_post(&sem_proceso_a_susp_blocked);
@@ -375,7 +359,8 @@ void liberar_cola_por_estado(Estados estado)
 
 void loguear_metricas_estado(t_pcb *pcb)
 {
-    if (!pcb) return;
+    if (!pcb)
+        return;
 
     log_info(kernel_log, NARANJA("## (%d) - Métricas de estado:"), pcb->PID);
 
@@ -390,8 +375,7 @@ void loguear_metricas_estado(t_pcb *pcb)
             "    " NARANJA("%-12s") " Veces: %4u | Tiempo: " VERDE("%6u ms"),
             nombre_estado,
             veces,
-            tiempo
-        );
+            tiempo);
     }
 
     unsigned promedio = pcb->ME[2] > 0 ? pcb->MT[1] / pcb->ME[2] : 0;
@@ -400,10 +384,8 @@ void loguear_metricas_estado(t_pcb *pcb)
         kernel_log,
         "    " NARANJA("%-24s") " | Tiempo: " VERDE("%6u ms"),
         "PROMEDIO DE ESPERA",
-        promedio
-    );
+        promedio);
 }
-
 
 t_pcb *buscar_pcb(int pid)
 {

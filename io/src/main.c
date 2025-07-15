@@ -86,11 +86,14 @@ int main(int argc, char* argv[]) {
                 list_destroy_and_destroy_elements(parametros_io, free);
                 break;
             }
-            default:
+            case -1:
                 log_debug(io_log, "Se desconectó el Kernel. Finalizando IO...");
                 terminar_io();
                 exit(EXIT_SUCCESS);
-                break;
+            default:
+                log_error(io_log, "Operación desconocida recibida del Kernel: %d", cop);
+                terminar_io();
+                exit(EXIT_FAILURE);
         }
     }
     

@@ -103,9 +103,5 @@ void *hilo_servidor_interrupt(void *_);
 
 void *hilo_servidor_io(void *_);
 void *atender_io(void *arg);
-void verificar_procesos_bloqueados(io *io);
-t_pcb_io *obtener_pcb_esperando_io(char *nombre_io);
-void asignar_proceso(io *dispositivo, t_pcb_io *proceso);
-void exit_procesos_relacionados(io *io);
 
 #endif /* KERNEL_H */
