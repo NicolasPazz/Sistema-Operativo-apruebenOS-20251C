@@ -117,20 +117,20 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
         // Actualizar Metricas de Tiempo antes de cambiar de Estado
         char *pid_key = string_itoa(PCB->PID);
         t_temporal *cronometro = dictionary_get(tiempos_por_pid, pid_key);
+
         if (cronometro != NULL)
         {
             temporal_stop(cronometro);
-            int64_t tiempo = temporal_gettime(cronometro);     // 10 seg
+            int64_t tiempo = temporal_gettime(cronometro);
 
             // Guardar el tiempo en el estado ANTERIOR
             PCB->MT[PCB->Estado] += (int)tiempo;
             log_trace(kernel_log, "Se actualizo el MT en el estado %s del PID %d con %ld", estado_to_string(PCB->Estado), PCB->PID, tiempo);
             temporal_destroy(cronometro);
-
-            // Reiniciar el cronometro para el nuevo estado
-            cronometro = temporal_create();
-            dictionary_put(tiempos_por_pid, pid_key, cronometro);
         }
+        // Iniciar siempre un cronómetro para el nuevo estado
+        cronometro = temporal_create();
+        dictionary_put(tiempos_por_pid, pid_key, cronometro);
         free(pid_key);
 
         // Si pasa al Estado EXEC hay que actualizar el tiempo_inicio_exec
