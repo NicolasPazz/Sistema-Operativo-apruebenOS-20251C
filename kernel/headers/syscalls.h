@@ -85,4 +85,6 @@ io *buscar_y_remover_io_por_fd(int fd);
  */
 io *buscar_io_por_nombre(char *nombre);
 
+void actualizar_metricas_finalizacion(t_pcb *pcb);
+
 #endif /* SYSCALLS_H */

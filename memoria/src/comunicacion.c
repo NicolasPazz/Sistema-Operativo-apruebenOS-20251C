@@ -141,7 +141,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             break;
         }
         case INIT_PROC_OP: {
-            log_trace(logger, "INIT_PROC_OP recibido");
+            log_trace(logger, "[INIT_PROC_OP] INIT_PROC_OP recibido");
 
             // ========== RECIBIR PARÁMETROS ==========
             t_list* lista = recibir_contenido_paquete(cliente_socket);
@@ -149,7 +149,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             char* nombre_proceso = strdup((char*)list_get(lista, 1)); // Nombre del proceso
             int tamanio = *(int*)list_get(lista, 2); // Size del proceso en memoria
             
-            log_debug(logger, "Inicialización de proceso solicitada - PID: %d, Tamaño: %d, Nombre: '%s'", pid, tamanio, nombre_proceso);
+            log_debug(logger, "[INIT_PROC_OP] Inicialización de proceso solicitada - PID: %d, Tamaño: %d, Nombre: '%s'", pid, tamanio, nombre_proceso);
 
             // ========== EJECUCIÓN DEL PROCESO DE CREACIÓN ==========
             t_resultado_memoria resultado = crear_proceso_en_memoria(pid, tamanio, nombre_proceso);
@@ -159,16 +159,16 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 
                 // Construir el path completo usando PATH_INSTRUCCIONES de la configuración
                 char* path_completo = string_from_format("%s%s", cfg->PATH_INSTRUCCIONES, nombre_proceso);
-                log_debug(logger, "NOMBRE DEL PATH '%s'", path_completo);
+                log_debug(logger, "[INIT_PROC_OP] NOMBRE DEL PATH '%s'", path_completo);
             
                 t_process_instructions* instrucciones = load_process_instructions(pid, path_completo);
                 if (instrucciones != NULL) {
                     char* pid_key = string_itoa(pid);
                     dictionary_put(sistema_memoria->process_instructions, pid_key, instrucciones);
-                    log_debug(logger, "PID: %d - Instrucciones cargadas desde %s", pid, path_completo);
+                    log_debug(logger, "[INIT_PROC_OP] PID: %d - Instrucciones cargadas desde %s", pid, path_completo);
                     free(pid_key);
                 } else {
-                    log_warning(logger, "PID: %d - No se pudieron cargar instrucciones desde %s", pid, path_completo);
+                    log_warning(logger, "[INIT_PROC_OP] PID: %d - No se pudieron cargar instrucciones desde %s", pid, path_completo);
                 }
             
                 free(path_completo);
@@ -182,9 +182,9 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
             
             if (resultado == MEMORIA_OK) {
-                log_debug(logger, "Enviando respuesta OK a cliente (fd=%d) - Proceso %d creado exitosamente", cliente_socket, pid);
+                log_debug(logger, "[INIT_PROC_OP] Enviando respuesta OK a cliente (fd=%d) - Proceso %d creado exitosamente", cliente_socket, pid);
             } else {
-                log_debug(logger, "Enviando respuesta ERROR a cliente (fd=%d) - Falló creación del proceso %d", cliente_socket, pid);
+                log_debug(logger, "[INIT_PROC_OP] Enviando respuesta ERROR a cliente (fd=%d) - Falló creación del proceso %d", cliente_socket, pid);
             }
             
             send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
@@ -551,6 +551,8 @@ void procesar_write_op(int cliente_socket) {
 
     strcpy((char*)(sistema_memoria->memoria_principal + direccion_fisica), datos_str);
 
+    aplicar_retardo_memoria();
+
     t_respuesta respuesta = OK;
     send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
 
@@ -582,6 +584,8 @@ void procesar_read_op(int cliente_socket) {
     memcpy(datos_leidos, sistema_memoria->memoria_principal + direccion_fisica, size);
     datos_leidos[size] = '\0'; // Null terminator
 
+    aplicar_retardo_memoria();
+    
     // Enviar respuesta como un string en un paquete 
     t_paquete* paquete_respuesta = crear_paquete_op(PAQUETE_OP);
     agregar_a_paquete(paquete_respuesta, datos_leidos, size + 1);

@@ -22,15 +22,10 @@ void destruir_tabla_paginas_recursiva(t_tabla_paginas* tabla);
 // FUNCIONES DE INICIALIZACIÓN PRINCIPAL
 // ============================================================================
 
-int cargar_configuracion(char* path) {
-    t_config* cfg_file = config_create(path);
+int cargar_configuracion_memoria(const char *path_cfg) {
+    t_config *cfg_file = iniciar_config((char *)path_cfg);
 
-    if (cfg_file == NULL) {
-        printf("No se encontro el archivo de configuracion: %s\n", path);
-        return 0;
-    }
-
-    char* properties[] = {
+    char *properties[] = {
         "PUERTO_ESCUCHA",
         "TAM_MEMORIA",
         "TAM_PAGINA",
@@ -52,29 +47,42 @@ int cargar_configuracion(char* path) {
     }
 
     cfg = malloc(sizeof(t_config_memoria));
-    if (cfg == NULL) {
-        printf("Error al asignar memoria para la configuracion\n");
+    if (!cfg) {
+        puts("Error al asignar memoria para la configuracion.");
         config_destroy(cfg_file);
         return 0;
     }
 
-    cfg->PUERTO_ESCUCHA = config_get_int_value(cfg_file, "PUERTO_ESCUCHA");
-    cfg->TAM_MEMORIA = config_get_int_value(cfg_file, "TAM_MEMORIA");
-    cfg->TAM_PAGINA = config_get_int_value(cfg_file, "TAM_PAGINA");
-    cfg->ENTRADAS_POR_TABLA = config_get_int_value(cfg_file, "ENTRADAS_POR_TABLA");
-    cfg->CANTIDAD_NIVELES = config_get_int_value(cfg_file, "CANTIDAD_NIVELES");
-    cfg->RETARDO_MEMORIA = config_get_int_value(cfg_file, "RETARDO_MEMORIA");
-    cfg->PATH_SWAPFILE = strdup(config_get_string_value(cfg_file, "PATH_SWAPFILE"));
-    cfg->RETARDO_SWAP = config_get_int_value(cfg_file, "RETARDO_SWAP");
-    cfg->LOG_LEVEL = strdup(config_get_string_value(cfg_file, "LOG_LEVEL"));
-    cfg->DUMP_PATH = strdup(config_get_string_value(cfg_file, "DUMP_PATH"));
-    cfg->PATH_INSTRUCCIONES = strdup(config_get_string_value(cfg_file, "PATH_INSTRUCCIONES"));
+    cfg->PUERTO_ESCUCHA      = config_get_int_value   (cfg_file, "PUERTO_ESCUCHA");
+    cfg->TAM_MEMORIA         = config_get_int_value   (cfg_file, "TAM_MEMORIA");
+    cfg->TAM_PAGINA          = config_get_int_value   (cfg_file, "TAM_PAGINA");
+    cfg->ENTRADAS_POR_TABLA  = config_get_int_value   (cfg_file, "ENTRADAS_POR_TABLA");
+    cfg->CANTIDAD_NIVELES    = config_get_int_value   (cfg_file, "CANTIDAD_NIVELES");
+    cfg->RETARDO_MEMORIA     = config_get_int_value   (cfg_file, "RETARDO_MEMORIA");
+    cfg->PATH_SWAPFILE       = strdup(config_get_string_value(cfg_file, "PATH_SWAPFILE"));
+    cfg->RETARDO_SWAP        = config_get_int_value   (cfg_file, "RETARDO_SWAP");
+    cfg->LOG_LEVEL           = strdup(config_get_string_value(cfg_file, "LOG_LEVEL"));
+    cfg->DUMP_PATH           = strdup(config_get_string_value(cfg_file, "DUMP_PATH"));
+    cfg->PATH_INSTRUCCIONES  = strdup(config_get_string_value(cfg_file, "PATH_INSTRUCCIONES"));
 
-    //printf("Archivo de configuracion cargado correctamente\n");
     config_destroy(cfg_file);
+
+    printf("        Config leída: %s\n", path_cfg);
+    printf("    PUERTO_ESCUCHA      : %d\n", cfg->PUERTO_ESCUCHA);
+    printf("    TAM_MEMORIA         : %d\n", cfg->TAM_MEMORIA);
+    printf("    TAM_PAGINA          : %d\n", cfg->TAM_PAGINA);
+    printf("    ENTRADAS_POR_TABLA  : %d\n", cfg->ENTRADAS_POR_TABLA);
+    printf("    CANTIDAD_NIVELES    : %d\n", cfg->CANTIDAD_NIVELES);
+    printf("    RETARDO_MEMORIA     : %d\n", cfg->RETARDO_MEMORIA);
+    printf("    PATH_SWAPFILE       : %s\n", cfg->PATH_SWAPFILE);
+    printf("    RETARDO_SWAP        : %d\n", cfg->RETARDO_SWAP);
+    printf("    LOG_LEVEL           : %s\n", cfg->LOG_LEVEL);
+    printf("    DUMP_PATH           : %s\n", cfg->DUMP_PATH);
+    printf("    PATH_INSTRUCCIONES  : %s\n\n", cfg->PATH_INSTRUCCIONES);
 
     return 1;
 }
+
 
 void iniciar_logger_memoria() {
     // Inicializar logger con configuración por defecto hasta cargar la configuración real

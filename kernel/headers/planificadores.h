@@ -66,5 +66,6 @@ void iniciar_timer_suspension(t_pcb *pcb);
 void aumentar_procesos_rechazados();
 void disminuir_procesos_rechazados();
 void verificar_procesos_rechazados();
+bool hay_rechazados_esperando();
 
 #endif /* PLANIFICADORES_H */

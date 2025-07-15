@@ -48,6 +48,8 @@ bool inicializar_proceso_en_memoria(t_pcb *pcb)
     enviar_paquete(paq, fd);
     eliminar_paquete(paq);
 
+    log_trace(kernel_log, "[KERNEL->MEMORIA] Esperando respuesta de Memoria para INIT_PROC_OP");
+
     t_respuesta rsp;
     if (recv(fd, &rsp, sizeof(rsp), MSG_WAITALL) <= 0 ||
         (rsp != OK && rsp != ERROR))

@@ -34,7 +34,6 @@ void INIT_PROC(char *nombre_archivo, int tam_memoria)
     log_info(kernel_log, CYAN("## (%d) Se crea el proceso - Estado: ") AZUL("NEW"), nuevo_proceso->PID);
 }
 
-
 //////////////////////////////////////////////////////////// IO ////////////////////////////////////////////////////////////
 
 void IO(char *nombre_io, int tiempo_a_usar, t_pcb *pcb_a_io)
@@ -85,6 +84,7 @@ void EXIT(t_pcb *pcb_a_finalizar)
     }
 
     log_info(kernel_log, ROJO("## (%d) - Finaliza el proceso"), pcb_a_finalizar->PID);
+    actualizar_metricas_finalizacion(pcb_a_finalizar);
     loguear_metricas_estado(pcb_a_finalizar);
 
     liberar_pcb(pcb_a_finalizar);
@@ -92,6 +92,44 @@ void EXIT(t_pcb *pcb_a_finalizar)
     pthread_mutex_unlock(&mutex_cola_exit);
 
     verificar_procesos_restantes();
+}
+
+void actualizar_metricas_finalizacion(t_pcb *pcb)
+{
+    if (!pcb)
+    {
+        log_error(kernel_log, "actualizar_metricas_finalizacion: PCB nulo");
+        terminar_kernel();
+        exit(EXIT_FAILURE);
+    }
+
+    char *pid_key = string_itoa(pcb->PID);
+    t_temporal *cronometro = dictionary_get(tiempos_por_pid, pid_key);
+
+    if (cronometro != NULL)
+    {
+        temporal_stop(cronometro);
+        int64_t tiempo = temporal_gettime(cronometro); // Tiempo en milisegundos
+
+        // Actualizar métricas en EXIT
+        pcb->MT[EXIT_ESTADO] += (int)tiempo;
+        pcb->ME[EXIT_ESTADO] = 1;
+
+        log_trace(kernel_log,
+                  "## (%d) - Métricas actualizadas: ME[EXIT]=%d, MT[EXIT]=%d ms",
+                  pcb->PID,
+                  pcb->ME[EXIT_ESTADO],
+                  pcb->MT[EXIT_ESTADO]);
+
+        temporal_destroy(cronometro);
+        dictionary_remove(tiempos_por_pid, pid_key);
+    }
+    else
+    {
+        log_warning(kernel_log, "No se encontró cronómetro activo para PID %d al finalizar", pcb->PID);
+    }
+
+    free(pid_key);
 }
 
 //////////////////////////////////////////////////////////// DUMP MEMORY ////////////////////////////////////////////////////////////

@@ -240,6 +240,11 @@ void procesar_y_enviar_error_instruccion(int pid, int pc, int cliente_socket) {
 // ============== FUNCIONES DE UTILIDADES DE MEMORIA ==============
 
 void aplicar_retardo_memoria(void) {
+    log_trace(logger, "Aplicando retardo de memoria: %d ms", cfg->RETARDO_MEMORIA);
+    if (cfg->RETARDO_MEMORIA < 0) {
+        log_error(logger, "Retardo de memoria negativo configurado: %d ms", cfg->RETARDO_MEMORIA);
+        return;
+    }
     usleep(cfg->RETARDO_MEMORIA * 1000);
 }
 
@@ -485,12 +490,14 @@ void enviar_instruccion_a_cpu(int fd, int pid, int pc, char* p1, char* p2, char*
     char* param3 = p3 ? p3 : "";
 
     // Log de los parámetros que se envían
-    log_info(logger, COLOR1("[PEDIR_INSTRUCCION]")" Enviando a CPU -> param1: '%s', param2: '%s', param3: '%s'", param1, param2, param3);
+    log_debug(logger, COLOR1("[PEDIR_INSTRUCCION]")" Enviando a CPU -> param1: '%s', param2: '%s', param3: '%s'", param1, param2, param3);
 
     t_paquete* paquete = crear_paquete_op(INSTRUCCION_A_CPU_OP);
     agregar_string_a_paquete(paquete, param1);
     agregar_string_a_paquete(paquete, param2);
     agregar_string_a_paquete(paquete, param3);
+
+    aplicar_retardo_memoria();
 
     enviar_paquete(paquete, fd);
     eliminar_paquete(paquete);

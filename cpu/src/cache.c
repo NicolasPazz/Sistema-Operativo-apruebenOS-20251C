@@ -3,6 +3,16 @@
 #include "../headers/init.h"
 #include "../headers/cicloDeInstruccion.h"
 #include "../headers/main.h"
+#include <unistd.h>
+#include <stdlib.h>
+
+static void aplicar_retardo_cache(void) {
+    if (RETARDO_CACHE) {
+        int retardo = atoi(RETARDO_CACHE);
+        if (retardo > 0)
+            usleep(retardo * 1000);
+    }
+}
 
 t_cache_paginas* inicializar_cache() {
     cache = (t_cache_paginas*)malloc(sizeof(t_cache_paginas));
@@ -184,6 +194,7 @@ void cache_modificar(int frame, char* datos) {
     }
     cache->entradas[nro_pagina_en_cache].contenido = strdup(datos);
     cache->entradas[nro_pagina_en_cache].modificado = true;
+    aplicar_retardo_cache();
     log_trace(cpu_log, "PID: %d - Contenido leído (cache): %s", pid_ejecutando, cache->entradas[nro_pagina_en_cache].contenido);
     pthread_mutex_unlock(&mutex_cache);
 }
@@ -228,6 +239,7 @@ void cache_escribir(int frame, char* datos) {
     cache->entradas[entrada_index].contenido = strdup(datos);
     cache->entradas[entrada_index].modificado = false;
     cache->entradas[entrada_index].bit_referencia = 1;
+    aplicar_retardo_cache();
     log_info(cpu_log, VERDE("PID: %d - Cache Add - Página: %d"), pid_ejecutando, frame);
     pthread_mutex_unlock(&mutex_cache);
 }
@@ -249,6 +261,7 @@ char* cache_leer(int numero_pagina) {
 
     // Devolvemos una copia del contenido para que el caller pueda hacer free
     char* copia = strdup(cache->entradas[indice].contenido);
+    aplicar_retardo_cache();
     if (copia == NULL) {
         pthread_mutex_unlock(&mutex_cache);
         log_error(cpu_log, "PID: %d - Error al duplicar contenido de caché para página %d", pid_ejecutando, numero_pagina);

@@ -63,6 +63,3 @@ if [[ "$lineas_originales" -ne "$lineas_finales" ]]; then
 else
     echo "✅ Validación OK: el log global contiene todas las líneas originales."
 fi
-
-# Abrir el archivo en VS Code al finalizar
-code -r "$OUTPUT"

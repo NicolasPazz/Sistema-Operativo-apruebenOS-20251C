@@ -234,7 +234,6 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
         log_trace(kernel_log, "cambiar_estado_pcb: Semaforo a SUSP BLOCKED aumentado");
         break;
     case EXIT_ESTADO:
-        //loguear_metricas_estado(PCB);
         sem_post(&sem_proceso_a_exit);
         log_trace(kernel_log, "cambiar_estado_pcb: Semaforo a EXIT aumentado");
         break;
@@ -376,8 +375,7 @@ void liberar_cola_por_estado(Estados estado)
 
 void loguear_metricas_estado(t_pcb *pcb)
 {
-    if (!pcb)
-        return;
+    if (!pcb) return;
 
     log_info(kernel_log, NARANJA("## (%d) - Métricas de estado:"), pcb->PID);
 
@@ -386,9 +384,26 @@ void loguear_metricas_estado(t_pcb *pcb)
         const char *nombre_estado = estado_to_string((Estados)i);
         unsigned veces = pcb->ME[i];
         unsigned tiempo = pcb->MT[i];
-        log_info(kernel_log, "    " NARANJA("%-12s") " Veces: " VERDE("%-2u") " | Tiempo: " VERDE("%-6u ms"), nombre_estado, veces, tiempo);
+
+        log_info(
+            kernel_log,
+            "    " NARANJA("%-12s") " Veces: %4u | Tiempo: " VERDE("%6u ms"),
+            nombre_estado,
+            veces,
+            tiempo
+        );
     }
+
+    unsigned promedio = pcb->ME[2] > 0 ? pcb->MT[1] / pcb->ME[2] : 0;
+
+    log_info(
+        kernel_log,
+        "    " NARANJA("%-24s") " | Tiempo: " VERDE("%6u ms"),
+        "PROMEDIO DE ESPERA",
+        promedio
+    );
 }
+
 
 t_pcb *buscar_pcb(int pid)
 {
@@ -471,13 +486,21 @@ void verificar_procesos_restantes()
     log_trace(kernel_log, "EXIT: verificando si quedan procesos en el sistema");
 
     log_trace(kernel_log, "EXIT: esperando mutex_cola_new, mutex_cola_ready, mutex_cola_running, mutex_cola_blocked, mutex_cola_susp_ready, mutex_cola_susp_blocked, mutex_cola_exit y mutex_cola_procesos");
+    log_trace(kernel_log, "EXIT: esperando mutex_cola_new");
     pthread_mutex_lock(&mutex_cola_new);
+    log_trace(kernel_log, "EXIT: bloqueando mutex_cola_ready");
     pthread_mutex_lock(&mutex_cola_ready);
+    log_trace(kernel_log, "EXIT: bloqueando mutex_cola_running");
     pthread_mutex_lock(&mutex_cola_running);
+    log_trace(kernel_log, "EXIT: bloqueando mutex_cola_blocked");
     pthread_mutex_lock(&mutex_cola_blocked);
+    log_trace(kernel_log, "EXIT: bloqueando mutex_cola_susp_ready");
     pthread_mutex_lock(&mutex_cola_susp_ready);
+    log_trace(kernel_log, "EXIT: bloqueando mutex_cola_susp_blocked");
     pthread_mutex_lock(&mutex_cola_susp_blocked);
+    log_trace(kernel_log, "EXIT: bloqueando mutex_cola_exit");
     pthread_mutex_lock(&mutex_cola_exit);
+    log_trace(kernel_log, "EXIT: bloqueando mutex_cola_procesos");
     pthread_mutex_lock(&mutex_cola_procesos);
     log_trace(kernel_log, "EXIT: bloqueando mutex_cola_new, mutex_cola_ready, mutex_cola_running, mutex_cola_blocked, mutex_cola_susp_ready, mutex_cola_susp_blocked, mutex_cola_exit y mutex_cola_procesos");
 

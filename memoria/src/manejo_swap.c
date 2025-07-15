@@ -603,6 +603,7 @@ t_list* listar_procesos_en_swap(void) {
  * @brief Aplica el retardo configurado para operaciones de SWAP
  */
 void aplicar_retardo_swap(void) {
+    log_trace(logger, "[SWAP] Aplicando retardo de SWAP de %d ms", cfg->RETARDO_SWAP);
     if (cfg && cfg->RETARDO_SWAP > 0) {
         usleep(cfg->RETARDO_SWAP * 1000); // Convertir ms a microsegundos
     }
