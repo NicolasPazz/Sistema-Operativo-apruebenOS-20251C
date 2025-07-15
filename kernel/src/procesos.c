@@ -244,7 +244,7 @@ bool transicion_valida(Estados actual, Estados destino)
     case BLOCKED:
         return destino == READY || destino == SUSP_BLOCKED || destino == EXIT_ESTADO;
     case SUSP_BLOCKED:
-        return destino == SUSP_READY;
+        return destino == SUSP_READY || destino == EXIT_ESTADO;
     case SUSP_READY:
         return destino == READY;
     default:
@@ -380,11 +380,10 @@ void loguear_metricas_estado(t_pcb *pcb)
 
     unsigned promedio = pcb->ME[2] > 0 ? pcb->MT[1] / pcb->ME[2] : 0;
 
-    log_info(
-        kernel_log,
-        "    " NARANJA("%-24s") " | Tiempo: " VERDE("%6u ms"),
-        "PROMEDIO DE ESPERA",
-        promedio);
+    if (strcmp(ALGORITMO_CORTO_PLAZO, "FIFO") != 0)
+    {
+        log_info(kernel_log, "    " NARANJA("%-24s") " | Tiempo: " VERDE("%6u ms"), "PROMEDIO DE ESPERA", promedio);
+    }
 }
 
 t_pcb *buscar_pcb(int pid)
