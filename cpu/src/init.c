@@ -65,7 +65,11 @@ void leer_config_cpu(const char *path_cfg) {
 void iniciar_logger_cpu() {
     char nombre_logger[32];
     snprintf(nombre_logger, sizeof(nombre_logger), "CPU_%d", numero_cpu);
-    cpu_log = iniciar_logger("cpu/cpu.log", nombre_logger, 1, log_level_from_string(LOG_LEVEL));
+
+    char path_log[64];
+    snprintf(path_log, sizeof(path_log), "cpu/cpu_%d.log", numero_cpu);
+
+    cpu_log = iniciar_logger(path_log, nombre_logger, 1, log_level_from_string(LOG_LEVEL));
     if (cpu_log == NULL) {
         printf("Error al iniciar cpu logs\n");
     } else {

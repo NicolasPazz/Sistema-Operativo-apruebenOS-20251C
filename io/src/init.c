@@ -1,5 +1,6 @@
 #include "../headers/io.h"
 #include <sys/time.h>
+#include <stdio.h>
 
 /////////////////////////////// Inicializacion de variables globales ///////////////////////////////
 
@@ -32,9 +33,24 @@ void iniciar_config_io() {
 }
 
 void iniciar_logger_io() {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+
+    struct tm *t = localtime(&tv.tv_sec);
+
+    char timestamp[64];
+    snprintf(timestamp, sizeof(timestamp), "%04d%02d%02d_%02d%02d%02d_%03ld",
+             t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
+             t->tm_hour, t->tm_min, t->tm_sec,
+             tv.tv_usec / 1000);
+
     char nombre_logger[64];
-    snprintf(nombre_logger, sizeof(nombre_logger), "IO_%s", nombre_io);
-    io_log = iniciar_logger("io/io.log", nombre_logger, 1, log_level_from_string(LOG_LEVEL));
+    snprintf(nombre_logger, sizeof(nombre_logger), "IO_%s_%s", nombre_io, timestamp);
+
+    char path_logger[64];
+    snprintf(path_logger, sizeof(path_logger), "io/io_%s_%s.log", nombre_io, timestamp);
+
+    io_log = iniciar_logger(path_logger, nombre_logger, 1, log_level_from_string(LOG_LEVEL));
     if (io_log == NULL) {
         printf("Error al iniciar IO logs\n");
     } else {

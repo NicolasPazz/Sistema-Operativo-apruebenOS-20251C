@@ -5,7 +5,7 @@ char* nombre_io;
 // Manejador de señales para terminación limpia
 void signal_handler(int sig) {
     if (sig == SIGINT) {
-        printf("\n\nRecibida señal de terminación. Cerrando IO...\n");
+        printf("\nRecibida señal de terminación. Cerrando IO...\n");
         log_trace(io_log, "Recibida señal SIGINT. Iniciando terminación limpia de IO...");
         terminar_io();
         exit(EXIT_SUCCESS);
