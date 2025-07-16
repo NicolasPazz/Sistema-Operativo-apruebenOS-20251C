@@ -102,3 +102,5 @@ clean:
 	make clean -C ./memoria
 	make clean -C ./cpu
 	make clean -C ./kernel
+	-rm -f *.log *.helgrind *.valgrind
+

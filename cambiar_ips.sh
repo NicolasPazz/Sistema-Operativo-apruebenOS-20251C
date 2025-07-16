@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# chmod +x cambiar_ips.sh ; ./cambiar_ips.sh
+# chmod +x cambiar_ips.sh; ./cambiar_ips.sh
 
 #──────────────────────────────────────────────────────
 # 0) IP privada de la máquina donde se ejecuta

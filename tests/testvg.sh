@@ -77,10 +77,10 @@ sleep 1
 ############################
 
 # ─────────────────────────────────────────────
-# 1) Ejecutar el banco de pruebas durante 10 min
+# 1) Ejecutar el banco de pruebas durante 30 min
 # ─────────────────────────────────────────────
-echo "⏱ Ejecutando prueba de estabilidad durante 10 min…"
-sleep 600
+echo "⏱ Ejecutando prueba de estabilidad durante 30 min…"
+sleep 1800
 
 # ─────────────────────────────────────────────
 # 2) Matar las IO y esperar a los demás

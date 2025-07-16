@@ -119,21 +119,24 @@ int main(int argc, char *argv[])
 
     //////////////////////////// Esperar conexiones minimas ////////////////////////////
 
-    printf("Esperando conexion con al menos una CPU y una IO...\n");
-
-    while (true)
+    if (!auto_start)
     {
-        pthread_mutex_lock(&mutex_conexiones);
-        if (conectado_cpu && conectado_io)
-        {
-            pthread_mutex_unlock(&mutex_conexiones);
-            break;
-        }
-        pthread_mutex_unlock(&mutex_conexiones);
-        sleep(1);
-    }
+        printf("Esperando conexion con al menos una CPU y una IO...\n");
 
-    log_trace(kernel_log, "CPU y IO conectados. Continuando ejecucion");
+        while (true)
+        {
+            pthread_mutex_lock(&mutex_conexiones);
+            if (conectado_cpu && conectado_io)
+            {
+                pthread_mutex_unlock(&mutex_conexiones);
+                break;
+            }
+            pthread_mutex_unlock(&mutex_conexiones);
+            sleep(1);
+        }
+
+        log_trace(kernel_log, "CPU y IO conectados. Continuando ejecucion");
+    }
 
     //////////////////////////// Primer proceso ////////////////////////////
 
@@ -144,8 +147,9 @@ int main(int argc, char *argv[])
 
     if (auto_start)
     {
-        log_info(kernel_log, "Arranque automático (--action): iniciando en 30 s…");
-        sleep(30);
+        log_info(kernel_log, "Arranque automático (--action): iniciando en 5 s…");
+        sleep(5);
+        log_info(kernel_log, "Arranque automático (--action): iniciando planificación…");
     }
     else
     {

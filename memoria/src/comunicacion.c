@@ -121,7 +121,7 @@ void procesar_conexion(void* void_args) {
         cpus_conectadas--;
 
         if (cpus_conectadas == 0) {
-            log_info(logger, "## Última CPU desconectada ⇒ cerrando Memoria");
+            //log_info(logger, "## Última CPU desconectada ⇒ cerrando Memoria");
             finalizar_sistema_memoria();
             exit(EXIT_SUCCESS);
         }

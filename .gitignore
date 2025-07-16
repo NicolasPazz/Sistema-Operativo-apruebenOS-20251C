@@ -79,5 +79,6 @@ obj/
 *.dmp
 *.valgrind
 *.helgrind
+/memoria/files/*.bin
 
 # Other
