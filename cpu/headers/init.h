@@ -2,11 +2,14 @@
 #define CPU_H
 
 /////////////////////////////// Includes ///////////////////////////////
+
 #include "sockets.h"
 
 /////////////////////////////// Declaracion de variables globales ///////////////////////////////
+
 extern t_log* cpu_log;
 extern t_config* cpu_config;
+extern int numero_cpu;
 
 extern int fd_memoria;
 extern int fd_kernel_dispatch;
@@ -25,7 +28,8 @@ extern char* RETARDO_CACHE;
 extern char* LOG_LEVEL;
 
 /////////////////////////////// Prototipos ///////////////////////////////
-void leer_config_cpu(void);
+
+void leer_config_cpu(const char *path_cfg);
 void iniciar_logger_cpu(void);
 void* conectar_kernel_dispatch(void);
 void* conectar_kernel_interrupt(void);

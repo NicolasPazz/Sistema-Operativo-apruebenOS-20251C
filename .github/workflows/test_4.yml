@@ -1,0 +1,26 @@
+name: "Test 4: Mediano/Largo Plazo - FIFO con 1 CPU + 1 IO"
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar dependencias
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential libreadline-dev valgrind psmisc
+          git clone https://github.com/sisoputnfrba/so-commons-library.git
+          cd so-commons-library
+          make install
+
+      - name: Ejecutar test
+        run: |
+          chmod +x ejecutar_test.sh
+          ./ejecutar_test.sh 4

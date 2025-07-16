@@ -76,6 +76,7 @@ test: $(TEST)
 clean:
 	-rm -rfv $(dir $(TEST) $(OBJS) $(OUT))
 	-rm -fv *.dmp
+	-rm -f *.log *.helgrind *.valgrind
 	-for dir in $(SHARED_LIBPATHS) $(STATIC_LIBPATHS); do $(MAKE) -C $$dir clean; done
 
 $(OUT): $(OBJS) | $(dir $(OUT))

@@ -276,7 +276,7 @@ static int obtener_numero_marco_de_pagina(int pid, int numero_pagina) {
     }
     
     if (!entrada->presente) {
-        log_error(logger, "PID: %d - Página %d no está presente en memoria", pid, numero_pagina);
+        log_trace(logger, "PID: %d - Página %d no está presente en memoria (flujo normal de swap/suspensión)", pid, numero_pagina);
         return -1;
     }
     
@@ -296,11 +296,21 @@ int obtener_numero_pagina_de_marco(int pid, int numero_marco) {
         return -1;
     }
     
+    log_trace(logger, "PID: %d - Buscando página mapeada al marco %d (total páginas: %d)", 
+              pid, numero_marco, estructura->paginas_totales);
+    
     // Buscar la página que está mapeada al marco
     for (int pag = 0; pag < estructura->paginas_totales; pag++) {
         t_entrada_tabla* entrada = buscar_entrada_tabla(estructura, pag);
-        if (entrada && entrada->presente && entrada->numero_frame == numero_marco) {
-            return pag;
+        if (entrada) {
+            log_trace(logger, "PID: %d - Página %d: presente=%d, marco=%d", 
+                      pid, pag, entrada->presente, entrada->numero_frame);
+            if (entrada->presente && entrada->numero_frame == numero_marco) {
+                log_trace(logger, "PID: %d - Encontrada página %d mapeada al marco %d", pid, pag, numero_marco);
+                return pag;
+            }
+        } else {
+            log_trace(logger, "PID: %d - Página %d: entrada nula", pid, pag);
         }
     }
     
@@ -314,7 +324,7 @@ bool bloquear_marco_por_pagina(int pid, int numero_pagina, const char* operacion
     
     int numero_frame = obtener_numero_marco_de_pagina(pid, numero_pagina);
     if (numero_frame < 0) {
-        log_error(logger, "PID: %d - No se pudo obtener marco de página %d", pid, numero_pagina);
+        log_trace(logger, "PID: %d - No se pudo obtener marco de página %d (flujo normal de swap/suspensión)", pid, numero_pagina);
         return false;
     }
     
@@ -327,7 +337,7 @@ bool desbloquear_marco_por_pagina(int pid, int numero_pagina, const char* operac
     
     int numero_frame = obtener_numero_marco_de_pagina(pid, numero_pagina);
     if (numero_frame < 0) {
-        log_error(logger, "PID: %d - No se pudo obtener marco de página %d", pid, numero_pagina);
+        log_trace(logger, "PID: %d - No se pudo obtener marco de página %d (flujo normal de swap/suspensión)", pid, numero_pagina);
         return false;
     }
     

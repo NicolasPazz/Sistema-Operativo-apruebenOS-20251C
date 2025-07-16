@@ -1,8 +1,16 @@
 #!/bin/bash
+# chmod +x unir_logs.sh; ./unir_logs.sh
 
 LOGS_DIR="./"
 OUTPUT="./log_global_ordenado.log"
 SEPARADOR="========================================================================================================================="
+log_files=($(find kernel cpu memoria io -type f -name "*.log" | sort))
+
+# Validar que se encontraron archivos .log
+if [ ${#log_files[@]} -eq 0 ]; then
+    echo "❌ ERROR: No se encontraron archivos .log en las carpetas especificadas."
+    exit 1
+fi
 
 # Función para limpiar ANSI codes
 limpiar_ansi_en_archivo() {
@@ -11,12 +19,12 @@ limpiar_ansi_en_archivo() {
 }
 
 # Paso 1: limpiar logs individuales
-for modulo in kernel cpu memoria io; do
-    limpiar_ansi_en_archivo "${LOGS_DIR}/${modulo}/${modulo}.log"
+for archivo in "${log_files[@]}"; do
+    limpiar_ansi_en_archivo "$archivo"
 done
 
 # Paso 2: obtener timestamps únicos
-timestamps=$(cat ${LOGS_DIR}/*/*.log \
+timestamps=$(cat "${log_files[@]}" \
     | grep -oP '\d{2}:\d{2}:\d{2}:\d{3}' \
     | sort -u)
 
@@ -27,8 +35,8 @@ for ts in $timestamps; do
     declare -A lineas_modulo
     modulos_con_lineas=()
 
-    for modulo in kernel io cpu memoria; do
-        archivo="${LOGS_DIR}/${modulo}/${modulo}.log"
+    for archivo in "${log_files[@]}"; do
+        modulo=$(basename "$(dirname "$archivo")")
         lineas=$(grep "$ts" "$archivo")
         if [ ! -z "$lineas" ]; then
             lineas_modulo[$modulo]="$lineas"
@@ -53,7 +61,7 @@ done
 echo "✔ Logs limpiados, ordenados y agrupados con separadores condicionales en: $OUTPUT"
 
 # Paso 4: Validación de integridad
-lineas_originales=$(cat ${LOGS_DIR}/*/*.log | grep -v '^$' | wc -l)
+lineas_originales=$(cat "${log_files[@]}" | grep -v '^$' | wc -l)
 lineas_finales=$(grep -vE "^$|^$SEPARADOR" "$OUTPUT" | wc -l)
 
 if [[ "$lineas_originales" -ne "$lineas_finales" ]]; then
@@ -63,6 +71,3 @@ if [[ "$lineas_originales" -ne "$lineas_finales" ]]; then
 else
     echo "✅ Validación OK: el log global contiene todas las líneas originales."
 fi
-
-# Abrir el archivo en VS Code al finalizar
-code -r "$OUTPUT"

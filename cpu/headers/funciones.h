@@ -10,4 +10,5 @@ void func_init_proc(t_instruccion* instruccion);
 void func_dump_memory(void);
 void func_exit(void);
 void pedir_funcion_memoria(void);
+
 #endif

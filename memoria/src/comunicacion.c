@@ -23,6 +23,7 @@ int fd_cpu;
 extern t_log* logger;
 extern t_config_memoria* cfg;
 extern t_sistema_memoria* sistema_memoria;
+int cpus_conectadas = 0;
 
 typedef struct {
     int fd;
@@ -86,6 +87,7 @@ void procesar_conexion(void* void_args) {
         close(cliente_socket);
         return;
     }
+    bool es_cpu = false;  
     switch (handshake) {
         case HANDSHAKE_MEMORIA_KERNEL:
             log_info(logger, VERDE("## Kernel Conectado - FD del socket: %d"), cliente_socket);
@@ -94,7 +96,9 @@ void procesar_conexion(void* void_args) {
 
         case HANDSHAKE_MEMORIA_CPU:
             log_trace(logger, VERDE("## CPU Conectado - FD del socket: %d"), cliente_socket);
-            fd_cpu = cliente_socket;
+            es_cpu = true;  
+            cpus_conectadas++;
+            fd_cpu = cliente_socket; // Se sobreescribe fd_cpu si hay múltiples CPUs?
             break;
 
         default:
@@ -105,19 +109,23 @@ void procesar_conexion(void* void_args) {
     log_trace(logger, "Conexion procesada exitosamente para %s (fd=%d)", server_name, cliente_socket);
 
     op_code cop;
-    while (recv(cliente_socket, &cop, sizeof(op_code), 0) > 0) {
+    while ( (cop = recibir_operacion(cliente_socket)) != -1 ) {
         procesar_cod_ops(cop, cliente_socket);
     }
 
     log_debug(logger, "El cliente (fd=%d) se desconectó de %s", cliente_socket, server_name);
 
-    if (cliente_socket == fd_kernel) {
-        log_warning(logger, "Se desconectó el Kernel. Finalizando Memoria...");
-        cerrar_programa();
-        exit(EXIT_SUCCESS);
-    }
-
     close(cliente_socket);
+
+    if (es_cpu) {
+        cpus_conectadas--;
+
+        if (cpus_conectadas == 0) {
+            //log_info(logger, "## Última CPU desconectada ⇒ cerrando Memoria");
+            finalizar_sistema_memoria();
+            exit(EXIT_SUCCESS);
+        }
+    }
 }
 
 void procesar_cod_ops(op_code cop, int cliente_socket) {
@@ -133,7 +141,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             break;
         }
         case INIT_PROC_OP: {
-            log_trace(logger, "INIT_PROC_OP recibido");
+            log_trace(logger, "[INIT_PROC_OP] INIT_PROC_OP recibido");
 
             // ========== RECIBIR PARÁMETROS ==========
             t_list* lista = recibir_contenido_paquete(cliente_socket);
@@ -141,7 +149,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             char* nombre_proceso = strdup((char*)list_get(lista, 1)); // Nombre del proceso
             int tamanio = *(int*)list_get(lista, 2); // Size del proceso en memoria
             
-            log_debug(logger, "Inicialización de proceso solicitada - PID: %d, Tamaño: %d, Nombre: '%s'", pid, tamanio, nombre_proceso);
+            log_debug(logger, "[INIT_PROC_OP] Inicialización de proceso solicitada - PID: %d, Tamaño: %d, Nombre: '%s'", pid, tamanio, nombre_proceso);
 
             // ========== EJECUCIÓN DEL PROCESO DE CREACIÓN ==========
             t_resultado_memoria resultado = crear_proceso_en_memoria(pid, tamanio, nombre_proceso);
@@ -151,16 +159,16 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 
                 // Construir el path completo usando PATH_INSTRUCCIONES de la configuración
                 char* path_completo = string_from_format("%s%s", cfg->PATH_INSTRUCCIONES, nombre_proceso);
-                log_debug(logger, "NOMBRE DEL PATH '%s'", path_completo);
+                log_debug(logger, "[INIT_PROC_OP] NOMBRE DEL PATH '%s'", path_completo);
             
                 t_process_instructions* instrucciones = load_process_instructions(pid, path_completo);
                 if (instrucciones != NULL) {
                     char* pid_key = string_itoa(pid);
                     dictionary_put(sistema_memoria->process_instructions, pid_key, instrucciones);
-                    log_debug(logger, "PID: %d - Instrucciones cargadas desde %s", pid, path_completo);
+                    log_debug(logger, "[INIT_PROC_OP] PID: %d - Instrucciones cargadas desde %s", pid, path_completo);
                     free(pid_key);
                 } else {
-                    log_warning(logger, "PID: %d - No se pudieron cargar instrucciones desde %s", pid, path_completo);
+                    log_warning(logger, "[INIT_PROC_OP] PID: %d - No se pudieron cargar instrucciones desde %s", pid, path_completo);
                 }
             
                 free(path_completo);
@@ -174,9 +182,9 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
             
             if (resultado == MEMORIA_OK) {
-                log_debug(logger, "Enviando respuesta OK a cliente (fd=%d) - Proceso %d creado exitosamente", cliente_socket, pid);
+                log_debug(logger, "[INIT_PROC_OP] Enviando respuesta OK a cliente (fd=%d) - Proceso %d creado exitosamente", cliente_socket, pid);
             } else {
-                log_debug(logger, "Enviando respuesta ERROR a cliente (fd=%d) - Falló creación del proceso %d", cliente_socket, pid);
+                log_debug(logger, "[INIT_PROC_OP] Enviando respuesta ERROR a cliente (fd=%d) - Falló creación del proceso %d", cliente_socket, pid);
             }
             
             send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
@@ -200,28 +208,24 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             break;
         }
         case FINALIZAR_PROC_OP: {
-            log_debug(logger, "FINALIZAR_PROC_OP recibido");
-
-            // Recibir PID directamente con recv (como lo envía el Kernel)
-            int pid;
-            if (recv(cliente_socket, &pid, sizeof(int), 0) <= 0) {
-                log_error(logger, "Error al recibir PID para FINALIZAR_PROC_OP");
+            log_debug(logger, "FINALIZAR_PROC_OP recibido (paquete)");
+            t_list* lista = recibir_contenido_paquete(cliente_socket);
+            if (!lista || list_size(lista) < 1) {
+                log_error(logger, "FINALIZAR_PROC_OP: Error al recibir paquete o paquete vacío");
+                if (lista) list_destroy_and_destroy_elements(lista, free);
                 return;
-            }                
-            
+            }
+            int pid = *(int*)list_get(lista, 0);
+            log_debug(logger, "FINALIZAR_PROC_OP: PID recibido en paquete: %d", pid);
+            list_destroy_and_destroy_elements(lista, free);
             log_trace(logger, "Finalización de proceso solicitada - PID: %d", pid);
-            
-            // Finalizar el proceso usando la función principal que maneja métricas
             log_debug(logger, "FINALIZAR_PROC_OP: Llamando a finalizar_proceso_en_memoria para PID %d", pid);
             t_resultado_memoria resultado = finalizar_proceso_en_memoria(pid);
             log_debug(logger, "FINALIZAR_PROC_OP: finalizar_proceso_en_memoria retornó %d para PID %d", resultado, pid);
-            
-            // Enviar respuesta
             t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
-            log_debug(logger, "FINALIZAR_PROC_OP: Preparando envío de respuesta %s a cliente (fd=%d)", 
-                    (respuesta == OK) ? "OK" : "ERROR", cliente_socket);
-            send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
-            log_debug(logger, "FINALIZAR_PROC_OP: Respuesta enviada exitosamente");
+            log_debug(logger, "FINALIZAR_PROC_OP: Preparando envío de respuesta %s a cliente (fd=%d)", (respuesta == OK) ? "OK" : "ERROR", cliente_socket);
+            int bytes_sent = send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
+            log_debug(logger, "FINALIZAR_PROC_OP: Respuesta enviada (%d bytes) exitosamente", bytes_sent);
             break;
         }
         case PEDIR_INSTRUCCION_OP: {
@@ -441,8 +445,16 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             log_trace(logger, "CHECK_MEMORY_SPACE_OP recibido");
 
             // Recibir tamaño solicitado
+            t_list* datos = recibir_contenido_paquete(cliente_socket);
+            if (list_size(datos) < 1) {
+                log_error(logger, "CHECK_MEMORY_SPACE_OP: No se recibieron datos válidos");
+                list_destroy_and_destroy_elements(datos, free);
+                break;
+            }
+
             int tamanio;
-            recv_data(cliente_socket, &tamanio, sizeof(int));
+            tamanio = *(int*)list_get(datos, 0);
+            list_destroy_and_destroy_elements(datos, free);
             
             // Verificar espacio disponible
             bool hay_espacio = verificar_espacio_disponible(tamanio);
@@ -458,17 +470,23 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         case SUSPENDER_PROCESO_OP: {
             log_trace(logger, "SUSPENDER_PROCESO_OP recibido");
 
-            // Recibir PID del proceso a suspender
-            int pid;
-            recv_data(cliente_socket, &pid, sizeof(int));
-            
+            // Recibir paquete con el PID
+            t_list* parametros = recibir_contenido_paquete(cliente_socket);
+            if (!parametros || list_size(parametros) < 1) {
+                log_error(logger, "SUSPENDER_PROCESO_OP: Error al recibir paquete o paquete vacío");
+                if (parametros) list_destroy_and_destroy_elements(parametros, free);
+                return;
+            }
+            int pid = *(int*)list_get(parametros, 0);
+            list_destroy_and_destroy_elements(parametros, free);
+
             log_trace(logger, "Suspensión de proceso solicitada - PID: %d", pid);
-            
+
             t_resultado_memoria resultado = suspender_proceso_en_memoria(pid);
-            
+
             t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
             send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
-            
+
             log_trace(logger, "Suspensión de proceso %s - PID: %d",
                     (respuesta == OK) ? "exitosa" : "fallida", pid);
             break;
@@ -476,18 +494,34 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
         case DESUSPENDER_PROCESO_OP: {
             log_trace(logger, "DESUSPENDER_PROCESO_OP recibido");
 
-            int pid;
-            recv_data(cliente_socket, &pid, sizeof(int));
-            
+            // Recibir paquete con el PID
+            t_list* parametros = recibir_contenido_paquete(cliente_socket);
+            if (!parametros || list_size(parametros) < 1) {
+                log_error(logger, "DESUSPENDER_PROCESO_OP: Error al recibir paquete o paquete vacío");
+                if (parametros) list_destroy_and_destroy_elements(parametros, free);
+                return;
+            }
+            int pid = *(int*)list_get(parametros, 0);
+            list_destroy_and_destroy_elements(parametros, free);
+
             log_trace(logger, "Des-suspensión de proceso solicitada - PID: %d", pid);
-            
+
             t_resultado_memoria resultado = reanudar_proceso_en_memoria(pid);
-            
+
             t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
             send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
-            
+
             log_trace(logger, "Des-suspensión de proceso %s - PID: %d",
                     (respuesta == OK) ? "exitosa" : "fallida", pid);
+            break;
+        }
+        case SHUTDOWN_OP: {
+            log_info(logger, "SHUTDOWN_OP recibido - Finalizando Memoria");
+            // Cerrar todas las conexiones y liberar recursos
+            if (fd_kernel != -1) close(fd_kernel);
+            if (fd_cpu != -1) close(fd_cpu);
+            if (fd_memoria != -1) close(fd_memoria);
+            exit(EXIT_SUCCESS);
             break;
         }
         default: { 
@@ -516,6 +550,8 @@ void procesar_write_op(int cliente_socket) {
     actualizar_metricas(pid, "MEMORY_WRITE");
 
     strcpy((char*)(sistema_memoria->memoria_principal + direccion_fisica), datos_str);
+
+    aplicar_retardo_memoria();
 
     t_respuesta respuesta = OK;
     send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
@@ -548,6 +584,8 @@ void procesar_read_op(int cliente_socket) {
     memcpy(datos_leidos, sistema_memoria->memoria_principal + direccion_fisica, size);
     datos_leidos[size] = '\0'; // Null terminator
 
+    aplicar_retardo_memoria();
+    
     // Enviar respuesta como un string en un paquete 
     t_paquete* paquete_respuesta = crear_paquete_op(PAQUETE_OP);
     agregar_a_paquete(paquete_respuesta, datos_leidos, size + 1);

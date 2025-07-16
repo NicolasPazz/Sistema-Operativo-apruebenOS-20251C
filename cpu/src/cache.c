@@ -3,6 +3,16 @@
 #include "../headers/init.h"
 #include "../headers/cicloDeInstruccion.h"
 #include "../headers/main.h"
+#include <unistd.h>
+#include <stdlib.h>
+
+static void aplicar_retardo_cache(void) {
+    if (RETARDO_CACHE) {
+        int retardo = atoi(RETARDO_CACHE);
+        if (retardo > 0)
+            usleep(retardo * 1000);
+    }
+}
 
 t_cache_paginas* inicializar_cache() {
     cache = (t_cache_paginas*)malloc(sizeof(t_cache_paginas));
@@ -45,7 +55,7 @@ int buscar_pagina_en_cache(int numero_pagina) {
     }
     for (int i = 0; i < cache->cantidad_entradas; i++) {
         if (cache->entradas[i].numero_pagina == numero_pagina) {
-            log_info(cpu_log, VERDE("(PID: %d) - Cache Hit - Pagina: %d"), pid_ejecutando, numero_pagina);
+            log_info(cpu_log, VERDE("PID: %d - Cache Hit - Página: %d"), pid_ejecutando, numero_pagina);
             if (strcmp(cache->algoritmo_reemplazo,"CLOCK") == 0 || strcmp(cache->algoritmo_reemplazo, "CLOCK-M") == 0) {
                 cache->entradas[i].bit_referencia = 1;
             }
@@ -122,7 +132,7 @@ void desalojar_proceso_cache() {
             int frameC = -1;
             int pagina = cache->entradas[i].numero_pagina;
             
-            log_info(cpu_log, VERDE("(PID: %d) - Memory Update - Página: %d - Frame: %d"), pid_ejecutando, pagina, frameC);
+            log_info(cpu_log, VERDE("PID: %d - Memory Update - Página: %d - Frame: %d"), pid_ejecutando, pagina, frameC);
 
             // escribir_pagina_en_memoria(pagina, frame, cache->entradas[i].contenido);
         }
@@ -184,6 +194,7 @@ void cache_modificar(int frame, char* datos) {
     }
     cache->entradas[nro_pagina_en_cache].contenido = strdup(datos);
     cache->entradas[nro_pagina_en_cache].modificado = true;
+    aplicar_retardo_cache();
     log_trace(cpu_log, "PID: %d - Contenido leído (cache): %s", pid_ejecutando, cache->entradas[nro_pagina_en_cache].contenido);
     pthread_mutex_unlock(&mutex_cache);
 }
@@ -228,7 +239,8 @@ void cache_escribir(int frame, char* datos) {
     cache->entradas[entrada_index].contenido = strdup(datos);
     cache->entradas[entrada_index].modificado = false;
     cache->entradas[entrada_index].bit_referencia = 1;
-    log_info(cpu_log, VERDE("(PID: %d) - Cache Add - Pagina: %d"), pid_ejecutando, frame);
+    aplicar_retardo_cache();
+    log_info(cpu_log, VERDE("PID: %d - Cache Add - Página: %d"), pid_ejecutando, frame);
     pthread_mutex_unlock(&mutex_cache);
 }
 
@@ -237,18 +249,19 @@ char* cache_leer(int numero_pagina) {
     int indice = buscar_pagina_en_cache(numero_pagina);
     if (indice == -1) {
         pthread_mutex_unlock(&mutex_cache);
-        log_warning(cpu_log, "PID: %d - Cache Leer - Página %d no encontrada en caché", pid_ejecutando, numero_pagina);
+        log_debug(cpu_log, "PID: %d - Cache Leer - Página %d no encontrada en caché", pid_ejecutando, numero_pagina);
         return NULL;
     }
 
     if (cache->entradas[indice].contenido == NULL) {
         pthread_mutex_unlock(&mutex_cache);
-        log_warning(cpu_log, "PID: %d - Cache Leer - Contenido nulo en entrada de página %d", pid_ejecutando, numero_pagina);
+        log_debug(cpu_log, "PID: %d - Cache Leer - Contenido nulo en entrada de página %d", pid_ejecutando, numero_pagina);
         return NULL;
     }
 
     // Devolvemos una copia del contenido para que el caller pueda hacer free
     char* copia = strdup(cache->entradas[indice].contenido);
+    aplicar_retardo_cache();
     if (copia == NULL) {
         pthread_mutex_unlock(&mutex_cache);
         log_error(cpu_log, "PID: %d - Error al duplicar contenido de caché para página %d", pid_ejecutando, numero_pagina);

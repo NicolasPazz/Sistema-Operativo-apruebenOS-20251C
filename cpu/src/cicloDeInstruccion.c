@@ -63,10 +63,9 @@ void ejecutar_ciclo_instruccion() {
     log_trace(cpu_log, "[CICLO] ◼ Ciclo de instrucción finalizado para PID: %d", pid_ejecutando);
 }
 
-
 // fetch
 t_instruccion* fetch() {
-    log_info(cpu_log, VERDE("## (PID: %d) - ")ROJO("FETCH")VERDE(" - Program Counter: %d"), pid_ejecutando, pc);
+    log_info(cpu_log, VERDE("## PID: %d - ")ROJO("FETCH")VERDE(" - Program Counter: %d"), pid_ejecutando, pc);
 
     // Enviar Paquete OP a Memoria
     log_trace(cpu_log, "[FETCH] Enviando solicitud PEDIR_INSTRUCCION_OP a memoria...");
@@ -144,11 +143,16 @@ void execute(op_code tipo_instruccion, t_instruccion* instruccion) {
         }
     }
     
-    log_info(cpu_log, VERDE("(## PID: %d) - Ejecutando: ")ROJO("%s - %s"), 
-             pid_ejecutando, 
-             instruccion->parametros1, 
-             strlen(params_str) > 0 ? params_str : "");
-    
+    if (tipo_instruccion == NOOP_OP || tipo_instruccion == DUMP_MEMORY_OP || tipo_instruccion == EXIT_OP) {
+        log_info(cpu_log, VERDE("## PID: %d - Ejecutando: ")ROJO("%s"),
+                 pid_ejecutando, instruccion->parametros1);
+    } else {
+        log_info(cpu_log, VERDE("## PID: %d - Ejecutando: ")ROJO("%s - %s"), 
+        pid_ejecutando, 
+        instruccion->parametros1, 
+        strlen(params_str) > 0 ? params_str : "");
+    }
+
     free(params_str);
 
     switch (tipo_instruccion) {
@@ -197,7 +201,7 @@ void check_interrupt() {
         hay_interrupcion = 0;
         log_trace(cpu_log, "[INTERRUPT] Verificando interrupción para PID: %d mientras se ejecuta PID: %d", pid_interrupt, pid_ejecutando);
         if (pid_ejecutando == pid_interrupt) {
-            log_debug(cpu_log, VERDE("[INTERRUPT]: ## (PID: %d) - Recibida interrupción, desalojando proceso"), pid_ejecutando);
+            log_debug(cpu_log, VERDE("[INTERRUPT]: ## (%d) - Recibida interrupción, desalojando proceso"), pid_ejecutando);
             seguir_ejecutando = 0;
             pthread_mutex_unlock(&mutex_estado_proceso);
 
@@ -207,7 +211,7 @@ void check_interrupt() {
 
             t_paquete* paquete = crear_paquete_op(OK);
             pthread_mutex_lock(&mutex_estado_proceso);
-            log_debug(cpu_log, VERDE("[INTERRUPT]: ## (PID: %d - PC %d) - Respuesta de OK enviada a Kernel por interrupción válida"), pid_ejecutando, pc);
+            log_debug(cpu_log, VERDE("[INTERRUPT]: ## (%d - PC %d) - Respuesta de OK enviada a Kernel por interrupción válida"), pid_ejecutando, pc);
             agregar_entero_a_paquete(paquete, pid_ejecutando);
             agregar_entero_a_paquete(paquete, pc);
             pthread_mutex_unlock(&mutex_estado_proceso);
@@ -217,10 +221,10 @@ void check_interrupt() {
 
             return;
         }
-        log_debug(cpu_log, VERDE("[INTERRUPT]: ## (PID: %d) - Interrupción recibida pero no corresponde al PID ejecutando (%d)"), pid_interrupt, pid_ejecutando);
+        log_debug(cpu_log, VERDE("[INTERRUPT]: ## (%d) - Interrupción recibida pero no corresponde al PID ejecutando (%d)"), pid_interrupt, pid_ejecutando);
         t_respuesta respuesta_error = ERROR;
         send(fd_kernel_interrupt, &respuesta_error, sizeof(t_respuesta), 0);
-        log_debug(cpu_log, VERDE("[INTERRUPT]: ## (PID: %d) - Respuesta de ERROR enviada a Kernel por interrupción no válida"), pid_interrupt);
+        log_debug(cpu_log, VERDE("[INTERRUPT]: ## (%d) - Respuesta de ERROR enviada a Kernel por interrupción no válida"), pid_interrupt);
     }
     pthread_mutex_unlock(&mutex_estado_proceso);
 }

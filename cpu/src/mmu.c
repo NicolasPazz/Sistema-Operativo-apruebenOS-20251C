@@ -18,7 +18,7 @@ void inicializar_mmu() {
 }
 
 /*
-int cargar_configuracion(char* path) {
+int cargar_configuracion_cpu(char* path) {
     t_config* cfg_file = config_create(path);
 
     if (cfg_file == NULL) {
@@ -100,9 +100,9 @@ int traducir_direccion_fisica(int direccion_logica) {
         pthread_mutex_unlock(&mutex_tlb);
     }
     if (tlb_habilitada() && hit) {
-        log_info(cpu_log, VERDE("(PID: %d) - TLB HIT - Página: %d"), pid_ejecutando, nro_pagina);    
+        log_info(cpu_log, VERDE("PID: %d - TLB HIT - Página: %d"), pid_ejecutando, nro_pagina);    
     } else {
-        log_info(cpu_log, ROJO("(PID: %d) - TLB MISS - Página: %d"), pid_ejecutando, nro_pagina);
+        log_info(cpu_log, ROJO("PID: %d - TLB MISS - Página: %d"), pid_ejecutando, nro_pagina);
 
         // Nueva operación: solo se envía PID y nro_pagina
         t_paquete* paquete = crear_paquete_op(ACCESO_TABLA_PAGINAS_OP);
@@ -138,7 +138,7 @@ int traducir_direccion_fisica(int direccion_logica) {
             exit(EXIT_FAILURE);
         }
 
-        log_info(cpu_log, VERDE("(PID: %d) - OBTENER MARCO - Página: %d - Marco: %d"), pid_ejecutando, nro_pagina, frame);
+        log_info(cpu_log, VERDE("PID: %d - OBTENER MARCO - Página: %d - Marco: %d"), pid_ejecutando, nro_pagina, frame);
 
         if (tlb_habilitada()) {
             pthread_mutex_lock(&mutex_tlb);
