@@ -42,7 +42,7 @@ void instructions_destroy() {
         log_trace(logger, "Lista de instrucciones destruida correctamente");
     }
 }
-
+ 
 // Para el checkpoint 2, cargamos instrucciones desde un archivo
 t_process_instructions* load_process_instructions(int pid, char* instructions_file) {
     t_process_instructions* process_inst = malloc(sizeof(t_process_instructions));
