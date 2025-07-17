@@ -82,9 +82,11 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
         exit(EXIT_FAILURE);
     }
 
+    pthread_mutex_lock(&mutex_cambio_de_estado);
     if (!transicion_valida(PCB->Estado, nuevo_estado_enum))
     {
         log_error(kernel_log, "cambiar_estado_pcb: Transicion no valida en el PID %d: %s → %s", PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
+        pthread_mutex_unlock(&mutex_cambio_de_estado);
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
@@ -93,6 +95,7 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
     if (!cola_destino)
     {
         log_error(kernel_log, "cambiar_estado_pcb: Error al obtener las colas correspondientes");
+        pthread_mutex_unlock(&mutex_cambio_de_estado);
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
@@ -104,6 +107,7 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
         if (!cola_origen)
         {
             log_error(kernel_log, "cambiar_estado_pcb: Error al obtener las colas correspondientes");
+            pthread_mutex_unlock(&mutex_cambio_de_estado);
             terminar_kernel();
             exit(EXIT_FAILURE);
         }
@@ -223,10 +227,12 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
         break;
     default:
         log_error(kernel_log, "nuevo_estado_enum: Error al pasar PCB de %s a %s", estado_to_string(estado_viejo), estado_to_string(nuevo_estado_enum));
+        pthread_mutex_unlock(&mutex_cambio_de_estado);
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
     mostrar_colas_estados();
+    pthread_mutex_unlock(&mutex_cambio_de_estado);
 }
 
 bool transicion_valida(Estados actual, Estados destino)

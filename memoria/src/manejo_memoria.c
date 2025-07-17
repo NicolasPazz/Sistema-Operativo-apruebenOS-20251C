@@ -427,7 +427,7 @@ t_resultado_memoria reanudar_proceso_en_memoria(int pid) {
     }
     
     if (!proceso->suspendido) {
-        log_warning(logger, "PID: %d - Proceso no está suspendido", pid);
+        log_error(logger, "PID: %d - Proceso no está suspendido", pid);
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
         return MEMORIA_OK;
     }

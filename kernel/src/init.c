@@ -74,6 +74,7 @@ pthread_mutex_t mutex_cola_interrupciones;
 pthread_mutex_t mutex_planificador_lp;
 pthread_mutex_t mutex_procesos_rechazados;
 pthread_mutex_t mutex_inicializacion_procesos;
+pthread_mutex_t mutex_cambio_de_estado;
 sem_t sem_proceso_a_new;
 sem_t sem_proceso_a_susp_ready;
 sem_t sem_proceso_a_susp_blocked;
@@ -171,6 +172,7 @@ void iniciar_sincronizacion_kernel()
     pthread_mutex_init(&mutex_cola_interrupciones, NULL);
     pthread_mutex_init(&mutex_procesos_rechazados, NULL);
     pthread_mutex_init(&mutex_inicializacion_procesos, NULL);
+    pthread_mutex_init(&mutex_cambio_de_estado, NULL);
 
     sem_init(&sem_proceso_a_new, 0, 0);
     sem_init(&sem_proceso_a_susp_ready, 0, 0);
@@ -237,6 +239,7 @@ void terminar_kernel()
     pthread_mutex_destroy(&mutex_planificador_lp);
     pthread_mutex_destroy(&mutex_procesos_rechazados);
     pthread_mutex_destroy(&mutex_inicializacion_procesos);
+    pthread_mutex_destroy(&mutex_cambio_de_estado);
 
     sem_destroy(&sem_proceso_a_new);
     sem_destroy(&sem_proceso_a_susp_ready);
@@ -689,11 +692,17 @@ void *atender_io(void *arg)
             }
             t_pcb *pcb_fin = buscar_pcb(pid_finalizado);
 
+            log_trace(kernel_log, "[SERVIDOR IO] IO_FINALIZADA_OP, verificando el estado de PCB con PID %d", pid_finalizado);
+
+            pthread_mutex_lock(&mutex_cambio_de_estado);
+
             if (pcb_fin->Estado == SUSP_BLOCKED)
             {
                 log_info(kernel_log, AMARILLO("## (%d) finalizó IO y pasa a SUSP_READY"), pid_finalizado);
                 log_trace(kernel_log, AZUL("[SERVIDOR IO] ## (%d) finalizó IO y pasa a SUSP_READY"), pid_finalizado);
+                pthread_mutex_unlock(&mutex_cambio_de_estado);
                 cambiar_estado_pcb(pcb_fin, SUSP_READY);
+
                 pthread_t hilo;
                 if (pthread_create(&hilo, NULL, verificar_procesos_rechazados, NULL) != 0)
                 {
@@ -703,11 +712,20 @@ void *atender_io(void *arg)
                 }
                 pthread_detach(hilo);
             }
-            else
+            else if (pcb_fin->Estado == BLOCKED)
             {
                 log_info(kernel_log, AMARILLO("## (%d) finalizó IO y pasa a READY"), pid_finalizado);
+                pthread_mutex_unlock(&mutex_cambio_de_estado);
                 cambiar_estado_pcb(pcb_fin, READY);
             }
+            else
+            {
+                log_error(kernel_log, AZUL("[SERVIDOR IO] PID %d finalizó IO pero ya se encuentra en %s"), pid_finalizado, estado_to_string(pcb_fin->Estado));
+                pthread_mutex_unlock(&mutex_cambio_de_estado);
+                terminar_kernel();
+                exit(EXIT_FAILURE);
+            }
+
 
             // Verificar si hay procesos encolados para dicha IO y enviarlo a la misma
             verificar_procesos_bloqueados(dispositivo_io);

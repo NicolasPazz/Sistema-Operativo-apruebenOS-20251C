@@ -6,6 +6,15 @@ OUTPUT="./log_global_ordenado.log"
 echo "Unificando logs en $OUTPUT..."
 
 SEPARADOR="========================================================================================================================="
+
+# Verificar que las carpetas necesarias existen
+for dir in kernel memoria cpu io; do
+    if [ ! -d "$dir" ]; then
+        echo -e "\t[x] ERROR: La carpeta '$dir' no existe."
+        exit 1
+    fi
+done
+
 mapfile -t kernel_logs < <(find kernel -type f -name "*.log" | sort)
 mapfile -t memoria_logs < <(find memoria -type f -name "*.log" | sort)
 mapfile -t cpu_logs < <(find cpu -type f -name "*.log" | sort)

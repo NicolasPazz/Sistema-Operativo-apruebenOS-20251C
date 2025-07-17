@@ -111,7 +111,7 @@ case $numero in
 
     [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
 
-    imprimir_alerta_multicolor "VERIFICÁ MANUALMENTE QUE SE HAYAN USADO AMBAS IO DE FORMA PARALELA    =!=!=!=!=!"
+    imprimir_alerta_multicolor "VERIFICÁ MANUALMENTE QUE SE HAYAN USADO AMBAS IO DE FORMA PARALELA"
     ;;
 2)
     echo -e "\e[1;34;47m =====    Ejecutando Test 2: Corto Plazo - SJF con 1 CPU + 1 IO    ===== \e[0m"
@@ -163,7 +163,7 @@ case $numero in
 
     [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
 
-    imprimir_alerta_multicolor "VERIFICÁ MANUALMENTE QUE EL PID 5 ES EL DE MENOR PROMEDIO DE ESPERA    =!=!=!=!=!"
+    imprimir_alerta_multicolor "VERIFICÁ MANUALMENTE QUE EL PID 5 ES EL DE MENOR PROMEDIO DE ESPERA"
     ;;
 3)
     echo -e "\e[1;34;47m =====    Ejecutando Test 3: Corto Plazo - SRT con 1 CPU + 1 IO    ===== \e[0m"
@@ -453,7 +453,7 @@ case $numero in
 
     [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
 
-    imprimir_alerta_multicolor "VERIFICÁ MANUALMENTE QUE LOS REEMPLAZOS DE CACHÉ SE REALIZAN CORRECTAMENTE DE ACUERDO A CLOCK-M"
+    imprimir_alerta_multicolor "VERIFICÁ MANUALMENTE QUE LOS REEMPLAZOS DE CACHÉ SE REALIZAN CORRECTAMENTE DE ACUERDO A CLOCK M"
     ;;
 9)
     echo -e "\e[1;34;47m =====    Ejecutando Test 9: Memoria TLB - FIFO con 1 CPU + 1 IO    ===== \e[0m"

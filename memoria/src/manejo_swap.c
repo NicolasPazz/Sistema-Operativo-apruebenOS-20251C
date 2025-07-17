@@ -147,7 +147,7 @@ int reanudar_proceso_suspendido(int pid) {
     snprintf(pid_str, sizeof(pid_str), "%d", pid);
     t_proceso_memoria* proceso = dictionary_get(sistema_memoria->procesos, pid_str);
     if (proceso == NULL || !proceso->suspendido) {
-        log_warning(logger, "PID: %d - Proceso no está suspendido", pid);
+        log_error(logger, "PID: %d - Proceso no está suspendido", pid);
         return 0;
     }
     
