@@ -533,58 +533,66 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
 
 void procesar_write_op(int cliente_socket) {
     t_list* lista = recibir_contenido_paquete(cliente_socket);
-    
-    if (list_size(lista) != 3) {
-        log_error(logger, "WRITE_OP: Se esperaban 3 parámetros pero se recibieron %d", list_size(lista));
+
+    if (list_size(lista) != 4) {
+        log_error(logger, "WRITE_OP: Se esperaban 4 parámetros pero se recibieron %d", list_size(lista));
         list_destroy_and_destroy_elements(lista, free);
         return;
     }
-    
+
     int pid = *(int*)list_get(lista, 0);
     int direccion_fisica = *(int*)list_get(lista, 1);
-    char* datos_str = (char*)list_get(lista, 2);
+    int size = *(int*)list_get(lista, 2);
+    void* datos = list_get(lista, 3);
 
-    log_trace(logger, VERDE("## PID: %d - Escritura - Dir. Física: %d - Tamaño: %ld"),
-                pid, direccion_fisica, strlen(datos_str));
+    log_trace(logger, "## PID: %d - Escritura - Dir. Física: %d - Tamaño: %d", pid, direccion_fisica, size);
 
-    actualizar_metricas(pid, "MEMORY_WRITE");
+    if (direccion_fisica + size > cfg->TAM_MEMORIA) {
+        log_error(logger, "PID: %d - Escritura fuera de rango (dir=%d + size=%d > tam=%d)", pid, direccion_fisica, size, cfg->TAM_MEMORIA);
+        t_respuesta err = ERROR;
+        send(cliente_socket, &err, sizeof(t_respuesta), 0);
+        list_destroy_and_destroy_elements(lista, free);
+        return;
+    }
 
     // Usar memcpy en lugar de strcpy para escribir exactamente los bytes especificados
     // sin null terminator para preservar contenido existente
     memcpy((char*)(sistema_memoria->memoria_principal + direccion_fisica), datos_str, strlen(datos_str));
+    log_info(logger, "WRITE - PID: %d - Bytes [%d:%d] = '%s'", pid, direccion_fisica, direccion_fisica + size - 1, vista);
 
     aplicar_retardo_memoria();
 
     t_respuesta respuesta = OK;
     send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
 
-    // Liberar memoria
     list_destroy_and_destroy_elements(lista, free);
 }
 
 void procesar_read_op(int cliente_socket) {
     t_list* lista = recibir_contenido_paquete(cliente_socket);
-    
+
     if (list_size(lista) != 3) {
         log_error(logger, "READ_OP: Se esperaban 3 parámetros pero se recibieron %d", list_size(lista));
         list_destroy_and_destroy_elements(lista, free);
         return;
     }
-    
-    // CPU envía: direccion_fisica (int con prefijo), size (int con prefijo), pid (int con prefijo)
+
     int direccion_fisica = *(int*)list_get(lista, 0);
     int size = *(int*)list_get(lista, 1);
     int pid = *(int*)list_get(lista, 2);
 
-    log_trace(logger, VERDE("## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d"),
-                pid, direccion_fisica, size);
+    log_trace(logger, "## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d", pid, direccion_fisica, size);
 
     actualizar_metricas(pid, "MEMORY_READ");
 
-    // Leer datos de memoria
     char* datos_leidos = malloc(size + 1);
     memcpy(datos_leidos, sistema_memoria->memoria_principal + direccion_fisica, size);
-    datos_leidos[size] = '\0'; // Null terminator
+    datos_leidos[size] = '\0';
+
+    char vista[64] = {0};
+    int max_ver = size > 60 ? 60 : size;
+    strncpy(vista, datos_leidos, max_ver);
+    log_info(logger, "READ - PID: %d - Bytes [%d:%d] = '%s'", pid, direccion_fisica, direccion_fisica + size - 1, vista);
 
     aplicar_retardo_memoria();
     

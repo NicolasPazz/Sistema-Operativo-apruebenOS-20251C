@@ -83,6 +83,7 @@ void calcular_indices_multinivel(int numero_pagina, int cantidad_niveles, int en
     log_debug(logger, "calcular_indices_multinivel: num_pag=%d indices=[%s]", numero_pagina, indices_str);
 }
 
+
 // ============== FUNCIONES DE LOGGING Y COMUNICACIÓN ==============
 
 void log_instruccion_obtenida(int pid, int pc, t_instruccion* instruccion) {
@@ -336,34 +337,35 @@ bool obtener_marcos_proceso(int pid, int* marcos_out, int* cantidad_marcos_out) 
 // ============== FUNCIONES DE BÚSQUEDA EN ESTRUCTURAS DE PAGINACIÓN ==============
 
 t_entrada_tabla* buscar_entrada_tabla(t_estructura_paginas* estructura, int numero_pagina) {
-    if (!estructura || !estructura->tabla_raiz) {
+    if (!estructura || !estructura->tabla_raiz)
         return NULL;
-    }
 
     int indices[estructura->cantidad_niveles];
-    calcular_indices_multinivel(numero_pagina, estructura->cantidad_niveles, 
-                             estructura->entradas_por_tabla, indices);
+    calcular_indices_multinivel(numero_pagina,
+                                 estructura->cantidad_niveles,
+                                 estructura->entradas_por_tabla,
+                                 indices);
 
     t_tabla_paginas* tabla_actual = estructura->tabla_raiz;
     t_entrada_tabla* entrada = NULL;
 
     for (int nivel = 0; nivel < estructura->cantidad_niveles; nivel++) {
-        if (!tabla_actual || indices[nivel] >= estructura->entradas_por_tabla) {
+        if (!tabla_actual || indices[nivel] >= estructura->entradas_por_tabla)
             return NULL;
-        }
 
         entrada = &tabla_actual->entradas[indices[nivel]];
-        
+
         if (nivel < estructura->cantidad_niveles - 1) {
-            if (!entrada->presente) {
+            if (!entrada->presente || !entrada->tabla_siguiente)
                 return NULL;
-            }
+
             tabla_actual = entrada->tabla_siguiente;
         }
     }
 
     return entrada;
 }
+
 
 // ============== FUNCIONES DE PROCESAMIENTO DE MEMORIA ==============
 

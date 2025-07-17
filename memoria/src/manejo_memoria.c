@@ -1021,7 +1021,8 @@ bool actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido_p
     
     // Calcular el número de marco desde la dirección física
     int numero_marco = direccion_fisica / cfg->TAM_PAGINA;
-    
+    log_trace(logger, "PID: %d - Quiero acceder al marco %d (dir_fisica=%d)", pid, numero_marco, direccion_fisica);
+
     // Obtener el número de página que está mapeada a este marco
     int numero_pagina = obtener_numero_pagina_de_marco(pid, numero_marco);
     if (numero_pagina == -1) {
@@ -1047,7 +1048,9 @@ bool actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido_p
     aplicar_retardo_memoria();
     
     // Escribir página completa en el espacio de usuario
-    memcpy(sistema_memoria->memoria_principal + direccion_fisica, contenido_pagina, cfg->TAM_PAGINA);
+    memset(sistema_memoria->memoria_principal + direccion_fisica, 0, cfg->TAM_PAGINA);  // Limpia
+    memcpy(sistema_memoria->memoria_principal + direccion_fisica, contenido_pagina, strlen(contenido_pagina) + 1);  // Copia real
+
     
     // MARCAR LA PÁGINA COMO MODIFICADA (DIRTY BIT)
     t_entrada_tabla* entrada = _buscar_entrada_pagina(pid, numero_pagina);
