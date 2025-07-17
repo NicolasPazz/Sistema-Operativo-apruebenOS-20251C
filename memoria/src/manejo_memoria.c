@@ -177,7 +177,7 @@ t_resultado_memoria crear_proceso_en_memoria(int pid, int tamanio, char* nombre_
              pid, marcos_disponibles, marcos_ocupados, total_marcos);
     
     if (marcos_disponibles < paginas_necesarias) {
-        log_error(logger, "[INIT_PROC_OP] PID: %d - No hay suficiente memoria física (necesita %d páginas, disponibles %d)", 
+        log_debug(logger, "[INIT_PROC_OP] PID: %d - No hay suficiente memoria física (necesita %d páginas, disponibles %d)", 
                   pid, paginas_necesarias, marcos_disponibles);
         pthread_mutex_unlock(&sistema_memoria->admin_marcos->mutex_frames);
         return MEMORIA_ERROR_NO_ESPACIO;
@@ -427,7 +427,7 @@ t_resultado_memoria reanudar_proceso_en_memoria(int pid) {
     }
     
     if (!proceso->suspendido) {
-        log_warning(logger, "PID: %d - Proceso no está suspendido", pid);
+        log_error(logger, "PID: %d - Proceso no está suspendido", pid);
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
         return MEMORIA_OK;
     }
@@ -447,7 +447,7 @@ t_resultado_memoria reanudar_proceso_en_memoria(int pid) {
         return MEMORIA_OK;
     } else {
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
-        log_error(logger, "PID: %d - Error al reanudar proceso (vía manejo_swap)", pid);
+        log_debug(logger, "PID: %d - Error al reanudar proceso (vía manejo_swap)", pid);
         return MEMORIA_ERROR_IO;
     }
 }

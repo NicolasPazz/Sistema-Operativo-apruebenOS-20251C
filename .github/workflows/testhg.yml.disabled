@@ -1,0 +1,29 @@
+# Este workflow está desactivado intencionalmente
+# Para activarlo, descomentá las líneas correspondientes y cambia la extension a .yml
+
+# name: Test de Helgrind
+
+# on:
+#   push:
+#   pull_request:
+
+# jobs:
+#   build:
+#     runs-on: ubuntu-22.04
+
+#     steps:
+#       - name: Checkout del repositorio
+#         uses: actions/checkout@v4
+
+#       - name: Instalar dependencias
+#         run: |
+#           sudo apt update
+#           sudo apt install -y build-essential libreadline-dev valgrind psmisc
+#           git clone https://github.com/sisoputnfrba/so-commons-library.git
+#           cd so-commons-library
+#           make install
+
+#       - name: Ejecutar test de Helgrind
+#         run: |
+#           chmod +x tests/testhg.sh
+#           ./tests/testhg.sh

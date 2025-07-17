@@ -97,10 +97,15 @@ dos2unix:
 clean:
 	@echo "Limpiando archivos de dump (.dmp)..."
 	@find . -type f -name "*.dmp" -exec rm -f {} + || true
+	@$(MAKE) clean-logs
 	make clean -C ./utils
 	make clean -C ./io
 	make clean -C ./memoria
 	make clean -C ./cpu
 	make clean -C ./kernel
-	-rm -f *.log *.helgrind *.valgrind
 
+# /////////////////////// Limpiar logs y archivos temporales ///////////////////////
+.PHONY: clean-logs
+clean-logs:
+	@echo "Limpiando archivos .log, .helgrind y .valgrind en todo el repositorio..."
+	@find . -type f \( -name "*.log" -o -name "*.helgrind" -o -name "*.valgrind" \) -exec rm -f {} + || true

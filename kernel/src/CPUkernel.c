@@ -124,7 +124,7 @@ void ejecutar_proceso(cpu *cpu_disponible, t_pcb *proceso_a_ejecutar)
     cpu_disponible->instruccion_actual = EXEC_OP;
     cpu_libre--;
 
-    cambiar_estado_pcb(proceso_a_ejecutar, EXEC);
+    cambiar_estado_pcb_mutex(proceso_a_ejecutar, EXEC);
 
     t_paquete *paquete = crear_paquete_op(EXEC_OP);
     agregar_entero_a_paquete(paquete, proceso_a_ejecutar->PC);
@@ -289,7 +289,7 @@ void interrumpir_ejecucion(cpu *cpu_a_desalojar)
         log_trace(kernel_log, "[INTERRUPT] Actualizando PCB PID=%d con nuevo PC=%d", pid_recibido, nuevo_pc);
 
         pcb->PC = nuevo_pc;
-        cambiar_estado_pcb(pcb, READY);
+        cambiar_estado_pcb_mutex(pcb, READY);
         liberar_cpu(cpu_a_desalojar);
         log_trace(kernel_log, "[INTERRUPT] CPU %d liberada", cpu_a_desalojar->id);
         break;

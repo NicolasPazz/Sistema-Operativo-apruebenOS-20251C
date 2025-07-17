@@ -92,7 +92,7 @@ void *planificador_largo_plazo(void *arg)
             exit(EXIT_FAILURE);
         }
 
-        if (!pcb)
+        if (!pcb || pcb == NULL)
         {
             log_error(kernel_log, "[PLANI LP] No se pudo obtener un PCB de la cola NEW");
             pthread_mutex_unlock(&mutex_inicializacion_procesos);
@@ -112,7 +112,7 @@ void *planificador_largo_plazo(void *arg)
             continue;
         }
 
-        cambiar_estado_pcb(pcb, READY);
+        cambiar_estado_pcb_mutex(pcb, READY);
         pthread_mutex_unlock(&mutex_inicializacion_procesos);
     }
 }
@@ -138,7 +138,7 @@ void *gestionar_exit(void *arg)
 
         t_pcb *pcb = elegir_por_fifo(cola_exit);
 
-        if (!pcb)
+        if (!pcb || pcb == NULL)
         {
             log_error(kernel_log, "[PLANI LP] [EXIT] No se pudo obtener PCB desde EXIT");
             pthread_mutex_unlock(&mutex_cola_exit);
@@ -194,7 +194,7 @@ void *verificar_procesos_rechazados()
             exit(EXIT_FAILURE);
         }
 
-        if (!pcb_susp)
+        if (!pcb_susp || pcb_susp == NULL)
         {
             log_error(kernel_log, "[PLANI LP] [RECHAZADOS] No se pudo obtener PCB desde SUSP READY");
             pthread_mutex_unlock(&mutex_cola_susp_ready);
@@ -216,7 +216,7 @@ void *verificar_procesos_rechazados()
         {
             log_debug(kernel_log, "[PLANI LP] [RECHAZADOS] Proceso PID %d desuspendido correctamente", pcb_susp->PID);
             pthread_mutex_unlock(&mutex_cola_susp_ready);
-            cambiar_estado_pcb(pcb_susp, READY);
+            cambiar_estado_pcb_mutex(pcb_susp, READY);
             pthread_mutex_lock(&mutex_cola_susp_ready);
             //disminuir_procesos_rechazados();
         }
@@ -261,7 +261,7 @@ void *verificar_procesos_rechazados()
             exit(EXIT_FAILURE);
         }
 
-        if (!pcb)
+        if (!pcb || pcb == NULL)
         {
             log_error(kernel_log, "[PLANI LP] [RECHAZADOS] No se pudo obtener un PCB de la cola NEW");
             pthread_mutex_unlock(&mutex_cola_new);
@@ -282,7 +282,7 @@ void *verificar_procesos_rechazados()
         {
             log_debug(kernel_log, "[PLANI LP] [RECHAZADOS] Proceso PID %d inicializado en memoria", pcb->PID);
             pthread_mutex_unlock(&mutex_cola_new);
-            cambiar_estado_pcb(pcb, READY);
+            cambiar_estado_pcb_mutex(pcb, READY);
             procesos_new_rechazados--;
         }
     }

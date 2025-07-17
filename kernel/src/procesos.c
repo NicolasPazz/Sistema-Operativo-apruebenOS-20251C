@@ -32,12 +32,13 @@ const char *estado_to_string(Estados estado)
 
 void mostrar_pcb(t_pcb *PCB)
 {
-    if (PCB == NULL)
+    if (!PCB || PCB == NULL)
     {
         log_error(kernel_log, "mostrar_pcb: PCB es NULL");
         return;
     }
 
+    pthread_mutex_lock(&PCB->mutex);
     log_trace(kernel_log, "-*-*-*-*-*- PCB -*-*-*-*-*-");
     log_trace(kernel_log, "PID: %d", PCB->PID);
     log_trace(kernel_log, "PC: %d", PCB->PC);
@@ -49,6 +50,7 @@ void mostrar_pcb(t_pcb *PCB)
     log_trace(kernel_log, "Path: %s", PCB->path ? PCB->path : "(null)");
     log_trace(kernel_log, "Tamanio de memoria: %d", PCB->tamanio_memoria);
     log_trace(kernel_log, "-*-*-*-*-*-*-*-*-*-*-*-*-*-");
+    pthread_mutex_unlock(&PCB->mutex);
 }
 
 void mostrar_metrica(const char *nombre, int *metrica)
@@ -75,7 +77,7 @@ void mostrar_colas_estados()
 
 void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
 {
-    if (PCB == NULL)
+    if (!PCB || PCB == NULL)
     {
         log_error(kernel_log, "cambiar_estado_pcb: PCB es NULL");
         terminar_kernel();
@@ -104,6 +106,7 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
         if (!cola_origen)
         {
             log_error(kernel_log, "cambiar_estado_pcb: Error al obtener las colas correspondientes");
+
             terminar_kernel();
             exit(EXIT_FAILURE);
         }
@@ -227,6 +230,19 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
         exit(EXIT_FAILURE);
     }
     mostrar_colas_estados();
+}
+void cambiar_estado_pcb_mutex(t_pcb *PCB, Estados nuevo_estado_enum)
+{
+    if (!PCB || PCB == NULL)
+    {
+        log_error(kernel_log, "cambiar_estado_pcb_mutex: PCB es NULL");
+        terminar_kernel();
+        exit(EXIT_FAILURE);
+    }
+
+    pthread_mutex_lock(&PCB->mutex);
+    cambiar_estado_pcb(PCB, nuevo_estado_enum);
+    pthread_mutex_unlock(&PCB->mutex);
 }
 
 bool transicion_valida(Estados actual, Estados destino)
@@ -359,8 +375,10 @@ void liberar_cola_por_estado(Estados estado)
 
 void loguear_metricas_estado(t_pcb *pcb)
 {
-    if (!pcb)
+    if (!pcb || pcb == NULL){
+        log_error(kernel_log, "loguear_metricas_estado: PCB es NULL");
         return;
+    }
 
     log_info(kernel_log, NARANJA("## (%d) - Métricas de estado:"), pcb->PID);
 
@@ -441,14 +459,14 @@ t_pcb *buscar_y_remover_pcb_por_pid(t_list *cola, int pid)
 
 void liberar_pcb(t_pcb *pcb)
 {
-    if (!pcb)
+    if (!pcb || pcb == NULL)
     {
         log_error(kernel_log, "liberar_pcb: PCB es NULL");
         return;
     }
+    pthread_mutex_lock(&pcb->mutex);
 
     list_remove_element(cola_exit, pcb);
-    pthread_mutex_unlock(&mutex_cola_exit);
 
     pthread_mutex_lock(&mutex_cola_procesos);
     list_remove_element(cola_procesos, pcb);
@@ -459,6 +477,8 @@ void liberar_pcb(t_pcb *pcb)
     free(pid_key);
 
     free(pcb->path);
+    pthread_mutex_unlock(&pcb->mutex);
+    pthread_mutex_destroy(&pcb->mutex);
     free(pcb);
 }
 

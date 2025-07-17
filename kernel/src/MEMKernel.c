@@ -5,8 +5,8 @@ int conectar_memoria()
 {
     log_trace(kernel_log, "[KERNEL->MEMORIA] Conectando a Memoria en %s:%s", IP_MEMORIA, PUERTO_MEMORIA);
 
-    int fd = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, kernel_log);
-    if (fd == -1)
+    int fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, kernel_log);
+    if (fd_memoria == -1)
     {
         log_error(kernel_log, "[KERNEL->MEMORIA] no se pudo abrir socket");
         terminar_kernel();
@@ -16,51 +16,51 @@ int conectar_memoria()
     log_trace(kernel_log, "[KERNEL->MEMORIA] socket abierto");
 
     int handshake = HANDSHAKE_MEMORIA_KERNEL;
-    if (send(fd, &handshake, sizeof(handshake), 0) <= 0)
+    if (send(fd_memoria, &handshake, sizeof(handshake), 0) <= 0)
     {
         log_error(kernel_log, "[KERNEL->MEMORIA] fallo handshake");
-        close(fd);
+        close(fd_memoria);
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
 
-    log_trace(kernel_log, "[KERNEL->MEMORIA] fd=%d OK", fd);
-    return fd;
+    log_trace(kernel_log, "[KERNEL->MEMORIA] fd_memoria=%d OK", fd_memoria);
+    return fd_memoria;
 }
 
-void desconectar_memoria(int fd)
+void desconectar_memoria(int fd_memoria)
 {
-    if (fd != -1)
-        close(fd);
+    if (fd_memoria != -1)
+        close(fd_memoria);
 }
 
 bool inicializar_proceso_en_memoria(t_pcb *pcb)
 {
     log_trace(kernel_log, "[KERNEL->MEMORIA] Inicializando proceso en Memoria: PID %d", pcb->PID);
 
-    int fd = conectar_memoria();
+    int fd_memoria = conectar_memoria();
 
     t_paquete *paq = crear_paquete_op(INIT_PROC_OP);
     agregar_a_paquete(paq, &pcb->PID, sizeof(int));
     agregar_a_paquete(paq, pcb->path, strlen(pcb->path) + 1);
     agregar_a_paquete(paq, &pcb->tamanio_memoria, sizeof(int));
 
-    enviar_paquete(paq, fd);
+    enviar_paquete(paq, fd_memoria);
     eliminar_paquete(paq);
 
     log_trace(kernel_log, "[KERNEL->MEMORIA] Esperando respuesta de Memoria para INIT_PROC_OP");
 
     t_respuesta rsp;
-    if (recv(fd, &rsp, sizeof(rsp), MSG_WAITALL) <= 0 ||
+    if (recv(fd_memoria, &rsp, sizeof(rsp), MSG_WAITALL) <= 0 ||
         (rsp != OK && rsp != ERROR))
     {
         log_error(kernel_log, "[KERNEL->MEMORIA] INIT_PROC_OP: respuesta inválida/timeout");
-        desconectar_memoria(fd);
+        desconectar_memoria(fd_memoria);
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
 
-    desconectar_memoria(fd);
+    desconectar_memoria(fd_memoria);
 
     if (rsp == OK)
     {
@@ -74,6 +74,8 @@ bool inicializar_proceso_en_memoria(t_pcb *pcb)
 
 bool hay_espacio_suficiente_memoria(int tamanio)
 {
+    int fd_memoria = conectar_memoria();
+
     log_trace(kernel_log, "[KERNEL->MEMORIA] Verificando espacio suficiente en memoria para tamaño %d", tamanio);
     t_paquete *paquete = crear_paquete_op(CHECK_MEMORY_SPACE_OP);
     agregar_entero_a_paquete(paquete, tamanio);
@@ -81,6 +83,8 @@ bool hay_espacio_suficiente_memoria(int tamanio)
     eliminar_paquete(paquete);
 
     int respuesta = recibir_operacion(fd_memoria);
+    desconectar_memoria(fd_memoria);
+
     if (respuesta < 0 || (respuesta != OK && respuesta != ERROR))
     {
         log_error(kernel_log, "[KERNEL->MEMORIA] Error al recibir respuesta de memoria");
@@ -108,26 +112,26 @@ bool hay_espacio_suficiente_memoria(int tamanio)
 
 static bool enviar_op_memoria(int op_code, int pid)
 {
-    int fd = conectar_memoria();
+    int fd_memoria = conectar_memoria();
 
     log_trace(kernel_log, "[KERNEL->MEMORIA] Enviando operación %d a Memoria para PID %d", op_code, pid);
     t_paquete *paq = crear_paquete_op(op_code);
     agregar_entero_a_paquete(paq, pid);
 
-    enviar_paquete(paq, fd);
+    enviar_paquete(paq, fd_memoria);
     eliminar_paquete(paq);
 
     t_respuesta rsp;
-    if (recv(fd, &rsp, sizeof(rsp), MSG_WAITALL) <= 0 ||
+    if (recv(fd_memoria, &rsp, sizeof(rsp), MSG_WAITALL) <= 0 ||
         (rsp != OK && rsp != ERROR))
     {
         log_error(kernel_log, "[KERNEL->MEMORIA] Error al recibir respuesta de Memoria para OP %d y PID %d", op_code, pid);
-        desconectar_memoria(fd);
+        desconectar_memoria(fd_memoria);
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
 
-    desconectar_memoria(fd);
+    desconectar_memoria(fd_memoria);
 
     if (rsp == OK)
     {

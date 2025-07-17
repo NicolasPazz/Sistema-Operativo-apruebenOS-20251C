@@ -21,8 +21,7 @@ extern t_dictionary *tiempos_por_pid;
 extern t_dictionary *archivo_por_pcb;
 
 // Sockets
-extern int fd_memoria;
-extern int fd_dispatch;
+extern int fd_kernel_dispatch;
 extern int fd_interrupt;
 
 // Config
