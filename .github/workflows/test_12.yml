@@ -1,4 +1,4 @@
-name: Test de Valgrind
+name: "Test 12: ESTABILIDAD GENERAL con 4 CPUS + 4 IOs y valgrind"
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
           cd so-commons-library
           make install
 
-      - name: Ejecutar test de Valgrind
+      - name: Ejecutar test
         run: |
-          chmod +x tests/testvg.sh
-          ./tests/testvg.sh
+          chmod +x ejecutar_test.sh
+          ./ejecutar_test.sh 12

@@ -184,6 +184,8 @@ void verificar_procesos_bloqueados(io *io)
 
     enviar_io(io, pendiente->pcb, pendiente->tiempo_a_usar);
 
+    free(pendiente);
+
     pthread_mutex_unlock(&mutex_pcbs_esperando_io);
 }
 
@@ -207,7 +209,7 @@ void exit_procesos_relacionados(io *dispositivo)
     if (dispositivo->proceso_actual != NULL)
     {
         log_trace(kernel_log, "Proceso PID=%d ejecutando en IO desconectada, moviendo a EXIT", dispositivo->proceso_actual->PID);
-        cambiar_estado_pcb(dispositivo->proceso_actual, EXIT_ESTADO);
+        cambiar_estado_pcb_mutex(dispositivo->proceso_actual, EXIT_ESTADO);
         dispositivo->proceso_actual = NULL;
     }
     else
@@ -264,7 +266,7 @@ void exit_procesos_relacionados(io *dispositivo)
         {
             t_pcb_io *pcb_io_actual = list_get(pcbs_afectados, i);
             log_trace(kernel_log, "Proceso PID=%d en IO desconectada, moviendo a EXIT", pcb_io_actual->pcb->PID);
-            cambiar_estado_pcb(pcb_io_actual->pcb, EXIT_ESTADO);
+            cambiar_estado_pcb_mutex(pcb_io_actual->pcb, EXIT_ESTADO);
             free(pcb_io_actual);
         }
 

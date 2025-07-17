@@ -15,7 +15,7 @@ int numero_cpu;
 // Manejador de señales para terminación limpia
 void signal_handler(int sig) {
     if (sig == SIGINT) {
-        printf("\n\nRecibida señal de terminación. Cerrando CPU...\n");
+        printf("\nRecibida señal de terminación. Cerrando CPU...\n");
         log_trace(cpu_log, "Recibida señal SIGINT. Iniciando terminación limpia del CPU...");
         terminar_programa();
         exit(EXIT_SUCCESS);

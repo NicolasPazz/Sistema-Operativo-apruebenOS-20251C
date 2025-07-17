@@ -4,6 +4,7 @@
 #include "../headers/metricas.h"
 #include "../headers/manejo_swap.h"
 #include "../headers/bloqueo_paginas.h"
+#include "../headers/interfaz_memoria.h"
 #include <commons/log.h>
 #include <commons/string.h>
 #include <string.h>
@@ -600,9 +601,11 @@ void finalizar_sistema_memoria(void) {
         dictionary_destroy(sistema_memoria->metricas_procesos); // NO destruir elementos
     }
     log_trace(logger, "## Diccionario de métricas de procesos destruido");
-    /*if (sistema_memoria->process_instructions) {
-        liberar_instrucciones_dictionary(sistema_memoria->process_instructions);
-    }*/ // LO COMENTO PORQUE GENERA SEGMENTATION FAULT
+    if (sistema_memoria->process_instructions) {
+        // Destruir lista global de instrucciones y luego los nodos del diccionario
+        instructions_destroy();
+        dictionary_destroy(sistema_memoria->process_instructions);
+    } // LO COMENTO PORQUE GENERA SEGMENTATION FAULT
     log_trace(logger, "## Diccionario de instrucciones de procesos destruido");
     // Destruir mutexes
     pthread_mutex_destroy(&sistema_memoria->mutex_sistema);

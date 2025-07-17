@@ -6,13 +6,13 @@ void *timer_suspension(void *v_arg)
     t_pcb *pcb = arg->pcb;
     bool *flag = arg->vigente;
     int pid = arg->pid;
-    double inicio = get_time() - pcb->tiempo_inicio_blocked;
+    double inicio = fmax(0, (get_time() - pcb->tiempo_inicio_blocked));
 
     log_trace(kernel_log, AZUL("[PLANI MP] PID %d pasó a blocked hace %.3f ms"), pid, inicio);
 
     usleep((TIEMPO_SUSPENSION - inicio) * 1000); // usleep usa microsegundos: 1 ms = 1000 µs
 
-    if (!pcb)
+    if (!pcb || pcb == NULL)
     {
         log_trace(kernel_log, AZUL("[PLANI MP] (%d Timer de suspensión ignorado por PCB null)"), pid);
         if (flag)
@@ -20,12 +20,15 @@ void *timer_suspension(void *v_arg)
         free(arg);
         return NULL;
     }
-    else if (!*flag)
+
+    pthread_mutex_lock(&pcb->mutex);
+    if (!*flag)
     {
         log_trace(kernel_log, AZUL("[PLANI MP] (%d Timer de suspensión ignorado por flag desactivada"), pid);
         if (flag)
             free(flag);
         free(arg);
+        pthread_mutex_unlock(&pcb->mutex);
         return NULL;
     }
     else if (pcb->Estado != BLOCKED)
@@ -34,6 +37,7 @@ void *timer_suspension(void *v_arg)
         if (flag)
             free(flag);
         free(arg);
+        pthread_mutex_unlock(&pcb->mutex);
         return NULL;
     }
     else if (pcb->tiempo_inicio_blocked < 0)
@@ -42,6 +46,7 @@ void *timer_suspension(void *v_arg)
         if (flag)
             free(flag);
         free(arg);
+        pthread_mutex_unlock(&pcb->mutex);
         return NULL;
     }
     else if (pcb->timer_flag != flag)
@@ -50,6 +55,7 @@ void *timer_suspension(void *v_arg)
         if (flag)
             free(flag);
         free(arg);
+        pthread_mutex_unlock(&pcb->mutex);
         return NULL;
     }
 
@@ -60,18 +66,18 @@ void *timer_suspension(void *v_arg)
 
     cambiar_estado_pcb(pcb, SUSP_BLOCKED);
 
-    free(flag);
+    if (flag)
+        free(flag);
     free(arg);
 
     if (!suspender_proceso(pcb))
     {
         log_error(kernel_log, "No se pudo suspender el proceso PID=%d", pcb->PID);
-        if (flag)
-            free(flag);
-        free(arg);
+        pthread_mutex_unlock(&pcb->mutex);
         terminar_kernel();
         exit(EXIT_FAILURE);
     }
+    pthread_mutex_unlock(&pcb->mutex);
 
     log_trace(kernel_log, AZUL("[PLANI MP] Proceso PID %d suspendido correctamente"), pcb->PID);
 

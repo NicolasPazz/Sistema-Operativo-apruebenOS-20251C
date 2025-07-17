@@ -147,7 +147,7 @@ int reanudar_proceso_suspendido(int pid) {
     snprintf(pid_str, sizeof(pid_str), "%d", pid);
     t_proceso_memoria* proceso = dictionary_get(sistema_memoria->procesos, pid_str);
     if (proceso == NULL || !proceso->suspendido) {
-        log_warning(logger, "PID: %d - Proceso no está suspendido", pid);
+        log_error(logger, "PID: %d - Proceso no está suspendido", pid);
         return 0;
     }
     
@@ -163,7 +163,7 @@ int reanudar_proceso_suspendido(int pid) {
     
     // Verificar si hay espacio suficiente en memoria principal
     if (sistema_memoria->admin_marcos->frames_libres < estructura->paginas_totales) {
-        log_error(logger, "PID: %d - No hay suficiente espacio en memoria para reanudar proceso", pid);
+        log_debug(logger, "PID: %d - No hay suficiente espacio en memoria para reanudar proceso", pid);
         pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
         return 0;
     }

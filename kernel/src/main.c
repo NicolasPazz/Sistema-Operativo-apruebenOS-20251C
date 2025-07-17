@@ -6,7 +6,7 @@ void signal_handler(int sig)
 {
     if (sig == SIGINT)
     {
-        printf("\n\nRecibida señal de terminación. Cerrando kernel...\n");
+        printf("\nRecibida señal de terminación. Cerrando kernel...\n");
         terminar_kernel();
         exit(EXIT_SUCCESS);
     }
