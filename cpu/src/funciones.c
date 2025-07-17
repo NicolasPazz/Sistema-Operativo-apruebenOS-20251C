@@ -17,9 +17,9 @@ void func_write(char* direccion_logica_str, char* datos) {
 
     // 1. CACHE
     if (cache_habilitada()) {
-        int pos = buscar_pagina_en_cache(nro_pagina);
+        int pos = buscar_pagina_en_cache(pid_ejecutando, nro_pagina);
         if (pos != -1) {
-            cache_modificar(nro_pagina, datos); // Asume malloc interno
+            cache_modificar(pid_ejecutando, nro_pagina, datos); // Asume malloc interno
             return;
         }
         log_info(cpu_log, ROJO("PID: %d - Cache Miss - Página: %d"), pid_ejecutando, nro_pagina);
@@ -79,7 +79,7 @@ void func_write(char* direccion_logica_str, char* datos) {
         }
         
         char* contenido = (char*)list_get(lista_respuesta, 0);
-        cache_escribir(nro_pagina, contenido);
+        cache_escribir(pid_ejecutando, nro_pagina, contenido, true);
         list_destroy_and_destroy_elements(lista_respuesta, free);
     }
 }
@@ -92,9 +92,9 @@ void func_read(char* direccion_logica_str, char* tam_str) {
 
     // 1. CACHE
     if (cache_habilitada()) {
-        int pos = buscar_pagina_en_cache(nro_pagina);
+        int pos = buscar_pagina_en_cache(pid_ejecutando, nro_pagina);
         if (pos != -1) {
-            char* contenido = cache_leer(nro_pagina); // Asume malloc interno
+            char* contenido = cache_leer(pid_ejecutando, nro_pagina); // Asume malloc interno
             log_trace(cpu_log, "PID: %d - Contenido leído (cache): %s", pid_ejecutando, contenido);
             free(contenido);
             return;
@@ -166,7 +166,7 @@ void func_read(char* direccion_logica_str, char* tam_str) {
         }
         
         char* contenido_pagina = (char*)list_get(lista_respuesta_pagina, 0);
-        cache_escribir(nro_pagina, contenido_pagina);
+        cache_escribir(pid_ejecutando, nro_pagina, contenido_pagina, false);
         list_destroy_and_destroy_elements(lista_respuesta_pagina, free);
     }
 }
