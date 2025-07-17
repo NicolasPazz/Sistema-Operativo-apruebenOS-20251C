@@ -3,28 +3,26 @@
 
 int conectar_memoria()
 {
-    log_trace(kernel_log, "[KERNEL->MEMORIA] Conectando a Memoria en %s:%s", IP_MEMORIA, PUERTO_MEMORIA);
+    log_debug(kernel_log, "[KERNEL->MEMORIA] Conectando a Memoria en %s:%s", IP_MEMORIA, PUERTO_MEMORIA);
 
     int fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, kernel_log);
     if (fd_memoria == -1)
     {
         log_error(kernel_log, "[KERNEL->MEMORIA] no se pudo abrir socket");
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        terminar_kernel(EXIT_FAILURE);
     }
 
-    log_trace(kernel_log, "[KERNEL->MEMORIA] socket abierto");
+    log_debug(kernel_log, "[KERNEL->MEMORIA] socket abierto");
 
     int handshake = HANDSHAKE_MEMORIA_KERNEL;
     if (send(fd_memoria, &handshake, sizeof(handshake), 0) <= 0)
     {
         log_error(kernel_log, "[KERNEL->MEMORIA] fallo handshake");
         close(fd_memoria);
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        terminar_kernel(EXIT_FAILURE);
     }
 
-    log_trace(kernel_log, "[KERNEL->MEMORIA] fd_memoria=%d OK", fd_memoria);
+    log_debug(kernel_log, "[KERNEL->MEMORIA] fd_memoria=%d OK", fd_memoria);
     return fd_memoria;
 }
 
@@ -36,7 +34,7 @@ void desconectar_memoria(int fd_memoria)
 
 bool inicializar_proceso_en_memoria(t_pcb *pcb)
 {
-    log_trace(kernel_log, "[KERNEL->MEMORIA] Inicializando proceso en Memoria: PID %d", pcb->PID);
+    log_debug(kernel_log, "[KERNEL->MEMORIA] Inicializando proceso en Memoria: PID %d", pcb->PID);
 
     int fd_memoria = conectar_memoria();
 
@@ -48,7 +46,7 @@ bool inicializar_proceso_en_memoria(t_pcb *pcb)
     enviar_paquete(paq, fd_memoria);
     eliminar_paquete(paq);
 
-    log_trace(kernel_log, "[KERNEL->MEMORIA] Esperando respuesta de Memoria para INIT_PROC_OP");
+    log_debug(kernel_log, "[KERNEL->MEMORIA] Esperando respuesta de Memoria para INIT_PROC_OP");
 
     t_respuesta rsp;
     if (recv(fd_memoria, &rsp, sizeof(rsp), MSG_WAITALL) <= 0 ||
@@ -56,19 +54,18 @@ bool inicializar_proceso_en_memoria(t_pcb *pcb)
     {
         log_error(kernel_log, "[KERNEL->MEMORIA] INIT_PROC_OP: respuesta inválida/timeout");
         desconectar_memoria(fd_memoria);
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        terminar_kernel(EXIT_FAILURE);
     }
 
     desconectar_memoria(fd_memoria);
 
     if (rsp == OK)
     {
-        log_trace(kernel_log, "[KERNEL->MEMORIA] INIT_PROC_OP: PID %d inicializado en Memoria", pcb->PID);
+        log_debug(kernel_log, "[KERNEL->MEMORIA] INIT_PROC_OP: PID %d inicializado en Memoria", pcb->PID);
         return true;
     }
 
-    log_trace(kernel_log, "[KERNEL->MEMORIA] INIT_PROC_OP: Memoria sin espacio para PID %d", pcb->PID);
+    log_debug(kernel_log, "[KERNEL->MEMORIA] INIT_PROC_OP: Memoria sin espacio para PID %d", pcb->PID);
     return false;
 }
 
@@ -76,7 +73,7 @@ bool hay_espacio_suficiente_memoria(int tamanio)
 {
     int fd_memoria = conectar_memoria();
 
-    log_trace(kernel_log, "[KERNEL->MEMORIA] Verificando espacio suficiente en memoria para tamaño %d", tamanio);
+    log_debug(kernel_log, "[KERNEL->MEMORIA] Verificando espacio suficiente en memoria para tamaño %d", tamanio);
     t_paquete *paquete = crear_paquete_op(CHECK_MEMORY_SPACE_OP);
     agregar_entero_a_paquete(paquete, tamanio);
     enviar_paquete(paquete, fd_memoria);
@@ -88,33 +85,32 @@ bool hay_espacio_suficiente_memoria(int tamanio)
     if (respuesta < 0 || (respuesta != OK && respuesta != ERROR))
     {
         log_error(kernel_log, "[KERNEL->MEMORIA] Error al recibir respuesta de memoria");
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        terminar_kernel(EXIT_FAILURE);
     }
 
     if (respuesta == OK)
     {
-        log_trace(kernel_log, "[KERNEL->MEMORIA] Espacio suficiente en memoria para tamaño %d", tamanio);
+        log_debug(kernel_log, "[KERNEL->MEMORIA] Espacio suficiente en memoria para tamaño %d", tamanio);
         return true;
     }
     else if (respuesta == ERROR)
     {
-        log_trace(kernel_log, "[KERNEL->MEMORIA] No hay espacio suficiente en memoria para tamaño %d", tamanio);
+        log_debug(kernel_log, "[KERNEL->MEMORIA] No hay espacio suficiente en memoria para tamaño %d", tamanio);
         return false;
     }
     else
     {
         log_error(kernel_log, "[KERNEL->MEMORIA] Respuesta inesperada de memoria: %d", respuesta);
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        terminar_kernel(EXIT_FAILURE);
     }
+    return false;
 }
 
 static bool enviar_op_memoria(int op_code, int pid)
 {
     int fd_memoria = conectar_memoria();
 
-    log_trace(kernel_log, "[KERNEL->MEMORIA] Enviando operación %d a Memoria para PID %d", op_code, pid);
+    log_debug(kernel_log, "[KERNEL->MEMORIA] Enviando operación %d a Memoria para PID %d", op_code, pid);
     t_paquete *paq = crear_paquete_op(op_code);
     agregar_entero_a_paquete(paq, pid);
 
@@ -127,19 +123,18 @@ static bool enviar_op_memoria(int op_code, int pid)
     {
         log_error(kernel_log, "[KERNEL->MEMORIA] Error al recibir respuesta de Memoria para OP %d y PID %d", op_code, pid);
         desconectar_memoria(fd_memoria);
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        terminar_kernel(EXIT_FAILURE);
     }
 
     desconectar_memoria(fd_memoria);
 
     if (rsp == OK)
     {
-        log_trace(kernel_log, "[KERNEL->MEMORIA] Operación %d exitosa para PID %d", op_code, pid);
+        log_debug(kernel_log, "[KERNEL->MEMORIA] Operación %d exitosa para PID %d", op_code, pid);
         return true;
     }
 
-    log_trace(kernel_log, "[KERNEL->MEMORIA] Operación %d fallida para PID %d", op_code, pid);
+    log_debug(kernel_log, "[KERNEL->MEMORIA] Operación %d fallida para PID %d", op_code, pid);
     return false;
 }
 

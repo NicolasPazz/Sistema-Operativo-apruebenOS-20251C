@@ -1,5 +1,6 @@
 #include "../headers/kernel.h"
 #include <dirent.h>
+#include <signal.h>
 
 // Manejador de señales para terminación limpia
 void signal_handler(int sig)
@@ -7,8 +8,7 @@ void signal_handler(int sig)
     if (sig == SIGINT)
     {
         printf("\nRecibida señal de terminación. Cerrando kernel...\n");
-        terminar_kernel();
-        exit(EXIT_SUCCESS);
+        terminar_kernel(EXIT_SUCCESS);
     }
 }
 
@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
     iniciar_diccionario_tiempos();
     iniciar_diccionario_archivos_por_pcb();
 
-    pthread_mutex_lock(&mutex_planificador_lp);
+    LOCK_CON_LOG(mutex_planificador_lp);
     iniciar_planificadores();
 
     if (strcmp(ALGORITMO_CORTO_PLAZO, "SRT") == 0)
@@ -92,8 +92,7 @@ int main(int argc, char *argv[])
     if (pthread_create(&hilo_dispatch, NULL, hilo_servidor_dispatch, NULL) != 0)
     {
         log_error(kernel_log, "Error al crear hilo de servidor Dispatch");
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        terminar_kernel(EXIT_FAILURE);
     }
     pthread_detach(hilo_dispatch);
 
@@ -102,8 +101,7 @@ int main(int argc, char *argv[])
     if (pthread_create(&hilo_interrupt, NULL, hilo_servidor_interrupt, NULL) != 0)
     {
         log_error(kernel_log, "Error al crear hilo de servidor Interrupt");
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        terminar_kernel(EXIT_FAILURE);
     }
     pthread_detach(hilo_interrupt);
 
@@ -112,8 +110,7 @@ int main(int argc, char *argv[])
     if (pthread_create(&hilo_io, NULL, hilo_servidor_io, NULL) != 0)
     {
         log_error(kernel_log, "Error al crear hilo de servidor IO");
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        terminar_kernel(EXIT_FAILURE);
     }
     pthread_detach(hilo_io);
 
@@ -125,22 +122,22 @@ int main(int argc, char *argv[])
 
         while (true)
         {
-            pthread_mutex_lock(&mutex_conexiones);
+            LOCK_CON_LOG(mutex_conexiones);
             if (conectado_cpu && conectado_io)
             {
-                pthread_mutex_unlock(&mutex_conexiones);
+                UNLOCK_CON_LOG(mutex_conexiones);
                 break;
             }
-            pthread_mutex_unlock(&mutex_conexiones);
+            UNLOCK_CON_LOG(mutex_conexiones);
             sleep(1);
         }
 
-        log_trace(kernel_log, "CPU y IO conectados. Continuando ejecucion");
+        log_debug(kernel_log, "CPU y IO conectados. Continuando ejecucion");
     }
 
     //////////////////////////// Primer proceso ////////////////////////////
 
-    log_trace(kernel_log, "Creando proceso inicial:  Archivo: %s, Tamanio: %d", archivo_pseudocodigo, tamanio_proceso);
+    log_debug(kernel_log, "Creando proceso inicial:  Archivo: %s, Tamanio: %d", archivo_pseudocodigo, tamanio_proceso);
     INIT_PROC(archivo_pseudocodigo, tamanio_proceso);
 
     //////////////////////////// Esperar enter ////////////////////////////
@@ -162,9 +159,9 @@ int main(int argc, char *argv[])
         }
     }
 
-    log_trace(kernel_log, "Kernel ejecutandose. Presione Ctrl+C para terminar.");
+    log_debug(kernel_log, "Kernel ejecutandose. Presione Ctrl+C para terminar.");
 
-    pthread_mutex_unlock(&mutex_planificador_lp);
+    UNLOCK_CON_LOG(mutex_planificador_lp);
 
     while (1)
     {
@@ -173,12 +170,12 @@ int main(int argc, char *argv[])
 
     //////////////////////////// Terminar ////////////////////////////
 
-    terminar_kernel();
+    terminar_kernel(EXIT_SUCCESS);
 
     return EXIT_SUCCESS;
 }
 
 void iterator(char *value)
 {
-    log_trace(kernel_log, "%s", value);
+    log_debug(kernel_log, "%s", value);
 }

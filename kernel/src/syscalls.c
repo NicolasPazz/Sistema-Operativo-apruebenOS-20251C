@@ -2,8 +2,6 @@
 #include "../headers/planificadores.h"
 #include <time.h>
 
-// t_temporal *tiempo_estado_actual;
-
 // Variable global para el siguiente PID
 static int siguiente_pid = 0;
 // Variables externas
@@ -39,9 +37,9 @@ void INIT_PROC(char *nombre_archivo, int tam_memoria)
 
 void IO(char *nombre_io, int tiempo_a_usar, t_pcb *pcb_a_io)
 {
-    if (!pcb_a_io || pcb_a_io == NULL)
+    if (!pcb_a_io)
     {
-        log_error(kernel_log, "IO: PCB nulo");
+        log_error(kernel_log, "PCB nulo");
         return;
     }
 
@@ -49,13 +47,13 @@ void IO(char *nombre_io, int tiempo_a_usar, t_pcb *pcb_a_io)
 
     if (!dispositivo)
     {
-        log_trace(kernel_log, "IO: No existe el dispositivo '%s'", nombre_io);
+        log_debug(kernel_log, "No existe el dispositivo '%s'", nombre_io);
         cambiar_estado_pcb_mutex(pcb_a_io, EXIT_ESTADO);
         return;
     }
 
     log_info(kernel_log, PURPURA("## (%d) - Bloqueado por IO: %s"), pcb_a_io->PID, nombre_io);
-    log_trace(kernel_log, "## (%d) - Bloqueado por IO: %s (tiempo: %d ms)", pcb_a_io->PID, nombre_io, tiempo_a_usar);
+    log_debug(kernel_log, "## (%d) - Bloqueado por IO: %s (tiempo: %d ms)", pcb_a_io->PID, nombre_io, tiempo_a_usar);
 
     cambiar_estado_pcb_mutex(pcb_a_io, BLOCKED);
     bloquear_pcb_por_io(nombre_io, pcb_a_io, tiempo_a_usar);
@@ -63,55 +61,49 @@ void IO(char *nombre_io, int tiempo_a_usar, t_pcb *pcb_a_io)
 
 //////////////////////////////////////////////////////////// EXIT ////////////////////////////////////////////////////////////
 
-void EXIT(t_pcb *pcb_a_finalizar)
+void EXIT(t_pcb **ptr_pcb_a_finalizar)
 {
-    if (!pcb_a_finalizar || pcb_a_finalizar == NULL)
+    if (!ptr_pcb_a_finalizar || !(*ptr_pcb_a_finalizar))
     {
-        log_error(kernel_log, "EXIT: PCB nulo");
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        log_error(kernel_log, "PCB nulo o puntero a PCB nulo");
+        terminar_kernel(EXIT_FAILURE);
     }
+    t_pcb *pcb_a_finalizar = *ptr_pcb_a_finalizar;
 
-    log_trace(kernel_log, "EXIT: esperando mutex_cola_exit para eliminar de cola exit PCB PID=%d", pcb_a_finalizar->PID);
-    pthread_mutex_lock(&mutex_cola_exit);
-    log_trace(kernel_log, "EXIT: bloqueando mutex_cola_exit para eliminar de cola exit PCB PID=%d", pcb_a_finalizar->PID);
-
-    pthread_mutex_lock(&pcb_a_finalizar->mutex);
+    LOCK_CON_LOG(mutex_cola_exit);
+    LOCK_CON_LOG_PCB(pcb_a_finalizar->mutex, pcb_a_finalizar->PID);
     if (!finalizar_proceso_en_memoria(pcb_a_finalizar->PID))
     {
-        log_error(kernel_log, "EXIT: Memoria rechazó FINALIZAR_PROC_OP para PID %d", pcb_a_finalizar->PID);
-        pthread_mutex_unlock(&pcb_a_finalizar->mutex);
-        pthread_mutex_unlock(&mutex_cola_exit);
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        log_error(kernel_log, "Memoria rechazó FINALIZAR_PROC_OP para PID %d", pcb_a_finalizar->PID);
+        UNLOCK_CON_LOG_PCB(pcb_a_finalizar->mutex, pcb_a_finalizar->PID);
+        UNLOCK_CON_LOG(mutex_cola_exit);
+        terminar_kernel(EXIT_FAILURE);
     }
 
     log_info(kernel_log, ROJO("## (%d) - Finaliza el proceso"), pcb_a_finalizar->PID);
     actualizar_metricas_finalizacion(pcb_a_finalizar);
     loguear_metricas_estado(pcb_a_finalizar);
 
-    pthread_mutex_unlock(&pcb_a_finalizar->mutex);
-
     liberar_pcb(pcb_a_finalizar);
+    *ptr_pcb_a_finalizar = NULL;
 
-    pthread_mutex_unlock(&mutex_cola_exit);
+    UNLOCK_CON_LOG(mutex_cola_exit);
 
     verificar_procesos_restantes();
 }
 
 void actualizar_metricas_finalizacion(t_pcb *pcb)
 {
-    if (!pcb || pcb == NULL)
+    if (!pcb)
     {
-        log_error(kernel_log, "actualizar_metricas_finalizacion: PCB nulo");
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        log_error(kernel_log, "PCB nulo");
+        terminar_kernel(EXIT_FAILURE);
     }
 
     char *pid_key = string_itoa(pcb->PID);
     t_temporal *cronometro = dictionary_get(tiempos_por_pid, pid_key);
 
-    if (cronometro != NULL)
+    if (cronometro)
     {
         temporal_stop(cronometro);
         int64_t tiempo = temporal_gettime(cronometro); // Tiempo en milisegundos
@@ -120,7 +112,7 @@ void actualizar_metricas_finalizacion(t_pcb *pcb)
         pcb->MT[EXIT_ESTADO] += (int)tiempo;
         pcb->ME[EXIT_ESTADO] = 1;
 
-        log_trace(kernel_log,
+        log_debug(kernel_log,
                   "## (%d) - Métricas actualizadas: ME[EXIT]=%d, MT[EXIT]=%d ms",
                   pcb->PID,
                   pcb->ME[EXIT_ESTADO],
@@ -141,16 +133,16 @@ void actualizar_metricas_finalizacion(t_pcb *pcb)
 
 void DUMP_MEMORY(t_pcb *pcb_dump)
 {
-    if (!pcb_dump || pcb_dump == NULL)
+    if (!pcb_dump)
     {
-        log_error(kernel_log, "DUMP_MEMORY: PCB nulo");
+        log_error(kernel_log, "PCB nulo");
         return;
     }
 
     if (dump_memory(pcb_dump->PID))
     {
         cambiar_estado_pcb_mutex(pcb_dump, READY);
-        log_trace(kernel_log, "## (%d) finalizó DUMP_MEMORY exitosamente y pasa a READY", pcb_dump->PID);
+        log_debug(kernel_log, "## (%d) finalizó DUMP_MEMORY exitosamente y pasa a READY", pcb_dump->PID);
     }
     else
     {
