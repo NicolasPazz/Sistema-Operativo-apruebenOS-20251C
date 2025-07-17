@@ -10,6 +10,7 @@ if [[ -z "$1" ]]; then
 fi
 
 numero="$1"
+inicio_13="${2:-1}"
 
 if ! [[ "$numero" =~ ^[0-9]+$ ]] || (( numero < 1 || numero > 13 )); then
     echo "  Número inválido. Debe ser del 1 al 13."
@@ -44,7 +45,12 @@ errores=0
 
 make clean-logs
 clear
-make
+echo -e "\t\e[34m Compilando...\e[0m"
+echo ""
+if ! make; then
+  echo -e "\t\e[1;97;41m ❌ Error: Falló la compilación con make. Abortando.\e[0m"
+  exit 1
+fi
 clear
 echo ""
 
@@ -61,7 +67,7 @@ case $numero in
     ./kernel/bin/kernel PLANI_CORTO_PLAZO 0 kernel_plani_corto_plazo_fifo.config --action
     ) &
     pid_kernel=$!
-    sleep 0.5
+    sleep 1
 
     ./cpu/bin/cpu 1 cpu_plani_corto_plazo.config &
     pid_cpu1=$!
@@ -86,6 +92,8 @@ case $numero in
     echo -e "\e[1;34;47m =====    🔄 Matando IOs con Ctrl+C (SIGINT)    ===== \e[0m"
     kill -SIGINT "$pid_io1"
     kill -SIGINT "$pid_io2"
+    echo ""
+    echo ""
 
     main_pid=$$
     ( sleep 60 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar \e[0m" && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_cpu2 $pid_io1 $pid_io2 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
@@ -126,7 +134,7 @@ case $numero in
     ./kernel/bin/kernel PLANI_CORTO_PLAZO 0 kernel_plani_corto_plazo_sjf.config --action
     ) &
     pid_kernel=$!
-    sleep 0.5
+    sleep 1
 
     ./cpu/bin/cpu 1 cpu_plani_corto_plazo.config &
     pid_cpu1=$!
@@ -142,6 +150,8 @@ case $numero in
 
     echo -e "\e[1;34;47m =====    🔄 Matando IO con Ctrl+C (SIGINT)    ===== \e[0m"
     kill -SIGINT "$pid_io1"
+    echo ""
+    echo ""
 
     main_pid=$$
     ( sleep 60 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar \e[0m" && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
@@ -178,7 +188,7 @@ case $numero in
     ./kernel/bin/kernel PLANI_CORTO_PLAZO 0 kernel_plani_corto_plazo_srt.config --action
     ) &
     pid_kernel=$!
-    sleep 0.5
+    sleep 1
 
     ./cpu/bin/cpu 1 cpu_plani_corto_plazo.config &
     pid_cpu1=$!
@@ -194,6 +204,8 @@ case $numero in
 
     echo -e "\e[1;34;47m =====    🔄 Matando IO con Ctrl+C (SIGINT)    ===== \e[0m"
     kill -SIGINT "$pid_io1"
+    echo ""
+    echo ""
 
     main_pid=$$
     ( sleep 60 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar \e[0m" && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
@@ -231,7 +243,7 @@ case $numero in
     ./kernel/bin/kernel PLANI_LYM_PLAZO 0 kernel_plani_lym_plazo_fifo.config --action
     ) &
     pid_kernel=$!
-    sleep 0.5
+    sleep 1
 
     ./cpu/bin/cpu 1 cpu_plani_lym_plazo.config &
     pid_cpu1=$!
@@ -278,7 +290,7 @@ case $numero in
     ./kernel/bin/kernel PLANI_LYM_PLAZO 0 kernel_plani_lym_plazo_pmcp.config --action
     ) &
     pid_kernel=$!
-    sleep 0.5
+    sleep 1
 
     ./cpu/bin/cpu 1 cpu_plani_lym_plazo.config &
     pid_cpu1=$!
@@ -326,7 +338,7 @@ case $numero in
     ./kernel/bin/kernel MEM_IO_GH_ACTION 90 kernel_memoria_io.config --action
     ) &
     pid_kernel=$!
-    sleep 0.5
+    sleep 1
 
     ./cpu/bin/cpu 1 cpu_memoria_io.config &
     pid_cpu1=$!
@@ -374,7 +386,7 @@ case $numero in
     ./kernel/bin/kernel MEM_BASE_GH_ACTION 256 kernel_memoria_base.config --action
     ) &
     pid_kernel=$!
-    sleep 0.5
+    sleep 1
 
     ./cpu/bin/cpu 1 cpu_memoria_base_clock.config &
     pid_cpu1=$!
@@ -421,7 +433,7 @@ case $numero in
     ./kernel/bin/kernel MEM_BASE_GH_ACTION 256 kernel_memoria_base.config --action
     ) &
     pid_kernel=$!
-    sleep 0.5
+    sleep 1
 
     ./cpu/bin/cpu 1 cpu_memoria_base_clock_m.config &
     pid_cpu1=$!
@@ -468,7 +480,7 @@ case $numero in
     ./kernel/bin/kernel MEM_BASE_GH_ACTION 256 kernel_memoria_base.config --action
     ) &
     pid_kernel=$!
-    sleep 0.5
+    sleep 1
 
     ./cpu/bin/cpu 1 cpu_memoria_base_fifo.config &
     pid_cpu1=$!
@@ -515,7 +527,7 @@ case $numero in
     ./kernel/bin/kernel MEM_BASE_GH_ACTION 256 kernel_memoria_base.config --action
     ) &
     pid_kernel=$!
-    sleep 0.5
+    sleep 1
 
     ./cpu/bin/cpu 1 cpu_memoria_base_lru.config &
     pid_cpu1=$!
@@ -562,7 +574,7 @@ case $numero in
     ./kernel/bin/kernel ESTABILIDAD_GENERAL 256 kernel_estabilidad_general.config --action
     ) &
     pid_kernel=$!
-    sleep 0.5
+    sleep 1
 
     ./cpu/bin/cpu 1 cpu_1_estabilidad_general.config &
     pid_cpu1=$!
@@ -603,6 +615,8 @@ case $numero in
     kill -SIGINT "$pid_io2"
     kill -SIGINT "$pid_io3"
     kill -SIGINT "$pid_io4"
+    echo ""
+    echo ""
 
     main_pid=$$
     ( sleep 60 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar \e[0m" && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_cpu2 $pid_cpu3 $pid_cpu4 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) & 
@@ -651,7 +665,7 @@ case $numero in
     valgrind --leak-check=full --log-file=kernel/kernel.valgrind ./kernel/bin/kernel ESTABILIDAD_GENERAL 256 kernel_estabilidad_general.config --action
     ) &
     pid_kernel=$!
-    sleep 0.5
+    sleep 1
 
     valgrind --leak-check=full --log-file=cpu/cpu_1.valgrind ./cpu/bin/cpu 1 cpu_1_estabilidad_general.config &
     pid_cpu1=$!
@@ -692,6 +706,8 @@ case $numero in
     kill -SIGINT "$pid_io2"
     kill -SIGINT "$pid_io3"
     kill -SIGINT "$pid_io4"
+    echo ""
+    echo ""
 
     main_pid=$$
     ( sleep 60 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar \e[0m" && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_cpu2 $pid_cpu3 $pid_cpu4 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) & 
@@ -755,10 +771,12 @@ case $numero in
         fi
     done
     ;;
-13)
+13) 
+    # Se le puede pasar como ultimo parametro el test del cual comenzar
     while true; do
         total_tests_ejecutados=0
-        for t in {1..12}; do
+        for ((t=inicio_13; t<=12; t++)); do
+            clear
             echo -e "\t\t\e[1;34;47m =====    Ejecutando Test 13: Loop de Tests 1-12 (finaliza al fallar alguno)    ===== \e[0m"
             sleep 3
             ./ejecutar_test.sh "$t"
@@ -766,11 +784,12 @@ case $numero in
             ((total_tests_ejecutados++))
             if [[ $res -ne 0 ]]; then
                 echo ""
-                echo -e "\e[1;97;41m Test $t falló con código $res. Deteniendo ejecución. \e[0m"
-                echo -e "\e[1;34;47m Total de tests ejecutados: $total_tests_ejecutados \e[0m"
+                echo -e "\t\e[1;97;41m Test $t falló con código $res. Deteniendo ejecución. \e[0m"
+                echo -e "\t\e[1;34;47m Total de tests ejecutados: $total_tests_ejecutados \e[0m"
                 exit $res
             fi
         done
+        inicio_13=1
     done
     ;;
 esac
@@ -785,7 +804,7 @@ echo -e "\e[1;34;47m =====   Analizando logs por errores o advertencias   ===== 
 log_file="./log_global_ordenado.log"
 
 if [[ ! -f "$log_file" ]]; then
-    echo -e "\e[1;97;41m Archivo $log_file no encontrado. Abortando. \e[0m"
+    echo -e "\t\e[1;97;41m Archivo $log_file no encontrado. Abortando. \e[0m"
     errores=1
 else
     log_matches=$(grep -E "\[ERROR\]|\[WARNING\]" "$log_file")

@@ -20,6 +20,7 @@ typedef struct PCB
     int tamanio_memoria;
     double tiempo_inicio_blocked;
     bool *timer_flag;
+    pthread_mutex_t mutex;
 } t_pcb;
 
 typedef enum Estados

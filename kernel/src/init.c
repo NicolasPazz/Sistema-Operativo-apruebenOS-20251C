@@ -13,13 +13,9 @@ t_dictionary *tiempos_por_pid;
 t_dictionary *archivo_por_pcb;
 
 // Sockets
-int fd_dispatch;
-int fd_cpu_dispatch;
+int fd_kernel_dispatch;
 int fd_interrupt;
-int fd_cpu_interrupt;
-int fd_memoria;
 int fd_kernel_io;
-int fd_io;
 
 // Config
 t_config *kernel_config;
@@ -74,7 +70,6 @@ pthread_mutex_t mutex_cola_interrupciones;
 pthread_mutex_t mutex_planificador_lp;
 pthread_mutex_t mutex_procesos_rechazados;
 pthread_mutex_t mutex_inicializacion_procesos;
-pthread_mutex_t mutex_cambio_de_estado;
 sem_t sem_proceso_a_new;
 sem_t sem_proceso_a_susp_ready;
 sem_t sem_proceso_a_susp_blocked;
@@ -172,7 +167,6 @@ void iniciar_sincronizacion_kernel()
     pthread_mutex_init(&mutex_cola_interrupciones, NULL);
     pthread_mutex_init(&mutex_procesos_rechazados, NULL);
     pthread_mutex_init(&mutex_inicializacion_procesos, NULL);
-    pthread_mutex_init(&mutex_cambio_de_estado, NULL);
 
     sem_init(&sem_proceso_a_new, 0, 0);
     sem_init(&sem_proceso_a_susp_ready, 0, 0);
@@ -273,7 +267,6 @@ void terminar_kernel()
     pthread_mutex_destroy(&mutex_planificador_lp);
     pthread_mutex_destroy(&mutex_procesos_rechazados);
     pthread_mutex_destroy(&mutex_inicializacion_procesos);
-    pthread_mutex_destroy(&mutex_cambio_de_estado);
 
     sem_destroy(&sem_proceso_a_new);
     sem_destroy(&sem_proceso_a_susp_ready);
@@ -292,11 +285,8 @@ void terminar_kernel()
     list_destroy_and_destroy_elements(lista_ios, destruir_io);
     queue_destroy_and_destroy_elements(cola_interrupciones, free);
 
-    close(fd_cpu_dispatch);
-    close(fd_cpu_interrupt);
     close(fd_kernel_io);
-    close(fd_io);
-    close(fd_dispatch);
+    close(fd_kernel_dispatch);
     close(fd_interrupt);
 }
 
@@ -306,11 +296,11 @@ void terminar_kernel()
 
 void *hilo_servidor_dispatch(void *_)
 {
-    fd_dispatch = iniciar_servidor(PUERTO_ESCUCHA_DISPATCH, kernel_log, "Kernel Dispatch");
+    fd_kernel_dispatch = iniciar_servidor(PUERTO_ESCUCHA_DISPATCH, kernel_log, "Kernel Dispatch");
 
     while (1)
     {
-        int fd_cpu_dispatch = esperar_cliente(fd_dispatch, kernel_log);
+        int fd_cpu_dispatch = esperar_cliente(fd_kernel_dispatch, kernel_log);
         if (fd_cpu_dispatch == -1)
         {
             log_error(kernel_log, "hilo_servidor_dispatch: Error al recibir cliente");
@@ -465,7 +455,7 @@ void *atender_cpu_dispatch(void *arg)
             log_trace(kernel_log, "[SERVIDOR DISPATCH] EXIT_OP recibido de CPU Dispatch (fd=%d)", fd_cpu_dispatch);
 
             t_pcb *pcb_a_finalizar = buscar_pcb(pid);
-            cambiar_estado_pcb(pcb_a_finalizar, EXIT_ESTADO);
+            cambiar_estado_pcb_mutex(pcb_a_finalizar, EXIT_ESTADO);
 
             liberar_cpu(cpu_actual);
 
@@ -498,7 +488,7 @@ void *atender_cpu_dispatch(void *arg)
 
             t_pcb *pcb_dump = buscar_pcb(PID);
             pcb_dump->PC = PC;
-            cambiar_estado_pcb(pcb_dump, BLOCKED);
+            cambiar_estado_pcb_mutex(pcb_dump, BLOCKED);
 
             liberar_cpu(cpu_actual);
 
@@ -728,14 +718,14 @@ void *atender_io(void *arg)
 
             log_trace(kernel_log, "[SERVIDOR IO] IO_FINALIZADA_OP, verificando el estado de PCB con PID %d", pid_finalizado);
 
-            pthread_mutex_lock(&mutex_cambio_de_estado);
+            pthread_mutex_lock(&pcb_fin->mutex);
 
             if (pcb_fin->Estado == SUSP_BLOCKED)
             {
                 log_info(kernel_log, AMARILLO("## (%d) finalizó IO y pasa a SUSP_READY"), pid_finalizado);
                 log_trace(kernel_log, AZUL("[SERVIDOR IO] ## (%d) finalizó IO y pasa a SUSP_READY"), pid_finalizado);
-                pthread_mutex_unlock(&mutex_cambio_de_estado);
                 cambiar_estado_pcb(pcb_fin, SUSP_READY);
+                pthread_mutex_unlock(&pcb_fin->mutex);
 
                 pthread_t hilo;
                 if (pthread_create(&hilo, NULL, verificar_procesos_rechazados, NULL) != 0)
@@ -749,13 +739,13 @@ void *atender_io(void *arg)
             else if (pcb_fin->Estado == BLOCKED)
             {
                 log_info(kernel_log, AMARILLO("## (%d) finalizó IO y pasa a READY"), pid_finalizado);
-                pthread_mutex_unlock(&mutex_cambio_de_estado);
                 cambiar_estado_pcb(pcb_fin, READY);
+                pthread_mutex_unlock(&pcb_fin->mutex);
             }
             else
             {
                 log_error(kernel_log, AZUL("[SERVIDOR IO] PID %d finalizó IO pero ya se encuentra en %s"), pid_finalizado, estado_to_string(pcb_fin->Estado));
-                pthread_mutex_unlock(&mutex_cambio_de_estado);
+                pthread_mutex_unlock(&pcb_fin->mutex);
                 terminar_kernel();
                 exit(EXIT_FAILURE);
             }
