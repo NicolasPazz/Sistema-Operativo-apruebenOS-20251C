@@ -543,7 +543,7 @@ void procesar_write_op(int cliente_socket) {
     int pid = *(int*)list_get(lista, 0);
     int direccion_fisica = *(int*)list_get(lista, 1);
     int size = *(int*)list_get(lista, 2);
-    void* datos = list_get(lista, 3);
+    void* datos_str = list_get(lista, 3);
 
     log_trace(logger, "## PID: %d - Escritura - Dir. Física: %d - Tamaño: %d", pid, direccion_fisica, size);
 
@@ -558,8 +558,6 @@ void procesar_write_op(int cliente_socket) {
     // Usar memcpy en lugar de strcpy para escribir exactamente los bytes especificados
     // sin null terminator para preservar contenido existente
     memcpy((char*)(sistema_memoria->memoria_principal + direccion_fisica), datos_str, strlen(datos_str));
-    log_info(logger, "WRITE - PID: %d - Bytes [%d:%d] = '%s'", pid, direccion_fisica, direccion_fisica + size - 1, vista);
-
     aplicar_retardo_memoria();
 
     t_respuesta respuesta = OK;
