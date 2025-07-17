@@ -42,6 +42,8 @@ clear
 make
 clear
 find . -name "*.log" -exec truncate -s 0 {} \;
+# Limpiar archivo SWAP para asegurar estado consistente entre tests
+rm -f memoria/files/swapfile.bin
 clear
 
 errores=0
