@@ -5,14 +5,14 @@
 # No verifica logica, deadlocks, memory leaks, condiciones de carrera, ni esperas activas.
 
 if [[ -z "$1" ]]; then
-    echo "  Error: Debe indicar el número de test como parámetro (1 a 12)."
+    echo "  Error: Debe indicar el número de test como parámetro (1 a 13)."
     exit 1
 fi
 
 numero="$1"
 
-if ! [[ "$numero" =~ ^[0-9]+$ ]] || (( numero < 1 || numero > 12 )); then
-    echo "  Número inválido. Debe ser del 1 al 12."
+if ! [[ "$numero" =~ ^[0-9]+$ ]] || (( numero < 1 || numero > 13 )); then
+    echo "  Número inválido. Debe ser del 1 al 13."
     exit 1
 fi
 
@@ -46,6 +46,7 @@ make clean-logs
 clear
 make
 clear
+echo ""
 
 case $numero in
 1)
@@ -752,6 +753,24 @@ case $numero in
             echo -e "\t\e[1;30;43m Leak menor detectado en $val (<= 1000 bytes) ↑ \e[0m"
             echo ""
         fi
+    done
+    ;;
+13)
+    while true; do
+        total_tests_ejecutados=0
+        for t in {1..12}; do
+            echo -e "\t\t\e[1;34;47m =====    Ejecutando Test 13: Loop de Tests 1-12 (finaliza al fallar alguno)    ===== \e[0m"
+            sleep 3
+            ./ejecutar_test.sh "$t"
+            res=$?
+            ((total_tests_ejecutados++))
+            if [[ $res -ne 0 ]]; then
+                echo ""
+                echo -e "\e[1;97;41m Test $t falló con código $res. Deteniendo ejecución. \e[0m"
+                echo -e "\e[1;34;47m Total de tests ejecutados: $total_tests_ejecutados \e[0m"
+                exit $res
+            fi
+        done
     done
     ;;
 esac

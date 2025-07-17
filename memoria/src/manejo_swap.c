@@ -163,7 +163,7 @@ int reanudar_proceso_suspendido(int pid) {
     
     // Verificar si hay espacio suficiente en memoria principal
     if (sistema_memoria->admin_marcos->frames_libres < estructura->paginas_totales) {
-        log_error(logger, "PID: %d - No hay suficiente espacio en memoria para reanudar proceso", pid);
+        log_debug(logger, "PID: %d - No hay suficiente espacio en memoria para reanudar proceso", pid);
         pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
         return 0;
     }
