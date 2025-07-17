@@ -549,7 +549,9 @@ void procesar_write_op(int cliente_socket) {
 
     actualizar_metricas(pid, "MEMORY_WRITE");
 
-    strcpy((char*)(sistema_memoria->memoria_principal + direccion_fisica), datos_str);
+    // Usar memcpy en lugar de strcpy para escribir exactamente los bytes especificados
+    // sin null terminator para preservar contenido existente
+    memcpy((char*)(sistema_memoria->memoria_principal + direccion_fisica), datos_str, strlen(datos_str));
 
     aplicar_retardo_memoria();
 

@@ -390,8 +390,8 @@ t_resultado_memoria procesar_memory_dump(int pid) {
     
     char* nombre_archivo = string_from_format("%s%d-%s.dmp", cfg->DUMP_PATH, pid, timestamp);
     
-    // Crear archivo dump
-    FILE* archivo_dump = fopen(nombre_archivo, "wt");
+    // Crear archivo dump (modo binario para escribir exactamente los bytes del proceso)
+    FILE* archivo_dump = fopen(nombre_archivo, "wb");
     if (!archivo_dump) {
         log_error(logger, "PID: %d - Error al crear archivo dump: %s", pid, nombre_archivo);
         free(nombre_archivo);
@@ -409,17 +409,24 @@ t_resultado_memoria procesar_memory_dump(int pid) {
         return MEMORIA_ERROR_LECTURA;
     }
     
-    // Escribir contenido de cada marco al archivo
+    // Escribir contenido del proceso respetando su tamaño exacto
     size_t bytes_escritos_total = 0;
-    for (int i = 0; i < cantidad_marcos; i++) {
+    size_t bytes_restantes = proceso->tamanio;  // Solo escribir el tamaño exacto del proceso
+    
+    for (int i = 0; i < cantidad_marcos && bytes_restantes > 0; i++) {
         int numero_marco = marcos_proceso[i];
         uint32_t direccion_fisica = numero_marco * cfg->TAM_PAGINA;
         
-        // Escribir página completa
-        size_t bytes_escritos = fwrite(sistema_memoria->memoria_principal + direccion_fisica, 
-                                     1, cfg->TAM_PAGINA, archivo_dump);
+        // Calcular cuántos bytes escribir de esta página específica
+        // Si nos quedan más bytes que el tamaño de página, escribimos toda la página
+        // Si nos quedan menos bytes que el tamaño de página, escribimos solo los restantes
+        size_t bytes_a_escribir = (bytes_restantes >= cfg->TAM_PAGINA) ? cfg->TAM_PAGINA : bytes_restantes;
         
-        if (bytes_escritos != cfg->TAM_PAGINA) {
+        // Escribir solo los bytes necesarios de la página
+        size_t bytes_escritos = fwrite(sistema_memoria->memoria_principal + direccion_fisica, 
+                                     1, bytes_a_escribir, archivo_dump);
+        
+        if (bytes_escritos != bytes_a_escribir) {
             log_error(logger, "PID: %d - Error al escribir marco %d al dump", pid, numero_marco);
             fclose(archivo_dump);
             free(nombre_archivo);
@@ -427,15 +434,20 @@ t_resultado_memoria procesar_memory_dump(int pid) {
         }
         
         bytes_escritos_total += bytes_escritos;
+        bytes_restantes -= bytes_escritos;
+        
+        log_trace(logger, "PID: %d - Marco %d: escritos %zu bytes (restantes %zu)", 
+                  pid, numero_marco, bytes_escritos, bytes_restantes);
     }
+    
     fclose(archivo_dump);
     
     // Logs finales
     log_info(logger, "## PID: %d - Memory Dump generado exitosamente", pid);
     log_info(logger, "   - Archivo: %s", nombre_archivo);
     log_info(logger, "   - Tamaño del proceso: %d bytes", proceso->tamanio);
-    log_info(logger, "   - Páginas escritas: %d", cantidad_marcos);
-    log_info(logger, "   - Bytes totales escritos: %zu", bytes_escritos_total);
+    log_info(logger, "   - Páginas utilizadas: %d", cantidad_marcos);
+    log_info(logger, "   - Bytes exactos escritos: %zu", bytes_escritos_total);
     
     free(nombre_archivo);
     return MEMORIA_OK;

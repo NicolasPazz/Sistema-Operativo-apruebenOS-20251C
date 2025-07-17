@@ -305,22 +305,7 @@ int escribir_pagina_proceso_swap(int pid, int numero_pagina, void* contenido) {
         return 0;
     }
 
-    // Log antes de memcpy
-    log_trace(logger, "[DEBUG SWAP] memcpy: origen=%p (memoria_principal + %d*%d), destino=%p, size=%d", 
-        sistema_memoria->memoria_principal + (numero_marco * cfg->TAM_PAGINA), numero_marco, cfg->TAM_PAGINA, buffer_pagina, cfg->TAM_PAGINA);
-    void* direccion_pagina = sistema_memoria->memoria_principal + (numero_marco * cfg->TAM_PAGINA);
-    memcpy(buffer_pagina, direccion_pagina, cfg->TAM_PAGINA);
-    log_trace(logger, "[DEBUG SWAP] memcpy OK para PID %d, pagina %d", pid, numero_pagina);
-
-    // Log antes de write
-    log_trace(logger, "[DEBUG SWAP] write: fd=%d, size=%d", sistema_memoria->admin_swap->fd_swap, cfg->TAM_PAGINA);
-    ssize_t bytes_escritos = write(sistema_memoria->admin_swap->fd_swap, buffer_pagina, cfg->TAM_PAGINA);
-    if (bytes_escritos != cfg->TAM_PAGINA) {
-        log_error(logger, "Error al escribir página a SWAP: solo se escribieron %zd de %d bytes. errno=%d (%s)", 
-                  bytes_escritos, cfg->TAM_PAGINA, errno, strerror(errno));
-        return 0;
-    }
-    // Buscar una entrada libre en el array de SWAP y marcarla como ocupada
+    // Buscar una entrada libre en el array de SWAP ANTES de escribir
     int entrada_swap = -1;
     for (int i = 0; i < sistema_memoria->admin_swap->cantidad_paginas_swap; i++) {
         if (!sistema_memoria->admin_swap->entradas[i].ocupado) {
@@ -332,17 +317,47 @@ int escribir_pagina_proceso_swap(int pid, int numero_pagina, void* contenido) {
         log_error(logger, "PID: %d - No hay entradas libres en SWAP para registrar página %d", pid, numero_pagina);
         return 0;
     }
+
+    // Log antes de memcpy
+    log_trace(logger, "[DEBUG SWAP] memcpy: origen=%p (memoria_principal + %d*%d), destino=%p, size=%d", 
+        sistema_memoria->memoria_principal + (numero_marco * cfg->TAM_PAGINA), numero_marco, cfg->TAM_PAGINA, buffer_pagina, cfg->TAM_PAGINA);
+    void* direccion_pagina = sistema_memoria->memoria_principal + (numero_marco * cfg->TAM_PAGINA);
+    memcpy(buffer_pagina, direccion_pagina, cfg->TAM_PAGINA);
+    log_trace(logger, "[DEBUG SWAP] memcpy OK para PID %d, pagina %d", pid, numero_pagina);
+
+    // Calcular offset correcto para la entrada de SWAP
+    off_t offset = entrada_swap * cfg->TAM_PAGINA;
+    
+    // Posicionarse en el offset correcto
+    if (lseek(sistema_memoria->admin_swap->fd_swap, offset, SEEK_SET) == -1) {
+        log_error(logger, "Error al posicionarse en SWAP para escribir página %d del proceso %d: %s", numero_pagina, pid, strerror(errno));
+        return 0;
+    }
+
+    // Log antes de write
+    log_trace(logger, "[DEBUG SWAP] write: fd=%d, offset=%ld, size=%d", sistema_memoria->admin_swap->fd_swap, offset, cfg->TAM_PAGINA);
+    ssize_t bytes_escritos = write(sistema_memoria->admin_swap->fd_swap, buffer_pagina, cfg->TAM_PAGINA);
+    if (bytes_escritos != cfg->TAM_PAGINA) {
+        log_error(logger, "Error al escribir página a SWAP: solo se escribieron %zd de %d bytes. errno=%d (%s)", 
+                  bytes_escritos, cfg->TAM_PAGINA, errno, strerror(errno));
+        return 0;
+    }
+    
+    // Marcar entrada como ocupada
     sistema_memoria->admin_swap->entradas[entrada_swap].ocupado = true;
     sistema_memoria->admin_swap->entradas[entrada_swap].pid_propietario = pid;
     sistema_memoria->admin_swap->entradas[entrada_swap].numero_pagina = numero_pagina;
     sistema_memoria->admin_swap->paginas_libres_swap--;
     sistema_memoria->admin_swap->paginas_ocupadas_swap++;
-    log_info(logger, "PID: %d - Página %d escrita en SWAP en entrada %d (offset %ld)", pid, numero_pagina, entrada_swap, (long)lseek(sistema_memoria->admin_swap->fd_swap, 0, SEEK_CUR) - cfg->TAM_PAGINA);
+    log_info(logger, "PID: %d - Página %d escrita en SWAP en entrada %d (offset %ld)", pid, numero_pagina, entrada_swap, offset);
+    
     // Actualizar información de SWAP
     entrada->presente = false;  // Ya no está en memoria principal
     entrada->timestamp_acceso = time(NULL);
-    // Incrementar métrica SOLO si la operación fue exitosa
-    incrementar_bajadas_swap(pid);
+    
+    // NO incrementar métrica aquí - se hace una sola vez por proceso en suspender_proceso_completo
+    // incrementar_bajadas_swap(pid);
+    
     return 1;
 }
 
