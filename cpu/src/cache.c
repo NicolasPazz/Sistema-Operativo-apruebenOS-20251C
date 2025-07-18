@@ -81,7 +81,7 @@ int seleccionar_victima_clock() {
     }
     
     int iteraciones = 0;
-    int posicion_inicial = cache->puntero_clock;
+    //int posicion_inicial = cache->puntero_clock; #WARNING: NO SE USA
     
     while (1) {
         iteraciones++;

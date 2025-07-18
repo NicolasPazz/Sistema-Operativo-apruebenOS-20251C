@@ -134,7 +134,7 @@ void func_read(char* direccion_logica_str, char* tam_str) {
             memcpy(buffer, contenido, tam);
             buffer[tam] = '\0';
             log_info(cpu_log, "(PID: %d) - Cache HIT - Pagina: %d - Valor: %s", pid_ejecutando, nro_pagina, buffer);
-            log_trace("PID: %d - Contenido leído (cache): %s\n", pid_ejecutando, buffer);
+            log_trace(cpu_log, "PID: %d - Contenido leído (cache): %s", pid_ejecutando, buffer);
             free(contenido);
             return;
         }
@@ -173,7 +173,7 @@ void func_read(char* direccion_logica_str, char* tam_str) {
     buffer[tam] = '\0';
 
     log_info(cpu_log, VERDE("(PID: %d) - READ - Dir Fisica: %d - Valor: %s"), pid_ejecutando, direccion_fisica, buffer);
-    log_trace("PID: %d - Contenido leído: %s\n", pid_ejecutando, buffer);
+    log_trace(cpu_log, "PID: %d - Contenido leído: %s", pid_ejecutando, buffer);
     
     list_destroy_and_destroy_elements(lista_respuesta, free);
 
