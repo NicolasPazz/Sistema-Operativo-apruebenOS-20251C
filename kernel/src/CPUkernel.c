@@ -38,11 +38,10 @@ cpu *buscar_y_remover_cpu_por_fd(int fd)
         if (c && c->fd == fd)
         {
             cpu *cpu_removida = list_remove(lista_cpus, i);
-            UNLOCK_CON_LOG(mutex_lista_cpus);
             return cpu_removida;
         }
     }
-    LOG_DEBUG(kernel_log, "buscar_y_remover_cpu_por_fd: No se encontró CPU con fd %d", fd);
+    LOG_DEBUG(kernel_log, "No se encontró CPU con fd %d", fd);
     return NULL;
 }
 

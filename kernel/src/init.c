@@ -505,9 +505,7 @@ void *atender_cpu_dispatch(void *arg)
         }
 
         // Limpiar la instrucción actual de la CPU
-
         LOCK_CON_LOG(mutex_lista_cpus);
-
         cpu_actual->instruccion_actual = -1; // Valor inválido para indicar que está libre
         UNLOCK_CON_LOG(mutex_lista_cpus);
     }
