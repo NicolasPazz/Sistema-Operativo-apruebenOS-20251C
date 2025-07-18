@@ -94,7 +94,7 @@ void log_instruccion_obtenida(int pid, int pc, t_instruccion* instruccion) {
             string_append_with_format(&args_log, " %s", instruccion->parametros3);
         }
     }
-    log_info(logger, VERDE("## (PID: %d) - Obtener instrucción: %d - Instrucción: %s%s"), 
+    log_info(logger, VERDE("## PID: %d - Obtener instrucción: %d - Instrucción: %s%s"), 
              pid, pc, instruccion->parametros1, args_log);
     free(args_log);
 }
@@ -370,7 +370,7 @@ t_entrada_tabla* buscar_entrada_tabla(t_estructura_paginas* estructura, int nume
 // ============== FUNCIONES DE PROCESAMIENTO DE MEMORIA ==============
 
 t_resultado_memoria procesar_memory_dump(int pid) {
-    log_info(logger, VERDE("## (PID: %d) - Memory Dump solicitado"), pid);
+    log_info(logger, VERDE("## PID: %d - Memory Dump solicitado"), pid);
     
     // Verificar que el proceso existe
     if (!proceso_existe(pid)) {
@@ -445,11 +445,11 @@ t_resultado_memoria procesar_memory_dump(int pid) {
     fclose(archivo_dump);
     
     // Logs finales
-    log_info(logger, "## PID: %d - Memory Dump generado exitosamente", pid);
-    log_info(logger, "   - Archivo: %s", nombre_archivo);
-    log_info(logger, "   - Tamaño del proceso: %d bytes", proceso->tamanio);
-    log_info(logger, "   - Páginas utilizadas: %d", cantidad_marcos);
-    log_info(logger, "   - Bytes exactos escritos: %zu", bytes_escritos_total);
+    log_debug(logger, "## PID: %d - Memory Dump generado exitosamente", pid);
+    log_debug(logger, "   - Archivo: %s", nombre_archivo);
+    log_debug(logger, "   - Tamaño del proceso: %d bytes", proceso->tamanio);
+    log_debug(logger, "   - Páginas utilizadas: %d", cantidad_marcos);
+    log_debug(logger, "   - Bytes exactos escritos: %zu", bytes_escritos_total);
     
     free(nombre_archivo);
     return MEMORIA_OK;
@@ -490,7 +490,7 @@ t_resultado_memoria asignar_marcos_proceso(int pid) {
         log_trace(logger, "PID: %d - Página %d asignada al marco %d", pid, numero_pagina, numero_frame);
     }
     
-    log_info(logger, "PID: %d - Asignación de marcos completada exitosamente - %d marcos asignados", 
+    log_debug(logger, "PID: %d - Asignación de marcos completada exitosamente - %d marcos asignados", 
              pid, marcos_asignados);
     
     return MEMORIA_OK;

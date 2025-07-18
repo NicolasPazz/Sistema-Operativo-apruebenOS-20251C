@@ -223,7 +223,7 @@ void cambiar_estado_pcb_mutex(t_pcb *PCB, Estados nuevo_estado_enum)
 {
     if (!PCB)
     {
-
+        LOG_ERROR(kernel_log, "PCB es NULL");
         terminar_kernel(EXIT_FAILURE);
     }
 
@@ -459,7 +459,6 @@ void liberar_pcb(t_pcb *pcb)
     UNLOCK_CON_LOG_PCB(pcb->mutex, pcb->PID);
     pthread_mutex_destroy(&pcb->mutex);
     free(pcb);
-    pcb = NULL;
 }
 
 void verificar_procesos_restantes()

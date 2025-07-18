@@ -113,17 +113,17 @@ int suspender_proceso_completo(int pid) {
     if (marcos_liberados != paginas_escritas) {
         log_error(logger, "[SWAP][CHECK] PID: %d - Marcos liberados (%d) != páginas escritas a swap (%d)", pid, marcos_liberados, paginas_escritas);
     } else {
-        log_info(logger, "[SWAP][CHECK] PID: %d - Marcos liberados correctamente: %d", pid, marcos_liberados);
+        log_debug(logger, "[SWAP][CHECK] PID: %d - Marcos liberados correctamente: %d", pid, marcos_liberados);
     }
     if (paginas_con_presente > 0 || paginas_con_frame > 0) {
         log_error(logger, "[SWAP][CHECK] PID: %d - %d páginas quedaron con presente=true y %d con numero_frame!=0 tras suspensión", pid, paginas_con_presente, paginas_con_frame);
     } else {
-        log_info(logger, "[SWAP][CHECK] PID: %d - Todas las entradas de página correctamente con presente=false y numero_frame=0", pid);
+        log_debug(logger, "[SWAP][CHECK] PID: %d - Todas las entradas de página correctamente con presente=false y numero_frame=0", pid);
     }
     if (suspension_exitosa) {
         proceso->suspendido = true;
         incrementar_bajadas_swap(pid);
-        log_info(logger, "[SWAP] PID: %d - Proceso suspendido completamente. Páginas escritas a SWAP: %d, omitidas: %d", pid, paginas_escritas, paginas_omitidas);
+        log_debug(logger, "[SWAP] PID: %d - Proceso suspendido completamente. Páginas escritas a SWAP: %d, omitidas: %d", pid, paginas_escritas, paginas_omitidas);
         
     } else {
         log_error(logger, "[SWAP] PID: %d - Falló la suspensión, liberando páginas de SWAP", pid);
@@ -244,7 +244,7 @@ int reanudar_proceso_suspendido(int pid) {
         // Incrementar métrica de subidas a memoria principal
         incrementar_subidas_memoria_principal(pid);
         
-        log_info(logger, "PID: %d - Proceso reanudado exitosamente. Páginas cargadas desde SWAP: %d, fallidas: %d", 
+        log_debug(logger, "PID: %d - Proceso reanudado exitosamente. Páginas cargadas desde SWAP: %d, fallidas: %d", 
                  pid, paginas_cargadas, paginas_fallidas);
     } else {
         // Si falló la reanudación, liberar los marcos ya asignados en esta operación

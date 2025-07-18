@@ -215,7 +215,7 @@ int bloquear_marcos_proceso(int pid, const char* operacion) {
         }
     }
     
-    log_info(logger, "PID: %d - Bloqueo masivo completado: %d/%d marcos bloqueados", 
+    log_debug(logger, "PID: %d - Bloqueo masivo completado: %d/%d marcos bloqueados", 
              pid, marcos_bloqueados, cantidad_marcos);
     
     return marcos_bloqueados;
@@ -245,7 +245,7 @@ int desbloquear_marcos_proceso(int pid, const char* operacion) {
         }
     }
     
-    log_info(logger, "PID: %d - Desbloqueo masivo completado: %d/%d marcos desbloqueados", 
+    log_debug(logger, "PID: %d - Desbloqueo masivo completado: %d/%d marcos desbloqueados", 
              pid, marcos_desbloqueados, cantidad_marcos);
     
     return marcos_desbloqueados;

@@ -13,7 +13,6 @@ void *timer_suspension(void *v_arg)
         if (flag)
         {
             free(flag);
-            flag = NULL;
         }
         free(arg);
         return NULL;
@@ -34,7 +33,6 @@ void *timer_suspension(void *v_arg)
         if (flag)
         {
             free(flag);
-            flag = NULL;
         }
         free(arg);
         return NULL;
@@ -45,7 +43,6 @@ void *timer_suspension(void *v_arg)
         if (flag)
         {
             free(flag);
-            flag = NULL;
         }
         free(arg);
         return NULL;
@@ -58,7 +55,6 @@ void *timer_suspension(void *v_arg)
         if (flag)
         {
             free(flag);
-            flag = NULL;
         }
         free(arg);
         UNLOCK_CON_LOG_PCB(pcb->mutex, pcb->PID);
