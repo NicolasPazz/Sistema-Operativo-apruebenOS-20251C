@@ -223,6 +223,7 @@ typedef struct {
     // Estado del proceso
     bool activo;                    // true = proceso activo en el sistema
     bool suspendido;                // true = proceso suspendido (en SWAP)
+    bool suspending;                // true = proceso en proceso de suspensión (evita race condition)
     
     // Estructuras asociadas
     t_estructura_paginas* estructura_paginas; // Jerarquía de paginación

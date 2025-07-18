@@ -67,6 +67,7 @@ t_proceso_memoria* crear_proceso_memoria(int pid, int tamanio) {
     proceso->nombre_archivo = NULL;  // Se asignará posteriormente si es necesario
     proceso->activo = true;
     proceso->suspendido = false;
+    proceso->suspending = false;
     proceso->timestamp_creacion = time(NULL);
     proceso->timestamp_ultimo_uso = time(NULL);
 
@@ -391,20 +392,28 @@ t_resultado_memoria suspender_proceso_en_memoria(int pid) {
         return MEMORIA_OK;
     }
     
-    // Marcamos como suspendido ANTES de la operación para evitar race conditions
-    proceso->suspendido = true;
+    if (proceso->suspending) {
+        log_warning(logger, "PID: %d - Proceso ya está siendo suspendido por otro hilo", pid);
+        pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
+        return MEMORIA_OK;
+    }
     
-    // Escribir páginas del proceso a SWAP, liberar marcos y marcar como no presente  
+    // Marcar como "suspending" para evitar race conditions
+    proceso->suspending = true;
+    
+    // Escribir páginas del proceso a SWAP, liberar marcos y marcar como no presente
     int resultado = suspender_proceso_completo(pid);
     if (resultado != 1) {
         log_error(logger, "PID: %d - Error al suspender proceso a SWAP", pid);
-        // Revertir el estado si falló
-        proceso->suspendido = false;
+        // Limpiar flag suspending en caso de error
+        proceso->suspending = false;
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
         return MEMORIA_ERROR_IO;
     }
     
-    // Actualizar estadísticas globales (ymarcamos suspendido arriba)
+    // Actualizar estadísticas globales DESPUÉS del éxito
+    proceso->suspendido = true;
+    proceso->suspending = false; // Limpiar flag suspending después del éxito
     proceso->activo = false;
     sistema_memoria->procesos_activos--;
     sistema_memoria->procesos_suspendidos++;
