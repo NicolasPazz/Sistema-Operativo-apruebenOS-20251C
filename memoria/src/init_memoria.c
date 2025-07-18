@@ -131,6 +131,14 @@ t_administrador_marcos* crear_administrador_marcos(int cantidad_frames, int tam_
         admin->frames[i].numero_pagina = -1;
         admin->frames[i].contenido = (char*)sistema_memoria->memoria_principal + (i * tam_pagina);
         admin->frames[i].timestamp_asignacion = 0;
+        
+        // ✅ FIX: Inicializar campos de bloqueo para evitar valores no inicializados
+        admin->frames[i].bloqueado = false;
+        admin->frames[i].thread_bloqueador = 0;
+        admin->frames[i].mutex_inicializado = false;
+        memset(admin->frames[i].operacion_actual, 0, 64);
+        
+        log_trace(logger, "Frame %d inicializado completamente", i);
     }
     
     // Crear bitmap para búsqueda eficiente

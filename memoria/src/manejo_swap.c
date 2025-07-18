@@ -30,7 +30,10 @@ int suspender_proceso_completo(int pid) {
     
     log_trace(logger, "[SWAP] PID: %d - Iniciando suspensión completa del proceso", pid);
     
-    t_proceso_memoria* proceso = dictionary_get(sistema_memoria->procesos, string_itoa(pid));
+    char* pid_str = string_itoa(pid);
+    t_proceso_memoria* proceso = dictionary_get(sistema_memoria->procesos, pid_str);
+    free(pid_str);
+    
     if (proceso == NULL || proceso->suspendido) {
         log_warning(logger, "[SWAP] PID: %d - Proceso ya suspendido o no encontrado", pid);
         return 0;

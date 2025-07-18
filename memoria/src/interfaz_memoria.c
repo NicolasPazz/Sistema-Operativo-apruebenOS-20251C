@@ -28,13 +28,63 @@ void instructions_init() {
     }
 }
 
-// Función para destruir el listado de instrucciones
+void destruir_instruccion_extendida(void* instruccion_ptr) {
+    if (!instruccion_ptr) return;
+    
+    t_extended_instruccion* instruccion = (t_extended_instruccion*)instruccion_ptr;
+    
+    // Liberar todos los strings creados con strdup()
+    if (instruccion->instruccion_base.parametros1) {
+        free(instruccion->instruccion_base.parametros1);
+    }
+    if (instruccion->instruccion_base.parametros2) {
+        free(instruccion->instruccion_base.parametros2);
+    }
+    if (instruccion->instruccion_base.parametros3) {
+        free(instruccion->instruccion_base.parametros3);
+    }
+    
+    // Liberar la estructura principal
+    free(instruccion);
+}
+
+// Función para destruir instrucciones de un proceso específico
+void destruir_instrucciones_proceso(int pid) {
+    if (process_instructions_list == NULL) {
+        return;
+    }
+    
+    // Buscar el proceso por PID
+    for (int i = 0; i < list_size(process_instructions_list); i++) {
+        t_process_instructions* process_inst = list_get(process_instructions_list, i);
+        if (process_inst && process_inst->pid == pid) {
+            log_trace(logger, "PID: %d - Liberando %d instrucciones de memoria", 
+                     pid, list_size(process_inst->instructions));
+            
+            // Destruir todas las instrucciones del proceso
+            list_destroy_and_destroy_elements(process_inst->instructions, destruir_instruccion_extendida);
+            
+            // Remover del listado global
+            list_remove(process_instructions_list, i);
+            free(process_inst);
+            
+            log_trace(logger, "PID: %d - Instrucciones liberadas correctamente", pid);
+            return;
+        }
+    }
+    
+    log_warning(logger, "PID: %d - No se encontraron instrucciones para liberar", pid);
+}
+
+// Función corregida para destruir TODAS las instrucciones al cerrar sistema
 void instructions_destroy() {
     if (process_instructions_list != NULL) {
         // Liberar memoria de cada proceso y sus instrucciones
         for (int i = 0; i < list_size(process_instructions_list); i++) {
             t_process_instructions* process_inst = list_get(process_instructions_list, i);
-            list_destroy_and_destroy_elements(process_inst->instructions, free);
+            
+            // Usar función correcta para destruir instrucciones
+            list_destroy_and_destroy_elements(process_inst->instructions, destruir_instruccion_extendida);
             free(process_inst);
         }
         list_destroy(process_instructions_list);

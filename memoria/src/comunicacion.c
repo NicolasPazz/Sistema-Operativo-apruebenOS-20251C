@@ -50,24 +50,42 @@ int iniciar_conexiones_memoria(char* PUERTO_ESCUCHA, t_log* logger_param) {
     return fd_memoria; // Devuelve el socket del servidor
 }
 
-int server_escuchar(char* server_name, int server_socket) {
-    if (logger == NULL) {
-        printf("Error: Logger no inicializado en server_escuchar\n");
-        return 0;
-    }
-    int cliente_socket = esperar_cliente(server_socket, logger);
+// ✅ OPCIÓN A: Usar lista de threads para hacer join al finalizar
+static t_list* threads_activos = NULL;
 
+int server_escuchar(char* server_name, int server_socket) {
+    if (!threads_activos) {
+        threads_activos = list_create();
+    }
+    
+    int cliente_socket = esperar_cliente(server_socket, logger);
     if (cliente_socket != -1) {
-        pthread_t hilo;
+        pthread_t* hilo = malloc(sizeof(pthread_t));
         t_procesar_conexion_args* args = malloc(sizeof(t_procesar_conexion_args));
         args->fd = cliente_socket;
         args->server_name = server_name;
-        pthread_create(&hilo, NULL, (void*) procesar_conexion, (void*) args);
-        pthread_detach(hilo);
-        // que se quede esperando los cop -> 
+        
+        pthread_create(hilo, NULL, (void*) procesar_conexion, (void*) args);
+        
+        // ✅ Guardar thread para hacer join después
+        list_add(threads_activos, hilo);
+        
         return 1;
     }
     return 0;
+}
+
+// ✅ Función para limpiar threads al finalizar sistema
+void finalizar_threads_servidor() {
+    if (threads_activos) {
+        for (int i = 0; i < list_size(threads_activos); i++) {
+            pthread_t* hilo = list_get(threads_activos, i);
+            pthread_join(*hilo, NULL);
+            free(hilo);
+        }
+        list_destroy(threads_activos);
+        threads_activos = NULL;
+    }
 }
 
 void procesar_conexion(void* void_args) {
@@ -555,9 +573,8 @@ void procesar_write_op(int cliente_socket) {
         return;
     }
 
-    // Usar memcpy en lugar de strcpy para escribir exactamente los bytes especificados
-    // sin null terminator para preservar contenido existente
-    memcpy((char*)(sistema_memoria->memoria_principal + direccion_fisica), datos_str, strlen(datos_str));
+    // Usar el parámetro size en lugar de strlen()
+    memcpy((char*)(sistema_memoria->memoria_principal + direccion_fisica), datos_str, size);
     aplicar_retardo_memoria();
 
     t_respuesta respuesta = OK;

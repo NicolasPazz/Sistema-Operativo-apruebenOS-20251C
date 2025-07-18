@@ -32,5 +32,7 @@ char* instruction_to_string(t_extended_instruccion* instruction, int pc);
 void memory_init();
 void memory_destroy();
 
+void destruir_instruccion_extendida(void* instruccion_ptr);
+void destruir_instrucciones_proceso(int pid);
 
 #endif

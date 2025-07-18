@@ -344,12 +344,17 @@ t_resultado_memoria finalizar_proceso_en_memoria(int pid) {
     sistema_memoria->memoria_utilizada -= proceso->tamanio;
     sistema_memoria->total_liberaciones_memoria++;
     
+    // Liberar instrucciones del proceso ANTES de remover del diccionario
+    log_debug(logger, "FINALIZAR_PROC: Liberando instrucciones para PID %d", pid);
+    destruir_instrucciones_proceso(pid);
+    log_debug(logger, "FINALIZAR_PROC: Instrucciones liberadas para PID %d", pid);
+
     // Remover del diccionario y liberar
     log_debug(logger, "FINALIZAR_PROC: Removiendo de diccionarios para PID %d", pid);
     dictionary_remove(sistema_memoria->procesos, pid_str);
     dictionary_remove(sistema_memoria->estructuras_paginas, pid_str);
     dictionary_remove(sistema_memoria->metricas_procesos, pid_str);
-    dictionary_remove(sistema_memoria->process_instructions, pid_str);
+    dictionary_remove(sistema_memoria->process_instructions, pid_str);  // Ahora solo remueve entrada vacía
     
     log_debug(logger, "FINALIZAR_PROC: Liberando proceso para PID %d", pid);
     destruir_proceso(proceso);
