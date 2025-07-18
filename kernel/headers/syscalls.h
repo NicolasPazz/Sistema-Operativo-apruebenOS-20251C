@@ -63,7 +63,7 @@ void fin_io(io *dispositivo, int pid_finalizado);
  * @brief Finaliza un proceso y libera sus recursos
  * @param pcb_a_finalizar: PCB del proceso a finalizar
  */
-void EXIT(t_pcb *pcb_a_finalizar);
+void EXIT(t_pcb **ptr_pcb_a_finalizar);
 t_pcb_io *buscar_y_remover_pcb_io_por_dispositivo_y_pid(io *dispositivo, int pid);     // Busca y remueve PCB de la lista de bloqueados por IO
 
 /**

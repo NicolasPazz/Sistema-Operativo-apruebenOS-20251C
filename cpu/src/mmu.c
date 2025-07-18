@@ -31,6 +31,8 @@ int traducir_direccion_fisica(int direccion_logica) {
     int desplazamiento = direccion_logica % tam_pagina;
 
     int entradas[cantidad_niveles];
+    (void)entradas; // Para silenciar warning
+
     for (int nivel = 0; nivel < cantidad_niveles; nivel++) {
         int divisor = 1;
         for (int j = 0; j < cantidad_niveles - (nivel + 1); j++)
@@ -47,9 +49,9 @@ int traducir_direccion_fisica(int direccion_logica) {
     }
 
     if (tlb_habilitada() && hit) {
-        log_info(cpu_log, "(PID: %d) - TLB HIT - Página: %d", pid_ejecutando, nro_pagina);    
+        log_info(cpu_log, "PID: %d - TLB HIT - Página: %d", pid_ejecutando, nro_pagina);    
     } else {
-        log_info(cpu_log, "(PID: %d) - TLB MISS - Página: %d", pid_ejecutando, nro_pagina);
+        log_info(cpu_log, "PID: %d - TLB MISS - Página: %d", pid_ejecutando, nro_pagina);
 
         t_paquete* paquete = crear_paquete_op(ACCESO_TABLA_PAGINAS_OP);
         agregar_entero_a_paquete(paquete, pid_ejecutando);
@@ -82,7 +84,7 @@ int traducir_direccion_fisica(int direccion_logica) {
             exit(EXIT_FAILURE);
         }
 
-        log_info(cpu_log, "(PID: %d) - OBTENER MARCO - Página: %d - Marco: %d", pid_ejecutando, nro_pagina, frame);
+        log_info(cpu_log, "PID: %d - OBTENER MARCO - Página: %d - Marco: %d", pid_ejecutando, nro_pagina, frame);
 
         if (tlb_habilitada()) {
             pthread_mutex_lock(&mutex_tlb);

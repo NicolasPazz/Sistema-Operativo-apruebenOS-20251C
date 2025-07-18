@@ -24,33 +24,33 @@ const char *estado_to_string(Estados estado)
     case EXIT_ESTADO:
         return "EXIT";
     default:
-        log_error(kernel_log, "estado_to_string: Estado desconocido %d", estado);
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        LOG_ERROR(kernel_log, "estado_to_string: Estado desconocido %d", estado);
+        terminar_kernel(EXIT_FAILURE);
+        return "DESCONOCIDO";
     }
 }
 
 void mostrar_pcb(t_pcb *PCB)
 {
-    if (!PCB || PCB == NULL)
+    if (!PCB)
     {
-        log_error(kernel_log, "mostrar_pcb: PCB es NULL");
+        LOG_ERROR(kernel_log, "PCB es NULL");
         return;
     }
 
-    pthread_mutex_lock(&PCB->mutex);
-    log_trace(kernel_log, "-*-*-*-*-*- PCB -*-*-*-*-*-");
-    log_trace(kernel_log, "PID: %d", PCB->PID);
-    log_trace(kernel_log, "PC: %d", PCB->PC);
+    LOCK_CON_LOG_PCB(PCB->mutex, PCB->PID);
+    LOG_DEBUG(kernel_log, "-*-*-*-*-*- PCB -*-*-*-*-*-");
+    LOG_DEBUG(kernel_log, "PID: %d", PCB->PID);
+    LOG_DEBUG(kernel_log, "PC: %d", PCB->PC);
     mostrar_metrica("ME", PCB->ME);
     mostrar_metrica("MT", PCB->MT);
-    log_trace(kernel_log, "Estado: %s", estado_to_string(PCB->Estado));
-    log_trace(kernel_log, "Tiempo inicio exec: %.3f", PCB->tiempo_inicio_exec);
-    log_trace(kernel_log, "Rafaga estimada: %.3f", PCB->estimacion_rafaga);
-    log_trace(kernel_log, "Path: %s", PCB->path ? PCB->path : "(null)");
-    log_trace(kernel_log, "Tamanio de memoria: %d", PCB->tamanio_memoria);
-    log_trace(kernel_log, "-*-*-*-*-*-*-*-*-*-*-*-*-*-");
-    pthread_mutex_unlock(&PCB->mutex);
+    LOG_DEBUG(kernel_log, "Estado: %s", estado_to_string(PCB->Estado));
+    LOG_DEBUG(kernel_log, "Tiempo inicio exec: %.3f", PCB->tiempo_inicio_exec);
+    LOG_DEBUG(kernel_log, "Rafaga estimada: %.3f", PCB->estimacion_rafaga);
+    LOG_DEBUG(kernel_log, "Path: %s", PCB->path ? PCB->path : "(null)");
+    LOG_DEBUG(kernel_log, "Tamanio de memoria: %d", PCB->tamanio_memoria);
+    LOG_DEBUG(kernel_log, "-*-*-*-*-*-*-*-*-*-*-*-*-*-");
+    UNLOCK_CON_LOG_PCB(PCB->mutex, PCB->PID);
 }
 
 void mostrar_metrica(const char *nombre, int *metrica)
@@ -67,36 +67,33 @@ void mostrar_metrica(const char *nombre, int *metrica)
 
     snprintf(buffer + offset, sizeof(buffer) - offset, "]");
 
-    log_trace(kernel_log, "%s", buffer);
+    LOG_DEBUG(kernel_log, "%s", buffer);
 }
 
 void mostrar_colas_estados()
 {
-    log_trace(kernel_log, "Colas -> [NEW: %d, READY: %d, EXEC: %d, BLOCK: %d, SUSP.BLOCK: %d, SUSP.READY: %d, EXIT: %d] | Procesos en total: %d", list_size(cola_new), list_size(cola_ready), list_size(cola_running), list_size(cola_blocked), list_size(cola_susp_blocked), list_size(cola_susp_ready), list_size(cola_exit), list_size(cola_procesos));
+    LOG_DEBUG(kernel_log, "Colas -> [NEW: %d, READY: %d, EXEC: %d, BLOCK: %d, SUSP.BLOCK: %d, SUSP.READY: %d, EXIT: %d] | Procesos en total: %d", list_size(cola_new), list_size(cola_ready), list_size(cola_running), list_size(cola_blocked), list_size(cola_susp_blocked), list_size(cola_susp_ready), list_size(cola_exit), list_size(cola_procesos));
 }
 
 void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
 {
-    if (!PCB || PCB == NULL)
+    if (!PCB)
     {
-        log_error(kernel_log, "cambiar_estado_pcb: PCB es NULL");
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        LOG_ERROR(kernel_log, "PCB es NULL");
+        terminar_kernel(EXIT_FAILURE);
     }
 
     if (!transicion_valida(PCB->Estado, nuevo_estado_enum))
     {
-        log_error(kernel_log, "cambiar_estado_pcb: Transicion no valida en el PID %d: %s → %s", PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        LOG_ERROR(kernel_log, "Transicion no valida en el PID %d: %s → %s", PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
+        terminar_kernel(EXIT_FAILURE);
     }
 
     t_list *cola_destino = obtener_cola_por_estado(nuevo_estado_enum);
     if (!cola_destino)
     {
-        log_error(kernel_log, "cambiar_estado_pcb: Error al obtener las colas correspondientes");
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        LOG_ERROR(kernel_log, "Error al obtener las colas correspondientes");
+        terminar_kernel(EXIT_FAILURE);
     }
 
     if (PCB->Estado != INIT)
@@ -105,10 +102,9 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
 
         if (!cola_origen)
         {
-            log_error(kernel_log, "cambiar_estado_pcb: Error al obtener las colas correspondientes");
+            LOG_ERROR(kernel_log, "Error al obtener las colas correspondientes");
 
-            terminar_kernel();
-            exit(EXIT_FAILURE);
+            terminar_kernel(EXIT_FAILURE);
         }
 
         log_info(kernel_log, AZUL("## (%u) Pasa del estado ") VERDE("%s") AZUL(" al estado ") VERDE("%s"), PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
@@ -120,13 +116,13 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
         char *pid_key = string_itoa(PCB->PID);
         t_temporal *cronometro = dictionary_get(tiempos_por_pid, pid_key);
 
-        if (cronometro != NULL)
+        if (cronometro)
         {
             temporal_stop(cronometro);
             int64_t tiempo = temporal_gettime(cronometro);
 
             PCB->MT[PCB->Estado] += (int)tiempo;
-            log_trace(kernel_log, "Se actualizo el MT en el estado %s del PID %d con %ld", estado_to_string(PCB->Estado), PCB->PID, tiempo);
+            LOG_DEBUG(kernel_log, "Se actualizo el MT en el estado %s del PID %d con %ld", estado_to_string(PCB->Estado), PCB->PID, tiempo);
             temporal_destroy(cronometro);
         }
         cronometro = temporal_create();
@@ -139,13 +135,13 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
         }
         else if (PCB->Estado == EXEC)
         {
-            log_trace(kernel_log, "cambiar_estado_pcb: estimacion rafaga anterior del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
+            LOG_DEBUG(kernel_log, "estimacion rafaga anterior del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
             double rafaga_real = get_time() - PCB->tiempo_inicio_exec;
 
-            log_trace(kernel_log, "cambiar_estado_pcb: Rafaga real del PID %d: %.3f", PCB->PID, rafaga_real);
+            LOG_DEBUG(kernel_log, "Rafaga real del PID %d: %.3f", PCB->PID, rafaga_real);
             PCB->estimacion_rafaga = ALFA * rafaga_real + (1.0 - ALFA) * PCB->estimacion_rafaga;
 
-            log_trace(kernel_log, "cambiar_estado_pcb: Nueva estimacion de rafaga del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
+            LOG_DEBUG(kernel_log, "Nueva estimacion de rafaga del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
             PCB->tiempo_inicio_exec = -1;
         }
 
@@ -169,7 +165,7 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
     }
     else
     {
-        log_trace(kernel_log, "cambiar_estado_pcb: proceso en INIT recibido");
+        LOG_DEBUG(kernel_log, "proceso en INIT recibido");
         char *pid_key = string_itoa(PCB->PID);
         if (!dictionary_get(tiempos_por_pid, pid_key))
         {
@@ -194,55 +190,46 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
     switch (nuevo_estado_enum)
     {
     case NEW:
-        sem_post(&sem_proceso_a_new);
-        log_trace(kernel_log, "cambiar_estado_pcb: Semaforo a NEW aumentado");
+        SEM_POST(sem_proceso_a_new);
         break;
     case READY:
-        sem_post(&sem_proceso_a_ready);
-        sem_post(&sem_planificador_cp);
-        log_trace(kernel_log, "[PLANI CP] Replanificación solicitada por proceso a READY (PID=%d)", PCB->PID);
-        log_trace(kernel_log, "cambiar_estado_pcb: Semaforo a READY aumentado");
+        SEM_POST(sem_proceso_a_ready);
+        SEM_POST(sem_planificador_cp);
+        LOG_DEBUG(kernel_log, "[PLANI CP] Replanificación solicitada por proceso a READY (PID=%d)", PCB->PID);
         break;
     case EXEC:
-        sem_post(&sem_proceso_a_running);
-        log_trace(kernel_log, "cambiar_estado_pcb: Semaforo a EXEC aumentado");
+        SEM_POST(sem_proceso_a_running);
         break;
     case BLOCKED:
-        sem_post(&sem_proceso_a_blocked);
-        log_trace(kernel_log, "cambiar_estado_pcb: Semaforo a BLOCKED aumentado");
+        SEM_POST(sem_proceso_a_blocked);
         break;
     case SUSP_READY:
-        sem_post(&sem_proceso_a_susp_ready);
-        log_trace(kernel_log, "cambiar_estado_pcb: Semaforo a SUSP READY aumentado");
-        log_trace(kernel_log, "cambiar_estado_pcb: Semaforo SUSP READY VACIA disminuido");
+        SEM_POST(sem_proceso_a_susp_ready);
         break;
     case SUSP_BLOCKED:
-        sem_post(&sem_proceso_a_susp_blocked);
-        log_trace(kernel_log, "cambiar_estado_pcb: Semaforo a SUSP BLOCKED aumentado");
+        SEM_POST(sem_proceso_a_susp_blocked);
         break;
     case EXIT_ESTADO:
-        sem_post(&sem_proceso_a_exit);
-        log_trace(kernel_log, "cambiar_estado_pcb: Semaforo a EXIT aumentado");
+        SEM_POST(sem_proceso_a_exit);
         break;
     default:
-        log_error(kernel_log, "nuevo_estado_enum: Error al pasar PCB de %s a %s", estado_to_string(estado_viejo), estado_to_string(nuevo_estado_enum));
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        LOG_ERROR(kernel_log, "nuevo_estado_enum: Error al pasar PCB de %s a %s", estado_to_string(estado_viejo), estado_to_string(nuevo_estado_enum));
+        terminar_kernel(EXIT_FAILURE);
     }
     mostrar_colas_estados();
 }
+
 void cambiar_estado_pcb_mutex(t_pcb *PCB, Estados nuevo_estado_enum)
 {
-    if (!PCB || PCB == NULL)
+    if (!PCB)
     {
-        log_error(kernel_log, "cambiar_estado_pcb_mutex: PCB es NULL");
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        LOG_ERROR(kernel_log, "PCB es NULL");
+        terminar_kernel(EXIT_FAILURE);
     }
 
-    pthread_mutex_lock(&PCB->mutex);
+    LOCK_CON_LOG_PCB(PCB->mutex, PCB->PID);
     cambiar_estado_pcb(PCB, nuevo_estado_enum);
-    pthread_mutex_unlock(&PCB->mutex);
+    UNLOCK_CON_LOG_PCB(PCB->mutex, PCB->PID);
 }
 
 bool transicion_valida(Estados actual, Estados destino)
@@ -264,9 +251,9 @@ bool transicion_valida(Estados actual, Estados destino)
     case SUSP_READY:
         return destino == READY;
     default:
-        log_error(kernel_log, "transicion_valida: Estado desconocido %d", actual);
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        LOG_ERROR(kernel_log, "transicion_valida: Estado desconocido %d", actual);
+        terminar_kernel(EXIT_FAILURE);
+        return false;
     }
 }
 
@@ -289,9 +276,9 @@ t_list *obtener_cola_por_estado(Estados estado)
     case EXIT_ESTADO:
         return cola_exit;
     default:
-        log_error(kernel_log, "obtener_cola_por_estado: Estado desconocido %d", estado);
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        LOG_ERROR(kernel_log, "obtener_cola_por_estado: Estado desconocido %d", estado);
+        terminar_kernel(EXIT_FAILURE);
+        return NULL;
     }
 }
 
@@ -300,44 +287,29 @@ void bloquear_cola_por_estado(Estados estado)
     switch (estado)
     {
     case NEW:
-        log_trace(kernel_log, "bloquear_cola_por_estado: esperando mutex_cola_new para bloquear cola NEW");
-        pthread_mutex_lock(&mutex_cola_new);
-        log_trace(kernel_log, "bloquear_cola_por_estado: bloqueando mutex_cola_new para cola NEW");
+        LOCK_CON_LOG(mutex_cola_new);
         break;
     case READY:
-        log_trace(kernel_log, "bloquear_cola_por_estado: esperando mutex_cola_ready para bloquear cola READY");
-        pthread_mutex_lock(&mutex_cola_ready);
-        log_trace(kernel_log, "bloquear_cola_por_estado: bloqueando mutex_cola_ready para cola READY");
+        LOCK_CON_LOG(mutex_cola_ready);
         break;
     case EXEC:
-        log_trace(kernel_log, "bloquear_cola_por_estado: esperando mutex_cola_running para bloquear cola EXEC");
-        pthread_mutex_lock(&mutex_cola_running);
-        log_trace(kernel_log, "bloquear_cola_por_estado: bloqueando mutex_cola_running para cola EXEC");
+        LOCK_CON_LOG(mutex_cola_running);
         break;
     case BLOCKED:
-        log_trace(kernel_log, "bloquear_cola_por_estado: esperando mutex_cola_blocked para bloquear cola BLOCKED");
-        pthread_mutex_lock(&mutex_cola_blocked);
-        log_trace(kernel_log, "bloquear_cola_por_estado: bloqueando mutex_cola_blocked para cola BLOCKED");
+        LOCK_CON_LOG(mutex_cola_blocked);
         break;
     case SUSP_READY:
-        log_trace(kernel_log, "bloquear_cola_por_estado: esperando mutex_cola_susp_ready para bloquear cola SUSP_READY");
-        pthread_mutex_lock(&mutex_cola_susp_ready);
-        log_trace(kernel_log, "bloquear_cola_por_estado: bloqueando mutex_cola_susp_ready para cola SUSP_READY");
+        LOCK_CON_LOG(mutex_cola_susp_ready);
         break;
     case SUSP_BLOCKED:
-        log_trace(kernel_log, "bloquear_cola_por_estado: esperando mutex_cola_susp_blocked para bloquear cola SUSP_BLOCKED");
-        pthread_mutex_lock(&mutex_cola_susp_blocked);
-        log_trace(kernel_log, "bloquear_cola_por_estado: bloqueando mutex_cola_susp_blocked para cola SUSP_BLOCKED");
+        LOCK_CON_LOG(mutex_cola_susp_blocked);
         break;
     case EXIT_ESTADO:
-        log_trace(kernel_log, "bloquear_cola_por_estado: esperando mutex_cola_exit para bloquear cola EXIT");
-        pthread_mutex_lock(&mutex_cola_exit);
-        log_trace(kernel_log, "bloquear_cola_por_estado: bloqueando mutex_cola_exit para cola EXIT");
+        LOCK_CON_LOG(mutex_cola_exit);
         break;
     default:
-        log_error(kernel_log, "bloquear_cola_por_estado: Estado desconocido %d", estado);
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        LOG_ERROR(kernel_log, "bloquear_cola_por_estado: Estado desconocido %d", estado);
+        terminar_kernel(EXIT_FAILURE);
     }
 }
 
@@ -346,37 +318,37 @@ void liberar_cola_por_estado(Estados estado)
     switch (estado)
     {
     case NEW:
-        pthread_mutex_unlock(&mutex_cola_new);
+        UNLOCK_CON_LOG(mutex_cola_new);
         break;
     case READY:
-        pthread_mutex_unlock(&mutex_cola_ready);
+        UNLOCK_CON_LOG(mutex_cola_ready);
         break;
     case EXEC:
-        pthread_mutex_unlock(&mutex_cola_running);
+        UNLOCK_CON_LOG(mutex_cola_running);
         break;
     case BLOCKED:
-        pthread_mutex_unlock(&mutex_cola_blocked);
+        UNLOCK_CON_LOG(mutex_cola_blocked);
         break;
     case SUSP_READY:
-        pthread_mutex_unlock(&mutex_cola_susp_ready);
+        UNLOCK_CON_LOG(mutex_cola_susp_ready);
         break;
     case SUSP_BLOCKED:
-        pthread_mutex_unlock(&mutex_cola_susp_blocked);
+        UNLOCK_CON_LOG(mutex_cola_susp_blocked);
         break;
     case EXIT_ESTADO:
-        pthread_mutex_unlock(&mutex_cola_exit);
+        UNLOCK_CON_LOG(mutex_cola_exit);
         break;
     default:
-        log_error(kernel_log, "liberar_cola_por_estado: Estado desconocido %d", estado);
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        LOG_ERROR(kernel_log, "liberar_cola_por_estado: Estado desconocido %d", estado);
+        terminar_kernel(EXIT_FAILURE);
     }
 }
 
 void loguear_metricas_estado(t_pcb *pcb)
 {
-    if (!pcb || pcb == NULL){
-        log_error(kernel_log, "loguear_metricas_estado: PCB es NULL");
+    if (!pcb)
+    {
+        LOG_ERROR(kernel_log, "PCB es NULL");
         return;
     }
 
@@ -406,9 +378,8 @@ void loguear_metricas_estado(t_pcb *pcb)
 
 t_pcb *buscar_pcb(int pid)
 {
-    log_trace(kernel_log, "buscar_pcb: esperando mutex_cola_procesos para buscar PCB del proceso %d", pid);
-    pthread_mutex_lock(&mutex_cola_procesos);
-    log_trace(kernel_log, "buscar_pcb: bloqueando mutex_cola_procesos para buscar PCB del proceso %d", pid);
+
+    LOCK_CON_LOG(mutex_cola_procesos);
 
     t_pcb *resultado = NULL;
 
@@ -422,13 +393,12 @@ t_pcb *buscar_pcb(int pid)
         }
     }
 
-    pthread_mutex_unlock(&mutex_cola_procesos);
+    UNLOCK_CON_LOG(mutex_cola_procesos);
 
     if (!resultado)
     {
-        log_error(kernel_log, "buscar_pcb: No se encontró PCB para PID=%d", pid);
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        LOG_ERROR(kernel_log, "buscar_pcb: No se encontró PCB para PID=%d", pid);
+        terminar_kernel(EXIT_FAILURE);
     }
 
     return resultado;
@@ -438,7 +408,7 @@ t_pcb *buscar_y_remover_pcb_por_pid(t_list *cola, int pid)
 {
     if (!cola)
     {
-        log_error(kernel_log, "buscar_y_remover_pcb_por_pid: cola es NULL");
+        LOG_ERROR(kernel_log, "cola es NULL");
         return NULL;
     }
 
@@ -453,79 +423,85 @@ t_pcb *buscar_y_remover_pcb_por_pid(t_list *cola, int pid)
     }
 
     // No se encontró el PCB
-    log_trace(kernel_log, "buscar_y_remover_pcb_por_pid: No se encontró PCB con PID %d en la cola", pid);
+    LOG_DEBUG(kernel_log, "buscar_y_remover_pcb_por_pid: No se encontró PCB con PID %d en la cola", pid);
     return NULL;
 }
 
 void liberar_pcb(t_pcb *pcb)
 {
-    if (!pcb || pcb == NULL)
+    if (!pcb)
     {
-        log_error(kernel_log, "liberar_pcb: PCB es NULL");
+        LOG_ERROR(kernel_log, "PCB es NULL");
         return;
     }
-    pthread_mutex_lock(&pcb->mutex);
+
+    if (pcb->timer_flag)
+    {
+        *pcb->timer_flag = false;
+        free(pcb->timer_flag);
+        pcb->timer_flag = NULL;
+    }
 
     list_remove_element(cola_exit, pcb);
 
-    pthread_mutex_lock(&mutex_cola_procesos);
+    LOCK_CON_LOG(mutex_cola_procesos);
     list_remove_element(cola_procesos, pcb);
-    pthread_mutex_unlock(&mutex_cola_procesos);
+    UNLOCK_CON_LOG(mutex_cola_procesos);
 
     char *pid_key = string_itoa(pcb->PID);
     dictionary_remove_and_destroy(tiempos_por_pid, pid_key, (void *)temporal_destroy);
     free(pid_key);
 
-    free(pcb->path);
-    pthread_mutex_unlock(&pcb->mutex);
+    if (pcb->path)
+    {
+        free(pcb->path);
+    }
+    UNLOCK_CON_LOG_PCB(pcb->mutex, pcb->PID);
     pthread_mutex_destroy(&pcb->mutex);
     free(pcb);
 }
 
 void verificar_procesos_restantes()
 {
-    log_trace(kernel_log, "EXIT: verificando si quedan procesos en el sistema");
+    LOG_DEBUG(kernel_log, "EXIT: verificando si quedan procesos en el sistema");
 
-    log_trace(kernel_log, "EXIT: esperando mutex_cola_new, mutex_cola_ready, mutex_cola_running, mutex_cola_blocked, mutex_cola_susp_ready, mutex_cola_susp_blocked, mutex_cola_exit y mutex_cola_procesos");
-    log_trace(kernel_log, "EXIT: esperando mutex_cola_new");
-    pthread_mutex_lock(&mutex_cola_new);
-    log_trace(kernel_log, "EXIT: bloqueando mutex_cola_ready");
-    pthread_mutex_lock(&mutex_cola_ready);
-    log_trace(kernel_log, "EXIT: bloqueando mutex_cola_running");
-    pthread_mutex_lock(&mutex_cola_running);
-    log_trace(kernel_log, "EXIT: bloqueando mutex_cola_blocked");
-    pthread_mutex_lock(&mutex_cola_blocked);
-    log_trace(kernel_log, "EXIT: bloqueando mutex_cola_susp_ready");
-    pthread_mutex_lock(&mutex_cola_susp_ready);
-    log_trace(kernel_log, "EXIT: bloqueando mutex_cola_susp_blocked");
-    pthread_mutex_lock(&mutex_cola_susp_blocked);
-    log_trace(kernel_log, "EXIT: bloqueando mutex_cola_exit");
-    pthread_mutex_lock(&mutex_cola_exit);
-    log_trace(kernel_log, "EXIT: bloqueando mutex_cola_procesos");
-    pthread_mutex_lock(&mutex_cola_procesos);
-    log_trace(kernel_log, "EXIT: bloqueando mutex_cola_new, mutex_cola_ready, mutex_cola_running, mutex_cola_blocked, mutex_cola_susp_ready, mutex_cola_susp_blocked, mutex_cola_exit y mutex_cola_procesos");
+    int total_estimado = list_size(cola_new) + list_size(cola_ready) +
+                         list_size(cola_running) + list_size(cola_blocked) +
+                         list_size(cola_susp_ready) + list_size(cola_susp_blocked) +
+                         list_size(cola_exit) + list_size(cola_procesos);
+
+    if (total_estimado > 0)
+        return;
+
+    LOCK_CON_LOG(mutex_cola_new);
+    LOCK_CON_LOG(mutex_cola_ready);
+    LOCK_CON_LOG(mutex_cola_running);
+    LOCK_CON_LOG(mutex_cola_blocked);
+    LOCK_CON_LOG(mutex_cola_susp_ready);
+    LOCK_CON_LOG(mutex_cola_susp_blocked);
+    LOCK_CON_LOG(mutex_cola_exit);
+    LOCK_CON_LOG(mutex_cola_procesos);
 
     int total_procesos = list_size(cola_new) + list_size(cola_ready) +
                          list_size(cola_running) + list_size(cola_blocked) +
                          list_size(cola_susp_ready) + list_size(cola_susp_blocked) +
                          list_size(cola_exit) + list_size(cola_procesos);
 
-    pthread_mutex_unlock(&mutex_cola_procesos);
-    pthread_mutex_unlock(&mutex_cola_exit);
-    pthread_mutex_unlock(&mutex_cola_susp_blocked);
-    pthread_mutex_unlock(&mutex_cola_susp_ready);
-    pthread_mutex_unlock(&mutex_cola_blocked);
-    pthread_mutex_unlock(&mutex_cola_running);
-    pthread_mutex_unlock(&mutex_cola_ready);
-    pthread_mutex_unlock(&mutex_cola_new);
+    UNLOCK_CON_LOG(mutex_cola_procesos);
+    UNLOCK_CON_LOG(mutex_cola_exit);
+    UNLOCK_CON_LOG(mutex_cola_susp_blocked);
+    UNLOCK_CON_LOG(mutex_cola_susp_ready);
+    UNLOCK_CON_LOG(mutex_cola_blocked);
+    UNLOCK_CON_LOG(mutex_cola_running);
+    UNLOCK_CON_LOG(mutex_cola_ready);
+    UNLOCK_CON_LOG(mutex_cola_new);
 
-    log_trace(kernel_log, "EXIT: Total de procesos restantes en el sistema: %d", total_procesos);
+    LOG_DEBUG(kernel_log, "EXIT: Total de procesos restantes en el sistema: %d", total_procesos);
 
     if (total_procesos == 0)
     {
         mostrar_colas_estados();
         log_info(kernel_log, "Todos los procesos han terminado. Finalizando kernel...");
-        terminar_kernel();
-        exit(EXIT_SUCCESS);
+        terminar_kernel(EXIT_SUCCESS);
     }
 }

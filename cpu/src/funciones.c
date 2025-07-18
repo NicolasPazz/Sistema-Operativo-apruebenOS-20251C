@@ -51,15 +51,14 @@ void func_write(char* direccion_logica_str, char* datos) {
     if (cache_habilitada()) {
         int pos = buscar_pagina_en_cache(pid_ejecutando, nro_pagina);
         if (pos != -1) {
-            int offset = direccion_logica % tam_pagina;
+            //int offset = direccion_logica % tam_pagina; // WARNING: VARIABLE NO UTILIZADA
             
-            log_info(cpu_log, "(PID: %d) - Cache HIT - Página: %d - Modificando offset %d con '%s' (tamaño: %d)", 
-                    pid_ejecutando, nro_pagina, offset, datos, tamanio_real);
+            log_info(cpu_log, "PID: %d - Cache HIT - Página: %d", pid_ejecutando, nro_pagina);
             
             // Pasar tamaño calculado en lugar de usar strlen() interno
             cache_modificar(pid_ejecutando, nro_pagina, direccion_logica, datos, tamanio_real);
             
-            log_info(cpu_log, "(PID: %d) - Cache HIT - Pagina: %d - Valor escrito: %s", pid_ejecutando, nro_pagina, datos);
+            log_debug(cpu_log, "PID: %d - Cache HIT - Pagina: %d - Valor escrito: %s", pid_ejecutando, nro_pagina, datos);
             return;
         }
         log_info(cpu_log, ROJO("PID: %d - Cache Miss - Página: %d"), pid_ejecutando, nro_pagina);
@@ -133,8 +132,8 @@ void func_read(char* direccion_logica_str, char* tam_str) {
             char buffer[128] = {0};
             memcpy(buffer, contenido, tam);
             buffer[tam] = '\0';
-            log_info(cpu_log, "(PID: %d) - Cache HIT - Pagina: %d - Valor: %s", pid_ejecutando, nro_pagina, buffer);
-            log_trace("PID: %d - Contenido leído (cache): %s\n", pid_ejecutando, buffer);
+            log_info(cpu_log, "PID: %d - Cache HIT - Pagina: %d", pid_ejecutando, nro_pagina);
+            log_trace(cpu_log, "PID: %d - Contenido leído (cache): %s", pid_ejecutando, buffer);
             free(contenido);
             return;
         }
@@ -172,8 +171,8 @@ void func_read(char* direccion_logica_str, char* tam_str) {
     memcpy(buffer, contenido, tam);
     buffer[tam] = '\0';
 
-    log_info(cpu_log, VERDE("(PID: %d) - READ - Dir Fisica: %d - Valor: %s"), pid_ejecutando, direccion_fisica, buffer);
-    log_trace("PID: %d - Contenido leído: %s\n", pid_ejecutando, buffer);
+    log_info(cpu_log, VERDE("PID: %d - Acción: LEER - Dirección Fisica: %d - Valor: %s"), pid_ejecutando, direccion_fisica, buffer);
+    log_trace(cpu_log, "PID: %d - Contenido leído: %s", pid_ejecutando, buffer);
     
     list_destroy_and_destroy_elements(lista_respuesta, free);
 

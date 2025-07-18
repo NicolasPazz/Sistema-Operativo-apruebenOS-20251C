@@ -108,7 +108,7 @@ void procesar_conexion(void* void_args) {
     bool es_cpu = false;  
     switch (handshake) {
         case HANDSHAKE_MEMORIA_KERNEL:
-            log_info(logger, VERDE("## Kernel Conectado - FD del socket: %d"), cliente_socket);
+            log_info(logger, AMARILLO("## Kernel Conectado - FD del socket: %d"), cliente_socket);
             fd_kernel = cliente_socket;
             break;
 
@@ -534,7 +534,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             break;
         }
         case SHUTDOWN_OP: {
-            log_info(logger, "SHUTDOWN_OP recibido - Finalizando Memoria");
+            log_debug(logger, "SHUTDOWN_OP recibido - Finalizando Memoria");
             // Cerrar todas las conexiones y liberar recursos
             if (fd_kernel != -1) close(fd_kernel);
             if (fd_cpu != -1) close(fd_cpu);
@@ -607,7 +607,7 @@ void procesar_read_op(int cliente_socket) {
     char vista[64] = {0};
     int max_ver = size > 60 ? 60 : size;
     strncpy(vista, datos_leidos, max_ver);
-    log_info(logger, "READ - PID: %d - Bytes [%d:%d] = '%s'", pid, direccion_fisica, direccion_fisica + size - 1, vista);
+    log_debug(logger, "READ - PID: %d - Bytes [%d:%d] = '%s'", pid, direccion_fisica, direccion_fisica + size - 1, vista);
 
     aplicar_retardo_memoria();
     

@@ -284,7 +284,7 @@ t_process_instructions* load_process_instructions(int pid, char* instructions_fi
 // Obtiene una instrucción específica para un proceso
 t_instruccion* get_instruction(int pid, int pc) {
     if (process_instructions_list == NULL) {
-        log_error(logger, "Lista de instrucciones del proceso (PID: %d) no inicializada", pid);
+        log_error(logger, "Lista de instrucciones del proceso PID: %d no inicializada", pid);
         return NULL;
     }
     
@@ -299,7 +299,7 @@ t_instruccion* get_instruction(int pid, int pc) {
     }
     
     if (process_inst == NULL) {
-        log_error(logger, "(PID: %d) - No se encontraron instrucciones para este proceso", pid);
+        log_error(logger, "PID: %d - No se encontraron instrucciones para este proceso", pid);
         return NULL;
     }
     

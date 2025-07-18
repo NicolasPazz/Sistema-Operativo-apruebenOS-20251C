@@ -5,15 +5,13 @@ io *get_io(char *nombre_io)
 {
     io *dispositivo = NULL;
 
-    if (nombre_io == NULL)
+    if (!nombre_io)
     {
-        log_error(kernel_log, "get_io: Nombre de IO nulo");
+        LOG_ERROR(kernel_log, "Nombre de IO nulo");
         return NULL;
     }
 
-    log_trace(kernel_log, "esperando mutex_ios para buscar IO por nombre '%s'", nombre_io);
-    pthread_mutex_lock(&mutex_ios);
-    log_trace(kernel_log, "bloqueando mutex_ios para buscar IO por nombre '%s'", nombre_io);
+    LOCK_CON_LOG(mutex_ios);
 
     for (int i = 0; i < list_size(lista_ios); i++)
     {
@@ -24,9 +22,9 @@ io *get_io(char *nombre_io)
             break;
         }
     }
-    pthread_mutex_unlock(&mutex_ios);
+    UNLOCK_CON_LOG(mutex_ios);
 
-    log_trace(kernel_log, "get_io: IO '%s' %s encontrada", nombre_io, dispositivo ? "encontrada" : "no encontrada");
+    LOG_DEBUG(kernel_log, "IO '%s' %s encontrada", nombre_io, dispositivo ? "encontrada" : "no encontrada");
 
     return dispositivo;
 }
@@ -35,7 +33,7 @@ io *buscar_io_por_fd(int fd)
 {
     if (!lista_ios)
     {
-        log_error(kernel_log, "buscar_io_por_fd: lista_ios es NULL");
+        LOG_ERROR(kernel_log, "lista_ios es NULL");
         return NULL;
     }
 
@@ -50,7 +48,7 @@ io *buscar_io_por_fd(int fd)
     }
 
     // No se encontró el dispositivo
-    log_trace(kernel_log, "buscar_io_por_fd: No se encontró IO con fd %d", fd);
+    LOG_DEBUG(kernel_log, "No se encontró IO con fd %d", fd);
     return NULL;
 }
 
@@ -58,7 +56,7 @@ io *buscar_io_por_nombre(char *nombre)
 {
     if (!lista_ios || !nombre)
     {
-        log_error(kernel_log, "buscar_io_por_nombre: lista_ios o nombre es NULL");
+        LOG_ERROR(kernel_log, "lista_ios o nombre es NULL");
         return NULL;
     }
 
@@ -73,7 +71,7 @@ io *buscar_io_por_nombre(char *nombre)
     }
 
     // No se encontró el dispositivo
-    log_trace(kernel_log, "buscar_io_por_nombre: No se encontró IO con nombre '%s'", nombre);
+    LOG_DEBUG(kernel_log, "buscar_io_por_nombre: No se encontró IO con nombre '%s'", nombre);
     return NULL;
 }
 
@@ -85,25 +83,25 @@ bool esta_libre_io(io *dispositivo)
 
 io *io_disponible(char *nombre)
 {
-    if (nombre == NULL)
+    if (!nombre)
     {
-        log_error(kernel_log, "esta_libre_io: Nombre de IO nulo");
+        LOG_ERROR(kernel_log, "Nombre de IO nulo");
         return false;
     }
-    log_trace(kernel_log, "esperando mutex_ios para verificar disponibilidad de IO '%s'", nombre);
-    pthread_mutex_lock(&mutex_ios);
-    log_trace(kernel_log, "bloqueando mutex_ios para verificar disponibilidad de IO '%s'", nombre);
+    
+    LOCK_CON_LOG(mutex_ios);
+    
     for (int i = 0; i < list_size(lista_ios); i++)
     {
         io *dispositivo = list_get(lista_ios, i);
         if (strcmp(dispositivo->nombre, nombre) == 0 && dispositivo->estado == IO_DISPONIBLE)
         {
-            log_trace(kernel_log, "IO '%s' está disponible (fd=%d)", dispositivo->nombre, dispositivo->fd);
-            pthread_mutex_unlock(&mutex_ios);
+            LOG_DEBUG(kernel_log, "IO '%s' está disponible (fd=%d)", dispositivo->nombre, dispositivo->fd);
+            UNLOCK_CON_LOG(mutex_ios);
             return dispositivo;
         }
     }
-    pthread_mutex_unlock(&mutex_ios);
+    UNLOCK_CON_LOG(mutex_ios);
     return NULL;
 }
 
@@ -117,11 +115,9 @@ void bloquear_pcb_por_io(char *nombre_io, t_pcb *pcb, int tiempo_a_usar)
     }
     else
     {
-        log_trace(kernel_log, "No hay IO disponible con el nombre '%s'", nombre_io);
+        LOG_DEBUG(kernel_log, "No hay IO disponible con el nombre '%s'", nombre_io);
 
-        log_trace(kernel_log, "bloquear_pcb_por_io: esperando mutex_pcbs_esperando_io para agregar PCB PID=%d a la lista de bloqueados por IO '%s' por %d ms", pcb->PID, nombre_io, tiempo_a_usar);
-        pthread_mutex_lock(&mutex_pcbs_esperando_io);
-        log_trace(kernel_log, "bloquear_pcb_por_io: bloqueando mutex_pcbs_esperando_io para agregar PCB PID=%d a la lista de bloqueados por IO '%s' por %d ms", pcb->PID, nombre_io, tiempo_a_usar);
+        LOCK_CON_LOG(mutex_pcbs_esperando_io);
 
         t_pcb_io *pcb_io = malloc(sizeof(t_pcb_io));
         pcb_io->pcb = pcb;
@@ -129,8 +125,8 @@ void bloquear_pcb_por_io(char *nombre_io, t_pcb *pcb, int tiempo_a_usar)
         pcb_io->tiempo_a_usar = tiempo_a_usar;
         list_add(pcbs_esperando_io, pcb_io);
 
-        pthread_mutex_unlock(&mutex_pcbs_esperando_io);
-        log_trace(kernel_log, "PCB PID=%d agregado a la lista de bloqueados por IO '%s' por %d ms", pcb->PID, nombre_io, tiempo_a_usar);
+        UNLOCK_CON_LOG(mutex_pcbs_esperando_io);
+        LOG_DEBUG(kernel_log, "PCB PID=%d agregado a la lista de bloqueados por IO '%s' por %d ms", pcb->PID, nombre_io, tiempo_a_usar);
     }
 }
 
@@ -148,45 +144,42 @@ void enviar_io(io *dispositivo, t_pcb *pcb, int tiempo_a_usar)
     enviar_paquete(paquete, dispositivo->fd);
     eliminar_paquete(paquete);
 
-    log_trace(kernel_log, "Enviado PID=%d a IO '%s' por %d ms", pcb->PID, dispositivo->nombre, tiempo_a_usar);
+    LOG_DEBUG(kernel_log, "Enviado PID=%d a IO '%s' por %d ms", pcb->PID, dispositivo->nombre, tiempo_a_usar);
 }
 
 void verificar_procesos_bloqueados(io *io)
 {
     if (!io)
     {
-        log_error(kernel_log, "verificar_procesos_bloqueados: IO no válida");
-        terminar_kernel();
-        exit(EXIT_FAILURE);
+        LOG_ERROR(kernel_log, "IO no válida");
+        terminar_kernel(EXIT_FAILURE);
     }
 
-    log_trace(kernel_log, "verificar_procesos_bloqueados: esperando mutex_pcbs_esperando_io para IO '%s'", io->nombre);
-    pthread_mutex_lock(&mutex_pcbs_esperando_io);
-    log_trace(kernel_log, "verificar_procesos_bloqueados: bloqueando mutex_pcbs_esperando_io para IO '%s'", io->nombre);
+    LOCK_CON_LOG(mutex_pcbs_esperando_io);
 
     // Obtener el primer proceso esperando una IO con ese nombre
     t_pcb_io *pendiente = obtener_pcb_esperando_io(io->nombre);
 
     if (!pendiente)
     {
-        log_trace(kernel_log, "No hay procesos pendientes para la IO '%s'", io->nombre);
-        log_trace(kernel_log, "verificar_procesos_bloqueados: esperando mutex_ios para marcar IO '%s' como DISPONIBLE", io->nombre);
-        pthread_mutex_lock(&mutex_ios);
-        log_trace(kernel_log, "verificar_procesos_bloqueados: bloqueando mutex_ios para marcar IO '%s' como DISPONIBLE", io->nombre);
+        LOG_DEBUG(kernel_log, "No hay procesos pendientes para la IO '%s'", io->nombre);
+        
+        LOCK_CON_LOG(mutex_ios);
+        
         io->estado = IO_DISPONIBLE;
         io->proceso_actual = NULL;
-        pthread_mutex_unlock(&mutex_ios);
-        pthread_mutex_unlock(&mutex_pcbs_esperando_io);
+        UNLOCK_CON_LOG(mutex_ios);
+        UNLOCK_CON_LOG(mutex_pcbs_esperando_io);
         return;
     }
 
-    log_trace(kernel_log, "Asignando IO '%s' (fd=%d) al proceso PID=%d por %d ms", io->nombre, io->fd, pendiente->pcb->PID, pendiente->tiempo_a_usar);
+    LOG_DEBUG(kernel_log, "Asignando IO '%s' (fd=%d) al proceso PID=%d por %d ms", io->nombre, io->fd, pendiente->pcb->PID, pendiente->tiempo_a_usar);
 
     enviar_io(io, pendiente->pcb, pendiente->tiempo_a_usar);
 
     free(pendiente);
 
-    pthread_mutex_unlock(&mutex_pcbs_esperando_io);
+    UNLOCK_CON_LOG(mutex_pcbs_esperando_io);
 }
 
 t_pcb_io *obtener_pcb_esperando_io(char *nombre_io)
@@ -206,15 +199,15 @@ t_pcb_io *obtener_pcb_esperando_io(char *nombre_io)
 void exit_procesos_relacionados(io *dispositivo)
 {
     // Exit proceso usando esta instancia de io
-    if (dispositivo->proceso_actual != NULL)
+    if (dispositivo->proceso_actual)
     {
-        log_trace(kernel_log, "Proceso PID=%d ejecutando en IO desconectada, moviendo a EXIT", dispositivo->proceso_actual->PID);
+        LOG_DEBUG(kernel_log, "Proceso PID=%d ejecutando en IO desconectada, moviendo a EXIT", dispositivo->proceso_actual->PID);
         cambiar_estado_pcb_mutex(dispositivo->proceso_actual, EXIT_ESTADO);
         dispositivo->proceso_actual = NULL;
     }
     else
     {
-        log_trace(kernel_log, "IO '%s' se desconectó sin proceso en ejecución", dispositivo->nombre);
+        LOG_DEBUG(kernel_log, "IO '%s' se desconectó sin proceso en ejecución", dispositivo->nombre);
     }
 
     if (list_is_empty(pcbs_esperando_io))
@@ -224,9 +217,8 @@ void exit_procesos_relacionados(io *dispositivo)
     bool hay_otra_instancia = false;
     io *otra_io = NULL;
 
-    log_trace(kernel_log, "exit_procesos_relacionados: esperando mutex_ios para verificar otras IO con el mismo nombre '%s'", dispositivo->nombre);
-    pthread_mutex_lock(&mutex_ios);
-    log_trace(kernel_log, "exit_procesos_relacionados: bloqueando mutex_ios para verificar otras IO con el mismo nombre '%s'", dispositivo->nombre);
+    LOCK_CON_LOG(mutex_ios);
+    
     for (int j = 0; j < list_size(lista_ios); j++)
     {
         otra_io = list_get(lista_ios, j);
@@ -236,16 +228,15 @@ void exit_procesos_relacionados(io *dispositivo)
             break;
         }
     }
-    pthread_mutex_unlock(&mutex_ios);
+    UNLOCK_CON_LOG(mutex_ios);
 
     // Si no hay otras IO con el mismo nombre (LIBRES U OCUPADAS), mover los procesos afectados a EXIT
     if (!hay_otra_instancia)
     {
         t_list *pcbs_afectados = list_create();
 
-        log_trace(kernel_log, "exit_procesos_relacionados: esperando mutex_pcbs_esperando_io para mover procesos a EXIT por desconexión de IO '%s'", dispositivo->nombre);
-        pthread_mutex_lock(&mutex_pcbs_esperando_io);
-        log_trace(kernel_log, "exit_procesos_relacionados: bloqueando mutex_pcbs_esperando_io para mover procesos a EXIT por desconexión de IO '%s'", dispositivo->nombre);
+        LOCK_CON_LOG(mutex_pcbs_esperando_io);
+        
         int i = 0;
         while (i < list_size(pcbs_esperando_io))
         {
@@ -260,12 +251,12 @@ void exit_procesos_relacionados(io *dispositivo)
                 i++;
             }
         }
-        pthread_mutex_unlock(&mutex_pcbs_esperando_io);
+        UNLOCK_CON_LOG(mutex_pcbs_esperando_io);
 
         for (int i = 0; i < list_size(pcbs_afectados); i++)
         {
             t_pcb_io *pcb_io_actual = list_get(pcbs_afectados, i);
-            log_trace(kernel_log, "Proceso PID=%d en IO desconectada, moviendo a EXIT", pcb_io_actual->pcb->PID);
+            LOG_DEBUG(kernel_log, "Proceso PID=%d en IO desconectada, moviendo a EXIT", pcb_io_actual->pcb->PID);
             cambiar_estado_pcb_mutex(pcb_io_actual->pcb, EXIT_ESTADO);
             free(pcb_io_actual);
         }

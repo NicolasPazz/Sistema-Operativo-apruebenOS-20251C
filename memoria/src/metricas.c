@@ -124,7 +124,7 @@ void imprimir_metricas_proceso(int pid) {
     pthread_mutex_lock(&metricas->mutex_metricas);
     
     // Formato formal según consigna
-    log_info(logger, VERDE("## (PID: %d) - Proceso Destruido - Métricas - Acc.T.Pag: %d; Inst.Sol.: %d; SWAP: %d; Mem.Prin.: %d; Lec.Mem.: %d; Esc.Mem.: %d"), 
+    log_debug(logger, VERDE("## PID: %d - Proceso Destruido - Métricas - Acc.T.Pag: %d; Inst.Sol.: %d; SWAP: %d; Mem.Prin.: %d; Lec.Mem.: %d; Esc.Mem.: %d"), 
              pid, 
              metricas->accesos_tabla_paginas,
              metricas->instrucciones_solicitadas,
@@ -134,7 +134,7 @@ void imprimir_metricas_proceso(int pid) {
              metricas->escrituras_memoria);
     
     // Formato legible (mantener para debugging)
-    log_info(logger, VERDE("## (PID: %d) - Proceso Destruido - Métricas finales:"), pid);
+    log_info(logger, VERDE("## PID: %d - Proceso Destruido - Métricas finales:"), pid);
     log_info(logger, "    "AZUL("Acc.T.Pag:")"      "VERDE("%d"), metricas->accesos_tabla_paginas);
     log_info(logger, "    "AZUL("Inst.Sol.:")"      "VERDE("%d"), metricas->instrucciones_solicitadas);
     log_info(logger, "    "AZUL("SWAP:")"           "VERDE("%d"), metricas->bajadas_swap);
