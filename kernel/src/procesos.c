@@ -470,31 +470,45 @@ void verificar_procesos_restantes()
                          list_size(cola_susp_ready) + list_size(cola_susp_blocked) +
                          list_size(cola_exit) + list_size(cola_procesos);
 
-    if (total_estimado > 0)
+    if (total_estimado > 1)
         return;
 
     LOCK_CON_LOG(mutex_cola_new);
-    LOCK_CON_LOG(mutex_cola_ready);
-    LOCK_CON_LOG(mutex_cola_running);
-    LOCK_CON_LOG(mutex_cola_blocked);
-    LOCK_CON_LOG(mutex_cola_susp_ready);
-    LOCK_CON_LOG(mutex_cola_susp_blocked);
-    LOCK_CON_LOG(mutex_cola_exit);
-    LOCK_CON_LOG(mutex_cola_procesos);
-
-    int total_procesos = list_size(cola_new) + list_size(cola_ready) +
-                         list_size(cola_running) + list_size(cola_blocked) +
-                         list_size(cola_susp_ready) + list_size(cola_susp_blocked) +
-                         list_size(cola_exit) + list_size(cola_procesos);
-
-    UNLOCK_CON_LOG(mutex_cola_procesos);
-    UNLOCK_CON_LOG(mutex_cola_exit);
-    UNLOCK_CON_LOG(mutex_cola_susp_blocked);
-    UNLOCK_CON_LOG(mutex_cola_susp_ready);
-    UNLOCK_CON_LOG(mutex_cola_blocked);
-    UNLOCK_CON_LOG(mutex_cola_running);
-    UNLOCK_CON_LOG(mutex_cola_ready);
+    int cantidad_new = list_size(cola_new);
     UNLOCK_CON_LOG(mutex_cola_new);
+
+    LOCK_CON_LOG(mutex_cola_ready);
+    int cantidad_ready = list_size(cola_ready);
+    UNLOCK_CON_LOG(mutex_cola_ready);
+
+    LOCK_CON_LOG(mutex_cola_running);
+    int cantidad_running = list_size(cola_running);
+    UNLOCK_CON_LOG(mutex_cola_running);
+
+    LOCK_CON_LOG(mutex_cola_blocked);
+    int cantidad_blocked = list_size(cola_blocked);
+    UNLOCK_CON_LOG(mutex_cola_blocked);
+
+    LOCK_CON_LOG(mutex_cola_susp_ready);
+    int cantidad_susp_ready = list_size(cola_susp_ready);
+    UNLOCK_CON_LOG(mutex_cola_susp_ready);
+
+    LOCK_CON_LOG(mutex_cola_susp_blocked);
+    int cantidad_susp_blocked = list_size(cola_susp_blocked);
+    UNLOCK_CON_LOG(mutex_cola_susp_blocked);
+
+    LOCK_CON_LOG(mutex_cola_exit);
+    int cantidad_exit = list_size(cola_exit);
+    UNLOCK_CON_LOG(mutex_cola_exit);
+
+    LOCK_CON_LOG(mutex_cola_procesos);
+    int cantidad_procesos = list_size(cola_procesos);
+    UNLOCK_CON_LOG(mutex_cola_procesos);
+
+    int total_procesos = cantidad_new + cantidad_ready +
+                         cantidad_running + cantidad_blocked +
+                         cantidad_susp_ready + cantidad_susp_blocked +
+                         cantidad_exit + cantidad_procesos;
 
     LOG_DEBUG(kernel_log, "EXIT: Total de procesos restantes en el sistema: %d", total_procesos);
 
