@@ -206,6 +206,23 @@ void iniciar_diccionario_archivos_por_pcb()
     archivo_por_pcb = dictionary_create();
 }
 
+void terminar_hilo()
+{
+    pthread_t self = pthread_self();
+
+    LOCK_CON_LOG(mutex_hilos);
+    for (int i = 0; i < list_size(lista_hilos); i++)
+    {
+        pthread_t *hilo = list_get(lista_hilos, i);
+        if (pthread_equal(*hilo, self))
+        {
+            list_replace(lista_hilos, i, NULL);
+            break;
+        }
+    }
+    UNLOCK_CON_LOG(mutex_hilos);
+}
+
 static void destruir_cpu(void *elem)
 {
     if (!elem)
@@ -246,103 +263,98 @@ static void destruir_pcb_dump(void *elem)
 
 void terminar_kernel(int code)
 {
-    pthread_mutex_lock(&mutex_hilos);
-    for (int i = 0; i < list_size(lista_hilos); i++)
-    {
-        pthread_t *hilo = list_get(lista_hilos, i);
-        pthread_cancel(*hilo);
-        pthread_join(hilo, NULL);
-        free(hilo);
-    }
-    list_destroy(lista_hilos);
-    pthread_mutex_unlock(&mutex_hilos);
-
-    pthread_mutex_lock(&mutex_sockets);
+    LOCK_CON_LOG(mutex_sockets);
+    close(fd_kernel_io);
+    close(fd_kernel_dispatch);
+    close(fd_interrupt);
     for (int i = 0; i < list_size(lista_sockets); i++)
     {
         int fd = (int)(intptr_t)list_get(lista_sockets, i);
         close(fd);
+        LOG_DEBUG(kernel_log, "Socket cerrado: fd=%d", fd);
     }
     list_destroy(lista_sockets);
-    pthread_mutex_unlock(&mutex_sockets);
+    UNLOCK_CON_LOG(mutex_sockets);
+    pthread_mutex_destroy(&mutex_sockets);
 
+    LOG_DEBUG(kernel_log, "Destruyendo tiempos por PID y archivos por PCB");
     dictionary_destroy_and_destroy_elements(tiempos_por_pid, (void *)temporal_destroy);
     dictionary_destroy_and_destroy_elements(archivo_por_pcb, free);
 
-    pthread_mutex_lock(&mutex_cola_procesos);
+    LOCK_CON_LOG(mutex_cola_procesos);
     list_destroy_and_destroy_elements(cola_procesos, destruir_pcb);
-    pthread_mutex_unlock(&mutex_cola_procesos);
+    UNLOCK_CON_LOG(mutex_cola_procesos);
     pthread_mutex_destroy(&mutex_cola_procesos);
 
-    pthread_mutex_lock(&mutex_cola_new);
+    LOCK_CON_LOG(mutex_cola_new);
     list_destroy(cola_new);
     sem_destroy(&sem_proceso_a_new);
 
-    pthread_mutex_unlock(&mutex_cola_new);
+    UNLOCK_CON_LOG(mutex_cola_new);
     pthread_mutex_destroy(&mutex_cola_new);
 
-    pthread_mutex_lock(&mutex_cola_susp_blocked);
+    LOCK_CON_LOG(mutex_cola_susp_blocked);
     list_destroy(cola_susp_blocked);
     sem_destroy(&sem_proceso_a_susp_blocked);
 
-    pthread_mutex_unlock(&mutex_cola_susp_blocked);
+    UNLOCK_CON_LOG(mutex_cola_susp_blocked);
     pthread_mutex_destroy(&mutex_cola_susp_blocked);
 
-    pthread_mutex_lock(&mutex_cola_susp_ready);
+    LOCK_CON_LOG(mutex_cola_susp_ready);
     list_destroy(cola_susp_ready);
     sem_destroy(&sem_proceso_a_susp_ready);
 
-    pthread_mutex_unlock(&mutex_cola_susp_ready);
+    UNLOCK_CON_LOG(mutex_cola_susp_ready);
     pthread_mutex_destroy(&mutex_cola_susp_ready);
 
-    pthread_mutex_lock(&mutex_cola_ready);
+    LOCK_CON_LOG(mutex_cola_ready);
     list_destroy(cola_ready);
     sem_destroy(&sem_proceso_a_ready);
     sem_destroy(&sem_planificador_cp);
-    pthread_mutex_unlock(&mutex_cola_ready);
+    UNLOCK_CON_LOG(mutex_cola_ready);
     pthread_mutex_destroy(&mutex_cola_ready);
 
-    pthread_mutex_lock(&mutex_cola_blocked);
+    LOCK_CON_LOG(mutex_cola_blocked);
     list_destroy(cola_blocked);
     sem_destroy(&sem_proceso_a_blocked);
 
-    pthread_mutex_unlock(&mutex_cola_blocked);
+    UNLOCK_CON_LOG(mutex_cola_blocked);
     pthread_mutex_destroy(&mutex_cola_blocked);
 
-    pthread_mutex_lock(&mutex_cola_running);
+    LOCK_CON_LOG(mutex_cola_running);
     list_destroy(cola_running);
     sem_destroy(&sem_proceso_a_running);
 
-    pthread_mutex_unlock(&mutex_cola_running);
+    UNLOCK_CON_LOG(mutex_cola_running);
     pthread_mutex_destroy(&mutex_cola_running);
 
-    pthread_mutex_lock(&mutex_cola_exit);
+    LOCK_CON_LOG(mutex_cola_exit);
     list_destroy(cola_exit);
     sem_destroy(&sem_proceso_a_exit);
 
-    pthread_mutex_unlock(&mutex_cola_exit);
+    UNLOCK_CON_LOG(mutex_cola_exit);
     pthread_mutex_destroy(&mutex_cola_exit);
 
-    pthread_mutex_lock(&mutex_pcbs_esperando_io);
+    LOCK_CON_LOG(mutex_pcbs_esperando_io);
     list_destroy_and_destroy_elements(pcbs_esperando_io, destruir_pcb_io);
-    pthread_mutex_unlock(&mutex_pcbs_esperando_io);
+    UNLOCK_CON_LOG(mutex_pcbs_esperando_io);
     pthread_mutex_destroy(&mutex_pcbs_esperando_io);
 
-    pthread_mutex_lock(&mutex_lista_cpus);
+    LOCK_CON_LOG(mutex_lista_cpus);
     list_destroy_and_destroy_elements(lista_cpus, destruir_cpu);
     sem_destroy(&sem_cpu_disponible);
-    pthread_mutex_unlock(&mutex_lista_cpus);
+    UNLOCK_CON_LOG(mutex_lista_cpus);
     pthread_mutex_destroy(&mutex_lista_cpus);
 
-    pthread_mutex_lock(&mutex_ios);
+    LOCK_CON_LOG(mutex_ios);
     list_destroy_and_destroy_elements(lista_ios, destruir_io);
-    pthread_mutex_unlock(&mutex_ios);
+    UNLOCK_CON_LOG(mutex_ios);
     pthread_mutex_destroy(&mutex_ios);
 
-    pthread_mutex_lock(&mutex_cola_interrupciones);
+    LOCK_CON_LOG(mutex_cola_interrupciones);
     queue_destroy_and_destroy_elements(cola_interrupciones, free);
     sem_destroy(&sem_interrupciones);
-    pthread_mutex_unlock(&mutex_cola_interrupciones);
+    UNLOCK_CON_LOG(mutex_cola_interrupciones);
     pthread_mutex_destroy(&mutex_cola_interrupciones);
 
     pthread_mutex_destroy(&mutex_procesos_rechazados);
@@ -354,12 +366,39 @@ void terminar_kernel(int code)
 
     pthread_mutex_destroy(&mutex_conexiones);
 
-    pthread_mutex_unlock(&mutex_planificador_lp);
+    UNLOCK_CON_LOG(mutex_planificador_lp);
     pthread_mutex_destroy(&mutex_planificador_lp);
 
-    close(fd_kernel_io);
-    close(fd_kernel_dispatch);
-    close(fd_interrupt);
+    /*LOCK_CON_LOG(mutex_hilos);
+    for (int i = list_size(lista_hilos) - 1; i >= 0; i--)
+    {
+        pthread_t *hilo = list_remove(lista_hilos, i);
+
+        if (!hilo)
+            continue;
+
+        LOG_DEBUG(kernel_log, "Intentando cancelar hilo %d (pthread_t=%lu)", i, (unsigned long)*hilo);
+
+        pthread_cancel(*hilo);
+
+        free(hilo);
+    }
+    LOG_DEBUG(kernel_log, "Todos los hilos cancelados y liberados");
+    list_destroy(lista_hilos);*/
+
+    LOCK_CON_LOG(mutex_hilos);
+    list_destroy(lista_hilos);
+    UNLOCK_CON_LOG(mutex_hilos);
+    pthread_mutex_destroy(&mutex_hilos);
+
+    if (code)
+    {
+        LOG_ERROR(kernel_log, "Kernel finalizado con errores. Código de salida: %d", code);
+    }
+    else
+    {
+        log_info(kernel_log, "Kernel finalizado correctamente.");
+    }
 
     log_destroy(kernel_log);
     config_destroy(kernel_config);
@@ -373,6 +412,9 @@ void terminar_kernel(int code)
 
 void *hilo_servidor_dispatch(void *_)
 {
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+
     fd_kernel_dispatch = iniciar_servidor(PUERTO_ESCUCHA_DISPATCH, kernel_log, "Kernel Dispatch");
 
     while (1)
@@ -430,6 +472,7 @@ void *hilo_servidor_dispatch(void *_)
         }
         LOCK_CON_LOG(mutex_hilos);
         list_add(lista_hilos, hilo);
+        LOG_DEBUG(kernel_log, "Hilo %d agregado", list_size(lista_hilos));
         UNLOCK_CON_LOG(mutex_hilos);
 
         SEM_POST(sem_planificador_cp);
@@ -442,13 +485,24 @@ void *hilo_servidor_dispatch(void *_)
         LOG_DEBUG(kernel_log, "HANDSHAKE_CPU_KERNEL_DISPATCH: CPU conectada exitosamente a Dispatch (fd=%d), ID=%d", nueva_cpu->fd, nueva_cpu->id);
     }
 
+    // terminar_hilo();
     return NULL;
 }
 
 void *atender_cpu_dispatch(void *arg)
 {
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+
     int fd_cpu_dispatch = *(int *)arg;
     free(arg);
+
+    if (fd_cpu_dispatch < 0)
+    {
+        LOG_ERROR(kernel_log, "[SERVIDOR DISPATCH] Error en el fd de la CPU Dispatch: %d", fd_cpu_dispatch);
+        // terminar_hilo();
+        return NULL;
+    }
 
     op_code cop;
     while ((cop = recibir_operacion(fd_cpu_dispatch)) != -1)
@@ -461,6 +515,7 @@ void *atender_cpu_dispatch(void *arg)
         {
             LOG_ERROR(kernel_log, "[SERVIDOR DISPATCH] No se encontró CPU asociada al fd=%d", fd_cpu_dispatch);
             close(fd_cpu_dispatch);
+            // terminar_hilo();
             return NULL;
         }
 
@@ -579,7 +634,7 @@ void *atender_cpu_dispatch(void *arg)
         UNLOCK_CON_LOG(mutex_lista_cpus);
     }
 
-    LOG_WARNING(kernel_log, "[SERVIDOR DISPATCH] CPU Dispatch desconectada (fd=%d)", fd_cpu_dispatch);
+    LOG_DEBUG(kernel_log, "[SERVIDOR DISPATCH] CPU Dispatch desconectada (fd=%d)", fd_cpu_dispatch);
 
     LOCK_CON_LOG(mutex_lista_cpus);
     cpu_libre--;
@@ -587,8 +642,9 @@ void *atender_cpu_dispatch(void *arg)
 
     if (!cpu_eliminada)
     {
-        LOG_ERROR(kernel_log, "[SERVIDOR DISPATCH] No se encontró CPU asociada al fd=%d al desconectar", fd_cpu_dispatch);
+        LOG_DEBUG(kernel_log, "[SERVIDOR DISPATCH] No se encontró CPU asociada al fd=%d al desconectar", fd_cpu_dispatch);
         UNLOCK_CON_LOG(mutex_lista_cpus);
+        // terminar_hilo();
         return NULL;
     }
 
@@ -597,6 +653,7 @@ void *atender_cpu_dispatch(void *arg)
 
     UNLOCK_CON_LOG(mutex_lista_cpus);
 
+    // terminar_hilo();
     return NULL;
 }
 
@@ -606,6 +663,9 @@ void *atender_cpu_dispatch(void *arg)
 
 void *hilo_servidor_interrupt(void *_)
 {
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+
     fd_interrupt = iniciar_servidor(PUERTO_ESCUCHA_INTERRUPT, kernel_log, "Kernel Interrupt");
 
     while (1)
@@ -628,7 +688,7 @@ void *hilo_servidor_interrupt(void *_)
         int id_cpu;
         if (recv(fd_cpu_interrupt, &id_cpu, sizeof(int), 0) <= 0)
         {
-            LOG_WARNING(kernel_log, "[SERVIDOR INTERRUPT] CPU desconectada en canal INTERRUPT (fd=%d)", fd_cpu_interrupt);
+            LOG_DEBUG(kernel_log, "[SERVIDOR INTERRUPT] CPU desconectada en canal INTERRUPT (fd=%d)", fd_cpu_interrupt);
             LOCK_CON_LOG(mutex_lista_cpus);
             cpu *cpu_eliminada = buscar_y_remover_cpu_por_fd(fd_cpu_interrupt);
 
@@ -636,6 +696,7 @@ void *hilo_servidor_interrupt(void *_)
             {
                 LOG_ERROR(kernel_log, "[SERVIDOR INTERRUPT] No se encontró CPU asociada al fd=%d al desconectar", fd_cpu_interrupt);
                 UNLOCK_CON_LOG(mutex_lista_cpus);
+                // terminar_hilo();
                 return NULL;
             }
 
@@ -661,6 +722,7 @@ void *hilo_servidor_interrupt(void *_)
         LOG_DEBUG(kernel_log, "[SERVIDOR INTERRUPT] CPU conectada exitosamente a Interrupt (fd=%d), ID=%d", nueva_cpu->fd, nueva_cpu->id);
     }
 
+    // terminar_hilo();
     return NULL;
 }
 
@@ -670,6 +732,9 @@ void *hilo_servidor_interrupt(void *_)
 
 void *hilo_servidor_io(void *_)
 {
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+
     fd_kernel_io = iniciar_servidor(PUERTO_ESCUCHA_IO, kernel_log, "Kernel IO");
 
     while (1)
@@ -733,14 +798,19 @@ void *hilo_servidor_io(void *_)
         }
         LOCK_CON_LOG(mutex_hilos);
         list_add(lista_hilos, hilo);
+        LOG_DEBUG(kernel_log, "Hilo %d agregado", list_size(lista_hilos));
         UNLOCK_CON_LOG(mutex_hilos);
     }
 
+    // terminar_hilo();
     return NULL;
 }
 
 void *atender_io(void *arg)
 {
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+
     int fd_io = *(int *)arg;
     free(arg);
 
@@ -755,7 +825,8 @@ void *atender_io(void *arg)
     {
         LOG_ERROR(kernel_log, "[SERVIDOR IO] No se encontró IO con fd=%d", fd_io);
         close(fd_io);
-        terminar_kernel(EXIT_FAILURE);
+        // terminar_hilo();
+        return NULL;
     }
 
     // Verificar si hay procesos encolados para dicha IO y enviarlo a la misma
@@ -847,5 +918,6 @@ void *atender_io(void *arg)
     free(dispositivo_io);
     close(fd_io);
 
+    // terminar_hilo();
     return NULL;
 }

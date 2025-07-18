@@ -2,6 +2,9 @@
 
 void *planificador_corto_plazo(void *arg)
 {
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+
     LOG_DEBUG(kernel_log, "=== PLANIFICADOR CP INICIADO ===");
 
     while (1)
@@ -93,6 +96,9 @@ void *planificador_corto_plazo(void *arg)
 
         dispatch(proceso_a_ejecutar);
     }
+
+    // terminar_hilo();
+    return NULL;
 }
 
 void dispatch(t_pcb *proceso_a_ejecutar)

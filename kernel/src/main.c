@@ -97,6 +97,7 @@ int main(int argc, char *argv[])
     }
     LOCK_CON_LOG(mutex_hilos);
     list_add(lista_hilos, hilo_dispatch);
+    LOG_DEBUG(kernel_log, "Hilo %d agregado", list_size(lista_hilos));
     UNLOCK_CON_LOG(mutex_hilos);
 
     // Servidor de CPU (Interrupt)
@@ -109,6 +110,7 @@ int main(int argc, char *argv[])
     }
     LOCK_CON_LOG(mutex_hilos);
     list_add(lista_hilos, hilo_interrupt);
+    LOG_DEBUG(kernel_log, "Hilo %d agregado", list_size(lista_hilos));
     UNLOCK_CON_LOG(mutex_hilos);
 
     // Servidor de IO
@@ -121,6 +123,7 @@ int main(int argc, char *argv[])
     }
     LOCK_CON_LOG(mutex_hilos);
     list_add(lista_hilos, hilo_servidor_io);
+    LOG_DEBUG(kernel_log, "Hilo %d agregado", list_size(lista_hilos));
     UNLOCK_CON_LOG(mutex_hilos);
 
     //////////////////////////// Esperar conexiones minimas ////////////////////////////

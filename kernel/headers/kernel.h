@@ -143,6 +143,7 @@ void iniciar_sincronizacion_kernel();
 void iniciar_diccionario_tiempos();
 void iniciar_diccionario_archivos_por_pcb();
 void terminar_kernel(int code);
+void terminar_hilo();
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //                                            MEMORIA                                           //

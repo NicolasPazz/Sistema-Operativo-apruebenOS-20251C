@@ -12,6 +12,7 @@ void iniciar_planificadores()
     }
     LOCK_CON_LOG(mutex_hilos);
     list_add(lista_hilos, hilo_planificador);
+    LOG_DEBUG(kernel_log, "Hilo %d agregado", list_size(lista_hilos));
     UNLOCK_CON_LOG(mutex_hilos);
 
     pthread_t *hilo_exit = malloc(sizeof(pthread_t));
@@ -23,6 +24,7 @@ void iniciar_planificadores()
     }
     LOCK_CON_LOG(mutex_hilos);
     list_add(lista_hilos, hilo_exit);
+    LOG_DEBUG(kernel_log, "Hilo %d agregado", list_size(lista_hilos));
     UNLOCK_CON_LOG(mutex_hilos);
 
     pthread_t *hilo_planificador_cp = malloc(sizeof(pthread_t));
@@ -34,6 +36,7 @@ void iniciar_planificadores()
     }
     LOCK_CON_LOG(mutex_hilos);
     list_add(lista_hilos, hilo_planificador_cp);
+    LOG_DEBUG(kernel_log, "Hilo %d agregado", list_size(lista_hilos));
     UNLOCK_CON_LOG(mutex_hilos);
 
     pthread_t *hilo_rechazados = malloc(sizeof(pthread_t));
@@ -45,6 +48,7 @@ void iniciar_planificadores()
     }
     LOCK_CON_LOG(mutex_hilos);
     list_add(lista_hilos, hilo_rechazados);
+    LOG_DEBUG(kernel_log, "Hilo %d agregado", list_size(lista_hilos));
     UNLOCK_CON_LOG(mutex_hilos);
 }
 

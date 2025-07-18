@@ -2,6 +2,9 @@
 
 void *timer_suspension(void *v_arg)
 {
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+
     t_timer_arg *arg = v_arg;
     t_pcb *pcb = arg->pcb;
     bool *flag = arg->vigente;
@@ -15,6 +18,7 @@ void *timer_suspension(void *v_arg)
             free(flag);
         }
         free(arg);
+        // terminar_hilo();
         return NULL;
     }
     LOCK_CON_LOG_PCB(pcb->mutex, pcb->PID);
@@ -35,6 +39,7 @@ void *timer_suspension(void *v_arg)
             free(flag);
         }
         free(arg);
+        // terminar_hilo();
         return NULL;
     }
     else if (!pcb)
@@ -45,6 +50,7 @@ void *timer_suspension(void *v_arg)
             free(flag);
         }
         free(arg);
+        // terminar_hilo();
         return NULL;
     }
 
@@ -58,6 +64,7 @@ void *timer_suspension(void *v_arg)
         }
         free(arg);
         UNLOCK_CON_LOG_PCB(pcb->mutex, pcb->PID);
+        // terminar_hilo();
         return NULL;
     }
 
@@ -86,6 +93,7 @@ void *timer_suspension(void *v_arg)
 
     SEM_POST(sem_procesos_rechazados);
 
+    // terminar_hilo();
     return NULL;
 }
 
@@ -120,5 +128,6 @@ void iniciar_timer_suspension(t_pcb *pcb)
     LOG_DEBUG(kernel_log, AZUL("[PLANI MP] Hilo de suspensión creado para PID %d"), pcb->PID);
     LOCK_CON_LOG(mutex_hilos);
     list_add(lista_hilos, hilo_timer);
+    LOG_DEBUG(kernel_log, "Hilo %d agregado", list_size(lista_hilos));
     UNLOCK_CON_LOG(mutex_hilos);
 }

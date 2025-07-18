@@ -5,6 +5,9 @@ int procesos_new_rechazados = 0;
 
 void *planificador_largo_plazo(void *arg)
 {
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+
     LOCK_CON_LOG(mutex_planificador_lp);
     LOG_DEBUG(kernel_log, "=== PLANIFICADOR LP INICIADO ===");
     while (1)
@@ -108,10 +111,16 @@ void *planificador_largo_plazo(void *arg)
         cambiar_estado_pcb_mutex(pcb, READY);
         UNLOCK_CON_LOG(mutex_inicializacion_procesos);
     }
+
+    // terminar_hilo();
+    return NULL;
 }
 
 void *gestionar_exit(void *arg)
 {
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+
     while (1)
     {
         SEM_WAIT(sem_proceso_a_exit);
@@ -140,10 +149,16 @@ void *gestionar_exit(void *arg)
 
         SEM_POST(sem_procesos_rechazados);
     }
+
+    // terminar_hilo();
+    return NULL;
 }
 
 void *verificar_procesos_rechazados()
 {
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+
     while (1)
     {
         SEM_WAIT(sem_procesos_rechazados);
@@ -261,6 +276,9 @@ void *verificar_procesos_rechazados()
         UNLOCK_CON_LOG(mutex_procesos_rechazados);
         UNLOCK_CON_LOG(mutex_inicializacion_procesos);
     }
+
+    // terminar_hilo();
+    return NULL;
 }
 
 // AUXILIARES

@@ -11,12 +11,16 @@ void iniciar_interrupt_handler()
     }
     LOCK_CON_LOG(mutex_hilos);
     list_add(lista_hilos, hilo_interrupt_handler);
+    LOG_DEBUG(kernel_log, "Hilo %d agregado", list_size(lista_hilos));
     UNLOCK_CON_LOG(mutex_hilos);
     LOG_DEBUG(kernel_log, "[INTERRUPT] Hilo de manejo de interrupciones iniciado correctamente");
 }
 
 void *interrupt_handler(void *arg)
 {
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+
     LOG_DEBUG(kernel_log, VERDE("=== Interrupt handler iniciado ==="));
 
     while (1)
@@ -38,6 +42,9 @@ void *interrupt_handler(void *arg)
 
         free(intr);
     }
+    
+    // terminar_hilo();
+    return NULL;
 }
 
 void interrupt(cpu *cpu_a_desalojar)

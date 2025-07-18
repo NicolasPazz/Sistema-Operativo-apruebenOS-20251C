@@ -51,7 +51,7 @@ void func_write(char* direccion_logica_str, char* datos) {
     if (cache_habilitada()) {
         int pos = buscar_pagina_en_cache(pid_ejecutando, nro_pagina);
         if (pos != -1) {
-            int offset = direccion_logica % tam_pagina;
+            //int offset = direccion_logica % tam_pagina; // WARNING: VARIABLE NO UTILIZADA
             
             log_info(cpu_log, "PID: %d - Cache HIT - Página: %d", pid_ejecutando, nro_pagina);
             
