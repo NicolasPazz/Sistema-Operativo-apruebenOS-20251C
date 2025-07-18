@@ -344,12 +344,17 @@ t_resultado_memoria finalizar_proceso_en_memoria(int pid) {
     sistema_memoria->memoria_utilizada -= proceso->tamanio;
     sistema_memoria->total_liberaciones_memoria++;
     
+    // Liberar instrucciones del proceso ANTES de remover del diccionario
+    log_debug(logger, "FINALIZAR_PROC: Liberando instrucciones para PID %d", pid);
+    destruir_instrucciones_proceso(pid);
+    log_debug(logger, "FINALIZAR_PROC: Instrucciones liberadas para PID %d", pid);
+
     // Remover del diccionario y liberar
     log_debug(logger, "FINALIZAR_PROC: Removiendo de diccionarios para PID %d", pid);
     dictionary_remove(sistema_memoria->procesos, pid_str);
     dictionary_remove(sistema_memoria->estructuras_paginas, pid_str);
     dictionary_remove(sistema_memoria->metricas_procesos, pid_str);
-    dictionary_remove(sistema_memoria->process_instructions, pid_str);
+    dictionary_remove(sistema_memoria->process_instructions, pid_str);  // Ahora solo remueve entrada vacía
     
     log_debug(logger, "FINALIZAR_PROC: Liberando proceso para PID %d", pid);
     destruir_proceso(proceso);
@@ -1021,7 +1026,8 @@ bool actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido_p
     
     // Calcular el número de marco desde la dirección física
     int numero_marco = direccion_fisica / cfg->TAM_PAGINA;
-    
+    log_trace(logger, "PID: %d - Quiero acceder al marco %d (dir_fisica=%d)", pid, numero_marco, direccion_fisica);
+
     // Obtener el número de página que está mapeada a este marco
     int numero_pagina = obtener_numero_pagina_de_marco(pid, numero_marco);
     if (numero_pagina == -1) {
@@ -1047,7 +1053,9 @@ bool actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido_p
     aplicar_retardo_memoria();
     
     // Escribir página completa en el espacio de usuario
-    memcpy(sistema_memoria->memoria_principal + direccion_fisica, contenido_pagina, cfg->TAM_PAGINA);
+    memset(sistema_memoria->memoria_principal + direccion_fisica, 0, cfg->TAM_PAGINA);  // Limpia
+    memcpy(sistema_memoria->memoria_principal + direccion_fisica, contenido_pagina, strlen(contenido_pagina) + 1);  // Copia real
+
     
     // MARCAR LA PÁGINA COMO MODIFICADA (DIRTY BIT)
     t_entrada_tabla* entrada = _buscar_entrada_pagina(pid, numero_pagina);
