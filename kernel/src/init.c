@@ -369,23 +369,7 @@ void terminar_kernel(int code)
     UNLOCK_CON_LOG(mutex_planificador_lp);
     pthread_mutex_destroy(&mutex_planificador_lp);
 
-    /*LOCK_CON_LOG(mutex_hilos);
-    for (int i = list_size(lista_hilos) - 1; i >= 0; i--)
-    {
-        pthread_t *hilo = list_remove(lista_hilos, i);
-
-        if (!hilo)
-            continue;
-
-        LOG_DEBUG(kernel_log, "Intentando cancelar hilo %d (pthread_t=%lu)", i, (unsigned long)*hilo);
-
-        pthread_cancel(*hilo);
-
-        free(hilo);
-    }
-    LOG_DEBUG(kernel_log, "Todos los hilos cancelados y liberados");
-    list_destroy(lista_hilos);*/
-
+    // Liberar correctamente los pthread_t* mallocados
     LOCK_CON_LOG(mutex_hilos);
     list_destroy_and_destroy_elements(lista_hilos, free);
     UNLOCK_CON_LOG(mutex_hilos);
@@ -456,8 +440,8 @@ void *hilo_servidor_dispatch(void *_)
 
         int *arg = malloc(sizeof(int));
         *arg = fd_cpu_dispatch;
-        pthread_t *hilo = malloc(sizeof(pthread_t));
-        if (pthread_create(hilo, NULL, atender_cpu_dispatch, arg) != 0)
+        pthread_t hilo; // Usamos variable local en lugar de malloc
+        if (pthread_create(&hilo, NULL, atender_cpu_dispatch, arg) != 0)
         {
             LOG_ERROR(kernel_log, "Error al crear hilo para atender CPU Dispatch (fd=%d)", fd_cpu_dispatch);
             LOCK_CON_LOG(mutex_lista_cpus);
@@ -467,13 +451,11 @@ void *hilo_servidor_dispatch(void *_)
             close(fd_cpu_dispatch);
             free(nueva_cpu);
             free(arg);
-            free(hilo);
             continue;
         }
-        LOCK_CON_LOG(mutex_hilos);
-        list_add(lista_hilos, hilo);
-        LOG_DEBUG(kernel_log, "Hilo %d agregado", list_size(lista_hilos));
-        UNLOCK_CON_LOG(mutex_hilos);
+        // Detach el hilo para que se libere automáticamente al terminar
+        pthread_detach(hilo);
+        LOG_DEBUG(kernel_log, "Hilo para atender CPU Dispatch creado y detached (fd=%d)", fd_cpu_dispatch);
 
         SEM_POST(sem_planificador_cp);
         LOG_DEBUG(kernel_log, "[PLANI CP] Replanificación solicitada por nueva CPU Dispatch (fd=%d, ID=%d)", fd_cpu_dispatch, id_cpu);
@@ -782,8 +764,8 @@ void *hilo_servidor_io(void *_)
 
         int *arg = malloc(sizeof(int));
         *arg = fd_io;
-        pthread_t *hilo = malloc(sizeof(pthread_t));
-        if (pthread_create(hilo, NULL, atender_io, arg) != 0)
+        pthread_t hilo; // Usamos variable local en lugar de malloc
+        if (pthread_create(&hilo, NULL, atender_io, arg) != 0)
         {
             LOG_ERROR(kernel_log, "[SERVIDOR IO] Error al crear hilo para atender IO '%s' (fd=%d)", nueva_io->nombre, fd_io);
             LOCK_CON_LOG(mutex_ios);
@@ -793,13 +775,11 @@ void *hilo_servidor_io(void *_)
             free(nueva_io);
             close(fd_io);
             free(arg);
-            free(hilo);
             terminar_kernel(EXIT_FAILURE);
         }
-        LOCK_CON_LOG(mutex_hilos);
-        list_add(lista_hilos, hilo);
-        LOG_DEBUG(kernel_log, "Hilo %d agregado", list_size(lista_hilos));
-        UNLOCK_CON_LOG(mutex_hilos);
+        // Detach el hilo para que se libere automáticamente al terminar
+        pthread_detach(hilo);
+        LOG_DEBUG(kernel_log, "Hilo para atender IO creado y detached (fd=%d)", fd_io);
     }
 
     // terminar_hilo();

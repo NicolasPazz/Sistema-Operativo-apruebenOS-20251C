@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
         terminar_kernel(EXIT_FAILURE);
     }
     LOCK_CON_LOG(mutex_hilos);
-    list_add(lista_hilos, hilo_servidor_io);
+    list_add(lista_hilos, hilo_io);
     LOG_DEBUG(kernel_log, "Hilo %d agregado", list_size(lista_hilos));
     UNLOCK_CON_LOG(mutex_hilos);
 

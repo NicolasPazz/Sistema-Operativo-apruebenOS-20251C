@@ -99,7 +99,7 @@ void *timer_suspension(void *v_arg)
 
 void iniciar_timer_suspension(t_pcb *pcb)
 {
-    pthread_t *hilo_timer = malloc(sizeof(pthread_t));
+    pthread_t hilo_timer; // Usamos variable local en lugar de malloc
     bool *flag = malloc(sizeof(bool));
     *flag = true;
 
@@ -116,18 +116,16 @@ void iniciar_timer_suspension(t_pcb *pcb)
     arg->vigente = flag;
     arg->pid = pcb->PID;
 
-    if (pthread_create(hilo_timer, NULL, timer_suspension, arg) != 0)
+    if (pthread_create(&hilo_timer, NULL, timer_suspension, arg) != 0)
     {
         pcb->timer_flag = NULL;
         free(flag);
         free(arg);
-        free(hilo_timer);
         LOG_ERROR(kernel_log, "[PLANI MP] No se pudo crear hilo de suspensión para PID %d", pcb->PID);
         terminar_kernel(EXIT_FAILURE);
     }
-    LOG_DEBUG(kernel_log, AZUL("[PLANI MP] Hilo de suspensión creado para PID %d"), pcb->PID);
-    LOCK_CON_LOG(mutex_hilos);
-    list_add(lista_hilos, hilo_timer);
-    LOG_DEBUG(kernel_log, "Hilo %d agregado", list_size(lista_hilos));
-    UNLOCK_CON_LOG(mutex_hilos);
+    
+    // Detach el hilo para que se libere automáticamente al terminar
+    pthread_detach(hilo_timer);
+    LOG_DEBUG(kernel_log, AZUL("[PLANI MP] Hilo de suspensión creado y detached para PID %d"), pcb->PID);
 }
