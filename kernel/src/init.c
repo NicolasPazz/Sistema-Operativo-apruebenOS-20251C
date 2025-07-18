@@ -387,7 +387,7 @@ void terminar_kernel(int code)
     list_destroy(lista_hilos);*/
 
     LOCK_CON_LOG(mutex_hilos);
-    list_destroy(lista_hilos);
+    list_destroy_and_destroy_elements(lista_hilos, free);
     UNLOCK_CON_LOG(mutex_hilos);
     pthread_mutex_destroy(&mutex_hilos);
 
