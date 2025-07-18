@@ -37,6 +37,41 @@ imprimir_alerta_multicolor() {
     echo ""
 }
 
+# ---------------------- helpers valgrind ----------------------
+extraer_bloque_valgrind() {
+    # $1 = archivo .valgrind ; $2 = regex con | separados
+    awk -v PATTERN="$2" -v INDENT='\t\t' '
+        BEGIN { inblock = 0 }
+
+        # Arranca cuando encuentra el error buscado
+        $0 ~ PATTERN      { inblock = 1 }
+
+        # Si aparece la cabecera de HEAP o LEAK, terminamos el bloque antes de imprimirla
+        inblock && /^==[0-9]+== (HEAP SUMMARY:|LEAK SUMMARY:)/ {
+            inblock = 0; print ""; next
+        }
+
+        # Imprimimos todo lo que esté dentro del bloque
+        inblock           { print INDENT $0 }
+
+        # Cerramos al llegar al ERROR SUMMARY
+        inblock && /^==[0-9]+== .*ERROR SUMMARY/ {
+            inblock = 0; print ""
+        }
+    ' "$1"
+}
+
+extraer_leaks_valgrind() {
+    # $1 = archivo .valgrind
+    awk -v INDENT='\t\t' '
+        /LEAK SUMMARY:/ { inblock = 1 }
+        inblock         { print INDENT $0 }
+        inblock && /suppressed:/ {
+            inblock = 0; print ""; next
+        }
+    ' "$1"
+}
+
 # Configurable threshold for memory leaks (in bytes)
 MEMORY_LEAK_THRESHOLD=1000
 
@@ -104,7 +139,7 @@ case $numero in
     echo ""
 
     main_pid=$$
-    ( sleep 90 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_cpu2 $pid_io1 $pid_io2 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
+    ( sleep 90 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_cpu2 $pid_io1 $pid_io2 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -118,6 +153,7 @@ case $numero in
 
     echo ""
     echo -e "\e[1;34;47m =====    Resultados de los procesos    ===== \e[0m"
+    echo ""
 
     [[ $exit_memoria -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Memoria finalizó con error \e[0m" && ((errores++))
     [[ $exit_kernel  -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Kernel finalizó con error \e[0m"  && ((errores++))
@@ -162,7 +198,7 @@ case $numero in
     echo ""
 
     main_pid=$$
-    ( sleep 90 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
+    ( sleep 90 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -174,6 +210,7 @@ case $numero in
 
     echo ""
     echo -e "\e[1;34;47m =====    Resultados de los procesos    ===== \e[0m"
+    echo ""
 
     [[ $exit_memoria -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Memoria finalizó con error \e[0m" && ((errores++))
     [[ $exit_kernel  -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Kernel finalizó con error \e[0m"  && ((errores++))
@@ -216,7 +253,7 @@ case $numero in
     echo ""
 
     main_pid=$$
-    ( sleep 90 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
+    ( sleep 90 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -228,6 +265,7 @@ case $numero in
 
     echo ""
     echo -e "\e[1;34;47m =====    Resultados de los procesos    ===== \e[0m"
+    echo ""
 
     [[ $exit_memoria -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Memoria finalizó con error \e[0m" && ((errores++))
     [[ $exit_kernel  -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Kernel finalizó con error \e[0m"  && ((errores++))
@@ -264,7 +302,7 @@ case $numero in
     sleep $(echo "5 - 0.5 * 3" | bc)
 
     main_pid=$$
-    ( sleep 180 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
+    ( sleep 180 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -276,6 +314,7 @@ case $numero in
 
     echo ""
     echo -e "\e[1;34;47m =====    Resultados de los procesos    ===== \e[0m"
+    echo ""
 
     [[ $exit_memoria -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Memoria finalizó con error \e[0m" && ((errores++))
     [[ $exit_kernel  -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Kernel finalizó con error \e[0m"  && ((errores++))
@@ -311,7 +350,7 @@ case $numero in
     sleep $(echo "5 - 0.5 * 3" | bc)
 
     main_pid=$$
-    ( sleep 150 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
+    ( sleep 150 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -323,6 +362,7 @@ case $numero in
 
     echo ""
     echo -e "\e[1;34;47m =====    Resultados de los procesos    ===== \e[0m"
+    echo ""
 
     [[ $exit_memoria -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Memoria finalizó con error \e[0m" && ((errores++))
     [[ $exit_kernel  -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Kernel finalizó con error \e[0m"  && ((errores++))
@@ -359,7 +399,7 @@ case $numero in
     sleep $(echo "5 - 0.5 * 3" | bc)
 
     main_pid=$$
-    ( sleep 180 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
+    ( sleep 180 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -371,6 +411,7 @@ case $numero in
 
     echo ""
     echo -e "\e[1;34;47m =====    Resultados de los procesos    ===== \e[0m"
+    echo ""
 
     [[ $exit_memoria -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Memoria finalizó con error \e[0m" && ((errores++))
     [[ $exit_kernel  -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Kernel finalizó con error \e[0m"  && ((errores++))
@@ -407,7 +448,7 @@ case $numero in
     sleep $(echo "5 - 0.5 * 3" | bc)
 
     main_pid=$$
-    ( sleep 180 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
+    ( sleep 180 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -419,6 +460,7 @@ case $numero in
 
     echo ""
     echo -e "\e[1;34;47m =====    Resultados de los procesos    ===== \e[0m"
+    echo ""
 
     [[ $exit_memoria -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Memoria finalizó con error \e[0m" && ((errores++))
     [[ $exit_kernel  -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Kernel finalizó con error \e[0m"  && ((errores++))
@@ -454,7 +496,7 @@ case $numero in
     sleep $(echo "5 - 0.5 * 3" | bc)
 
     main_pid=$$
-    ( sleep 180 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
+    ( sleep 180 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -466,6 +508,7 @@ case $numero in
 
     echo ""
     echo -e "\e[1;34;47m =====    Resultados de los procesos    ===== \e[0m"
+    echo ""
 
     [[ $exit_memoria -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Memoria finalizó con error \e[0m" && ((errores++))
     [[ $exit_kernel  -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Kernel finalizó con error \e[0m"  && ((errores++))
@@ -501,7 +544,7 @@ case $numero in
     sleep $(echo "5 - 0.5 * 3" | bc)
 
     main_pid=$$
-    ( sleep 1100 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
+    ( sleep 1100 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -513,6 +556,7 @@ case $numero in
 
     echo ""
     echo -e "\e[1;34;47m =====    Resultados de los procesos    ===== \e[0m"
+    echo ""
 
     [[ $exit_memoria -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Memoria finalizó con error \e[0m" && ((errores++))
     [[ $exit_kernel  -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Kernel finalizó con error \e[0m"  && ((errores++))
@@ -548,7 +592,7 @@ case $numero in
     sleep $(echo "5 - 0.5 * 3" | bc)
 
     main_pid=$$
-    ( sleep 1100 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
+    ( sleep 1100 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -560,6 +604,7 @@ case $numero in
 
     echo ""
     echo -e "\e[1;34;47m =====    Resultados de los procesos    ===== \e[0m"
+    echo ""
 
     [[ $exit_memoria -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Memoria finalizó con error \e[0m" && ((errores++))
     [[ $exit_kernel  -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Kernel finalizó con error \e[0m"  && ((errores++))
@@ -616,18 +661,24 @@ case $numero in
     pid_io4=$!
     sleep 0.5
 
-    sleep $(echo "1800 / 1" | bc)   # Objetivo: 30 minutos; Actual: 30 minutos
+    sleep $(echo "1800 / 5" | bc)   # Objetivo: 30 minutos (1800)
 
-    echo -e "\e[1;34;47m =====    🔄 Matando IOs con Ctrl+C (SIGINT)    ===== \e[0m"
+    echo -e "\e[1;34;47m =====    🔄 Matando todos los modulos (SIGINT)    ===== \e[0m"
     kill -SIGINT "$pid_io1"
     kill -SIGINT "$pid_io2"
     kill -SIGINT "$pid_io3"
     kill -SIGINT "$pid_io4"
+    kill -SIGINT "$pid_kernel"
+    kill -SIGINT "$pid_cpu1"
+    kill -SIGINT "$pid_cpu2"
+    kill -SIGINT "$pid_cpu3"
+    kill -SIGINT "$pid_cpu4"
+    kill -SIGINT "$pid_memoria"
     echo ""
     echo ""
 
     main_pid=$$
-    ( sleep 1080 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_cpu2 $pid_cpu3 $pid_cpu4 $pid_io1 $pid_io2 $pid_io3 $pid_io4 >/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) & 
+    ( sleep 60 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_cpu2 $pid_cpu3 $pid_cpu4 $pid_io1 $pid_io2 $pid_io3 $pid_io4 >/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) & 
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -645,6 +696,7 @@ case $numero in
 
     echo ""
     echo -e "\e[1;34;47m =====    Resultados de los procesos    ===== \e[0m"
+    echo ""
 
     [[ $exit_memoria -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Memoria finalizó con error \e[0m" && ((errores++))
     [[ $exit_kernel  -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Kernel finalizó con error \e[0m"  && ((errores++))
@@ -707,18 +759,24 @@ case $numero in
     pid_io4=$!
     sleep 0.5
 
-    sleep $(echo "1800 / 1" | bc)   # Objetivo: 30 minutos; Actual: 30 minutos
+    sleep $(echo "1800 / 5" | bc)   # Objetivo: 30 minutos (1800)
 
-    echo -e "\e[1;34;47m =====    🔄 Matando IOs con Ctrl+C (SIGINT)    ===== \e[0m"
+    echo -e "\e[1;34;47m =====    🔄 Matando todos los modulos (SIGINT)    ===== \e[0m"
     kill -SIGINT "$pid_io1"
     kill -SIGINT "$pid_io2"
     kill -SIGINT "$pid_io3"
     kill -SIGINT "$pid_io4"
+    kill -SIGINT "$pid_kernel"
+    kill -SIGINT "$pid_cpu1"
+    kill -SIGINT "$pid_cpu2"
+    kill -SIGINT "$pid_cpu3"
+    kill -SIGINT "$pid_cpu4"
+    kill -SIGINT "$pid_memoria"
     echo ""
     echo ""
 
     main_pid=$$
-    ( sleep 1080 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_cpu2 $pid_cpu3 $pid_cpu4 $pid_io1 $pid_io2 $pid_io3 $pid_io4 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) & 
+    ( sleep 60 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_cpu2 $pid_cpu3 $pid_cpu4 $pid_io1 $pid_io2 $pid_io3 $pid_io4 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) & 
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -736,46 +794,72 @@ case $numero in
 
     echo ""
     echo -e "\e[1;34;47m =====    Resultados de los procesos    ===== \e[0m"
+    echo ""
 
-    [[ $exit_memoria -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Memoria finalizó con error \e[0m" && ((errores++))
-    [[ $exit_kernel  -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Kernel finalizó con error \e[0m"  && ((errores++))
-    [[ $exit_cpu1    -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ CPU 1 finalizó con error \e[0m"   && ((errores++))
-    [[ $exit_cpu2    -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ CPU 2 finalizó con error \e[0m"   && ((errores++))
-    [[ $exit_cpu3    -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ CPU 3 finalizó con error \e[0m"   && ((errores++))
-    [[ $exit_cpu4    -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ CPU 4 finalizó con error \e[0m"   && ((errores++))
-    [[ $exit_io1     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 1 finalizó con error \e[0m"    && ((errores++))
-    [[ $exit_io2     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 2 finalizó con error \e[0m"    && ((errores++))
-    [[ $exit_io3     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 3 finalizó con error \e[0m"    && ((errores++))
-    [[ $exit_io4     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 4 finalizó con error \e[0m"    && ((errores++))
+    [[ $exit_memoria -ne 0 ]] && echo -e "\t\t\e[1;97;41m ❌ Memoria finalizó con error \e[0m" && ((errores++))
+    [[ $exit_kernel  -ne 0 ]] && echo -e "\t\t\e[1;97;41m ❌ Kernel finalizó con error \e[0m"  && ((errores++))
+    [[ $exit_cpu1    -ne 0 ]] && echo -e "\t\t\e[1;97;41m ❌ CPU 1 finalizó con error \e[0m"   && ((errores++))
+    [[ $exit_cpu2    -ne 0 ]] && echo -e "\t\t\e[1;97;41m ❌ CPU 2 finalizó con error \e[0m"   && ((errores++))
+    [[ $exit_cpu3    -ne 0 ]] && echo -e "\t\t\e[1;97;41m ❌ CPU 3 finalizó con error \e[0m"   && ((errores++))
+    [[ $exit_cpu4    -ne 0 ]] && echo -e "\t\t\e[1;97;41m ❌ CPU 4 finalizó con error \e[0m"   && ((errores++))
+    [[ $exit_io1     -ne 0 ]] && echo -e "\t\t\e[1;97;41m ❌ IO 1 finalizó con error \e[0m"    && ((errores++))
+    [[ $exit_io2     -ne 0 ]] && echo -e "\t\t\e[1;97;41m ❌ IO 2 finalizó con error \e[0m"    && ((errores++))
+    [[ $exit_io3     -ne 0 ]] && echo -e "\t\t\e[1;97;41m ❌ IO 3 finalizó con error \e[0m"    && ((errores++))
+    [[ $exit_io4     -ne 0 ]] && echo -e "\t\t\e[1;97;41m ❌ IO 4 finalizó con error \e[0m"    && ((errores++))
 
     [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
 
     imprimir_alerta_multicolor "VERIFICÁ CON HTOP QUE NO HAYA ESPERAS ACTIVAS NI MEMORY LEAKS; NO HAY ERRORES NI FINALIZA DE MANERA ABRUPTA"
 
+    # ---------- Definiciones para Valgrind ----------
+    # ERR_RE: Expresiones regulares para detectar errores críticos de Valgrind.
+    # Coincide con: invalid read/write (acceso inválido a memoria), uninitialised value (uso de valores no inicializados),
+    # jump to (salto a dirección inválida), overlap (solapamiento de memoria), stack'd/malloc'd (problemas con memoria dinámica o de stack).
+    # Estos errores suelen indicar bugs graves de memoria que pueden causar corrupción, crashes o comportamientos inesperados.
+    ERR_RE="invalid read|invalid write|uninitialised value|jump to|overlap|stack'd|malloc'd"
+    
     echo ""
-    echo -e "\e[1;34;47m =====    Validando Memory Leaks con Valgrind    ===== \e[0m"
+    echo -e "\n\e[1;34;47m =====    Validando Memory Leaks con Valgrind    ===== \e[0m\n"
+    echo ""
 
-    for val in memoria/memoria.valgrind kernel/kernel.valgrind cpu/cpu_1.valgrind cpu/cpu_2.valgrind cpu/cpu_3.valgrind cpu/cpu_4.valgrind io/io_disco_1.valgrind io/io_disco_2.valgrind io/io_disco_3.valgrind io/io_disco_4.valgrind; do
-        if [[ ! -f "$val" ]]; then
+    for val in memoria/memoria.valgrind kernel/kernel.valgrind \
+               cpu/cpu_{1..4}.valgrind io/io_disco_{1..4}.valgrind; do
+
+        [[ ! -f $val ]] && {
             echo -e "\e[1;97;41m Archivo $val no encontrado. Abortando. \e[0m"
             exit 1
-        fi
+        }
 
-        definitely_lost=$(grep "definitely lost:" "$val" | awk '{print $4}' | tr -d ',')
-        indirectly_lost=$(grep "indirectly lost:" "$val" | awk '{print $4}' | tr -d ',')
+        definitely=$(grep -m1 "definitely lost:"  "$val" | awk '{gsub(/,/,"",$4); print $4+0}')
+        indirectly=$(grep -m1 "indirectly lost:" "$val" | awk '{gsub(/,/,"",$4); print $4+0}')
 
-        def_num=${definitely_lost:-0}
-        indir_num=${indirectly_lost:-0}
-
-        if [[ "$def_num" -gt "$MEMORY_LEAK_THRESHOLD" || "$indir_num" -gt "$MEMORY_LEAK_THRESHOLD" ]]; then
-            grep -E "definitely lost|indirectly lost" "$val"
-            echo -e "\t\e[1;97;41m ❌ Leak detectado en $val (> 1000 bytes) ↑ \e[0m"
-            echo ""
+        if (( definitely > MEMORY_LEAK_THRESHOLD || indirectly > MEMORY_LEAK_THRESHOLD )); then
+            extraer_leaks_valgrind "$val"
+            echo -e "\t\e[1;97;41m ❌ Leak detectado en $val (> $MEMORY_LEAK_THRESHOLD bytes) ↑ \e[0m\n"
             ((errores++))
-        elif [[ "$def_num" -gt 0 || "$indir_num" -gt 0 ]]; then
-            grep -E "definitely lost|indirectly lost" "$val"
-            echo -e "\t\e[1;30;43m Leak menor detectado en $val (<= 1000 bytes) ↑ \e[0m"
-            echo ""
+        elif (( definitely > 0 || indirectly > 0 )); then
+            extraer_leaks_valgrind "$val"
+            echo -e "\t\e[1;30;43m Leak menor detectado en $val (≤ $MEMORY_LEAK_THRESHOLD bytes) ↑ \e[0m\n"
+        else
+            echo -e "\t\e[1;30;42m ✅ No se detectaron memory leaks en $val. \e[0m\n"
+        fi
+    done
+
+    echo ""
+    echo -e "\n\e[1;34;47m =====    Validando Errores Críticos con Valgrind    ===== \e[0m\n"
+    echo ""
+
+    for val in memoria/memoria.valgrind kernel/kernel.valgrind \
+               cpu/cpu_{1..4}.valgrind io/io_disco_{1..4}.valgrind; do
+
+        bloque_err=$(extraer_bloque_valgrind "$val" "$ERR_RE")
+
+        if [[ -n $bloque_err ]]; then
+            printf "%s\n" "$bloque_err"
+            echo -e "\t\e[1;97;41m 🚨 Error crítico en ejecución detectado por Valgrind en $val ↑ \e[0m\n"
+            ((errores++))
+        else
+            echo -e "\t\e[1;30;42m ✅ No se detectaron errores críticos en $val. \e[0m\n"
         fi
     done
     ;;
@@ -808,19 +892,20 @@ chmod +x unir_logs.sh
 
 echo ""
 echo -e "\e[1;34;47m =====   Analizando logs por errores o advertencias   ===== \e[0m"
+echo ""
 
 log_file="./log_global_ordenado.log"
 
 if [[ ! -f "$log_file" ]]; then
     echo -e "\t\e[1;97;41m Archivo $log_file no encontrado. Abortando. \e[0m"
-    errores=1
+    ((errores++))
 else
     log_matches=$(grep -E "\[ERROR\]|\[WARNING\]" "$log_file")
 
     if [[ -n "$log_matches" ]]; then
         echo -e "\t\e[1;97;41m 🔴 Se encontraron errores o advertencias en $log_file: \e[0m"
         echo "$log_matches"
-        errores=1
+        ((errores++))
     else
         echo -e "\t\e[1;30;42m 🟢 No se encontraron errores ni advertencias en $log_file \e[0m"
     fi

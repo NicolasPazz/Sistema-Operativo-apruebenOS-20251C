@@ -116,7 +116,7 @@ void terminar_io() {
     
     // Finalizar logging
     if (io_log != NULL) {
-        log_trace(io_log, "✓ Dispositivo IO terminado correctamente");
+        log_info(io_log, "✓ Dispositivo IO terminado correctamente");
         log_destroy(io_log);
         io_log = NULL;
     }

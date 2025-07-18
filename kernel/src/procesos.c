@@ -438,7 +438,7 @@ void liberar_pcb(t_pcb *pcb)
     if (pcb->timer_flag)
     {
         *pcb->timer_flag = false;
-        free(pcb->timer_flag);
+        //free(pcb->timer_flag);
         pcb->timer_flag = NULL;
     }
 
