@@ -170,7 +170,7 @@ cpu *hay_cpu_rafaga_restante_mayor()
         if (candidato_exec_actual->tiempo_inicio_exec > 0)
         {
             double restante_exec = candidato_exec_actual->estimacion_rafaga - (ahora - candidato_exec_actual->tiempo_inicio_exec);
-            if (restante_exec > rafaga_exec_max)
+            if (restante_exec >= rafaga_exec_max)
             {
                 rafaga_exec_max = restante_exec;
                 candidato_exec = candidato_exec_actual;
@@ -178,7 +178,7 @@ cpu *hay_cpu_rafaga_restante_mayor()
         }
         else
         {
-            LOG_ERROR(kernel_log, "hay_cpu_rafaga_restante_mayor: Proceso %d en cola RUNNING no tiene tiempo de inicio de ejecución válido", candidato_exec_actual->PID);
+            LOG_ERROR(kernel_log, "Proceso %d en cola RUNNING no tiene tiempo de inicio de ejecución válido", candidato_exec_actual->PID);
             UNLOCK_CON_LOG(mutex_cola_running);
             terminar_kernel(EXIT_FAILURE);
         }
@@ -186,7 +186,7 @@ cpu *hay_cpu_rafaga_restante_mayor()
 
     if (rafaga_ready_min < rafaga_exec_max)
     {
-        LOG_DEBUG(kernel_log, "hay_cpu_rafaga_restante_mayor: Proceso READY PID=%d tiene rafaga restante menor que el proceso RUNNING PID=%d", candidato_ready->PID, candidato_exec->PID);
+        LOG_DEBUG(kernel_log, "Proceso READY PID=%d tiene rafaga restante menor que el proceso RUNNING PID=%d", candidato_ready->PID, candidato_exec->PID);
         UNLOCK_CON_LOG(mutex_cola_running);
         return (cpu *)get_cpu_dispatch_by_pid(candidato_exec->PID);
     }
@@ -305,7 +305,7 @@ int get_exec_pid_from_id(int id)
     }
     if (!cpu_asociada)
     {
-        LOG_ERROR(kernel_log, "get_exec_pid_from_id: No se encontró CPU asociada al ID=%d", id);
+        LOG_ERROR(kernel_log, "No se encontró CPU asociada al ID=%d", id);
         terminar_kernel(EXIT_FAILURE);
     }
 

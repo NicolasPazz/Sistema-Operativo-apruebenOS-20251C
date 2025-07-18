@@ -2,13 +2,16 @@
 
 void iniciar_interrupt_handler()
 {
-    pthread_t hilo_interrupt_handler;
-    if (pthread_create(&hilo_interrupt_handler, NULL, interrupt_handler, NULL) != 0)
+    pthread_t *hilo_interrupt_handler = malloc(sizeof(pthread_t));
+    if (pthread_create(hilo_interrupt_handler, NULL, interrupt_handler, NULL) != 0)
     {
         LOG_ERROR(kernel_log, "[INTERRUPT] Error al crear hilo para manejar interrupciones");
+        free(hilo_interrupt_handler);
         terminar_kernel(EXIT_FAILURE);
     }
-    pthread_detach(hilo_interrupt_handler);
+    LOCK_CON_LOG(mutex_hilos);
+    list_add(lista_hilos, hilo_interrupt_handler);
+    UNLOCK_CON_LOG(mutex_hilos);
     LOG_DEBUG(kernel_log, "[INTERRUPT] Hilo de manejo de interrupciones iniciado correctamente");
 }
 
@@ -21,7 +24,7 @@ void *interrupt_handler(void *arg)
         SEM_WAIT(sem_interrupciones);
 
         LOCK_CON_LOG(mutex_cola_interrupciones);
-        
+
         t_interrupcion *intr = queue_pop(cola_interrupciones);
         UNLOCK_CON_LOG(mutex_cola_interrupciones);
 

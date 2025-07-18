@@ -108,7 +108,7 @@ void procesar_conexion(void* void_args) {
     bool es_cpu = false;  
     switch (handshake) {
         case HANDSHAKE_MEMORIA_KERNEL:
-            log_info(logger, VERDE("## Kernel Conectado - FD del socket: %d"), cliente_socket);
+            log_info(logger, AMARILLO("## Kernel Conectado - FD del socket: %d"), cliente_socket);
             fd_kernel = cliente_socket;
             break;
 

@@ -55,6 +55,10 @@ pthread_mutex_t mutex_ios;
 bool conectado_cpu = false;
 bool conectado_io = false;
 pthread_mutex_t mutex_conexiones;
+t_list *lista_hilos;
+t_list *lista_sockets;
+pthread_mutex_t mutex_hilos;
+pthread_mutex_t mutex_sockets;
 
 // Semaforos de planificacion
 pthread_mutex_t mutex_cola_new;
@@ -77,8 +81,6 @@ sem_t sem_proceso_a_ready;
 sem_t sem_proceso_a_running;
 sem_t sem_proceso_a_blocked;
 sem_t sem_proceso_a_exit;
-sem_t sem_susp_ready_vacia;
-sem_t sem_finalizacion_de_proceso;
 sem_t sem_cpu_disponible;
 sem_t sem_planificador_cp;
 sem_t sem_interrupciones;
@@ -155,6 +157,8 @@ void iniciar_sincronizacion_kernel()
     pthread_mutex_init(&mutex_ios, NULL);
     pthread_mutex_init(&mutex_conexiones, NULL);
     pthread_mutex_init(&mutex_planificador_lp, NULL);
+    pthread_mutex_init(&mutex_hilos, NULL);
+    pthread_mutex_init(&mutex_sockets, NULL);
 
     pthread_mutex_init(&mutex_cola_new, NULL);
     pthread_mutex_init(&mutex_cola_susp_ready, NULL);
@@ -164,6 +168,7 @@ void iniciar_sincronizacion_kernel()
     pthread_mutex_init(&mutex_cola_blocked, NULL);
     pthread_mutex_init(&mutex_cola_exit, NULL);
     pthread_mutex_init(&mutex_cola_procesos, NULL);
+
     pthread_mutex_init(&mutex_pcbs_esperando_io, NULL);
     pthread_mutex_init(&mutex_cola_interrupciones, NULL);
     pthread_mutex_init(&mutex_procesos_rechazados, NULL);
@@ -176,8 +181,6 @@ void iniciar_sincronizacion_kernel()
     sem_init(&sem_proceso_a_running, 0, 0);
     sem_init(&sem_proceso_a_blocked, 0, 0);
     sem_init(&sem_proceso_a_exit, 0, 0);
-    sem_init(&sem_susp_ready_vacia, 0, 1);
-    sem_init(&sem_finalizacion_de_proceso, 0, 0);
     sem_init(&sem_cpu_disponible, 0, 0);
     sem_init(&sem_planificador_cp, 0, 0);
     sem_init(&sem_interrupciones, 0, 0);
@@ -185,6 +188,8 @@ void iniciar_sincronizacion_kernel()
 
     lista_cpus = list_create();
     lista_ios = list_create();
+    lista_hilos = list_create();
+    lista_sockets = list_create();
     cola_interrupciones = queue_create();
 
     conectado_cpu = false;
@@ -241,57 +246,116 @@ static void destruir_pcb_dump(void *elem)
 
 void terminar_kernel(int code)
 {
+    pthread_mutex_lock(&mutex_hilos);
+    for (int i = 0; i < list_size(lista_hilos); i++)
+    {
+        pthread_t *hilo = list_get(lista_hilos, i);
+        pthread_cancel(*hilo);
+        pthread_join(hilo, NULL);
+        free(hilo);
+    }
+    list_destroy(lista_hilos);
+    pthread_mutex_unlock(&mutex_hilos);
+
+    pthread_mutex_lock(&mutex_sockets);
+    for (int i = 0; i < list_size(lista_sockets); i++)
+    {
+        int fd = (int)(intptr_t)list_get(lista_sockets, i);
+        close(fd);
+    }
+    list_destroy(lista_sockets);
+    pthread_mutex_unlock(&mutex_sockets);
 
     dictionary_destroy_and_destroy_elements(tiempos_por_pid, (void *)temporal_destroy);
     dictionary_destroy_and_destroy_elements(archivo_por_pcb, free);
 
-    list_destroy(cola_new);
-    list_destroy(cola_ready);
-    list_destroy(cola_running);
-    list_destroy(cola_blocked);
-    list_destroy(cola_susp_ready);
-    list_destroy(cola_susp_blocked);
-    list_destroy(cola_exit);
+    pthread_mutex_lock(&mutex_cola_procesos);
     list_destroy_and_destroy_elements(cola_procesos, destruir_pcb);
-    list_destroy_and_destroy_elements(pcbs_bloqueados_por_dump_memory, destruir_pcb_dump);
-    list_destroy_and_destroy_elements(pcbs_esperando_io, destruir_pcb_io);
-
-    pthread_mutex_destroy(&mutex_lista_cpus);
-    pthread_mutex_destroy(&mutex_ios);
-    pthread_mutex_destroy(&mutex_conexiones);
-
-    pthread_mutex_destroy(&mutex_cola_new);
-    pthread_mutex_destroy(&mutex_cola_susp_ready);
-    pthread_mutex_destroy(&mutex_cola_susp_blocked);
-    pthread_mutex_destroy(&mutex_cola_ready);
-    pthread_mutex_destroy(&mutex_cola_running);
-    pthread_mutex_destroy(&mutex_cola_blocked);
-    pthread_mutex_destroy(&mutex_cola_exit);
+    pthread_mutex_unlock(&mutex_cola_procesos);
     pthread_mutex_destroy(&mutex_cola_procesos);
-    pthread_mutex_destroy(&mutex_pcbs_esperando_io);
-    pthread_mutex_destroy(&mutex_cola_interrupciones);
-    UNLOCK_CON_LOG(mutex_planificador_lp);
-    pthread_mutex_destroy(&mutex_planificador_lp);
-    pthread_mutex_destroy(&mutex_procesos_rechazados);
-    pthread_mutex_destroy(&mutex_inicializacion_procesos);
 
+    pthread_mutex_lock(&mutex_cola_new);
+    list_destroy(cola_new);
     sem_destroy(&sem_proceso_a_new);
-    sem_destroy(&sem_proceso_a_susp_ready);
+
+    pthread_mutex_unlock(&mutex_cola_new);
+    pthread_mutex_destroy(&mutex_cola_new);
+
+    pthread_mutex_lock(&mutex_cola_susp_blocked);
+    list_destroy(cola_susp_blocked);
     sem_destroy(&sem_proceso_a_susp_blocked);
+
+    pthread_mutex_unlock(&mutex_cola_susp_blocked);
+    pthread_mutex_destroy(&mutex_cola_susp_blocked);
+
+    pthread_mutex_lock(&mutex_cola_susp_ready);
+    list_destroy(cola_susp_ready);
+    sem_destroy(&sem_proceso_a_susp_ready);
+
+    pthread_mutex_unlock(&mutex_cola_susp_ready);
+    pthread_mutex_destroy(&mutex_cola_susp_ready);
+
+    pthread_mutex_lock(&mutex_cola_ready);
+    list_destroy(cola_ready);
     sem_destroy(&sem_proceso_a_ready);
-    sem_destroy(&sem_proceso_a_running);
-    sem_destroy(&sem_proceso_a_blocked);
-    sem_destroy(&sem_proceso_a_exit);
-    sem_destroy(&sem_susp_ready_vacia);
-    sem_destroy(&sem_finalizacion_de_proceso);
-    sem_destroy(&sem_cpu_disponible);
     sem_destroy(&sem_planificador_cp);
+    pthread_mutex_unlock(&mutex_cola_ready);
+    pthread_mutex_destroy(&mutex_cola_ready);
+
+    pthread_mutex_lock(&mutex_cola_blocked);
+    list_destroy(cola_blocked);
+    sem_destroy(&sem_proceso_a_blocked);
+
+    pthread_mutex_unlock(&mutex_cola_blocked);
+    pthread_mutex_destroy(&mutex_cola_blocked);
+
+    pthread_mutex_lock(&mutex_cola_running);
+    list_destroy(cola_running);
+    sem_destroy(&sem_proceso_a_running);
+
+    pthread_mutex_unlock(&mutex_cola_running);
+    pthread_mutex_destroy(&mutex_cola_running);
+
+    pthread_mutex_lock(&mutex_cola_exit);
+    list_destroy(cola_exit);
+    sem_destroy(&sem_proceso_a_exit);
+
+    pthread_mutex_unlock(&mutex_cola_exit);
+    pthread_mutex_destroy(&mutex_cola_exit);
+
+    pthread_mutex_lock(&mutex_pcbs_esperando_io);
+    list_destroy_and_destroy_elements(pcbs_esperando_io, destruir_pcb_io);
+    pthread_mutex_unlock(&mutex_pcbs_esperando_io);
+    pthread_mutex_destroy(&mutex_pcbs_esperando_io);
+
+    pthread_mutex_lock(&mutex_lista_cpus);
+    list_destroy_and_destroy_elements(lista_cpus, destruir_cpu);
+    sem_destroy(&sem_cpu_disponible);
+    pthread_mutex_unlock(&mutex_lista_cpus);
+    pthread_mutex_destroy(&mutex_lista_cpus);
+
+    pthread_mutex_lock(&mutex_ios);
+    list_destroy_and_destroy_elements(lista_ios, destruir_io);
+    pthread_mutex_unlock(&mutex_ios);
+    pthread_mutex_destroy(&mutex_ios);
+
+    pthread_mutex_lock(&mutex_cola_interrupciones);
+    queue_destroy_and_destroy_elements(cola_interrupciones, free);
     sem_destroy(&sem_interrupciones);
+    pthread_mutex_unlock(&mutex_cola_interrupciones);
+    pthread_mutex_destroy(&mutex_cola_interrupciones);
+
+    pthread_mutex_destroy(&mutex_procesos_rechazados);
     sem_destroy(&sem_procesos_rechazados);
 
-    list_destroy_and_destroy_elements(lista_cpus, destruir_cpu);
-    list_destroy_and_destroy_elements(lista_ios, destruir_io);
-    queue_destroy_and_destroy_elements(cola_interrupciones, free);
+    pthread_mutex_destroy(&mutex_inicializacion_procesos);
+
+    list_destroy_and_destroy_elements(pcbs_bloqueados_por_dump_memory, destruir_pcb_dump);
+
+    pthread_mutex_destroy(&mutex_conexiones);
+
+    pthread_mutex_unlock(&mutex_planificador_lp);
+    pthread_mutex_destroy(&mutex_planificador_lp);
 
     close(fd_kernel_io);
     close(fd_kernel_dispatch);
@@ -319,7 +383,9 @@ void *hilo_servidor_dispatch(void *_)
             LOG_ERROR(kernel_log, "Error al recibir cliente");
             continue;
         }
-
+        LOCK_CON_LOG(mutex_sockets);
+        list_add(lista_sockets, (void *)(intptr_t)fd_cpu_dispatch);
+        UNLOCK_CON_LOG(mutex_sockets);
         if (!validar_handshake(fd_cpu_dispatch, HANDSHAKE_CPU_KERNEL_DISPATCH, kernel_log))
         {
             close(fd_cpu_dispatch);
@@ -348,8 +414,8 @@ void *hilo_servidor_dispatch(void *_)
 
         int *arg = malloc(sizeof(int));
         *arg = fd_cpu_dispatch;
-        pthread_t hilo;
-        if (pthread_create(&hilo, NULL, atender_cpu_dispatch, arg) != 0)
+        pthread_t *hilo = malloc(sizeof(pthread_t));
+        if (pthread_create(hilo, NULL, atender_cpu_dispatch, arg) != 0)
         {
             LOG_ERROR(kernel_log, "Error al crear hilo para atender CPU Dispatch (fd=%d)", fd_cpu_dispatch);
             LOCK_CON_LOG(mutex_lista_cpus);
@@ -359,9 +425,12 @@ void *hilo_servidor_dispatch(void *_)
             close(fd_cpu_dispatch);
             free(nueva_cpu);
             free(arg);
+            free(hilo);
             continue;
         }
-        pthread_detach(hilo);
+        LOCK_CON_LOG(mutex_hilos);
+        list_add(lista_hilos, hilo);
+        UNLOCK_CON_LOG(mutex_hilos);
 
         SEM_POST(sem_planificador_cp);
         LOG_DEBUG(kernel_log, "[PLANI CP] Replanificación solicitada por nueva CPU Dispatch (fd=%d, ID=%d)", fd_cpu_dispatch, id_cpu);
@@ -547,7 +616,9 @@ void *hilo_servidor_interrupt(void *_)
             LOG_ERROR(kernel_log, "[SERVIDOR INTERRUPT] Error al recibir cliente");
             continue;
         }
-
+        LOCK_CON_LOG(mutex_sockets);
+        list_add(lista_sockets, (void *)(intptr_t)fd_cpu_interrupt);
+        UNLOCK_CON_LOG(mutex_sockets);
         if (!validar_handshake(fd_cpu_interrupt, HANDSHAKE_CPU_KERNEL_INTERRUPT, kernel_log))
         {
             close(fd_cpu_interrupt);
@@ -609,7 +680,9 @@ void *hilo_servidor_io(void *_)
             LOG_ERROR(kernel_log, "[SERVIDOR IO] Error al recibir cliente");
             terminar_kernel(EXIT_FAILURE);
         }
-
+        LOCK_CON_LOG(mutex_sockets);
+        list_add(lista_sockets, (void *)(intptr_t)fd_io);
+        UNLOCK_CON_LOG(mutex_sockets);
         if (!validar_handshake(fd_io, HANDSHAKE_IO_KERNEL, kernel_log))
         {
             close(fd_io);
@@ -635,7 +708,7 @@ void *hilo_servidor_io(void *_)
         LOCK_CON_LOG(mutex_ios);
         list_add(lista_ios, nueva_io);
         UNLOCK_CON_LOG(mutex_ios);
-        
+
         LOCK_CON_LOG(mutex_conexiones);
         conectado_io = true;
         UNLOCK_CON_LOG(mutex_conexiones);
@@ -644,8 +717,8 @@ void *hilo_servidor_io(void *_)
 
         int *arg = malloc(sizeof(int));
         *arg = fd_io;
-        pthread_t hilo;
-        if (pthread_create(&hilo, NULL, atender_io, arg) != 0)
+        pthread_t *hilo = malloc(sizeof(pthread_t));
+        if (pthread_create(hilo, NULL, atender_io, arg) != 0)
         {
             LOG_ERROR(kernel_log, "[SERVIDOR IO] Error al crear hilo para atender IO '%s' (fd=%d)", nueva_io->nombre, fd_io);
             LOCK_CON_LOG(mutex_ios);
@@ -655,9 +728,12 @@ void *hilo_servidor_io(void *_)
             free(nueva_io);
             close(fd_io);
             free(arg);
+            free(hilo);
             terminar_kernel(EXIT_FAILURE);
         }
-        pthread_detach(hilo);
+        LOCK_CON_LOG(mutex_hilos);
+        list_add(lista_hilos, hilo);
+        UNLOCK_CON_LOG(mutex_hilos);
     }
 
     return NULL;

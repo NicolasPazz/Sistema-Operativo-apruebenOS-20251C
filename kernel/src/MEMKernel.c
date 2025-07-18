@@ -12,6 +12,10 @@ int conectar_memoria()
         terminar_kernel(EXIT_FAILURE);
     }
 
+    LOCK_CON_LOG(mutex_sockets);
+    list_add(lista_sockets, (void *)(intptr_t)fd_memoria);
+    UNLOCK_CON_LOG(mutex_sockets);
+
     LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] socket abierto");
 
     int handshake = HANDSHAKE_MEMORIA_KERNEL;
@@ -29,7 +33,15 @@ int conectar_memoria()
 void desconectar_memoria(int fd_memoria)
 {
     if (fd_memoria != -1)
+    {
         close(fd_memoria);
+
+        LOCK_CON_LOG(mutex_sockets);
+        list_remove_element(lista_sockets, (void *)(intptr_t)fd_memoria);
+        UNLOCK_CON_LOG(mutex_sockets);
+
+        LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] Socket cerrado (fd=%d)", fd_memoria);
+    }
 }
 
 bool inicializar_proceso_en_memoria(t_pcb *pcb)

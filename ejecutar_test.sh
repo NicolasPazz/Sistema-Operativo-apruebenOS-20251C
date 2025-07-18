@@ -616,7 +616,7 @@ case $numero in
     pid_io4=$!
     sleep 0.5
 
-    sleep $(echo "1800 / 1" | bc)   # Objetivo: 30 minutos; Actual: 30 minutos
+    sleep $(echo "1800 / 3" | bc)   # Objetivo: 30 minutos; Actual: 10 minutos
 
     echo -e "\e[1;34;47m =====    🔄 Matando IOs con Ctrl+C (SIGINT)    ===== \e[0m"
     kill -SIGINT "$pid_io1"
@@ -627,7 +627,7 @@ case $numero in
     echo ""
 
     main_pid=$$
-    ( sleep 90 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_cpu2 $pid_cpu3 $pid_cpu4 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) & 
+    ( sleep 90 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_cpu2 $pid_cpu3 $pid_cpu4 $pid_io1 $pid_io2 $pid_io3 $pid_io4 >/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) & 
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -707,7 +707,7 @@ case $numero in
     pid_io4=$!
     sleep 0.5
 
-    sleep $(echo "1800 / 1" | bc)   # Objetivo: 30 minutos; Actual: 30 minutos
+    sleep $(echo "1800 / 3" | bc)   # Objetivo: 30 minutos; Actual: 10 minutos
 
     echo -e "\e[1;34;47m =====    🔄 Matando IOs con Ctrl+C (SIGINT)    ===== \e[0m"
     kill -SIGINT "$pid_io1"
@@ -718,7 +718,7 @@ case $numero in
     echo ""
 
     main_pid=$$
-    ( sleep 90 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_cpu2 $pid_cpu3 $pid_cpu4 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) & 
+    ( sleep 90 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_cpu2 $pid_cpu3 $pid_cpu4 $pid_io1 $pid_io2 $pid_io3 $pid_io4 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) & 
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?

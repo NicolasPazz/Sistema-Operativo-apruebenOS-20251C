@@ -245,7 +245,7 @@ t_resultado_memoria crear_proceso_en_memoria(int pid, int tamanio, char* nombre_
     }
 
     // ========== LOG OBLIGATORIO DE CREACIÓN ==========
-    log_info(logger, VERDE("## PID: %d - Proceso Creado - Tamaño: %d"), pid, tamanio);
+    log_info(logger, PURPURA("## PID: %d - Proceso Creado - Tamaño: %d"), pid, tamanio);
     
     log_debug(logger, "PID: %d - Proceso creado exitosamente:", pid);
     log_debug(logger, "   - Páginas totales: %d", paginas_necesarias);

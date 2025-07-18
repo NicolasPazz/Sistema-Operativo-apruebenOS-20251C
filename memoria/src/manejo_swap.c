@@ -352,7 +352,7 @@ int escribir_pagina_proceso_swap(int pid, int numero_pagina, void* contenido) {
     sistema_memoria->admin_swap->entradas[entrada_swap].numero_pagina = numero_pagina;
     sistema_memoria->admin_swap->paginas_libres_swap--;
     sistema_memoria->admin_swap->paginas_ocupadas_swap++;
-    log_info(logger, "PID: %d - Página %d escrita en SWAP en entrada %d (offset %ld)", pid, numero_pagina, entrada_swap, offset);
+    log_debug(logger, "PID: %d - Página %d escrita en SWAP en entrada %d (offset %ld)", pid, numero_pagina, entrada_swap, offset);
     
     // Actualizar información de SWAP
     entrada->presente = false;  // Ya no está en memoria principal
