@@ -108,6 +108,24 @@ extern pthread_mutex_t mutex_conexiones;
         log_trace(kernel_log, VERDE("UNLOCK_CON_LOG(%s) (%d): liberado en %s."), #mutex, pid, __func__); \
     } while (0)
 
+#define LOG_DEBUG(logger, fmt, ...)                             \
+    do                                                          \
+    {                                                           \
+        log_debug(logger, "%s: " fmt, __func__, ##__VA_ARGS__); \
+    } while (0)
+
+#define LOG_WARNING(logger, fmt, ...)                             \
+    do                                                            \
+    {                                                             \
+        log_warning(logger, "%s: " fmt, __func__, ##__VA_ARGS__); \
+    } while (0)
+
+#define LOG_ERROR(logger, fmt, ...)                             \
+    do                                                          \
+    {                                                           \
+        log_error(logger, "%s: " fmt, __func__, ##__VA_ARGS__); \
+    } while (0)
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //                                       INICIALIZACIONES                                       //
 //////////////////////////////////////////////////////////////////////////////////////////////////

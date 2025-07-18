@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
     pthread_t hilo_dispatch;
     if (pthread_create(&hilo_dispatch, NULL, hilo_servidor_dispatch, NULL) != 0)
     {
-        log_error(kernel_log, "Error al crear hilo de servidor Dispatch");
+        LOG_ERROR(kernel_log, "Error al crear hilo de servidor Dispatch");
         terminar_kernel(EXIT_FAILURE);
     }
     pthread_detach(hilo_dispatch);
@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
     pthread_t hilo_interrupt;
     if (pthread_create(&hilo_interrupt, NULL, hilo_servidor_interrupt, NULL) != 0)
     {
-        log_error(kernel_log, "Error al crear hilo de servidor Interrupt");
+        LOG_ERROR(kernel_log, "Error al crear hilo de servidor Interrupt");
         terminar_kernel(EXIT_FAILURE);
     }
     pthread_detach(hilo_interrupt);
@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
     pthread_t hilo_io;
     if (pthread_create(&hilo_io, NULL, hilo_servidor_io, NULL) != 0)
     {
-        log_error(kernel_log, "Error al crear hilo de servidor IO");
+        LOG_ERROR(kernel_log, "Error al crear hilo de servidor IO");
         terminar_kernel(EXIT_FAILURE);
     }
     pthread_detach(hilo_io);
@@ -132,12 +132,12 @@ int main(int argc, char *argv[])
             sleep(1);
         }
 
-        log_debug(kernel_log, "CPU y IO conectados. Continuando ejecucion");
+        LOG_DEBUG(kernel_log, "CPU y IO conectados. Continuando ejecucion");
     }
 
     //////////////////////////// Primer proceso ////////////////////////////
 
-    log_debug(kernel_log, "Creando proceso inicial:  Archivo: %s, Tamanio: %d", archivo_pseudocodigo, tamanio_proceso);
+    LOG_DEBUG(kernel_log, "Creando proceso inicial:  Archivo: %s, Tamanio: %d", archivo_pseudocodigo, tamanio_proceso);
     INIT_PROC(archivo_pseudocodigo, tamanio_proceso);
 
     //////////////////////////// Esperar enter ////////////////////////////
@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    log_debug(kernel_log, "Kernel ejecutandose. Presione Ctrl+C para terminar.");
+    LOG_DEBUG(kernel_log, "Kernel ejecutandose. Presione Ctrl+C para terminar.");
 
     UNLOCK_CON_LOG(mutex_planificador_lp);
 
@@ -177,5 +177,5 @@ int main(int argc, char *argv[])
 
 void iterator(char *value)
 {
-    log_debug(kernel_log, "%s", value);
+    LOG_DEBUG(kernel_log, "%s", value);
 }

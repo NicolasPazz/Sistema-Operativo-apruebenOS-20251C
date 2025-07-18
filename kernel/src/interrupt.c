@@ -5,16 +5,16 @@ void iniciar_interrupt_handler()
     pthread_t hilo_interrupt_handler;
     if (pthread_create(&hilo_interrupt_handler, NULL, interrupt_handler, NULL) != 0)
     {
-        log_error(kernel_log, "[INTERRUPT] Error al crear hilo para manejar interrupciones");
+        LOG_ERROR(kernel_log, "[INTERRUPT] Error al crear hilo para manejar interrupciones");
         terminar_kernel(EXIT_FAILURE);
     }
     pthread_detach(hilo_interrupt_handler);
-    log_debug(kernel_log, "[INTERRUPT] Hilo de manejo de interrupciones iniciado correctamente");
+    LOG_DEBUG(kernel_log, "[INTERRUPT] Hilo de manejo de interrupciones iniciado correctamente");
 }
 
 void *interrupt_handler(void *arg)
 {
-    log_debug(kernel_log, VERDE("=== Interrupt handler iniciado ==="));
+    LOG_DEBUG(kernel_log, VERDE("=== Interrupt handler iniciado ==="));
 
     while (1)
     {
@@ -27,7 +27,7 @@ void *interrupt_handler(void *arg)
 
         if (!intr)
         {
-            log_error(kernel_log, VERDE("[INTERRUPT] Cola de interrupción vacía"));
+            LOG_ERROR(kernel_log, VERDE("[INTERRUPT] Cola de interrupción vacía"));
             terminar_kernel(EXIT_FAILURE);
         }
 
@@ -46,7 +46,7 @@ void interrupt(cpu *cpu_a_desalojar)
 
     queue_push(cola_interrupciones, nueva);
     UNLOCK_CON_LOG(mutex_cola_interrupciones);
-    log_debug(kernel_log, "[INTERRUPT] Interrupción encolada para desalojar CPU %d (fd=%d)", cpu_a_desalojar->id, cpu_a_desalojar->fd);
+    LOG_DEBUG(kernel_log, "[INTERRUPT] Interrupción encolada para desalojar CPU %d (fd=%d)", cpu_a_desalojar->id, cpu_a_desalojar->fd);
 
     SEM_POST(sem_interrupciones);
 }
