@@ -466,7 +466,7 @@ void cache_escribir(int pid, int frame, char* datos, bool modificado) {
                 enviar_actualizar_pagina_completa(pid_viejo, direccion_fisica, entrada->contenido);
                 log_debug(cpu_log, "Cache Writeback: PID=%d Página=%d bajada a memoria", pid_viejo, pagina_vieja);
             } else {
-                log_warning(cpu_log, "La página a desalojar (PID=%d, Página=%d) ya no está mapeada. No se actualiza.",
+                log_info(cpu_log, "La página a desalojar (PID=%d, Página=%d) ya no está mapeada. No se actualiza.",
                             pid_viejo, pagina_vieja);
             }
         }
