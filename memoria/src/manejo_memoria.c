@@ -391,16 +391,20 @@ t_resultado_memoria suspender_proceso_en_memoria(int pid) {
         return MEMORIA_OK;
     }
     
-    // Escribir páginas del proceso a SWAP, liberar marcos y marcar como no presente
+    // Marcamos como suspendido ANTES de la operación para evitar race conditions
+    proceso->suspendido = true;
+    
+    // Escribir páginas del proceso a SWAP, liberar marcos y marcar como no presente  
     int resultado = suspender_proceso_completo(pid);
     if (resultado != 1) {
         log_error(logger, "PID: %d - Error al suspender proceso a SWAP", pid);
+        // Revertir el estado si falló
+        proceso->suspendido = false;
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
         return MEMORIA_ERROR_IO;
     }
     
-    // Actualizar estadísticas globales
-    proceso->suspendido = true;
+    // Actualizar estadísticas globales (ymarcamos suspendido arriba)
     proceso->activo = false;
     sistema_memoria->procesos_activos--;
     sistema_memoria->procesos_suspendidos++;

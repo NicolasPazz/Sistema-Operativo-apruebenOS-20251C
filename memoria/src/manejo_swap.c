@@ -34,9 +34,15 @@ int suspender_proceso_completo(int pid) {
     t_proceso_memoria* proceso = dictionary_get(sistema_memoria->procesos, pid_str);
     free(pid_str);
     
-    if (proceso == NULL || proceso->suspendido) {
-        log_warning(logger, "[SWAP] PID: %d - Proceso ya suspendido o no encontrado", pid);
+    if (proceso == NULL) {
+        log_error(logger, "[SWAP] PID: %d - Proceso no encontrado", pid);
         return 0;
+    }
+    
+    // Si ya está suspendido, avisar
+    if (proceso->suspendido) {
+        log_info(logger, "[SWAP] PID: %d - Proceso ya suspendido, operación omitida", pid);
+        return 1; // Retornar éxito para evitar errores
     }
     
     pthread_mutex_lock(&sistema_memoria->admin_swap->mutex_swap);
