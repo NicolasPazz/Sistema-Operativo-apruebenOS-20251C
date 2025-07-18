@@ -11,29 +11,68 @@ void func_noop() {
 }
 
 // Primero se consuta a la cache y despues tlb
+int calcular_tamanio_datos_seguro(char* datos) {
+    if (!datos) return 0;
+    
+    // Buscar terminador nulo (128 chars máximo)
+    int tamanio = 0;
+    for (int i = 0; i < 128; i++) {
+        if (datos[i] == '\0') {
+            tamanio = i;
+            break;
+        }
+        if (i == 127) {
+            // Si no encontramos \0 en 127 chars, usar el string completo pero añadir \0
+            tamanio = 127;
+            break;
+        }
+    }
+    return tamanio;
+}
+
 void func_write(char* direccion_logica_str, char* datos) {
     int direccion_logica = atoi(direccion_logica_str);
     int tam_pagina = cfg_memoria->TAM_PAGINA;
     int nro_pagina = direccion_logica / tam_pagina;
 
+    // Validar y calcular tamaño de forma segura
+    if (!datos) {
+        log_error(cpu_log, "PID: %d - Datos nulos en func_write", pid_ejecutando);
+        return;
+    }
+    
+    // Calcular tamaño sin usar strlen()
+    int tamanio_real = calcular_tamanio_datos_seguro(datos);
+    if (tamanio_real == 0) {
+        log_error(cpu_log, "PID: %d - Datos vacíos en func_write", pid_ejecutando);
+        return;
+    }
+
     if (cache_habilitada()) {
         int pos = buscar_pagina_en_cache(pid_ejecutando, nro_pagina);
         if (pos != -1) {
-            cache_modificar(pid_ejecutando, nro_pagina, datos);
+            int offset = direccion_logica % tam_pagina;
+            
+            log_info(cpu_log, "(PID: %d) - Cache HIT - Página: %d - Modificando offset %d con '%s' (tamaño: %d)", 
+                    pid_ejecutando, nro_pagina, offset, datos, tamanio_real);
+            
+            // Pasar tamaño calculado en lugar de usar strlen() interno
+            cache_modificar(pid_ejecutando, nro_pagina, direccion_logica, datos, tamanio_real);
+            
             log_info(cpu_log, "(PID: %d) - Cache HIT - Pagina: %d - Valor escrito: %s", pid_ejecutando, nro_pagina, datos);
             return;
         }
         log_info(cpu_log, ROJO("PID: %d - Cache Miss - Página: %d"), pid_ejecutando, nro_pagina);
-        }
+    }
 
     int direccion_fisica = traducir_direccion_fisica(direccion_logica);
 
-    int longitud_real = strlen(datos);
+    // Usar tamaño ya calculado en lugar de strlen()
     t_paquete* paquete = crear_paquete_op(WRITE_OP);
     agregar_a_paquete(paquete, &pid_ejecutando, sizeof(int));
     agregar_a_paquete(paquete, &direccion_fisica, sizeof(int));
-    agregar_a_paquete(paquete, &longitud_real, sizeof(int));
-    agregar_a_paquete(paquete, datos, longitud_real);
+    agregar_a_paquete(paquete, &tamanio_real, sizeof(int));
+    agregar_a_paquete(paquete, datos, tamanio_real);
     enviar_paquete(paquete, fd_memoria);
     eliminar_paquete(paquete);
 

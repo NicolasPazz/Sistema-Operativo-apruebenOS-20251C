@@ -1,7 +1,6 @@
 
 #ifndef CACHE_H
 #define CACHE_H
-#include "../headers/cache.h"
 #include "../headers/mmu.h"
 #include "../headers/init.h"
 #include "../../utils/headers/sockets.h"
@@ -32,7 +31,7 @@ char* acceder_a_pagina_en_cache(int pid, int numero_pagina);
 void desalojar_proceso_cache();
 void liberar_cache();
 bool cache_habilitada();
-void cache_modificar(int pid, int frame, char* datos);
+void cache_modificar(int pid, int numero_pagina, int direccion_logica, char* datos, int tamanio);
 void cache_escribir(int pid, int frame, char* datos, bool modificado);
 char* cache_leer(int pid, int numero_pagina);
 void enviar_actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido);
