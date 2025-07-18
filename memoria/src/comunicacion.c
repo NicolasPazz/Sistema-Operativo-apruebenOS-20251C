@@ -338,7 +338,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 agregar_entero_a_paquete(paquete_respuesta, error);
                 enviar_paquete(paquete_respuesta, cliente_socket);
                 eliminar_paquete(paquete_respuesta);
-                log_error(logger, "Error en acceso a tabla de páginas - PID: %d, Página: %d", pid, numero_pagina);
+                log_info(logger, "Error en acceso a tabla de páginas - PID: %d, Página: %d", pid, numero_pagina);
             }
             break;
         }
@@ -425,7 +425,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 agregar_entero_a_paquete(paquete_respuesta, error);
                 enviar_paquete(paquete_respuesta, cliente_socket);
                 eliminar_paquete(paquete_respuesta);
-                log_error(logger, "Error al leer página completa - PID: %d, Dir: %d", pid, direccion_base_pagina);
+                log_info(logger, "Error al leer página completa - PID: %d, Dir: %d", pid, direccion_base_pagina);
             }
             break;
         }

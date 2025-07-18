@@ -314,7 +314,7 @@ int obtener_numero_pagina_de_marco(int pid, int numero_marco) {
         }
     }
     
-    log_error(logger, "PID: %d - No se encontró página mapeada al marco %d", pid, numero_marco);
+    log_info(logger, "PID: %d - No se encontró página mapeada al marco %d", pid, numero_marco);
     return -1;
 }
 

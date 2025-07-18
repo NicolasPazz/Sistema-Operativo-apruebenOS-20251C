@@ -576,7 +576,7 @@ int acceso_tabla_paginas(int pid, int numero_pagina) {
         
         // Verificar que la entrada esté presente
         if (!entrada->presente) {
-            log_error(logger, "PID: %d - Página %d no presente en nivel %d", pid, numero_pagina, nivel);
+            log_info(logger, "PID: %d - Página %d no presente en nivel %d", pid, numero_pagina, nivel);
             pthread_mutex_unlock(&estructura->mutex_estructura);
             return -1;
         }
@@ -943,7 +943,7 @@ void* leer_pagina_completa(int pid, int direccion_base_pagina) {
     // Obtener el número de página que está mapeada a este marco
     int numero_pagina = obtener_numero_pagina_de_marco(pid, numero_marco);
     if (numero_pagina == -1) {
-        log_error(logger, "PID: %d - No se encontró página mapeada al marco %d", pid, numero_marco);
+        log_info(logger, "PID: %d - No se encontró página mapeada al marco %d", pid, numero_marco);
         return NULL;
     }
     
@@ -1031,7 +1031,7 @@ bool actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido_p
     // Obtener el número de página que está mapeada a este marco
     int numero_pagina = obtener_numero_pagina_de_marco(pid, numero_marco);
     if (numero_pagina == -1) {
-        log_error(logger, "PID: %d - No se encontró página mapeada al marco %d", pid, numero_marco);
+        log_info(logger, "PID: %d - No se encontró página mapeada al marco %d", pid, numero_marco);
         return false;
     }
     

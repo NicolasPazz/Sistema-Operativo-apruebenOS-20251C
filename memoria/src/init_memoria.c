@@ -209,7 +209,10 @@ void destruir_administrador_marcos(t_administrador_marcos* admin) {
     
     // Liberar bitmap
     if (admin->bitmap_frames) {
+        // Guardar el puntero al buffer antes de destruir el bitarray
+        void* bitmap_buffer = admin->bitmap_frames->bitarray;
         bitarray_destroy(admin->bitmap_frames);
+        free(bitmap_buffer);
     }
     
     // Liberar array de frames
