@@ -277,7 +277,7 @@ void interrumpir_ejecucion(cpu *cpu_a_desalojar)
         LOG_DEBUG(kernel_log, "[INTERRUPT] Actualizando PCB PID=%d con nuevo PC=%d", pid_recibido, nuevo_pc);
 
         pcb->PC = nuevo_pc;
-        cambiar_estado_pcb_mutex(pcb, READY);
+        cambiar_estado_pcb_mutex_srt(pcb, READY);
         liberar_cpu(cpu_a_desalojar);
         LOG_DEBUG(kernel_log, "[INTERRUPT] CPU %d liberada", cpu_a_desalojar->id);
         break;
