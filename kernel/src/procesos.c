@@ -219,6 +219,18 @@ void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
     }
     mostrar_colas_estados();
 }
+void cambiar_estado_pcb_mutex_srt(t_pcb *PCB, Estados nuevo_estado_enum)
+{
+    if (!PCB)
+    {
+        LOG_ERROR(kernel_log, "PCB es NULL");
+        terminar_kernel(EXIT_FAILURE);
+    }
+
+    LOCK_CON_LOG_PCB(PCB->mutex, PCB->PID);
+    cambiar_estado_pcb_srt(PCB, nuevo_estado_enum);
+    UNLOCK_CON_LOG_PCB(PCB->mutex, PCB->PID);
+}
 
 void cambiar_estado_pcb_mutex(t_pcb *PCB, Estados nuevo_estado_enum)
 {
