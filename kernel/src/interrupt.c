@@ -18,21 +18,22 @@ void iniciar_interrupt_handler()
 
 void *interrupt_handler(void *arg)
 {
+    registrar_hilo_activo();
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
     LOG_DEBUG(kernel_log, VERDE("=== Interrupt handler iniciado ==="));
 
-    while (!kernel_finalizado)
+    while (kernel_debe_continuar())
     {
         SEM_WAIT(sem_interrupciones);
 
         LOCK_CON_LOG(mutex_cola_interrupciones);
 
-        if (kernel_finalizado)
+        if (!kernel_debe_continuar())
         {
             UNLOCK_CON_LOG(mutex_cola_interrupciones);
-            continue;
+            break;
         }
         
         t_interrupcion *intr = queue_pop(cola_interrupciones);

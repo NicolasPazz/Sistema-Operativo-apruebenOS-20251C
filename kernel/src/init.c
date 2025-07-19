@@ -226,6 +226,9 @@ void terminar_hilo(void)
         }
     }
     UNLOCK_CON_LOG(mutex_hilos);
+    
+    // Registrar que este hilo ha terminado para coordinación ordenada
+    registrar_hilo_terminado();
 }
 
 static void destruir_cpu(void *elem)
@@ -266,45 +269,9 @@ static void destruir_pcb_dump(void *elem)
     free(elem);
 }
 
-void terminar_kernel(int code)
+static void liberar_recursos_kernel(void)
 {
-    pthread_mutex_lock(&fin_mutex);
-    if (kernel_finalizado)
-    {
-        pthread_mutex_unlock(&fin_mutex);
-        return;
-    }
-    kernel_finalizado = true;
-    pthread_mutex_unlock(&fin_mutex);
-
-    SEM_POST(sem_interrupciones);
-    SEM_POST(sem_proceso_a_new);
-    SEM_POST(sem_proceso_a_exit);
-    SEM_POST(sem_planificador_cp);
-    SEM_POST(sem_procesos_rechazados);
-
-    SEM_POST(sem_proceso_a_susp_ready);
-    SEM_POST(sem_proceso_a_susp_blocked);
-    SEM_POST(sem_proceso_a_ready);
-    SEM_POST(sem_proceso_a_running);
-    SEM_POST(sem_proceso_a_blocked);
-    SEM_POST(sem_cpu_disponible);   
-
-    pthread_t self = pthread_self();
-    LOCK_CON_LOG(mutex_hilos);
-    for (int i = 0; i < list_size(lista_hilos); i++)
-    {
-        pthread_t *h = list_get(lista_hilos, i);
-        if (!h)
-            continue;
-        if (!pthread_equal(*h, self))
-        {
-            pthread_cancel(*h);
-            pthread_join(*h, NULL);
-        }
-    }
-    UNLOCK_CON_LOG(mutex_hilos);
-
+    LOG_DEBUG(kernel_log, "[KERNEL] Liberando sockets");
     LOCK_CON_LOG(mutex_sockets);
     close(fd_kernel_io);
     close(fd_kernel_dispatch);
@@ -319,10 +286,11 @@ void terminar_kernel(int code)
     UNLOCK_CON_LOG(mutex_sockets);
     pthread_mutex_destroy(&mutex_sockets);
 
-    LOG_DEBUG(kernel_log, "Destruyendo tiempos por PID y archivos por PCB");
+    LOG_DEBUG(kernel_log, "[KERNEL] Destruyendo tiempos por PID y archivos por PCB");
     dictionary_destroy_and_destroy_elements(tiempos_por_pid, (void *)temporal_destroy);
     dictionary_destroy_and_destroy_elements(archivo_por_pcb, free);
 
+    LOG_DEBUG(kernel_log, "[KERNEL] Liberando listas de procesos");
     LOCK_CON_LOG(mutex_cola_procesos);
     list_destroy_and_destroy_elements(cola_procesos, destruir_pcb);
     UNLOCK_CON_LOG(mutex_cola_procesos);
@@ -331,21 +299,18 @@ void terminar_kernel(int code)
     LOCK_CON_LOG(mutex_cola_new);
     list_destroy(cola_new);
     sem_destroy(&sem_proceso_a_new);
-
     UNLOCK_CON_LOG(mutex_cola_new);
     pthread_mutex_destroy(&mutex_cola_new);
 
     LOCK_CON_LOG(mutex_cola_susp_blocked);
     list_destroy(cola_susp_blocked);
     sem_destroy(&sem_proceso_a_susp_blocked);
-
     UNLOCK_CON_LOG(mutex_cola_susp_blocked);
     pthread_mutex_destroy(&mutex_cola_susp_blocked);
 
     LOCK_CON_LOG(mutex_cola_susp_ready);
     list_destroy(cola_susp_ready);
     sem_destroy(&sem_proceso_a_susp_ready);
-
     UNLOCK_CON_LOG(mutex_cola_susp_ready);
     pthread_mutex_destroy(&mutex_cola_susp_ready);
 
@@ -359,24 +324,22 @@ void terminar_kernel(int code)
     LOCK_CON_LOG(mutex_cola_blocked);
     list_destroy(cola_blocked);
     sem_destroy(&sem_proceso_a_blocked);
-
     UNLOCK_CON_LOG(mutex_cola_blocked);
     pthread_mutex_destroy(&mutex_cola_blocked);
 
     LOCK_CON_LOG(mutex_cola_running);
     list_destroy(cola_running);
     sem_destroy(&sem_proceso_a_running);
-
     UNLOCK_CON_LOG(mutex_cola_running);
     pthread_mutex_destroy(&mutex_cola_running);
 
     LOCK_CON_LOG(mutex_cola_exit);
     list_destroy(cola_exit);
     sem_destroy(&sem_proceso_a_exit);
-
     UNLOCK_CON_LOG(mutex_cola_exit);
     pthread_mutex_destroy(&mutex_cola_exit);
 
+    LOG_DEBUG(kernel_log, "[KERNEL] Liberando estructuras de CPU e IO");
     LOCK_CON_LOG(mutex_pcbs_esperando_io);
     list_destroy_and_destroy_elements(pcbs_esperando_io, destruir_pcb_io);
     UNLOCK_CON_LOG(mutex_pcbs_esperando_io);
@@ -412,10 +375,37 @@ void terminar_kernel(int code)
     pthread_mutex_destroy(&mutex_planificador_lp);
 
     // Liberar correctamente los pthread_t* mallocados
-    /*LOCK_CON_LOG(mutex_hilos);
+    LOCK_CON_LOG(mutex_hilos);
     list_destroy_and_destroy_elements(lista_hilos, free);
     UNLOCK_CON_LOG(mutex_hilos);
-    pthread_mutex_destroy(&mutex_hilos);*/
+    pthread_mutex_destroy(&mutex_hilos);
+
+    // Destruir organizador de eventos
+    destruir_organizador_eventos();
+
+    LOG_DEBUG(kernel_log, "[KERNEL] Recursos liberados correctamente");
+}
+
+void terminar_kernel(int code)
+{
+    pthread_mutex_lock(&fin_mutex);
+    if (kernel_finalizado)
+    {
+        pthread_mutex_unlock(&fin_mutex);
+        return;
+    }
+    kernel_finalizado = true;
+    pthread_mutex_unlock(&fin_mutex);
+
+    log_info(kernel_log, "[KERNEL] Iniciando terminación ordenada del kernel");
+
+    // Iniciar proceso de terminación coordinada usando el organizador de eventos
+    iniciar_terminacion_kernel();
+
+    log_info(kernel_log, "[KERNEL] Todos los hilos han terminado, liberando recursos");
+
+    // Ahora es seguro liberar todos los recursos porque los hilos han terminado
+    liberar_recursos_kernel();
 
     if (code)
     {
@@ -438,12 +428,13 @@ void terminar_kernel(int code)
 
 void *hilo_servidor_dispatch(void *_)
 {
+    registrar_hilo_activo();
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
     fd_kernel_dispatch = iniciar_servidor(PUERTO_ESCUCHA_DISPATCH, kernel_log, "Kernel Dispatch");
 
-    while (!kernel_finalizado)
+    while (kernel_debe_continuar())
     {
         int fd_cpu_dispatch = esperar_cliente(fd_kernel_dispatch, kernel_log);
         if (fd_cpu_dispatch == -1)
@@ -517,6 +508,7 @@ void *hilo_servidor_dispatch(void *_)
 
 void *atender_cpu_dispatch(void *arg)
 {
+    registrar_hilo_activo();
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
@@ -689,12 +681,13 @@ void *atender_cpu_dispatch(void *arg)
 
 void *hilo_servidor_interrupt(void *_)
 {
+    registrar_hilo_activo();
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
     fd_interrupt = iniciar_servidor(PUERTO_ESCUCHA_INTERRUPT, kernel_log, "Kernel Interrupt");
 
-    while (!kernel_finalizado)
+    while (kernel_debe_continuar())
     {
         int fd_cpu_interrupt = esperar_cliente(fd_interrupt, kernel_log);
         if (fd_cpu_interrupt == -1)
@@ -758,12 +751,13 @@ void *hilo_servidor_interrupt(void *_)
 
 void *hilo_servidor_io(void *_)
 {
+    registrar_hilo_activo();
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
     fd_kernel_io = iniciar_servidor(PUERTO_ESCUCHA_IO, kernel_log, "Kernel IO");
 
-    while (!kernel_finalizado)
+    while (kernel_debe_continuar())
     {
         int fd_io = esperar_cliente(fd_kernel_io, kernel_log);
         if (fd_io == -1)
@@ -834,6 +828,7 @@ void *hilo_servidor_io(void *_)
 
 void *atender_io(void *arg)
 {
+    registrar_hilo_activo();
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 

@@ -2,6 +2,7 @@
 
 void *timer_suspension(void *v_arg)
 {
+    registrar_hilo_activo();
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
@@ -70,6 +71,24 @@ void *timer_suspension(void *v_arg)
 
     LOG_DEBUG(kernel_log, AZUL("[PLANI MP] Timer de suspensión expirado para PID=%d"), pcb->PID);
 
+    // VERIFICAR ESTADO DEL KERNEL ANTES DE SUSPENDER
+    if (!kernel_debe_continuar()) {
+        LOG_DEBUG(kernel_log, "[PLANI MP] Timer cancelado: kernel terminándose para PID=%d", pcb->PID);
+        
+        if (pcb->timer_flag == flag)
+            pcb->timer_flag = NULL;
+
+        if (flag) {
+            free(flag);
+            flag = NULL;
+        }
+        free(arg);
+        
+        UNLOCK_CON_LOG_PCB(pcb->mutex, pcb->PID);
+        terminar_hilo();
+        return NULL;
+    }
+
     if (pcb->timer_flag == flag)
         pcb->timer_flag = NULL;
 
@@ -82,8 +101,16 @@ void *timer_suspension(void *v_arg)
 
     if (!suspender_proceso(pcb))
     {
-        LOG_ERROR(kernel_log, "No se pudo suspender el proceso PID=%d", pcb->PID);
         UNLOCK_CON_LOG_PCB(pcb->mutex, pcb->PID);
+        
+        // Durante la terminación, ignorar errores de suspensión
+        if (!kernel_debe_continuar()) {
+            LOG_DEBUG(kernel_log, "[PLANI MP] Error de suspensión ignorado durante terminación del kernel PID=%d", pcb->PID);
+            terminar_hilo();
+            return NULL;
+        }
+        
+        LOG_ERROR(kernel_log, "No se pudo suspender el proceso PID=%d", pcb->PID);
         terminar_kernel(EXIT_FAILURE);
     }
     cambiar_estado_pcb(pcb, SUSP_BLOCKED);

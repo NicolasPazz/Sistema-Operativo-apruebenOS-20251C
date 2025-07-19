@@ -3,6 +3,12 @@
 
 int conectar_memoria()
 {
+    // Verificar si el kernel se está terminando antes de conectar
+    if (!kernel_debe_continuar()) {
+        LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] Cancelando conexión: kernel terminándose");
+        return -1;
+    }
+    
     LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] Conectando a Memoria en %s:%s", IP_MEMORIA, PUERTO_MEMORIA);
 
     int fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, kernel_log);
@@ -120,7 +126,20 @@ bool hay_espacio_suficiente_memoria(int tamanio)
 
 static bool enviar_op_memoria(int op_code, int pid)
 {
+    // VERIFICACIÓN CRÍTICA: Si el kernel se está terminando, NO hacer operaciones de memoria
+    if (!kernel_debe_continuar()) {
+        LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] Kernel terminando, cancelando operación %d para PID %d", op_code, pid);
+        return false;
+    }
+    
     int fd_memoria = conectar_memoria();
+    
+    // SEGUNDA VERIFICACIÓN: después de conectar, volver a verificar
+    if (!kernel_debe_continuar()) {
+        LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] Kernel terminando después de conectar, cancelando operación %d para PID %d", op_code, pid);
+        if (fd_memoria >= 0) close(fd_memoria);
+        return false;
+    }
 
     LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] Enviando operación %d a Memoria para PID %d", op_code, pid);
     t_paquete *paq = crear_paquete_op(op_code);
@@ -135,6 +154,13 @@ static bool enviar_op_memoria(int op_code, int pid)
     {
         LOG_ERROR(kernel_log, "[KERNEL->MEMORIA] Error al recibir respuesta de Memoria para OP %d y PID %d", op_code, pid);
         desconectar_memoria(fd_memoria);
+        
+        // Durante la terminación, no llamar a terminar_kernel() para evitar loops
+        if (!kernel_debe_continuar()) {
+            LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] Error ignorado durante terminación del kernel");
+            return false;
+        }
+        
         terminar_kernel(EXIT_FAILURE);
     }
 
