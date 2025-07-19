@@ -2,17 +2,23 @@
 
 void *planificador_corto_plazo(void *arg)
 {
+    registrar_hilo_activo();
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
     LOG_DEBUG(kernel_log, "=== PLANIFICADOR CP INICIADO ===");
 
-    while (!kernel_finalizado)
+    while (kernel_debe_continuar())
     {
         SEM_WAIT(sem_planificador_cp);
         LOCK_CON_LOG(mutex_cola_ready);
-        if (list_is_empty(cola_ready) || kernel_finalizado)
+        if (list_is_empty(cola_ready) || !kernel_debe_continuar())
         {
+            if (!kernel_debe_continuar()) {
+                LOG_DEBUG(kernel_log, "[PLANI CP] Kernel terminando, saliendo del planificador");
+                UNLOCK_CON_LOG(mutex_cola_ready);
+                break;
+            }
             LOG_DEBUG(kernel_log, "[PLANI CP] Cola READY vacía, esperando nuevos procesos");
             UNLOCK_CON_LOG(mutex_cola_ready);
             continue;

@@ -70,6 +70,7 @@ int main(int argc, char *argv[])
     iniciar_sincronizacion_kernel();
     iniciar_config_kernel(ruta_cfg);
     iniciar_logger_kernel();
+    inicializar_organizador_eventos(); // Debe ir después del logger
     iniciar_estados_kernel();
     iniciar_diccionario_tiempos();
     iniciar_diccionario_archivos_por_pcb();
@@ -175,7 +176,7 @@ int main(int argc, char *argv[])
 
     UNLOCK_CON_LOG(mutex_planificador_lp);
 
-    while (!kernel_finalizado)
+    while (kernel_debe_continuar())
     {
         sleep(10);
     }

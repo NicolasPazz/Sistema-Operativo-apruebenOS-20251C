@@ -5,12 +5,13 @@ int procesos_new_rechazados = 0;
 
 void *planificador_largo_plazo(void *arg)
 {
+    registrar_hilo_activo();
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
     LOCK_CON_LOG(mutex_planificador_lp);
     LOG_DEBUG(kernel_log, "=== PLANIFICADOR LP INICIADO ===");
-    while (!kernel_finalizado)
+    while (kernel_debe_continuar())
     {
         SEM_WAIT(sem_proceso_a_new);
 
@@ -119,10 +120,11 @@ void *planificador_largo_plazo(void *arg)
 
 void *gestionar_exit(void *arg)
 {
+    registrar_hilo_activo();
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
-    while (!kernel_finalizado)
+    while (kernel_debe_continuar())
     {
         SEM_WAIT(sem_proceso_a_exit);
 
@@ -131,8 +133,12 @@ void *gestionar_exit(void *arg)
         if (list_is_empty(cola_exit))
         {
             UNLOCK_CON_LOG(mutex_cola_exit);
-            LOG_ERROR(kernel_log, "[PLANI LP] [EXIT] Se despertó pero no hay procesos en EXIT");
-            //terminar_kernel(EXIT_FAILURE);
+            if (kernel_debe_continuar()) {
+                LOG_ERROR(kernel_log, "[PLANI LP] [EXIT] Se despertó pero no hay procesos en EXIT");
+                //terminar_kernel(EXIT_FAILURE);
+            } else {
+                LOG_DEBUG(kernel_log, "[PLANI LP] [EXIT] Terminando: kernel cerrándose y cola EXIT vacía");
+            }
             continue;
         }
 
@@ -158,20 +164,21 @@ void *gestionar_exit(void *arg)
 
 void *verificar_procesos_rechazados()
 {
+    registrar_hilo_activo();
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
-    while (!kernel_finalizado)
+    while (kernel_debe_continuar())
     {
         SEM_WAIT(sem_procesos_rechazados);
         LOCK_CON_LOG(mutex_cola_susp_ready);
         LOCK_CON_LOG(mutex_inicializacion_procesos);
 
-        if(kernel_finalizado)
+        if(!kernel_debe_continuar())
         {
             UNLOCK_CON_LOG(mutex_cola_susp_ready);
             UNLOCK_CON_LOG(mutex_inicializacion_procesos);
-            continue;
+            break;
         }
         
         bool resultado = true;
@@ -205,10 +212,26 @@ void *verificar_procesos_rechazados()
                 terminar_kernel(EXIT_FAILURE);
             }
 
+            // VERIFICAR ESTADO DEL KERNEL ANTES DE DESUSPENDER
+            if (!kernel_debe_continuar()) {
+                LOG_DEBUG(kernel_log, "[PLANI LP] [RECHAZADOS] Kernel terminando, cancelando desuspensión de PID %d", pcb_susp->PID);
+                UNLOCK_CON_LOG(mutex_cola_susp_ready);
+                UNLOCK_CON_LOG(mutex_inicializacion_procesos);
+                break;
+            }
+
             resultado = desuspender_proceso(pcb_susp);
 
             if (!resultado)
             {
+                // Durante la terminación, ignorar errores de desuspensión
+                if (!kernel_debe_continuar()) {
+                    LOG_DEBUG(kernel_log, "[PLANI LP] [RECHAZADOS] Error de desuspensión ignorado durante terminación para PID %d", pcb_susp->PID);
+                    UNLOCK_CON_LOG(mutex_cola_susp_ready);
+                    UNLOCK_CON_LOG(mutex_inicializacion_procesos);
+                    break;
+                }
+                
                 LOG_DEBUG(kernel_log, "[PLANI LP] [RECHAZADOS] No se pudo desuspender proceso en memoria para PID %d", pcb_susp->PID);
                 UNLOCK_CON_LOG(mutex_cola_susp_ready);
                 UNLOCK_CON_LOG(mutex_inicializacion_procesos);
