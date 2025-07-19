@@ -521,7 +521,7 @@ void loguear_metricas_estado(t_pcb *pcb)
             tiempo);
     }
 
-    unsigned promedio = pcb->ME[2] > 0 ? pcb->MT[1] / pcb->ME[2] : 0;
+    unsigned promedio = pcb->ME[1] > 0 ? pcb->MT[1] / pcb->ME[1] : 0;
 
     if (strcmp(ALGORITMO_CORTO_PLAZO, "FIFO") != 0)
     {
