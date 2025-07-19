@@ -1,7 +1,7 @@
 #!/bin/bash
 # chmod +x ejecutar_test.sh; ./ejecutar_test.sh N
 
-# Estos tests solamente verifican que el codigo de retorno de cada proceso sea exitoso y que no haya log_error o log_warning.
+# Estos tests solamente verifican que el codigo de retorno de cada proceso sea exitoso y que no haya log_debug o log_debug.
 # No verifica logica, deadlocks, memory leaks, condiciones de carrera, ni esperas activas.
 
 if [[ -z "$1" ]]; then

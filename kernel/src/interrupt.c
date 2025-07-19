@@ -5,8 +5,8 @@ void iniciar_interrupt_handler()
     pthread_t hilo_interrupt_handler;
     if (pthread_create(&hilo_interrupt_handler, NULL, interrupt_handler, NULL) != 0)
     {
-        LOG_ERROR(kernel_log, "[INTERRUPT] Error al crear hilo para manejar interrupciones");
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "[INTERRUPT] Error al crear hilo para manejar interrupciones");
+        return;
     }
     pthread_detach(hilo_interrupt_handler);
 }
@@ -29,8 +29,8 @@ void *interrupt_handler(void *arg)
 
         if (!intr)
         {
-            LOG_ERROR(kernel_log, VERDE("[INTERRUPT] Cola de interrupción vacía"));
-            terminar_kernel(EXIT_FAILURE);
+            LOG_DEBUG(kernel_log, VERDE("[INTERRUPT] Cola de interrupción vacía"));
+            return NULL;
         }
 
         interrumpir_ejecucion(intr->cpu_a_desalojar);

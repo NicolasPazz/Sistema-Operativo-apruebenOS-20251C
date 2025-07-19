@@ -8,7 +8,7 @@
 t_cache_paginas* inicializar_cache() {
     cache = (t_cache_paginas*)malloc(sizeof(t_cache_paginas));
     if (cache == NULL) {
-        log_error(cpu_log,"No se pudo inicializar la cache");
+        log_debug(cpu_log,"No se pudo inicializar la cache");
         exit(EXIT_FAILURE);
     }
     cache->entradas = NULL;
@@ -16,7 +16,7 @@ t_cache_paginas* inicializar_cache() {
     if (cache_habilitada(cache)) {
         cache->entradas = (t_entrada_cache*)malloc(cache->cantidad_entradas * sizeof(t_entrada_cache));
         if (cache->entradas == NULL) {
-            log_error(cpu_log, "Error al asignar memoria para las entradas de la cache");
+            log_debug(cpu_log, "Error al asignar memoria para las entradas de la cache");
             free(cache);
             exit(EXIT_FAILURE);
         }
@@ -30,7 +30,7 @@ t_cache_paginas* inicializar_cache() {
     }
     cache->algoritmo_reemplazo = REEMPLAZO_CACHE;
     if (cache->algoritmo_reemplazo == NULL) {
-        log_error(cpu_log, "Error al asignar memoria para las entradas de la cache");
+        log_debug(cpu_log, "Error al asignar memoria para las entradas de la cache");
         free(cache);
         exit(EXIT_FAILURE);
     }
@@ -122,13 +122,13 @@ int seleccionar_victima_clock() {
         
         // Protección contra bucle infinito (aunque no debería pasar)
         if (iteraciones > cache->cantidad_entradas * 2) {
-            log_error(cpu_log, "ERROR: Algoritmo CLOCK en bucle infinito después de %d iteraciones", iteraciones);
+            log_debug(cpu_log, "ERROR: Algoritmo CLOCK en bucle infinito después de %d iteraciones", iteraciones);
             break;
         }
     }
     
     // Esta línea nunca debería ejecutarse
-    log_error(cpu_log, "ERROR CRÍTICO: Algoritmo CLOCK no pudo seleccionar víctima");
+    log_debug(cpu_log, "ERROR CRÍTICO: Algoritmo CLOCK no pudo seleccionar víctima");
     return 0;
 }
 
@@ -366,7 +366,7 @@ void cache_modificar(int pid, int numero_pagina, int direccion_logica, char* dat
 
     // Asegurar que tenemos contenido válido
     if (cache->entradas[pos].contenido == NULL) {
-        log_error(cpu_log, "PID: %d - Contenido de caché nulo para página %d", pid, numero_pagina);
+        log_debug(cpu_log, "PID: %d - Contenido de caché nulo para página %d", pid, numero_pagina);
         pthread_mutex_unlock(&mutex_cache);
         return;
     }
@@ -376,7 +376,7 @@ void cache_modificar(int pid, int numero_pagina, int direccion_logica, char* dat
     
     // Validar que la escritura no exceda los límites de la página
     if (offset + tamanio > cfg_memoria->TAM_PAGINA) {
-        log_error(cpu_log, "PID: %d - Escritura excede límites de página (offset=%d + tamaño=%d > TAM_PAGINA=%d)", 
+        log_debug(cpu_log, "PID: %d - Escritura excede límites de página (offset=%d + tamaño=%d > TAM_PAGINA=%d)", 
                  pid, offset, tamanio, cfg_memoria->TAM_PAGINA);
         pthread_mutex_unlock(&mutex_cache);
         return;
@@ -426,7 +426,7 @@ void cache_escribir(int pid, int frame, char* datos, bool modificado) {
                         : seleccionar_victima_clock();
         
         if (entrada_index == -1) {
-            log_error(cpu_log, "Error crítico: No se pudo seleccionar víctima en caché");
+            log_debug(cpu_log, "Error crítico: No se pudo seleccionar víctima en caché");
             pthread_mutex_unlock(&mutex_cache);
             return;
         }
@@ -454,7 +454,7 @@ void cache_escribir(int pid, int frame, char* datos, bool modificado) {
         op_code codigo_operacion;
         if (recv(fd_memoria, &codigo_operacion, sizeof(op_code), MSG_WAITALL) != sizeof(op_code) ||
             codigo_operacion != PAQUETE_OP) {
-            log_error(cpu_log, "Error al obtener marco de memoria para (PID=%d, Página=%d)", pid_viejo, pagina_vieja);
+            log_debug(cpu_log, "Error al obtener marco de memoria para (PID=%d, Página=%d)", pid_viejo, pagina_vieja);
         } else {
             t_list* respuesta = recibir_contenido_paquete(fd_memoria);
             int marco = *(int*)list_get(respuesta, 0);
@@ -486,7 +486,7 @@ void cache_escribir(int pid, int frame, char* datos, bool modificado) {
     int tam_pagina = cfg_memoria->TAM_PAGINA;
     entrada->contenido = malloc(tam_pagina);
     if (!entrada->contenido) {
-        log_error(cpu_log, "Error al reservar memoria para caché (página %d)", frame);
+        log_debug(cpu_log, "Error al reservar memoria para caché (página %d)", frame);
         pthread_mutex_unlock(&mutex_cache);
         return;
     }
@@ -497,7 +497,7 @@ void cache_escribir(int pid, int frame, char* datos, bool modificado) {
     // Copiar datos de forma segura
     int datos_len = strlen(datos);
     if (datos_len > tam_pagina) {
-        log_warning(cpu_log, "Datos exceden tamaño de página, truncando");
+        log_debug(cpu_log, "Datos exceden tamaño de página, truncando");
         datos_len = tam_pagina - 1;  // Dejar espacio para \0
     }
     memcpy(entrada->contenido, datos, datos_len);
@@ -521,20 +521,20 @@ char* cache_leer(int pid, int numero_pagina) {
     int indice = buscar_pagina_en_cache(pid, numero_pagina);
     if (indice == -1) {
         pthread_mutex_unlock(&mutex_cache);
-        log_warning(cpu_log, "PID: %d - Cache Leer - Página %d no encontrada en caché", pid, numero_pagina);
+        log_debug(cpu_log, "PID: %d - Cache Leer - Página %d no encontrada en caché", pid, numero_pagina);
         return NULL;
     }
 
     if (cache->entradas[indice].contenido == NULL) {
         pthread_mutex_unlock(&mutex_cache);
-        log_warning(cpu_log, "PID: %d - Cache Leer - Contenido nulo en entrada de página %d", pid, numero_pagina);
+        log_debug(cpu_log, "PID: %d - Cache Leer - Contenido nulo en entrada de página %d", pid, numero_pagina);
         return NULL;
     }
 
     char* copia = strdup(cache->entradas[indice].contenido);
     if (copia == NULL) {
         pthread_mutex_unlock(&mutex_cache);
-        log_error(cpu_log, "PID: %d - Error al duplicar contenido de caché para página %d", pid, numero_pagina);
+        log_debug(cpu_log, "PID: %d - Error al duplicar contenido de caché para página %d", pid, numero_pagina);
         return NULL;
     }
     pthread_mutex_unlock(&mutex_cache);
@@ -556,12 +556,12 @@ void enviar_actualizar_pagina_completa(int pid, int direccion_fisica, void* cont
 
     t_respuesta respuesta;
     if (recv(fd_memoria, &respuesta, sizeof(t_respuesta), MSG_WAITALL) != sizeof(t_respuesta)) {
-        log_error(cpu_log, "Error al recibir respuesta de actualización de página completa");
+        log_debug(cpu_log, "Error al recibir respuesta de actualización de página completa");
         exit(EXIT_FAILURE);
     }
 
     if (respuesta != OK) {
-        log_error(cpu_log, "Actualización de página completa fallida en Memoria");
+        log_debug(cpu_log, "Actualización de página completa fallida en Memoria");
         exit(EXIT_FAILURE);
     }
 

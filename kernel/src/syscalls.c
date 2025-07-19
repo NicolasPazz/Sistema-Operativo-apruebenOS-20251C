@@ -39,7 +39,7 @@ void IO(char *nombre_io, int tiempo_a_usar, t_pcb *pcb_a_io)
 {
     if (!pcb_a_io)
     {
-        LOG_ERROR(kernel_log, "PCB nulo");
+        LOG_DEBUG(kernel_log, "PCB nulo");
         return;
     }
 
@@ -65,8 +65,8 @@ void EXIT(t_pcb **ptr_pcb_a_finalizar)
 {
     if (!ptr_pcb_a_finalizar || !(*ptr_pcb_a_finalizar))
     {
-        LOG_ERROR(kernel_log, "PCB nulo o puntero a PCB nulo");
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "PCB nulo o puntero a PCB nulo");
+        return;
     }
     t_pcb *pcb_a_finalizar = *ptr_pcb_a_finalizar;
 
@@ -74,10 +74,10 @@ void EXIT(t_pcb **ptr_pcb_a_finalizar)
     LOCK_CON_LOG_PCB(pcb_a_finalizar->mutex, pcb_a_finalizar->PID);
     if (!finalizar_proceso_en_memoria(pcb_a_finalizar->PID))
     {
-        LOG_ERROR(kernel_log, "Memoria rechazó FINALIZAR_PROC_OP para PID %d", pcb_a_finalizar->PID);
+        LOG_DEBUG(kernel_log, "Memoria rechazó FINALIZAR_PROC_OP para PID %d", pcb_a_finalizar->PID);
         UNLOCK_CON_LOG_PCB(pcb_a_finalizar->mutex, pcb_a_finalizar->PID);
         UNLOCK_CON_LOG(mutex_cola_exit);
-        terminar_kernel(EXIT_FAILURE);
+        return;
     }
 
     log_info(kernel_log, ROJO("## (%d) - Finaliza el proceso"), pcb_a_finalizar->PID);
@@ -96,8 +96,8 @@ void actualizar_metricas_finalizacion(t_pcb *pcb)
 {
     if (!pcb)
     {
-        LOG_ERROR(kernel_log, "PCB nulo");
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "PCB nulo");
+        return;
     }
 
     char *pid_key = string_itoa(pcb->PID);
@@ -123,7 +123,7 @@ void actualizar_metricas_finalizacion(t_pcb *pcb)
     }
     else
     {
-        LOG_WARNING(kernel_log, "No se encontró cronómetro activo para PID %d al finalizar", pcb->PID);
+        LOG_DEBUG(kernel_log, "No se encontró cronómetro activo para PID %d al finalizar", pcb->PID);
     }
 
     free(pid_key);
@@ -135,7 +135,7 @@ void DUMP_MEMORY(t_pcb *pcb_dump)
 {
     if (!pcb_dump)
     {
-        LOG_ERROR(kernel_log, "PCB nulo");
+        LOG_DEBUG(kernel_log, "PCB nulo");
         return;
     }
 
@@ -147,6 +147,6 @@ void DUMP_MEMORY(t_pcb *pcb_dump)
     else
     {
         cambiar_estado_pcb_mutex(pcb_dump, EXIT_ESTADO);
-        LOG_ERROR(kernel_log, "## (%d) - Error en DUMP_MEMORY, proceso enviado a EXIT", pcb_dump->PID);
+        LOG_DEBUG(kernel_log, "## (%d) - Error en DUMP_MEMORY, proceso enviado a EXIT", pcb_dump->PID);
     }
 }

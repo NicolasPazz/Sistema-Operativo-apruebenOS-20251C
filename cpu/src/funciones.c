@@ -37,14 +37,14 @@ void func_write(char* direccion_logica_str, char* datos) {
 
     // Validar y calcular tamaño de forma segura
     if (!datos) {
-        log_error(cpu_log, "PID: %d - Datos nulos en func_write", pid_ejecutando);
+        log_debug(cpu_log, "PID: %d - Datos nulos en func_write", pid_ejecutando);
         return;
     }
     
     // Calcular tamaño sin usar strlen()
     int tamanio_real = calcular_tamanio_datos_seguro(datos);
     if (tamanio_real == 0) {
-        log_error(cpu_log, "PID: %d - Datos vacíos en func_write", pid_ejecutando);
+        log_debug(cpu_log, "PID: %d - Datos vacíos en func_write", pid_ejecutando);
         return;
     }
 
@@ -77,12 +77,12 @@ void func_write(char* direccion_logica_str, char* datos) {
 
     t_respuesta respuesta;
     if (recv(fd_memoria, &respuesta, sizeof(t_respuesta), MSG_WAITALL) != sizeof(t_respuesta)) {
-        log_error(cpu_log, "PID: %d - Error al recibir respuesta de WRITE desde Memoria", pid_ejecutando);
+        log_debug(cpu_log, "PID: %d - Error al recibir respuesta de WRITE desde Memoria", pid_ejecutando);
         exit(EXIT_FAILURE);
     }
 
     if (respuesta != OK) {
-        log_error(cpu_log, "PID: %d - Error en escritura de memoria: %d", pid_ejecutando, respuesta);
+        log_debug(cpu_log, "PID: %d - Error en escritura de memoria: %d", pid_ejecutando, respuesta);
         exit(EXIT_FAILURE);
     }
 
@@ -98,18 +98,18 @@ void func_write(char* direccion_logica_str, char* datos) {
 
         op_code codigo_operacion;
         if (recv(fd_memoria, &codigo_operacion, sizeof(op_code), MSG_WAITALL) != sizeof(op_code)) {
-            log_error(cpu_log, "PID: %d - Error al recibir op_code de respuesta desde Memoria", pid_ejecutando);
+            log_debug(cpu_log, "PID: %d - Error al recibir op_code de respuesta desde Memoria", pid_ejecutando);
             exit(EXIT_FAILURE);
         }
 
         if (codigo_operacion != PAQUETE_OP) {
-            log_error(cpu_log, "PID: %d - Op_code inesperado en respuesta: %d", pid_ejecutando, codigo_operacion);
+            log_debug(cpu_log, "PID: %d - Op_code inesperado en respuesta: %d", pid_ejecutando, codigo_operacion);
             exit(EXIT_FAILURE);
         }
 
         t_list* lista_respuesta = recibir_contenido_paquete(fd_memoria);
         if (lista_respuesta == NULL || list_size(lista_respuesta) < 1) {
-            log_error(cpu_log, "PID: %d - Error al recibir respuesta de página desde Memoria", pid_ejecutando);
+            log_debug(cpu_log, "PID: %d - Error al recibir respuesta de página desde Memoria", pid_ejecutando);
             exit(EXIT_FAILURE);
         }
 
@@ -151,18 +151,18 @@ void func_read(char* direccion_logica_str, char* tam_str) {
 
     op_code codigo_operacion;
     if (recv(fd_memoria, &codigo_operacion, sizeof(op_code), MSG_WAITALL) != sizeof(op_code)) {
-        log_error(cpu_log, "PID: %d - Error al recibir op_code de respuesta desde Memoria", pid_ejecutando);
+        log_debug(cpu_log, "PID: %d - Error al recibir op_code de respuesta desde Memoria", pid_ejecutando);
         exit(EXIT_FAILURE);
     }
 
     if (codigo_operacion != PAQUETE_OP) {
-        log_error(cpu_log, "PID: %d - Op_code inesperado en respuesta: %d", pid_ejecutando, codigo_operacion);
+        log_debug(cpu_log, "PID: %d - Op_code inesperado en respuesta: %d", pid_ejecutando, codigo_operacion);
         exit(EXIT_FAILURE);
     }
 
     t_list* lista_respuesta = recibir_contenido_paquete(fd_memoria);
     if (lista_respuesta == NULL || list_size(lista_respuesta) < 1) {
-        log_error(cpu_log, "PID: %d - Error al recibir respuesta de READ desde Memoria", pid_ejecutando);
+        log_debug(cpu_log, "PID: %d - Error al recibir respuesta de READ desde Memoria", pid_ejecutando);
         exit(EXIT_FAILURE);
     }
 
@@ -186,18 +186,18 @@ void func_read(char* direccion_logica_str, char* tam_str) {
 
         op_code codigo_operacion_pagina;
         if (recv(fd_memoria, &codigo_operacion_pagina, sizeof(op_code), MSG_WAITALL) != sizeof(op_code)) {
-            log_error(cpu_log, "PID: %d - Error al recibir op_code de respuesta de página desde Memoria", pid_ejecutando);
+            log_debug(cpu_log, "PID: %d - Error al recibir op_code de respuesta de página desde Memoria", pid_ejecutando);
             exit(EXIT_FAILURE);
         }
 
         if (codigo_operacion_pagina != PAQUETE_OP) {
-            log_error(cpu_log, "PID: %d - Op_code inesperado en respuesta de página: %d", pid_ejecutando, codigo_operacion_pagina);
+            log_debug(cpu_log, "PID: %d - Op_code inesperado en respuesta de página: %d", pid_ejecutando, codigo_operacion_pagina);
             exit(EXIT_FAILURE);
         }
 
         t_list* lista_respuesta_pagina = recibir_contenido_paquete(fd_memoria);
         if (lista_respuesta_pagina == NULL || list_size(lista_respuesta_pagina) < 1) {
-            log_error(cpu_log, "PID: %d - Error al recibir respuesta de página desde Memoria", pid_ejecutando);
+            log_debug(cpu_log, "PID: %d - Error al recibir respuesta de página desde Memoria", pid_ejecutando);
             exit(EXIT_FAILURE);
         }
 
@@ -237,7 +237,7 @@ void func_init_proc(t_instruccion* instruccion) {
     int size = atoi(size_str);
 
     if (!path || !size_str) {
-        log_error(cpu_log, "[SYSCALL] INIT_PROC recibido con parámetros inválidos.");
+        log_debug(cpu_log, "[SYSCALL] INIT_PROC recibido con parámetros inválidos.");
         return;
     }
     
@@ -286,13 +286,13 @@ t_instruccion* recibir_instruccion_desde_memoria() {
 
     op_code cod_op = recibir_operacion(fd_memoria);
     if (cod_op != INSTRUCCION_A_CPU_OP) {
-        log_error(cpu_log, "[MEMORIA->CPU] Op_code inesperado: %d", cod_op);
+        log_debug(cpu_log, "[MEMORIA->CPU] Op_code inesperado: %d", cod_op);
         return NULL;
     }
 
     t_list* lista = recibir_contenido_paquete(fd_memoria);
     if (!lista || list_size(lista) < 3) {
-        log_error(cpu_log, "[MEMORIA->CPU] Error al recibir paquete de instrucción");
+        log_debug(cpu_log, "[MEMORIA->CPU] Error al recibir paquete de instrucción");
         if (lista) list_destroy_and_destroy_elements(lista, free);
         return NULL;
     }
@@ -304,7 +304,7 @@ t_instruccion* recibir_instruccion_desde_memoria() {
 
     t_instruccion* instruccion_nueva = malloc(sizeof(t_instruccion));
     if (!instruccion_nueva) {
-        log_error(cpu_log, "[MEMORIA->CPU] Error al asignar memoria para instrucción");
+        log_debug(cpu_log, "[MEMORIA->CPU] Error al asignar memoria para instrucción");
         list_destroy_and_destroy_elements(lista, free);
         return NULL;
     }

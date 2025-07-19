@@ -7,7 +7,7 @@ io *get_io(char *nombre_io)
 
     if (!nombre_io)
     {
-        LOG_ERROR(kernel_log, "Nombre de IO nulo");
+        LOG_DEBUG(kernel_log, "Nombre de IO nulo");
         return NULL;
     }
 
@@ -33,7 +33,7 @@ io *buscar_io_por_fd(int fd)
 {
     if (!lista_ios)
     {
-        LOG_ERROR(kernel_log, "lista_ios es NULL");
+        LOG_DEBUG(kernel_log, "lista_ios es NULL");
         return NULL;
     }
 
@@ -56,7 +56,7 @@ io *buscar_io_por_nombre(char *nombre)
 {
     if (!lista_ios || !nombre)
     {
-        LOG_ERROR(kernel_log, "lista_ios o nombre es NULL");
+        LOG_DEBUG(kernel_log, "lista_ios o nombre es NULL");
         return NULL;
     }
 
@@ -85,7 +85,7 @@ io *io_disponible(char *nombre)
 {
     if (!nombre)
     {
-        LOG_ERROR(kernel_log, "Nombre de IO nulo");
+        LOG_DEBUG(kernel_log, "Nombre de IO nulo");
         return false;
     }
     
@@ -151,8 +151,8 @@ void verificar_procesos_bloqueados(io *io)
 {
     if (!io)
     {
-        LOG_ERROR(kernel_log, "IO no válida");
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "IO no válida");
+        return;
     }
 
     LOCK_CON_LOG(mutex_pcbs_esperando_io);

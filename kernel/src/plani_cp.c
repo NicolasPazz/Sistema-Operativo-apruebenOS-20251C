@@ -78,17 +78,17 @@ void *planificador_corto_plazo(void *arg)
         }
         else
         {
-            LOG_ERROR(kernel_log, "[PLANI CP] Algoritmo no reconocido");
+            LOG_DEBUG(kernel_log, "[PLANI CP] Algoritmo no reconocido");
             UNLOCK_CON_LOG(mutex_cola_ready);
-            terminar_kernel(EXIT_FAILURE);
+            return NULL;
         }
 
         if (!proceso_a_ejecutar)
         {
-            LOG_ERROR(kernel_log, "[PLANI CP] No se pudo elegir un proceso para ejecutar");
+            LOG_DEBUG(kernel_log, "[PLANI CP] No se pudo elegir un proceso para ejecutar");
             UNLOCK_CON_LOG(mutex_lista_cpus);
             UNLOCK_CON_LOG(mutex_cola_ready);
-            terminar_kernel(EXIT_FAILURE);
+            return NULL;
         }
 
         UNLOCK_CON_LOG(mutex_lista_cpus);
@@ -109,8 +109,8 @@ void dispatch(t_pcb *proceso_a_ejecutar)
 
     if (!cpu_libre || !cpu_disponible)
     {
-        LOG_ERROR(kernel_log, "[DISPATCH] No hay CPU libre para ejecutar PID %d", proceso_a_ejecutar->PID);
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "[DISPATCH] No hay CPU libre para ejecutar PID %d", proceso_a_ejecutar->PID);
+        return;
     }
 
     ejecutar_proceso(cpu_disponible, proceso_a_ejecutar);
@@ -127,7 +127,7 @@ t_pcb *elegir_por_sjf()
 
     if (list_is_empty(cola_ready))
     {
-        LOG_ERROR(kernel_log, "[SJF] cola_ready vacía");
+        LOG_DEBUG(kernel_log, "[SJF] cola_ready vacía");
         return NULL;
     }
 
@@ -147,7 +147,7 @@ t_pcb *elegir_por_sjf()
     }
     else
     {
-        LOG_ERROR(kernel_log, "[SJF] No se pudo seleccionar un proceso");
+        LOG_DEBUG(kernel_log, "[SJF] No se pudo seleccionar un proceso");
         return NULL;
     }
 
@@ -161,8 +161,8 @@ void *menor_rafaga(void *a, void *b)
 
     if (!a || !b)
     {
-        LOG_ERROR(kernel_log, "[SJF] Error al comparar procesos: uno de los parámetros es NULL");
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "[SJF] Error al comparar procesos: uno de los parámetros es NULL");
+        return NULL;
     }
 
     LOG_DEBUG(kernel_log, "[SJF] Comparando procesos:");
@@ -192,7 +192,7 @@ t_pcb *elegir_por_srt(t_list *cola_a_evaluar)
 
     if (list_is_empty(cola_a_evaluar))
     {
-        LOG_ERROR(kernel_log, "[SRT] cola_a_evaluar vacía");
+        LOG_DEBUG(kernel_log, "[SRT] cola_a_evaluar vacía");
         return NULL;
     }
 
@@ -212,7 +212,7 @@ t_pcb *elegir_por_srt(t_list *cola_a_evaluar)
     }
     else
     {
-        LOG_ERROR(kernel_log, "[SRT] No se pudo seleccionar un proceso");
+        LOG_DEBUG(kernel_log, "[SRT] No se pudo seleccionar un proceso");
         return NULL;
     }
 
@@ -226,8 +226,8 @@ void *menor_rafaga_restante(void *a, void *b)
 
     if (!a || !b)
     {
-        LOG_ERROR(kernel_log, "[SRT] Error al comparar procesos: uno de los parámetros es NULL");
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "[SRT] Error al comparar procesos: uno de los parámetros es NULL");
+        return NULL;
     }
 
     double restante_a;

@@ -42,7 +42,7 @@ int iniciar_conexiones_memoria(char* PUERTO_ESCUCHA, t_log* logger_param) {
     fd_memoria = iniciar_servidor(PUERTO_ESCUCHA, logger_param, "Memoria iniciado");
 
     if (fd_memoria == -1) {
-        log_error(logger_param, "No se pudo iniciar el servidor de Memoria");
+        log_debug(logger_param, "No se pudo iniciar el servidor de Memoria");
         exit(EXIT_FAILURE);
     }
 
@@ -91,7 +91,7 @@ void finalizar_threads_servidor() {
 void procesar_conexion(void* void_args) {
     t_procesar_conexion_args* args = (t_procesar_conexion_args*) void_args;
     if (args == NULL) {
-        log_error(logger, "Error: Argumentos de conexion nulos");
+        log_debug(logger, "Error: Argumentos de conexion nulos");
         return;
     }
 
@@ -101,7 +101,7 @@ void procesar_conexion(void* void_args) {
 
     int handshake = -1;
     if (recv(cliente_socket, &handshake, sizeof(int), 0) <= 0) {
-        log_error(logger, "Error al recibir handshake del cliente (fd=%d): %s", cliente_socket, strerror(errno));
+        log_debug(logger, "Error al recibir handshake del cliente (fd=%d): %s", cliente_socket, strerror(errno));
         close(cliente_socket);
         return;
     }
@@ -120,7 +120,7 @@ void procesar_conexion(void* void_args) {
             break;
 
         default:
-            log_warning(logger, "Handshake invalido recibido (fd=%d): %d", cliente_socket, handshake);
+            log_debug(logger, "Handshake invalido recibido (fd=%d): %d", cliente_socket, handshake);
             close(cliente_socket);
             return;
     }
@@ -186,7 +186,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                     log_debug(logger, "[INIT_PROC_OP] PID: %d - Instrucciones cargadas desde %s", pid, path_completo);
                     free(pid_key);
                 } else {
-                    log_warning(logger, "[INIT_PROC_OP] PID: %d - No se pudieron cargar instrucciones desde %s", pid, path_completo);
+                    log_debug(logger, "[INIT_PROC_OP] PID: %d - No se pudieron cargar instrucciones desde %s", pid, path_completo);
                 }
             
                 free(path_completo);
@@ -229,7 +229,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             log_debug(logger, "FINALIZAR_PROC_OP recibido (paquete)");
             t_list* lista = recibir_contenido_paquete(cliente_socket);
             if (!lista || list_size(lista) < 1) {
-                log_error(logger, "FINALIZAR_PROC_OP: Error al recibir paquete o paquete vacío");
+                log_debug(logger, "FINALIZAR_PROC_OP: Error al recibir paquete o paquete vacío");
                 if (lista) list_destroy_and_destroy_elements(lista, free);
                 return;
             }
@@ -252,11 +252,11 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             // ========== RECIBIR PARÁMETROS ==========
             t_list* parametros_pedir_instruccion = recibir_contenido_paquete(cliente_socket);
             if (!parametros_pedir_instruccion) {
-                log_error(logger, "[PEDIR_INSTRUCCION] Error al recibir parámetros del paquete - socket: %d", cliente_socket);
+                log_debug(logger, "[PEDIR_INSTRUCCION] Error al recibir parámetros del paquete - socket: %d", cliente_socket);
                 return;
             }
             if (list_size(parametros_pedir_instruccion) < 2) {
-                log_error(logger, "[PEDIR_INSTRUCCION] Parámetros insuficientes recibidos - socket: %d", cliente_socket);
+                log_debug(logger, "[PEDIR_INSTRUCCION] Parámetros insuficientes recibidos - socket: %d", cliente_socket);
                 list_destroy_and_destroy_elements(parametros_pedir_instruccion, free);
                 return;
             }
@@ -286,7 +286,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             } else {
                 // Enviar error usando paquetes (strings vacíos)
                 enviar_instruccion_a_cpu(cliente_socket, pid, pc, "", "", "");
-                log_error(logger, "[PEDIR_INSTRUCCION] Error: instrucción no encontrada - PID: %d, PC: %d", pid, pc);
+                log_debug(logger, "[PEDIR_INSTRUCCION] Error: instrucción no encontrada - PID: %d, PC: %d", pid, pc);
             }
             break;
         }
@@ -383,7 +383,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 } else {
                     t_respuesta respuesta = ERROR;
                     send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
-                    log_error(logger, "Error en lectura de espacio de usuario - PID: %d", pid);
+                    log_debug(logger, "Error en lectura de espacio de usuario - PID: %d", pid);
                 }
             }
             
@@ -396,7 +396,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             // Recibir parámetros del paquete: PID y dirección base de página
             t_list* lista = recibir_contenido_paquete(cliente_socket);
             if (lista == NULL || list_size(lista) < 2) {
-                log_error(logger, "LEER_PAGINA_COMPLETA_OP: Parámetros insuficientes");
+                log_debug(logger, "LEER_PAGINA_COMPLETA_OP: Parámetros insuficientes");
                 if (lista) list_destroy_and_destroy_elements(lista, free);
                 return;
             }
@@ -465,7 +465,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             // Recibir tamaño solicitado
             t_list* datos = recibir_contenido_paquete(cliente_socket);
             if (list_size(datos) < 1) {
-                log_error(logger, "CHECK_MEMORY_SPACE_OP: No se recibieron datos válidos");
+                log_debug(logger, "CHECK_MEMORY_SPACE_OP: No se recibieron datos válidos");
                 list_destroy_and_destroy_elements(datos, free);
                 break;
             }
@@ -491,7 +491,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             // Recibir paquete con el PID
             t_list* parametros = recibir_contenido_paquete(cliente_socket);
             if (!parametros || list_size(parametros) < 1) {
-                log_error(logger, "SUSPENDER_PROCESO_OP: Error al recibir paquete o paquete vacío");
+                log_debug(logger, "SUSPENDER_PROCESO_OP: Error al recibir paquete o paquete vacío");
                 if (parametros) list_destroy_and_destroy_elements(parametros, free);
                 return;
             }
@@ -515,7 +515,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             // Recibir paquete con el PID
             t_list* parametros = recibir_contenido_paquete(cliente_socket);
             if (!parametros || list_size(parametros) < 1) {
-                log_error(logger, "DESUSPENDER_PROCESO_OP: Error al recibir paquete o paquete vacío");
+                log_debug(logger, "DESUSPENDER_PROCESO_OP: Error al recibir paquete o paquete vacío");
                 if (parametros) list_destroy_and_destroy_elements(parametros, free);
                 return;
             }
@@ -543,7 +543,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             break;
         }
         default: { 
-            log_error(logger, "Codigo de operacion desconocido recibido del cliente %d: %d", cliente_socket, cop);
+            log_debug(logger, "Codigo de operacion desconocido recibido del cliente %d: %d", cliente_socket, cop);
             break;
         }
     }
@@ -553,7 +553,7 @@ void procesar_write_op(int cliente_socket) {
     t_list* lista = recibir_contenido_paquete(cliente_socket);
 
     if (list_size(lista) != 4) {
-        log_error(logger, "WRITE_OP: Se esperaban 4 parámetros pero se recibieron %d", list_size(lista));
+        log_debug(logger, "WRITE_OP: Se esperaban 4 parámetros pero se recibieron %d", list_size(lista));
         list_destroy_and_destroy_elements(lista, free);
         return;
     }
@@ -566,7 +566,7 @@ void procesar_write_op(int cliente_socket) {
     log_trace(logger, "## PID: %d - Escritura - Dir. Física: %d - Tamaño: %d", pid, direccion_fisica, size);
 
     if (direccion_fisica + size > cfg->TAM_MEMORIA) {
-        log_error(logger, "PID: %d - Escritura fuera de rango (dir=%d + size=%d > tam=%d)", pid, direccion_fisica, size, cfg->TAM_MEMORIA);
+        log_debug(logger, "PID: %d - Escritura fuera de rango (dir=%d + size=%d > tam=%d)", pid, direccion_fisica, size, cfg->TAM_MEMORIA);
         t_respuesta err = ERROR;
         send(cliente_socket, &err, sizeof(t_respuesta), 0);
         list_destroy_and_destroy_elements(lista, free);
@@ -587,7 +587,7 @@ void procesar_read_op(int cliente_socket) {
     t_list* lista = recibir_contenido_paquete(cliente_socket);
 
     if (list_size(lista) != 3) {
-        log_error(logger, "READ_OP: Se esperaban 3 parámetros pero se recibieron %d", list_size(lista));
+        log_debug(logger, "READ_OP: Se esperaban 3 parámetros pero se recibieron %d", list_size(lista));
         list_destroy_and_destroy_elements(lista, free);
         return;
     }

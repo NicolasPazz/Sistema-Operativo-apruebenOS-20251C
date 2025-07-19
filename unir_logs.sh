@@ -17,12 +17,26 @@ for dir in kernel memoria cpu io; do
     [[ -d $dir ]] || { echo "[x] Falta la carpeta '$dir'"; exit 1; }
 done
 
-while IFS= read -r -d '' f; do
+# Usar la expresión regular que funciona del código original
+sed_cleanup='s/\x1B\[[0-9;]*[mK]//g'
+
+# Usar mapfile para procesar los archivos de una vez
+mapfile -t log_files < <(find kernel memoria cpu io -name "*.log" -type f)
+
+# Primero limpiar los archivos originales directamente
+for f in "${log_files[@]}"; do
+    sed -i "$sed_cleanup" "$f"
+done
+
+# Luego procesar para el log global
+for f in "${log_files[@]}"; do
     clean="$TMPDIR/$(basename "$f")"
-    sed -E 's/\x1B\[[0-9;]*[mK]//g' "$f" > "$clean"
-    total_src=$(( total_src + $(wc -l < "$clean") ))
+    cp "$f" "$clean"
+    lines=$(wc -l < "$f")
+    total_src=$((total_src + lines))
     cleans+=("$clean")
-done < <(find kernel memoria cpu io -type f -name '*.log' -print0 | sort -z)
+    echo "[√] Procesado: $f ($lines líneas)"
+done
 
 [[ ${#cleans[@]} -gt 0 ]] || { echo "[x] No hay .log"; exit 1; }
 

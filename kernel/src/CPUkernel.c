@@ -16,8 +16,8 @@ cpu *get_cpu_from_fd(int fd)
 
     if (!cpu_asociada)
     {
-        LOG_ERROR(kernel_log, "No se encontró CPU asociada al fd=%d", fd);
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "No se encontró CPU asociada al fd=%d", fd);
+        return NULL;
     }
 
     return cpu_asociada;
@@ -27,7 +27,7 @@ cpu *buscar_y_remover_cpu_por_fd(int fd)
 {
     if (!lista_cpus)
     {
-        LOG_ERROR(kernel_log, "lista_cpus es NULL");
+        LOG_DEBUG(kernel_log, "lista_cpus es NULL");
         return NULL;
     }
 
@@ -62,8 +62,7 @@ int obtener_fd_interrupt(int id_cpu)
             return c->fd;
         }
     }
-    LOG_ERROR(kernel_log, "obtener_fd_interrupt: No se encontró CPU con ID %d", id_cpu);
-    terminar_kernel(EXIT_FAILURE);
+    LOG_DEBUG(kernel_log, "obtener_fd_interrupt: No se encontró CPU con ID %d", id_cpu);
     return -1;
 }
 
@@ -136,14 +135,14 @@ cpu *hay_cpu_rafaga_restante_mayor()
 
     if (!candidato_ready)
     {
-        LOG_ERROR(kernel_log, "No se encontró candidato en cola READY");
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "No se encontró candidato en cola READY");
+        return NULL;
     }
 
     if (candidato_ready->tiempo_inicio_exec > 0)
     {
-        LOG_ERROR(kernel_log, "Proceso %d en cola READY no tiene tiempo de inicio de ejecución válido", candidato_ready->PID);
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "Proceso %d en cola READY no tiene tiempo de inicio de ejecución válido", candidato_ready->PID);
+        return NULL;
     }
 
     double rafaga_ready_min = candidato_ready->estimacion_rafaga;
@@ -178,9 +177,9 @@ cpu *hay_cpu_rafaga_restante_mayor()
         }
         else
         {
-            LOG_ERROR(kernel_log, "Proceso %d en cola RUNNING no tiene tiempo de inicio de ejecución válido", candidato_exec_actual->PID);
+            LOG_DEBUG(kernel_log, "Proceso %d en cola RUNNING no tiene tiempo de inicio de ejecución válido", candidato_exec_actual->PID);
             UNLOCK_CON_LOG(mutex_cola_running);
-            terminar_kernel(EXIT_FAILURE);
+            return NULL;
         }
     }
 
@@ -211,8 +210,8 @@ cpu *get_cpu_dispatch_by_pid(int pid)
 
     if (!cpu_asociada)
     {
-        LOG_ERROR(kernel_log, "No se encontró CPU asociada al PID=%d", pid);
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "No se encontró CPU asociada al PID=%d", pid);
+        return NULL;
     }
     return cpu_asociada;
 }
@@ -224,9 +223,9 @@ void interrumpir_ejecucion(cpu *cpu_a_desalojar)
     int fd_interrupt = obtener_fd_interrupt(cpu_a_desalojar->id);
     if (fd_interrupt < 0)
     {
-        LOG_ERROR(kernel_log, VERDE("[INTERRUPT] No se encontró fd_interrupt para CPU %d"), cpu_a_desalojar->id);
+        LOG_DEBUG(kernel_log, VERDE("[INTERRUPT] No se encontró fd_interrupt para CPU %d"), cpu_a_desalojar->id);
         UNLOCK_CON_LOG(mutex_lista_cpus);
-        terminar_kernel(EXIT_FAILURE);
+        return;
     }
     int pid_exec = cpu_a_desalojar->pid;
 
@@ -249,16 +248,16 @@ void interrumpir_ejecucion(cpu *cpu_a_desalojar)
         t_list *contenido = recibir_contenido_paquete(fd_interrupt);
         if (!contenido)
         {
-            LOG_ERROR(kernel_log, "[INTERRUPT] El contenido recibido es NULL");
-            terminar_kernel(EXIT_FAILURE);
+            LOG_DEBUG(kernel_log, "[INTERRUPT] El contenido recibido es NULL");
+            return;
         }
         LOG_DEBUG(kernel_log, "[INTERRUPT] Cantidad de elementos en contenido recibido: %d", list_size(contenido));
 
         if (list_size(contenido) < 2)
         {
-            LOG_ERROR(kernel_log, "[INTERRUPT] Error en buffer recibido de CPU");
+            LOG_DEBUG(kernel_log, "[INTERRUPT] Error en buffer recibido de CPU");
             list_destroy_and_destroy_elements(contenido, free);
-            terminar_kernel(EXIT_FAILURE);
+            return;
         }
 
         int pid_recibido = *(int *)list_get(contenido, 0);
@@ -267,8 +266,8 @@ void interrumpir_ejecucion(cpu *cpu_a_desalojar)
 
         if (pid_recibido != pid_exec)
         {
-            LOG_ERROR(kernel_log, "[INTERRUPT] PID recibido (%d) no coincide con PID esperado (%d)", pid_recibido, pid_exec);
-            terminar_kernel(EXIT_FAILURE);
+            LOG_DEBUG(kernel_log, "[INTERRUPT] PID recibido (%d) no coincide con PID esperado (%d)", pid_recibido, pid_exec);
+            return;
         }
 
         t_pcb *pcb = buscar_pcb(pid_recibido);
@@ -285,8 +284,8 @@ void interrumpir_ejecucion(cpu *cpu_a_desalojar)
         LOG_DEBUG(kernel_log, VERDE("[INTERRUPT] CPU %d respondió con ERROR"), cpu_a_desalojar->id);
         break;
     default:
-        LOG_ERROR(kernel_log, "[INTERRUPT] No se pudo recibir respuesta de CPU %d", cpu_a_desalojar->id);
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "[INTERRUPT] No se pudo recibir respuesta de CPU %d", cpu_a_desalojar->id);
+        return;
     }
 }
 
@@ -305,8 +304,8 @@ int get_exec_pid_from_id(int id)
     }
     if (!cpu_asociada)
     {
-        LOG_ERROR(kernel_log, "No se encontró CPU asociada al ID=%d", id);
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "No se encontró CPU asociada al ID=%d", id);
+        return -1;
     }
 
     return cpu_asociada->pid;

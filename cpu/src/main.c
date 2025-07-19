@@ -116,12 +116,12 @@ void* recibir_kernel_dispatch(void* arg) {
                 // Recibir PC y PID usando recibir_contenido_paquete (con prefijo de tamaño)
                 t_list* lista = recibir_contenido_paquete(fd_kernel_dispatch);
                 if (lista == NULL) {
-                    log_error(cpu_log, AZUL("[DISPATCH]")" Error al recibir paquete EXEC_OP");
+                    log_debug(cpu_log, AZUL("[DISPATCH]")" Error al recibir paquete EXEC_OP");
                     break;
                 }
 
                 if (list_size(lista) < 2) {
-                    log_error(cpu_log, AZUL("[DISPATCH]")" Paquete EXEC_OP incompleto - Faltan datos");
+                    log_debug(cpu_log, AZUL("[DISPATCH]")" Paquete EXEC_OP incompleto - Faltan datos");
                     list_destroy_and_destroy_elements(lista, free);
                     break;
                 }
@@ -148,7 +148,7 @@ void* recibir_kernel_dispatch(void* arg) {
                 terminar_programa();
                 exit(EXIT_SUCCESS);
             default:
-                log_error(cpu_log, "[DISPATCH] Operación desconocida de Dispatch: %d", cod_op);
+                log_debug(cpu_log, "[DISPATCH] Operación desconocida de Dispatch: %d", cod_op);
         }
     }
     return NULL;
@@ -169,7 +169,7 @@ void* recibir_kernel_interrupt(void* arg) {
 
                 t_list* datos = recibir_contenido_paquete(fd_kernel_interrupt);
                 if (list_size(datos) < 1) {
-                    log_error(cpu_log, "[INTERRUPT]: No se recibió PID válido en interrupción");
+                    log_debug(cpu_log, "[INTERRUPT]: No se recibió PID válido en interrupción");
                     list_destroy_and_destroy_elements(datos, free);
                     break;
                 }
@@ -184,7 +184,7 @@ void* recibir_kernel_interrupt(void* arg) {
                 pthread_mutex_unlock(&mutex_estado_proceso);
                 break;
             default:
-                log_error(cpu_log, "Operacion desconocida de Interrupt: %d", cod_op);
+                log_debug(cpu_log, "Operacion desconocida de Interrupt: %d", cod_op);
         }
     }
 }

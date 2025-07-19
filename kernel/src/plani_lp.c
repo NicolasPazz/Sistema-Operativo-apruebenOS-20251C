@@ -34,10 +34,10 @@ void *planificador_largo_plazo(void *arg)
 
         if (cant_new == 0)
         {
-            LOG_ERROR(kernel_log, "[PLANI LP] Cola NEW vacia");
+            LOG_DEBUG(kernel_log, "[PLANI LP] Cola NEW vacia");
             UNLOCK_CON_LOG(mutex_cola_new);
             UNLOCK_CON_LOG(mutex_inicializacion_procesos);
-            terminar_kernel(EXIT_FAILURE);
+            return NULL;
         }
 
         if (strcmp(ALGORITMO_INGRESO_A_READY, "FIFO") == 0)
@@ -83,18 +83,18 @@ void *planificador_largo_plazo(void *arg)
         }
         else
         {
-            LOG_ERROR(kernel_log, "[PLANI LP] Cola NEW vacia o algoritmo de ingreso a READY no reconocido");
+            LOG_DEBUG(kernel_log, "[PLANI LP] Cola NEW vacia o algoritmo de ingreso a READY no reconocido");
             UNLOCK_CON_LOG(mutex_cola_new);
             UNLOCK_CON_LOG(mutex_inicializacion_procesos);
-            terminar_kernel(EXIT_FAILURE);
+            return NULL;
         }
 
         if (!pcb)
         {
-            LOG_ERROR(kernel_log, "[PLANI LP] No se pudo obtener un PCB de la cola NEW");
+            LOG_DEBUG(kernel_log, "[PLANI LP] No se pudo obtener un PCB de la cola NEW");
             UNLOCK_CON_LOG(mutex_cola_new);
             UNLOCK_CON_LOG(mutex_inicializacion_procesos);
-            terminar_kernel(EXIT_FAILURE);
+            return NULL;
         }
 
         LOG_DEBUG(kernel_log, "[PLANI LP] PCB con PID %d obtenido de la cola NEW", pcb->PID);
@@ -129,17 +129,17 @@ void *gestionar_exit(void *arg)
         if (list_is_empty(cola_exit))
         {
             UNLOCK_CON_LOG(mutex_cola_exit);
-            LOG_ERROR(kernel_log, "[PLANI LP] [EXIT] Se despertó pero no hay procesos en EXIT");
-            terminar_kernel(EXIT_FAILURE);
+            LOG_DEBUG(kernel_log, "[PLANI LP] [EXIT] Se despertó pero no hay procesos en EXIT");
+            return NULL;
         }
 
         t_pcb *pcb = elegir_por_fifo(cola_exit);
 
         if (!pcb)
         {
-            LOG_ERROR(kernel_log, "[PLANI LP] [EXIT] No se pudo obtener PCB desde EXIT");
+            LOG_DEBUG(kernel_log, "[PLANI LP] [EXIT] No se pudo obtener PCB desde EXIT");
             UNLOCK_CON_LOG(mutex_cola_exit);
-            terminar_kernel(EXIT_FAILURE);
+            return NULL;
         }
 
         UNLOCK_CON_LOG(mutex_cola_exit);
@@ -180,18 +180,18 @@ void *verificar_procesos_rechazados()
             }
             else
             {
-                LOG_ERROR(kernel_log, "[PLANI LP] [RECHAZADOS] Algoritmo de ingreso a READY no reconocido o cola SUSPENDED READY vacia");
+                LOG_DEBUG(kernel_log, "[PLANI LP] [RECHAZADOS] Algoritmo de ingreso a READY no reconocido o cola SUSPENDED READY vacia");
                 UNLOCK_CON_LOG(mutex_cola_susp_ready);
                 UNLOCK_CON_LOG(mutex_inicializacion_procesos);
-                terminar_kernel(EXIT_FAILURE);
+                return NULL;
             }
 
             if (!pcb_susp)
             {
-                LOG_ERROR(kernel_log, "[PLANI LP] [RECHAZADOS] No se pudo obtener PCB desde SUSP READY");
+                LOG_DEBUG(kernel_log, "[PLANI LP] [RECHAZADOS] No se pudo obtener PCB desde SUSP READY");
                 UNLOCK_CON_LOG(mutex_cola_susp_ready);
                 UNLOCK_CON_LOG(mutex_inicializacion_procesos);
-                terminar_kernel(EXIT_FAILURE);
+                return NULL;
             }
 
             resultado = desuspender_proceso(pcb_susp);
@@ -241,20 +241,20 @@ void *verificar_procesos_rechazados()
             }
             else
             {
-                LOG_ERROR(kernel_log, "[PLANI LP] [RECHAZADOS] Cola NEW vacia o algoritmo de ingreso a READY no reconocido");
+                LOG_DEBUG(kernel_log, "[PLANI LP] [RECHAZADOS] Cola NEW vacia o algoritmo de ingreso a READY no reconocido");
                 UNLOCK_CON_LOG(mutex_cola_new);
                 UNLOCK_CON_LOG(mutex_procesos_rechazados);
                 UNLOCK_CON_LOG(mutex_inicializacion_procesos);
-                terminar_kernel(EXIT_FAILURE);
+                return NULL;
             }
 
             if (!pcb)
             {
-                LOG_ERROR(kernel_log, "[PLANI LP] [RECHAZADOS] No se pudo obtener un PCB de la cola NEW");
+                LOG_DEBUG(kernel_log, "[PLANI LP] [RECHAZADOS] No se pudo obtener un PCB de la cola NEW");
                 UNLOCK_CON_LOG(mutex_cola_new);
                 UNLOCK_CON_LOG(mutex_procesos_rechazados);
                 UNLOCK_CON_LOG(mutex_inicializacion_procesos);
-                terminar_kernel(EXIT_FAILURE);
+                return NULL;
             }
 
             if (!inicializar_proceso_en_memoria(pcb))
@@ -314,9 +314,9 @@ void disminuir_procesos_rechazados()
     }
     else
     {
-        LOG_ERROR(kernel_log, "[PLANI LP] disminuir_procesos_rechazados: No hay procesos rechazados para disminuir");
+        LOG_DEBUG(kernel_log, "[PLANI LP] disminuir_procesos_rechazados: No hay procesos rechazados para disminuir");
         UNLOCK_CON_LOG(mutex_procesos_rechazados);
-        terminar_kernel(EXIT_FAILURE);
+        return;
     }
     UNLOCK_CON_LOG(mutex_procesos_rechazados);
 }
@@ -327,7 +327,7 @@ t_pcb *elegir_por_pmcp(t_list *cola_a_utilizar)
 
     if (list_is_empty(cola_a_utilizar))
     {
-        LOG_ERROR(kernel_log, "[PLANI LP] PMCP: cola_a_utilizar vacía");
+        LOG_DEBUG(kernel_log, "[PLANI LP] PMCP: cola_a_utilizar vacía");
         return NULL;
     }
 

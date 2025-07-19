@@ -20,12 +20,12 @@ extern t_config_memoria* cfg;
  */
 static t_frame* obtener_marco(int numero_frame) {
     if (!sistema_memoria || !sistema_memoria->admin_marcos) {
-        log_error(logger, "Sistema de memoria no inicializado");
+        log_debug(logger, "Sistema de memoria no inicializado");
         return NULL;
     }
     
     if (numero_frame < 0 || numero_frame >= sistema_memoria->admin_marcos->cantidad_total_frames) {
-        log_error(logger, "Número de marco inválido: %d", numero_frame);
+        log_debug(logger, "Número de marco inválido: %d", numero_frame);
         return NULL;
     }
     
@@ -64,7 +64,7 @@ bool bloquear_marco(int numero_frame, const char* operacion) {
     
     t_frame* frame = obtener_marco(numero_frame);
     if (!frame) {
-        log_error(logger, "No se pudo obtener marco %d", numero_frame);
+        log_debug(logger, "No se pudo obtener marco %d", numero_frame);
         return false;
     }
     
@@ -72,7 +72,7 @@ bool bloquear_marco(int numero_frame, const char* operacion) {
     if (!frame->mutex_inicializado) {
         int resultado = pthread_mutex_init(&frame->mutex_frame, NULL);
         if (resultado != 0) {
-            log_error(logger, "Error al inicializar mutex de marco %d: %s", 
+            log_debug(logger, "Error al inicializar mutex de marco %d: %s", 
                       numero_frame, strerror(resultado));
             return false;
         }
@@ -83,7 +83,7 @@ bool bloquear_marco(int numero_frame, const char* operacion) {
     // INTENTAR BLOQUEAR
     int resultado_lock = pthread_mutex_lock(&frame->mutex_frame);
     if (resultado_lock != 0) {
-        log_error(logger, "Error al obtener lock de marco %d: %s", 
+        log_debug(logger, "Error al obtener lock de marco %d: %s", 
                   numero_frame, strerror(resultado_lock));
         return false;
     }
@@ -92,11 +92,11 @@ bool bloquear_marco(int numero_frame, const char* operacion) {
     if (frame->bloqueado) {
         pthread_t thread_actual = pthread_self();
         if (frame->thread_bloqueador == thread_actual) {
-            log_warning(logger, "Marco %d ya bloqueado por el mismo thread (reentrant)", numero_frame);
+            log_debug(logger, "Marco %d ya bloqueado por el mismo thread (reentrant)", numero_frame);
             pthread_mutex_unlock(&frame->mutex_frame);
             return true; // Permitir re-bloqueo del mismo thread
         } else {
-            log_warning(logger, "Marco %d ya está bloqueado por otro thread", numero_frame);
+            log_debug(logger, "Marco %d ya está bloqueado por otro thread", numero_frame);
             pthread_mutex_unlock(&frame->mutex_frame);
             return false;
         }
@@ -124,7 +124,7 @@ bool desbloquear_marco(int numero_frame, const char* operacion) {
     
     t_frame* frame = obtener_marco(numero_frame);
     if (!frame) {
-        log_error(logger, "No se pudo obtener marco %d", numero_frame);
+        log_debug(logger, "No se pudo obtener marco %d", numero_frame);
         return false;
     }
     
@@ -137,7 +137,7 @@ bool desbloquear_marco(int numero_frame, const char* operacion) {
     // OBTENER LOCK
     int resultado_lock = pthread_mutex_lock(&frame->mutex_frame);
     if (resultado_lock != 0) {
-        log_error(logger, "Error al obtener lock de marco %d: %s", 
+        log_debug(logger, "Error al obtener lock de marco %d: %s", 
                   numero_frame, strerror(resultado_lock));
         return false;
     }
@@ -152,7 +152,7 @@ bool desbloquear_marco(int numero_frame, const char* operacion) {
     // VERIFICAR OWNERSHIP DEL BLOQUEO
     pthread_t thread_actual = pthread_self();
     if (frame->thread_bloqueador != thread_actual) {
-        log_warning(logger, "Marco %d está bloqueado por otro thread - no se puede desbloquear", numero_frame);
+        log_debug(logger, "Marco %d está bloqueado por otro thread - no se puede desbloquear", numero_frame);
         pthread_mutex_unlock(&frame->mutex_frame);
         return false;
     }
@@ -211,7 +211,7 @@ int bloquear_marcos_proceso(int pid, const char* operacion) {
         if (bloquear_marco(marcos_proceso[i], operacion)) {
             marcos_bloqueados++;
         } else {
-            log_warning(logger, "PID: %d - No se pudo bloquear marco %d", pid, marcos_proceso[i]);
+            log_debug(logger, "PID: %d - No se pudo bloquear marco %d", pid, marcos_proceso[i]);
         }
     }
     
@@ -241,7 +241,7 @@ int desbloquear_marcos_proceso(int pid, const char* operacion) {
         if (desbloquear_marco(marcos_proceso[i], operacion)) {
             marcos_desbloqueados++;
         } else {
-            log_warning(logger, "PID: %d - No se pudo desbloquear marco %d", pid, marcos_proceso[i]);
+            log_debug(logger, "PID: %d - No se pudo desbloquear marco %d", pid, marcos_proceso[i]);
         }
     }
     
@@ -265,13 +265,13 @@ static int obtener_numero_marco_de_pagina(int pid, int numero_pagina) {
     free(pid_str);
     
     if (!estructura) {
-        log_error(logger, "PID: %d - No se encontró estructura de páginas", pid);
+        log_debug(logger, "PID: %d - No se encontró estructura de páginas", pid);
         return -1;
     }
     
     t_entrada_tabla* entrada = buscar_entrada_tabla(estructura, numero_pagina);
     if (!entrada) {
-        log_error(logger, "PID: %d - No se encontró entrada para página %d", pid, numero_pagina);
+        log_debug(logger, "PID: %d - No se encontró entrada para página %d", pid, numero_pagina);
         return -1;
     }
     
@@ -292,7 +292,7 @@ int obtener_numero_pagina_de_marco(int pid, int numero_marco) {
     free(pid_str);
     
     if (!estructura) {
-        log_error(logger, "PID: %d - No se encontró estructura de páginas", pid);
+        log_debug(logger, "PID: %d - No se encontró estructura de páginas", pid);
         return -1;
     }
     
@@ -450,7 +450,7 @@ void destruir_bloqueo_marco(int numero_frame) {
     
     // Si el marco está bloqueado, forzar el desbloqueo con warning
     if (frame->bloqueado) {
-        log_warning(logger, "Destruyendo marco %d con bloqueo activo - forzando desbloqueo", numero_frame);
+        log_debug(logger, "Destruyendo marco %d con bloqueo activo - forzando desbloqueo", numero_frame);
         frame->bloqueado = false;
         frame->thread_bloqueador = 0;
         memset(frame->operacion_actual, 0, 64);
@@ -459,7 +459,7 @@ void destruir_bloqueo_marco(int numero_frame) {
     // Destruir el mutex
     int resultado = pthread_mutex_destroy(&frame->mutex_frame);
     if (resultado != 0) {
-        log_warning(logger, "Error al destruir mutex de marco %d: %s", numero_frame, strerror(resultado));
+        log_debug(logger, "Error al destruir mutex de marco %d: %s", numero_frame, strerror(resultado));
     } else {
         log_trace(logger, "Mutex de marco %d destruido exitosamente", numero_frame);
     }

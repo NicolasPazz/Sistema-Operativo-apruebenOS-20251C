@@ -14,7 +14,7 @@ extern t_log* logger;
 t_metricas_proceso* crear_metricas_proceso(int pid) {
     t_metricas_proceso* metricas = malloc(sizeof(t_metricas_proceso));
     if (!metricas) {
-        log_error(logger, "Error al crear métricas para proceso %d", pid);
+        log_debug(logger, "Error al crear métricas para proceso %d", pid);
         return NULL;
     }
 
@@ -117,7 +117,7 @@ t_metricas_proceso* obtener_metricas_proceso(int pid) {
 void imprimir_metricas_proceso(int pid) {
     t_metricas_proceso* metricas = obtener_metricas_proceso(pid);
     if (metricas == NULL) {
-        log_warning(logger, "PID: %d - Métricas no encontradas", pid);
+        log_debug(logger, "PID: %d - Métricas no encontradas", pid);
         return;
     }
     
@@ -147,7 +147,7 @@ void imprimir_metricas_proceso(int pid) {
 
 void actualizar_metricas(int pid, char* operacion) {
     if (operacion == NULL) {
-        log_warning(logger, "PID: %d - Operación nula para actualizar métricas", pid);
+        log_debug(logger, "PID: %d - Operación nula para actualizar métricas", pid);
         return;
     }
     
@@ -165,6 +165,6 @@ void actualizar_metricas(int pid, char* operacion) {
     } else if (strcmp(operacion, "SWAP_IN") == 0) {
         incrementar_subidas_memoria_principal(pid);
     } else {
-        log_warning(logger, "PID: %d - Operación desconocida para métricas: %s", pid, operacion);
+        log_debug(logger, "PID: %d - Operación desconocida para métricas: %s", pid, operacion);
     }
 } 

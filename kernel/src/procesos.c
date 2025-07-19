@@ -24,8 +24,7 @@ const char *estado_to_string(Estados estado)
     case EXIT_ESTADO:
         return "EXIT";
     default:
-        LOG_ERROR(kernel_log, "estado_to_string: Estado desconocido %d", estado);
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "estado_to_string: Estado desconocido %d", estado);
         return "DESCONOCIDO";
     }
 }
@@ -34,7 +33,7 @@ void mostrar_pcb(t_pcb *PCB)
 {
     if (!PCB)
     {
-        LOG_ERROR(kernel_log, "PCB es NULL");
+        LOG_DEBUG(kernel_log, "PCB es NULL");
         return;
     }
 
@@ -79,21 +78,21 @@ void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
 {
     if (!PCB)
     {
-        LOG_ERROR(kernel_log, "PCB es NULL");
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "PCB es NULL");
+        return;
     }
 
     if (!transicion_valida(PCB->Estado, nuevo_estado_enum))
     {
-        LOG_ERROR(kernel_log, "Transicion no valida en el PID %d: %s → %s", PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "Transicion no valida en el PID %d: %s → %s", PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
+        return;
     }
 
     t_list *cola_destino = obtener_cola_por_estado(nuevo_estado_enum);
     if (!cola_destino)
     {
-        LOG_ERROR(kernel_log, "Error al obtener las colas correspondientes");
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "Error al obtener las colas correspondientes");
+        return;
     }
 
     if (PCB->Estado != INIT)
@@ -102,8 +101,8 @@ void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
 
         if (!cola_origen)
         {
-            LOG_ERROR(kernel_log, "Error al obtener las colas correspondientes");
-            terminar_kernel(EXIT_FAILURE);
+            LOG_DEBUG(kernel_log, "Error al obtener las colas correspondientes");
+            return;
         }
 
         log_info(kernel_log, AZUL("## (%u) Pasa del estado ") VERDE("%s") AZUL(" al estado ") VERDE("%s"), PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
@@ -213,8 +212,8 @@ void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
         SEM_POST(sem_proceso_a_exit);
         break;
     default:
-        LOG_ERROR(kernel_log, "nuevo_estado_enum: Error al pasar PCB de %s a %s", estado_to_string(estado_viejo), estado_to_string(nuevo_estado_enum));
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "nuevo_estado_enum: Error al pasar PCB de %s a %s", estado_to_string(estado_viejo), estado_to_string(nuevo_estado_enum));
+        return;
     }
     mostrar_colas_estados();
 }
@@ -222,8 +221,8 @@ void cambiar_estado_pcb_mutex_srt(t_pcb *PCB, Estados nuevo_estado_enum)
 {
     if (!PCB)
     {
-        LOG_ERROR(kernel_log, "PCB es NULL");
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "PCB es NULL");
+        return;
     }
 
     LOCK_CON_LOG_PCB(PCB->mutex, PCB->PID);
@@ -235,8 +234,8 @@ void cambiar_estado_pcb_mutex(t_pcb *PCB, Estados nuevo_estado_enum)
 {
     if (!PCB)
     {
-        LOG_ERROR(kernel_log, "PCB es NULL");
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "PCB es NULL");
+        return;
     }
 
     LOCK_CON_LOG_PCB(PCB->mutex, PCB->PID);
@@ -248,21 +247,21 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
 {
     if (!PCB)
     {
-        LOG_ERROR(kernel_log, "PCB es NULL");
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "PCB es NULL");
+        return;
     }
 
     if (!transicion_valida(PCB->Estado, nuevo_estado_enum))
     {
-        LOG_ERROR(kernel_log, "Transicion no valida en el PID %d: %s → %s", PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "Transicion no valida en el PID %d: %s → %s", PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
+        return;
     }
 
     t_list *cola_destino = obtener_cola_por_estado(nuevo_estado_enum);
     if (!cola_destino)
     {
-        LOG_ERROR(kernel_log, "Error al obtener las colas correspondientes");
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "Error al obtener las colas correspondientes");
+        return;
     }
 
     if (PCB->Estado != INIT)
@@ -271,9 +270,9 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
 
         if (!cola_origen)
         {
-            LOG_ERROR(kernel_log, "Error al obtener las colas correspondientes");
+            LOG_DEBUG(kernel_log, "Error al obtener las colas correspondientes");
 
-            terminar_kernel(EXIT_FAILURE);
+            return;
         }
 
         log_info(kernel_log, AZUL("## (%u) Pasa del estado ") VERDE("%s") AZUL(" al estado ") VERDE("%s"), PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
@@ -382,8 +381,8 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
         SEM_POST(sem_proceso_a_exit);
         break;
     default:
-        LOG_ERROR(kernel_log, "nuevo_estado_enum: Error al pasar PCB de %s a %s", estado_to_string(estado_viejo), estado_to_string(nuevo_estado_enum));
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "nuevo_estado_enum: Error al pasar PCB de %s a %s", estado_to_string(estado_viejo), estado_to_string(nuevo_estado_enum));
+        return;
     }
     mostrar_colas_estados();
 }
@@ -407,8 +406,7 @@ bool transicion_valida(Estados actual, Estados destino)
     case SUSP_READY:
         return destino == READY;
     default:
-        LOG_ERROR(kernel_log, "transicion_valida: Estado desconocido %d", actual);
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "transicion_valida: Estado desconocido %d", actual);
         return false;
     }
 }
@@ -432,8 +430,7 @@ t_list *obtener_cola_por_estado(Estados estado)
     case EXIT_ESTADO:
         return cola_exit;
     default:
-        LOG_ERROR(kernel_log, "obtener_cola_por_estado: Estado desconocido %d", estado);
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "obtener_cola_por_estado: Estado desconocido %d", estado);
         return NULL;
     }
 }
@@ -464,8 +461,8 @@ void bloquear_cola_por_estado(Estados estado)
         LOCK_CON_LOG(mutex_cola_exit);
         break;
     default:
-        LOG_ERROR(kernel_log, "bloquear_cola_por_estado: Estado desconocido %d", estado);
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "bloquear_cola_por_estado: Estado desconocido %d", estado);
+        return;
     }
 }
 
@@ -495,8 +492,8 @@ void liberar_cola_por_estado(Estados estado)
         UNLOCK_CON_LOG(mutex_cola_exit);
         break;
     default:
-        LOG_ERROR(kernel_log, "liberar_cola_por_estado: Estado desconocido %d", estado);
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "liberar_cola_por_estado: Estado desconocido %d", estado);
+        return;
     }
 }
 
@@ -504,7 +501,7 @@ void loguear_metricas_estado(t_pcb *pcb)
 {
     if (!pcb)
     {
-        LOG_ERROR(kernel_log, "PCB es NULL");
+        LOG_DEBUG(kernel_log, "PCB es NULL");
         return;
     }
 
@@ -553,8 +550,8 @@ t_pcb *buscar_pcb(int pid)
 
     if (!resultado)
     {
-        LOG_ERROR(kernel_log, "buscar_pcb: No se encontró PCB para PID=%d", pid);
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "buscar_pcb: No se encontró PCB para PID=%d", pid);
+        return NULL;
     }
 
     return resultado;
@@ -564,7 +561,7 @@ t_pcb *buscar_y_remover_pcb_por_pid(t_list *cola, int pid)
 {
     if (!cola)
     {
-        LOG_ERROR(kernel_log, "cola es NULL");
+        LOG_DEBUG(kernel_log, "cola es NULL");
         return NULL;
     }
 
@@ -587,7 +584,7 @@ void liberar_pcb(t_pcb *pcb)
 {
     if (!pcb)
     {
-        LOG_ERROR(kernel_log, "PCB es NULL");
+        LOG_DEBUG(kernel_log, "PCB es NULL");
         return;
     }
 

@@ -18,7 +18,7 @@ static void listar_configs_kernel()
     if (!d)
     {
         puts("No se pudo abrir directorio kernel/");
-        return;
+        terminar_kernel(EXIT_FAILURE);
     }
 
     puts("Archivos .config disponibles en kernel/:");
@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
     pthread_t hilo_dispatch;
     if (pthread_create(&hilo_dispatch, NULL, hilo_servidor_dispatch, NULL) != 0)
     {
-        LOG_ERROR(kernel_log, "Error al crear hilo de servidor Dispatch");
+        LOG_DEBUG(kernel_log, "Error al crear hilo de servidor Dispatch");
         terminar_kernel(EXIT_FAILURE);
     }
     pthread_detach(hilo_dispatch);
@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
     pthread_t hilo_interrupt;
     if (pthread_create(&hilo_interrupt, NULL, hilo_servidor_interrupt, NULL) != 0)
     {
-        LOG_ERROR(kernel_log, "Error al crear hilo de servidor Interrupt");
+        LOG_DEBUG(kernel_log, "Error al crear hilo de servidor Interrupt");
         terminar_kernel(EXIT_FAILURE);
     }
     pthread_detach(hilo_interrupt);
@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
     pthread_t hilo_io;
     if (pthread_create(&hilo_io, NULL, hilo_servidor_io, NULL) != 0)
     {
-        LOG_ERROR(kernel_log, "Error al crear hilo de servidor IO");
+        LOG_DEBUG(kernel_log, "Error al crear hilo de servidor IO");
         terminar_kernel(EXIT_FAILURE);
     }
     pthread_detach(hilo_io);

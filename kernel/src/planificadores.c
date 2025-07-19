@@ -6,7 +6,7 @@ void iniciar_planificadores()
     pthread_t hilo_planificador;
     if (pthread_create(&hilo_planificador, NULL, planificador_largo_plazo, NULL) != 0)
     {
-        LOG_ERROR(kernel_log, "Error al crear hilo para planificador de largo plazo");
+        LOG_DEBUG(kernel_log, "Error al crear hilo para planificador de largo plazo");
         terminar_kernel(EXIT_FAILURE);
     }
     pthread_detach(hilo_planificador);
@@ -14,7 +14,7 @@ void iniciar_planificadores()
     pthread_t hilo_exit;
     if (pthread_create(&hilo_exit, NULL, gestionar_exit, NULL) != 0)
     {
-        LOG_ERROR(kernel_log, "Error al crear hilo para gestionar procesos en EXIT");
+        LOG_DEBUG(kernel_log, "Error al crear hilo para gestionar procesos en EXIT");
         terminar_kernel(EXIT_FAILURE);
     }
     pthread_detach(hilo_exit);
@@ -22,7 +22,7 @@ void iniciar_planificadores()
     pthread_t hilo_planificador_cp;
     if (pthread_create(&hilo_planificador_cp, NULL, planificador_corto_plazo, NULL) != 0)
     {
-        LOG_ERROR(kernel_log, "Error al crear hilo para planificador de corto plazo");
+        LOG_DEBUG(kernel_log, "Error al crear hilo para planificador de corto plazo");
         terminar_kernel(EXIT_FAILURE);
     }
     pthread_detach(hilo_planificador_cp);
@@ -30,7 +30,7 @@ void iniciar_planificadores()
     pthread_t hilo_rechazados;
     if (pthread_create(&hilo_rechazados, NULL, verificar_procesos_rechazados, NULL) != 0)
     {
-        LOG_ERROR(kernel_log, "[PLANI LP] [EXIT] Error al crear hilo para verificar procesos rechazados");
+        LOG_DEBUG(kernel_log, "[PLANI LP] [EXIT] Error al crear hilo para verificar procesos rechazados");
         terminar_kernel(EXIT_FAILURE);
     }
     pthread_detach(hilo_rechazados);
@@ -51,7 +51,7 @@ t_pcb *elegir_por_fifo(t_list *cola_a_utilizar)
 
     if (list_is_empty(cola_a_utilizar))
     {
-        LOG_ERROR(kernel_log, "[FIFO] cola_a_utilizar vacía");
+        LOG_DEBUG(kernel_log, "[FIFO] cola_a_utilizar vacía");
         return NULL;
     }
 

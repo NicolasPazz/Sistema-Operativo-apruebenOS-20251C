@@ -5,7 +5,7 @@
 # 0) IP privada de la máquina donde se ejecuta
 #──────────────────────────────────────────────────────
 PRIVATE_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
-echo -e "IP privada del host: ${PRIVATE_IP:-desconocida}\n"
+echo -e "IP local: ${PRIVATE_IP:-desconocida}\n"
 
 #──────────────────────────────────────────────────────
 # 1) Recolectar valores actuales en todos los *.config

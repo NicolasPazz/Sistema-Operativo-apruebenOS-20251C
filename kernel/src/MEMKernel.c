@@ -8,8 +8,8 @@ int conectar_memoria()
     int fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, kernel_log);
     if (fd_memoria == -1)
     {
-        LOG_ERROR(kernel_log, "[KERNEL->MEMORIA] no se pudo abrir socket");
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] no se pudo abrir socket");
+        return -1;
     }
 
     LOCK_CON_LOG(mutex_sockets);
@@ -21,9 +21,9 @@ int conectar_memoria()
     int handshake = HANDSHAKE_MEMORIA_KERNEL;
     if (send(fd_memoria, &handshake, sizeof(handshake), 0) <= 0)
     {
-        LOG_ERROR(kernel_log, "[KERNEL->MEMORIA] fallo handshake");
+        LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] fallo handshake");
         close(fd_memoria);
-        terminar_kernel(EXIT_FAILURE);
+        return -1;
     }
 
     LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] fd_memoria=%d OK", fd_memoria);
@@ -64,9 +64,9 @@ bool inicializar_proceso_en_memoria(t_pcb *pcb)
     if (recv(fd_memoria, &rsp, sizeof(rsp), MSG_WAITALL) <= 0 ||
         (rsp != OK && rsp != ERROR))
     {
-        LOG_ERROR(kernel_log, "[KERNEL->MEMORIA] INIT_PROC_OP: respuesta inválida/timeout");
+        LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] INIT_PROC_OP: respuesta inválida/timeout");
         desconectar_memoria(fd_memoria);
-        terminar_kernel(EXIT_FAILURE);
+        return false;
     }
 
     desconectar_memoria(fd_memoria);
@@ -96,8 +96,8 @@ bool hay_espacio_suficiente_memoria(int tamanio)
 
     if (respuesta < 0 || (respuesta != OK && respuesta != ERROR))
     {
-        LOG_ERROR(kernel_log, "[KERNEL->MEMORIA] Error al recibir respuesta de memoria");
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] Error al recibir respuesta de memoria");
+        return false;
     }
 
     if (respuesta == OK)
@@ -112,8 +112,8 @@ bool hay_espacio_suficiente_memoria(int tamanio)
     }
     else
     {
-        LOG_ERROR(kernel_log, "[KERNEL->MEMORIA] Respuesta inesperada de memoria: %d", respuesta);
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] Respuesta inesperada de memoria: %d", respuesta);
+        return false;
     }
     return false;
 }
@@ -133,9 +133,9 @@ static bool enviar_op_memoria(int op_code, int pid)
     if (recv(fd_memoria, &rsp, sizeof(rsp), MSG_WAITALL) <= 0 ||
         (rsp != OK && rsp != ERROR))
     {
-        LOG_ERROR(kernel_log, "[KERNEL->MEMORIA] Error al recibir respuesta de Memoria para OP %d y PID %d", op_code, pid);
+        LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] Error al recibir respuesta de Memoria para OP %d y PID %d", op_code, pid);
         desconectar_memoria(fd_memoria);
-        terminar_kernel(EXIT_FAILURE);
+        return false;
     }
 
     desconectar_memoria(fd_memoria);

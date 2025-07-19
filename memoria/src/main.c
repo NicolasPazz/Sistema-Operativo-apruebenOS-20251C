@@ -76,7 +76,7 @@ int main(int argc, char* argv[]) {
 
     // Inicializar el sistema completo de memoria con paginación multinivel
     if (inicializar_sistema_memoria() != MEMORIA_OK) {
-        log_error(logger, "Error crítico al inicializar el sistema de memoria");
+        log_debug(logger, "Error crítico al inicializar el sistema de memoria");
         cerrar_programa();
         return EXIT_FAILURE;
     }
@@ -101,7 +101,7 @@ int main(int argc, char* argv[]) {
     free(puerto);
 
     if (memoria_server == -1) {
-        log_error(logger, "Error al iniciar el servidor de memoria");
+        log_debug(logger, "Error al iniciar el servidor de memoria");
         liberar_sistema_memoria();
         cerrar_programa();
         return EXIT_FAILURE;

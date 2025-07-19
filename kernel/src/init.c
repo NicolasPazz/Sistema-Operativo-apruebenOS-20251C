@@ -324,7 +324,7 @@ void terminar_kernel(int code)
 
     if (code)
     {
-        LOG_ERROR(kernel_log, "Kernel finalizado con errores. Código de salida: %d", code);
+        LOG_DEBUG(kernel_log, "Kernel finalizado con errores. Código de salida: %d", code);
     }
     else
     {
@@ -353,7 +353,7 @@ void *hilo_servidor_dispatch(void *_)
         int fd_cpu_dispatch = esperar_cliente(fd_kernel_dispatch, kernel_log);
         if (fd_cpu_dispatch == -1)
         {
-            LOG_ERROR(kernel_log, "Error al recibir cliente");
+            LOG_DEBUG(kernel_log, "Error al recibir cliente");
             continue;
         }
         LOCK_CON_LOG(mutex_sockets);
@@ -368,7 +368,7 @@ void *hilo_servidor_dispatch(void *_)
         int id_cpu;
         if (recv(fd_cpu_dispatch, &id_cpu, sizeof(int), 0) <= 0)
         {
-            LOG_ERROR(kernel_log, "Error al recibir ID de CPU desde Dispatch");
+            LOG_DEBUG(kernel_log, "Error al recibir ID de CPU desde Dispatch");
             close(fd_cpu_dispatch);
             continue;
         }
@@ -390,7 +390,7 @@ void *hilo_servidor_dispatch(void *_)
         pthread_t hilo;
         if (pthread_create(&hilo, NULL, atender_cpu_dispatch, arg) != 0)
         {
-            LOG_ERROR(kernel_log, "Error al crear hilo para atender CPU Dispatch (fd=%d)", fd_cpu_dispatch);
+            LOG_DEBUG(kernel_log, "Error al crear hilo para atender CPU Dispatch (fd=%d)", fd_cpu_dispatch);
             LOCK_CON_LOG(mutex_lista_cpus);
             list_remove_element(lista_cpus, nueva_cpu);
             cpu_libre--;
@@ -425,7 +425,7 @@ void *atender_cpu_dispatch(void *arg)
 
     if (fd_cpu_dispatch < 0)
     {
-        LOG_ERROR(kernel_log, "[SERVIDOR DISPATCH] Error en el fd de la CPU Dispatch: %d", fd_cpu_dispatch);
+        LOG_DEBUG(kernel_log, "[SERVIDOR DISPATCH] Error en el fd de la CPU Dispatch: %d", fd_cpu_dispatch);
 
         return NULL;
     }
@@ -439,7 +439,7 @@ void *atender_cpu_dispatch(void *arg)
 
         if (!cpu_actual)
         {
-            LOG_ERROR(kernel_log, "[SERVIDOR DISPATCH] No se encontró CPU asociada al fd=%d", fd_cpu_dispatch);
+            LOG_DEBUG(kernel_log, "[SERVIDOR DISPATCH] No se encontró CPU asociada al fd=%d", fd_cpu_dispatch);
             close(fd_cpu_dispatch);
 
             return NULL;
@@ -462,8 +462,8 @@ void *atender_cpu_dispatch(void *arg)
             t_list *parametros_init_proc = recibir_contenido_paquete(fd_cpu_dispatch);
             if (!parametros_init_proc || list_size(parametros_init_proc) < 2)
             {
-                LOG_ERROR(kernel_log, "[SERVIDOR DISPATCH] Error al recibir parámetros para INIT_PROC_OP desde CPU Dispatch");
-                terminar_kernel(EXIT_FAILURE);
+                LOG_DEBUG(kernel_log, "[SERVIDOR DISPATCH] Error al recibir parámetros para INIT_PROC_OP desde CPU Dispatch");
+                return NULL;
             }
 
             char *nombre = (char *)list_get(parametros_init_proc, 0);
@@ -483,8 +483,8 @@ void *atender_cpu_dispatch(void *arg)
             t_list *parametros_io = recibir_contenido_paquete(fd_cpu_dispatch);
             if (!parametros_io || list_size(parametros_io) < 3)
             {
-                LOG_ERROR(kernel_log, "[SERVIDOR DISPATCH] Error al recibir parámetros para IO_OP desde CPU Dispatch");
-                terminar_kernel(EXIT_FAILURE);
+                LOG_DEBUG(kernel_log, "[SERVIDOR DISPATCH] Error al recibir parámetros para IO_OP desde CPU Dispatch");
+                return NULL;
             }
 
             char *nombre_IO = (char *)list_get(parametros_io, 0);
@@ -522,10 +522,10 @@ void *atender_cpu_dispatch(void *arg)
             t_list *parametros_dump = recibir_contenido_paquete(fd_cpu_dispatch);
             if (!parametros_dump || list_size(parametros_dump) < 2)
             {
-                LOG_ERROR(kernel_log, "[SERVIDOR DISPATCH] DUMP_MEMORY_OP: Error al recibir parámetros desde CPU Dispatch. Esperados: 2, recibidos: %d", parametros_dump ? list_size(parametros_dump) : 0);
+                LOG_DEBUG(kernel_log, "[SERVIDOR DISPATCH] DUMP_MEMORY_OP: Error al recibir parámetros desde CPU Dispatch. Esperados: 2, recibidos: %d", parametros_dump ? list_size(parametros_dump) : 0);
                 if (parametros_dump)
                     list_destroy_and_destroy_elements(parametros_dump, free);
-                terminar_kernel(EXIT_FAILURE);
+                return NULL;
             }
 
             int PID = *(int *)list_get(parametros_dump, 0);
@@ -533,9 +533,9 @@ void *atender_cpu_dispatch(void *arg)
 
             if (PID != pid)
             {
-                LOG_ERROR(kernel_log, "[SERVIDOR DISPATCH] DUMP_MEMORY_OP: PID recibido (%d) no coincide con PID de la CPU Dispatch (%d)", PID, pid);
+                LOG_DEBUG(kernel_log, "[SERVIDOR DISPATCH] DUMP_MEMORY_OP: PID recibido (%d) no coincide con PID de la CPU Dispatch (%d)", PID, pid);
                 list_destroy_and_destroy_elements(parametros_dump, free);
-                terminar_kernel(EXIT_FAILURE);
+                return NULL;
             }
 
             t_pcb *pcb_dump = buscar_pcb(PID);
@@ -550,7 +550,7 @@ void *atender_cpu_dispatch(void *arg)
             break;
 
         default:
-            LOG_ERROR(kernel_log, "[SERVIDOR DISPATCH] (%d) Código op desconocido recibido de Dispatch fd %d: %d", pid, fd_cpu_dispatch, cop);
+            LOG_DEBUG(kernel_log, "[SERVIDOR DISPATCH] (%d) Código op desconocido recibido de Dispatch fd %d: %d", pid, fd_cpu_dispatch, cop);
             break;
         }
 
@@ -598,7 +598,7 @@ void *hilo_servidor_interrupt(void *_)
         int fd_cpu_interrupt = esperar_cliente(fd_interrupt, kernel_log);
         if (fd_cpu_interrupt == -1)
         {
-            LOG_ERROR(kernel_log, "[SERVIDOR INTERRUPT] Error al recibir cliente");
+            LOG_DEBUG(kernel_log, "[SERVIDOR INTERRUPT] Error al recibir cliente");
             continue;
         }
         LOCK_CON_LOG(mutex_sockets);
@@ -619,7 +619,7 @@ void *hilo_servidor_interrupt(void *_)
 
             if (!cpu_eliminada)
             {
-                LOG_ERROR(kernel_log, "[SERVIDOR INTERRUPT] No se encontró CPU asociada al fd=%d al desconectar", fd_cpu_interrupt);
+                LOG_DEBUG(kernel_log, "[SERVIDOR INTERRUPT] No se encontró CPU asociada al fd=%d al desconectar", fd_cpu_interrupt);
                 UNLOCK_CON_LOG(mutex_lista_cpus);
 
                 return NULL;
@@ -666,8 +666,8 @@ void *hilo_servidor_io(void *_)
         int fd_io = esperar_cliente(fd_kernel_io, kernel_log);
         if (fd_io == -1)
         {
-            LOG_ERROR(kernel_log, "[SERVIDOR IO] Error al recibir cliente");
-            terminar_kernel(EXIT_FAILURE);
+            LOG_DEBUG(kernel_log, "[SERVIDOR IO] Error al recibir cliente");
+            return NULL;
         }
         LOCK_CON_LOG(mutex_sockets);
         list_add(lista_sockets, (void *)(intptr_t)fd_io);
@@ -675,7 +675,7 @@ void *hilo_servidor_io(void *_)
         if (!validar_handshake(fd_io, HANDSHAKE_IO_KERNEL, kernel_log))
         {
             close(fd_io);
-            terminar_kernel(EXIT_FAILURE);
+            return NULL;
         }
 
         LOG_DEBUG(kernel_log, "[SERVIDOR IO] HANDSHAKE_IO_KERNEL recibido de IO (fd=%d)", fd_io);
@@ -683,9 +683,9 @@ void *hilo_servidor_io(void *_)
         char nombre_io[256];
         if (recv(fd_io, nombre_io, sizeof(nombre_io), 0) <= 0)
         {
-            LOG_ERROR(kernel_log, "[SERVIDOR IO] Error al recibir nombre de IO");
+            LOG_DEBUG(kernel_log, "[SERVIDOR IO] Error al recibir nombre de IO");
             close(fd_io);
-            terminar_kernel(EXIT_FAILURE);
+            return NULL;
         }
 
         io *nueva_io = malloc(sizeof(io));
@@ -709,7 +709,7 @@ void *hilo_servidor_io(void *_)
         pthread_t hilo;
         if (pthread_create(&hilo, NULL, atender_io, arg) != 0)
         {
-            LOG_ERROR(kernel_log, "[SERVIDOR IO] Error al crear hilo para atender IO '%s' (fd=%d)", nueva_io->nombre, fd_io);
+            LOG_DEBUG(kernel_log, "[SERVIDOR IO] Error al crear hilo para atender IO '%s' (fd=%d)", nueva_io->nombre, fd_io);
             LOCK_CON_LOG(mutex_ios);
             list_remove_element(lista_ios, nueva_io);
             UNLOCK_CON_LOG(mutex_ios);
@@ -717,7 +717,7 @@ void *hilo_servidor_io(void *_)
             free(nueva_io);
             close(fd_io);
             free(arg);
-            terminar_kernel(EXIT_FAILURE);
+            return NULL;
         }
         pthread_detach(hilo);
     }
@@ -742,7 +742,7 @@ void *atender_io(void *arg)
 
     if (!dispositivo_io)
     {
-        LOG_ERROR(kernel_log, "[SERVIDOR IO] No se encontró IO con fd=%d", fd_io);
+        LOG_DEBUG(kernel_log, "[SERVIDOR IO] No se encontró IO con fd=%d", fd_io);
         close(fd_io);
 
         return NULL;
@@ -764,7 +764,7 @@ void *atender_io(void *arg)
             int pid_finalizado;
             if (recv(fd_io, &pid_finalizado, sizeof(int), 0) != sizeof(int))
             {
-                LOG_ERROR(kernel_log, "[SERVIDOR IO] Error al recibir PID finalizado de IO '%s'", dispositivo_io->nombre);
+                LOG_DEBUG(kernel_log, "[SERVIDOR IO] Error al recibir PID finalizado de IO '%s'", dispositivo_io->nombre);
                 continue;
             }
             t_pcb *pcb_fin = buscar_pcb(pid_finalizado);
@@ -789,9 +789,9 @@ void *atender_io(void *arg)
             }
             else
             {
-                LOG_ERROR(kernel_log, AZUL("[SERVIDOR IO] PID %d finalizó IO pero ya se encuentra en %s"), pid_finalizado, estado_to_string(pcb_fin->Estado));
+                LOG_DEBUG(kernel_log, AZUL("[SERVIDOR IO] PID %d finalizó IO pero ya se encuentra en %s"), pid_finalizado, estado_to_string(pcb_fin->Estado));
                 UNLOCK_CON_LOG_PCB(pcb_fin->mutex, pcb_fin->PID);
-                terminar_kernel(EXIT_FAILURE);
+                return NULL;
             }
 
             // Verificar si hay procesos encolados para dicha IO y enviarlo a la misma
@@ -799,8 +799,8 @@ void *atender_io(void *arg)
             break;
         }
         default:
-            LOG_ERROR(kernel_log, "[SERVIDOR IO] Código op desconocido recibido desde IO '%s' (fd=%d): %d", dispositivo_io->nombre, fd_io, cop);
-            terminar_kernel(EXIT_FAILURE);
+            LOG_DEBUG(kernel_log, "[SERVIDOR IO] Código op desconocido recibido desde IO '%s' (fd=%d): %d", dispositivo_io->nombre, fd_io, cop);
+            return NULL;
             break;
         }
     }

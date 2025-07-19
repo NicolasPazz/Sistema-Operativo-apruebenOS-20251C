@@ -104,7 +104,7 @@ t_administrador_marcos* crear_administrador_marcos(int cantidad_frames, int tam_
     
     t_administrador_marcos* admin = malloc(sizeof(t_administrador_marcos));
     if (!admin) {
-        log_error(logger, "Error al asignar memoria para administrador de marcos");
+        log_debug(logger, "Error al asignar memoria para administrador de marcos");
         return NULL;
     }
     
@@ -118,7 +118,7 @@ t_administrador_marcos* crear_administrador_marcos(int cantidad_frames, int tam_
     // Crear array de frames
     admin->frames = malloc(sizeof(t_frame) * cantidad_frames);
     if (!admin->frames) {
-        log_error(logger, "Error al asignar memoria para array de frames");
+        log_debug(logger, "Error al asignar memoria para array de frames");
         free(admin);
         return NULL;
     }
@@ -145,7 +145,7 @@ t_administrador_marcos* crear_administrador_marcos(int cantidad_frames, int tam_
     size_t bitmap_size = (cantidad_frames + 7) / 8;  // Redondear hacia arriba
     char* bitmap_data = calloc(bitmap_size, 1);  // Inicializar en 0 (todos libres)
     if (!bitmap_data) {
-        log_error(logger, "Error al crear bitmap de frames");
+        log_debug(logger, "Error al crear bitmap de frames");
         free(admin->frames);
         free(admin);
         return NULL;
@@ -153,7 +153,7 @@ t_administrador_marcos* crear_administrador_marcos(int cantidad_frames, int tam_
     
     admin->bitmap_frames = bitarray_create_with_mode(bitmap_data, bitmap_size, MSB_FIRST);
     if (!admin->bitmap_frames) {
-        log_error(logger, "Error al inicializar bitarray");
+        log_debug(logger, "Error al inicializar bitarray");
         free(bitmap_data);
         free(admin->frames);
         free(admin);
@@ -163,7 +163,7 @@ t_administrador_marcos* crear_administrador_marcos(int cantidad_frames, int tam_
     // Crear lista de frames libres para acceso O(1)
     admin->lista_frames_libres = list_create();
     if (!admin->lista_frames_libres) {
-        log_error(logger, "Error al crear lista de frames libres");
+        log_debug(logger, "Error al crear lista de frames libres");
         bitarray_destroy(admin->bitmap_frames);
         free(admin->frames);
         free(admin);
@@ -179,7 +179,7 @@ t_administrador_marcos* crear_administrador_marcos(int cantidad_frames, int tam_
     
     // Inicializar mutex
     if (pthread_mutex_init(&admin->mutex_frames, NULL) != 0) {
-        log_error(logger, "Error al inicializar mutex de frames");
+        log_debug(logger, "Error al inicializar mutex de frames");
         list_destroy_and_destroy_elements(admin->lista_frames_libres, free);
         bitarray_destroy(admin->bitmap_frames);
         free(admin->frames);
@@ -225,7 +225,7 @@ void destruir_administrador_marcos(t_administrador_marcos* admin) {
 
 int asignar_marco_libre(int pid, int numero_pagina) {
     if (!sistema_memoria || !sistema_memoria->admin_marcos) {
-        log_error(logger, "Sistema de memoria no inicializado");
+        log_debug(logger, "Sistema de memoria no inicializado");
         return -1;
     }
     
@@ -235,7 +235,7 @@ int asignar_marco_libre(int pid, int numero_pagina) {
     
     // Verificar si hay marcos disponibles
     if (admin->frames_libres == 0 || list_is_empty(admin->lista_frames_libres)) {
-        log_warning(logger, "## No hay marcos libres disponibles - PID: %d, Página: %d", pid, numero_pagina);
+        log_debug(logger, "## No hay marcos libres disponibles - PID: %d, Página: %d", pid, numero_pagina);
         pthread_mutex_unlock(&admin->mutex_frames);
         return -1;
     }
@@ -269,14 +269,14 @@ int asignar_marco_libre(int pid, int numero_pagina) {
 
 t_resultado_memoria liberar_marco(int numero_frame) {
     if (!sistema_memoria || !sistema_memoria->admin_marcos) {
-        log_error(logger, "Sistema de memoria no inicializado");
+        log_debug(logger, "Sistema de memoria no inicializado");
         return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
     }
     
     t_administrador_marcos* admin = sistema_memoria->admin_marcos;
     
     if (numero_frame < 0 || numero_frame >= admin->cantidad_total_frames) {
-        log_error(logger, "Número de frame inválido: %d", numero_frame);
+        log_debug(logger, "Número de frame inválido: %d", numero_frame);
         return MEMORIA_ERROR_DIRECCION_INVALIDA;
     }
     
@@ -285,7 +285,7 @@ t_resultado_memoria liberar_marco(int numero_frame) {
     t_frame* frame = &admin->frames[numero_frame];
     
     if (!frame->ocupado) {
-        log_warning(logger, "Intento de liberar frame ya libre: %d (FORZANDO LIBERACIÓN DE TODAS FORMAS)", numero_frame);
+        log_debug(logger, "Intento de liberar frame ya libre: %d (FORZANDO LIBERACIÓN DE TODAS FORMAS)", numero_frame);
         // No return: continuar y limpiar igual
     }
     
@@ -381,7 +381,7 @@ t_administrador_swap* crear_administrador_swap(void) {
     
     t_administrador_swap* admin = malloc(sizeof(t_administrador_swap));
     if (!admin) {
-        log_error(logger, "Error al asignar memoria para administrador de SWAP");
+        log_debug(logger, "Error al asignar memoria para administrador de SWAP");
         return NULL;
     }
     
@@ -398,7 +398,7 @@ t_administrador_swap* crear_administrador_swap(void) {
     // Crear archivo de SWAP
     admin->fd_swap = open(admin->path_archivo, O_CREAT | O_RDWR, 0644);
     if (admin->fd_swap == -1) {
-        log_error(logger, "Error al crear archivo de SWAP: %s", admin->path_archivo);
+        log_debug(logger, "Error al crear archivo de SWAP: %s", admin->path_archivo);
         free(admin->path_archivo);
         free(admin);
         return NULL;
@@ -406,7 +406,7 @@ t_administrador_swap* crear_administrador_swap(void) {
     
     // Extender archivo al tamaño necesario
     if (ftruncate(admin->fd_swap, admin->tamanio_swap) == -1) {
-        log_error(logger, "Error al dimensionar archivo de SWAP");
+        log_debug(logger, "Error al dimensionar archivo de SWAP");
         close(admin->fd_swap);
         free(admin->path_archivo);
         free(admin);
@@ -416,7 +416,7 @@ t_administrador_swap* crear_administrador_swap(void) {
     // Crear array de entradas
     admin->entradas = malloc(sizeof(t_entrada_swap) * admin->cantidad_paginas_swap);
     if (!admin->entradas) {
-        log_error(logger, "Error al crear entradas de SWAP");
+        log_debug(logger, "Error al crear entradas de SWAP");
         close(admin->fd_swap);
         free(admin->path_archivo);
         free(admin);
@@ -442,7 +442,7 @@ t_administrador_swap* crear_administrador_swap(void) {
     
     // Inicializar mutex
     if (pthread_mutex_init(&admin->mutex_swap, NULL) != 0) {
-        log_error(logger, "Error al inicializar mutex de SWAP");
+        log_debug(logger, "Error al inicializar mutex de SWAP");
         list_destroy_and_destroy_elements(admin->posiciones_libres, free);
         free(admin->entradas);
         close(admin->fd_swap);
@@ -494,7 +494,7 @@ t_resultado_memoria inicializar_sistema_memoria(void) {
     // Crear estructura principal del sistema
     sistema_memoria = malloc(sizeof(t_sistema_memoria));
     if (!sistema_memoria) {
-        log_error(logger, "Error al asignar memoria para sistema_memoria");
+        log_debug(logger, "Error al asignar memoria para sistema_memoria");
         return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
     }
     
@@ -519,7 +519,7 @@ t_resultado_memoria inicializar_sistema_memoria(void) {
     // Crear memoria física principal
     sistema_memoria->memoria_principal = malloc(cfg->TAM_MEMORIA);
     if (!sistema_memoria->memoria_principal) {
-        log_error(logger, "Error al asignar memoria principal de %d bytes", cfg->TAM_MEMORIA);
+        log_debug(logger, "Error al asignar memoria principal de %d bytes", cfg->TAM_MEMORIA);
         free(sistema_memoria);
         return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
     }
@@ -532,7 +532,7 @@ t_resultado_memoria inicializar_sistema_memoria(void) {
     int cantidad_frames = cfg->TAM_MEMORIA / cfg->TAM_PAGINA;
     sistema_memoria->admin_marcos = crear_administrador_marcos(cantidad_frames, cfg->TAM_PAGINA);
     if (!sistema_memoria->admin_marcos) {
-        log_error(logger, "Error al crear administrador de marcos");
+        log_debug(logger, "Error al crear administrador de marcos");
         free(sistema_memoria->memoria_principal);
         free(sistema_memoria);
         return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
@@ -546,7 +546,7 @@ t_resultado_memoria inicializar_sistema_memoria(void) {
     
     if (!sistema_memoria->procesos || !sistema_memoria->estructuras_paginas || 
         !sistema_memoria->metricas_procesos || !sistema_memoria->process_instructions) {
-        log_error(logger, "Error al crear diccionarios del sistema");
+        log_debug(logger, "Error al crear diccionarios del sistema");
         finalizar_sistema_memoria();
         return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
     }
@@ -555,7 +555,7 @@ t_resultado_memoria inicializar_sistema_memoria(void) {
     if (pthread_mutex_init(&sistema_memoria->mutex_sistema, NULL) != 0 ||
         pthread_mutex_init(&sistema_memoria->mutex_procesos, NULL) != 0 ||
         pthread_mutex_init(&sistema_memoria->mutex_estadisticas, NULL) != 0) {
-        log_error(logger, "Error al inicializar mutex del sistema");
+        log_debug(logger, "Error al inicializar mutex del sistema");
         finalizar_sistema_memoria();
         return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
     }
@@ -563,7 +563,7 @@ t_resultado_memoria inicializar_sistema_memoria(void) {
     // Inicializar administrador de SWAP
     sistema_memoria->admin_swap = crear_administrador_swap();
     if (!sistema_memoria->admin_swap) {
-        log_error(logger, "Error al crear administrador de SWAP");
+        log_debug(logger, "Error al crear administrador de SWAP");
         finalizar_sistema_memoria();
         return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
     }

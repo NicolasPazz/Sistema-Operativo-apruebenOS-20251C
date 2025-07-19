@@ -82,9 +82,9 @@ void *timer_suspension(void *v_arg)
 
     if (!suspender_proceso(pcb))
     {
-        LOG_ERROR(kernel_log, "No se pudo suspender el proceso PID=%d", pcb->PID);
+        LOG_DEBUG(kernel_log, "No se pudo suspender el proceso PID=%d", pcb->PID);
         UNLOCK_CON_LOG_PCB(pcb->mutex, pcb->PID);
-        terminar_kernel(EXIT_FAILURE);
+        return NULL;
     }
     cambiar_estado_pcb(pcb, SUSP_BLOCKED);
     UNLOCK_CON_LOG_PCB(pcb->mutex, pcb->PID);
@@ -104,7 +104,7 @@ void iniciar_timer_suspension(t_pcb *pcb)
 
     if (pcb->timer_flag)
     {
-        LOG_ERROR(kernel_log, "[PLANI MP] Ya existe un timer vigente para el PID %d, se invalidará", pcb->PID);
+        LOG_DEBUG(kernel_log, "[PLANI MP] Ya existe un timer vigente para el PID %d, se invalidará", pcb->PID);
         *(pcb->timer_flag) = false;
     }
 
@@ -120,8 +120,8 @@ void iniciar_timer_suspension(t_pcb *pcb)
         pcb->timer_flag = NULL;
         free(flag);
         free(arg);
-        LOG_ERROR(kernel_log, "[PLANI MP] No se pudo crear hilo de suspensión para PID %d", pcb->PID);
-        terminar_kernel(EXIT_FAILURE);
+        LOG_DEBUG(kernel_log, "[PLANI MP] No se pudo crear hilo de suspensión para PID %d", pcb->PID);
+        return;
     }
     pthread_detach(hilo_timer);
 }

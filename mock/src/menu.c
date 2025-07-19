@@ -97,7 +97,7 @@ void menu(int fd_a_testear) {
 
             // FD del Socker a testear con los OP_CODE
             if (send(fd_a_testear, &cod, sizeof(op_code), 0) <= 0) {
-                log_error(mock_log, "Fallo al enviar op_code %d", cod);
+                log_debug(mock_log, "Fallo al enviar op_code %d", cod);
             } else {
                 log_trace(mock_log, "op_code %d enviado correctamente a Memoria", cod);
             }

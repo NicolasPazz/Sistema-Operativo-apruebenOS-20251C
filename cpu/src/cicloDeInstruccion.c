@@ -23,14 +23,14 @@ void ejecutar_ciclo_instruccion() {
         // FETCH
         t_instruccion* instruccion = fetch();
         if (instruccion == NULL) {
-            log_error(cpu_log, "[CICLO] ✗ Error al obtener instrucción, finalizando ciclo");
+            log_debug(cpu_log, "[CICLO] ✗ Error al obtener instrucción, finalizando ciclo");
             break;
         }
 
         // DECODE
         op_code tipo_instruccion = decode(instruccion->parametros1);
         if (tipo_instruccion == -1) {
-            log_error(cpu_log, "[CICLO] ✗ Error al decodificar instrucción, finalizando ciclo");
+            log_debug(cpu_log, "[CICLO] ✗ Error al decodificar instrucción, finalizando ciclo");
             liberar_instruccion(instruccion);
             break;
         }
@@ -89,9 +89,9 @@ t_instruccion* fetch() {
     if (instruccion != NULL) {
         log_trace(cpu_log, "[FETCH] ✓ Instrucción obtenida exitosamente desde memoria");
     } else {
-        log_error(cpu_log, "[FETCH] ✗ Error al recibir instrucción desde memoria");
+        log_debug(cpu_log, "[FETCH] ✗ Error al recibir instrucción desde memoria");
         // DEBUGGING: Agregar información adicional sobre el estado del socket
-        log_error(cpu_log, "[FETCH] Estado del socket fd_memoria: %d", fd_memoria);
+        log_debug(cpu_log, "[FETCH] Estado del socket fd_memoria: %d", fd_memoria);
     }
 
     return instruccion;
@@ -126,7 +126,7 @@ op_code decode(char* nombre_instruccion) {
     if (resultado != -1) {
         log_trace(cpu_log, "[DECODE] ✓ Instrucción '%s' decodificada como op_code: %d", nombre_instruccion, resultado);
     } else {
-        log_error(cpu_log, "[DECODE] ✗ Instrucción '%s' no reconocida", nombre_instruccion);
+        log_debug(cpu_log, "[DECODE] ✗ Instrucción '%s' no reconocida", nombre_instruccion);
     }
     
     return resultado;
@@ -190,7 +190,7 @@ void execute(op_code tipo_instruccion, t_instruccion* instruccion) {
             func_exit();
             break;
         default:
-            log_error(cpu_log, "Instrucción desconocida");
+            log_debug(cpu_log, "Instrucción desconocida");
         break;
     }
 }
