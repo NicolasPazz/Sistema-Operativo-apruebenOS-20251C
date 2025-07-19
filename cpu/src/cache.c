@@ -300,7 +300,7 @@ void desalojar_proceso_cache(int pid) {
 
             if (cache->entradas[i].modificado && cache->entradas[i].numero_pagina >= 0) {
                 int direccion_fisica = traducir_direccion_fisica(cache->entradas[i].numero_pagina * cfg_memoria->TAM_PAGINA);
-                log_info(cpu_log, VERDE("PID: %d - Memory Update - Página: %d - Dir. Física: %d"),
+                log_info(cpu_log, VERDE("PID: %d - Memory Update - Página: %d - Frame: %d"),
                          pid, cache->entradas[i].numero_pagina, direccion_fisica); // FIXME: no va direccion fisica al final, va Frame
                 enviar_actualizar_pagina_completa(pid, direccion_fisica, cache->entradas[i].contenido);
             }
@@ -441,7 +441,7 @@ void cache_escribir(int pid, int frame, char* datos, bool modificado) {
         int pagina_vieja = entrada->numero_pagina;
         int pid_viejo = entrada->pid;
         
-        log_debug(cpu_log, "📤 Iniciando WRITEBACK: Página %d (PID=%d) será escrita a memoria antes del reemplazo", 
+        log_debug(cpu_log, "\xF0\x9F\x93\xA4 Iniciando WRITEBACK: Página %d (PID=%d) será escrita a memoria antes del reemplazo", 
                 pagina_vieja, pid_viejo);
 
         t_paquete* paquete = crear_paquete_op(ACCESO_TABLA_PAGINAS_OP);
@@ -461,6 +461,8 @@ void cache_escribir(int pid, int frame, char* datos, bool modificado) {
 
             if (marco != -1) {
                 int direccion_fisica = marco * cfg_memoria->TAM_PAGINA;
+                // Log obligatorio Memory Update
+                log_info(cpu_log, "PID: %d - Memory Update - Página: %d - Frame: %d", pid_viejo, pagina_vieja, marco);
                 log_trace(cpu_log, "Escribiendo página vieja (PID=%d, Página=%d) en marco %d",
                           pid_viejo, pagina_vieja, marco);
                 enviar_actualizar_pagina_completa(pid_viejo, direccion_fisica, entrada->contenido);
