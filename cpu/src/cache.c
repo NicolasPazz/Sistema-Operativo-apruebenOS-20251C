@@ -463,7 +463,7 @@ void cache_escribir(int pid, int frame, char* datos, bool modificado) {
             if (marco != -1) {
                 int direccion_fisica = marco * cfg_memoria->TAM_PAGINA;
                 // Log obligatorio Memory Update
-                log_info(cpu_log, "PID: %d - Memory Update - Página: %d - Frame: %d", pid_viejo, pagina_vieja, marco);
+                log_info(cpu_log, VERDE("PID: %d - Memory Update - Página: %d - Frame: %d"), pid_viejo, pagina_vieja, marco);
                 log_trace(cpu_log, "Escribiendo página vieja (PID=%d, Página=%d) en marco %d",
                           pid_viejo, pagina_vieja, marco);
                 enviar_actualizar_pagina_completa(pid_viejo, direccion_fisica, entrada->contenido);

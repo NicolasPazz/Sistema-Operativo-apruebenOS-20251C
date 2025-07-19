@@ -103,7 +103,6 @@ void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
         if (!cola_origen)
         {
             LOG_ERROR(kernel_log, "Error al obtener las colas correspondientes");
-
             terminar_kernel(EXIT_FAILURE);
         }
 
