@@ -220,7 +220,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             // Enviar respuesta a Kernel
             t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
             log_debug(logger, "Enviando respuesta %s a cliente (fd=%d)", (respuesta == OK) ? "OK" : "ERROR", cliente_socket);
-            send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
+            //send(cliente_socket, &respuesta, sizeof(t_respuesta), 0); Kernel ya no espera nada
 
             list_destroy_and_destroy_elements(parametros, free);
             break;
@@ -503,7 +503,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             t_resultado_memoria resultado = suspender_proceso_en_memoria(pid);
 
             t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
-            send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
+            //send(cliente_socket, &respuesta, sizeof(t_respuesta), 0); Kernel ya no espera nada
 
             log_trace(logger, "Suspensión de proceso %s - PID: %d",
                     (respuesta == OK) ? "exitosa" : "fallida", pid);
@@ -527,7 +527,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             t_resultado_memoria resultado = reanudar_proceso_en_memoria(pid);
 
             t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
-            send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
+            //send(cliente_socket, &respuesta, sizeof(t_respuesta), 0); Kernel ya no espera nada
 
             log_trace(logger, "Des-suspensión de proceso %s - PID: %d",
                     (respuesta == OK) ? "exitosa" : "fallida", pid);
