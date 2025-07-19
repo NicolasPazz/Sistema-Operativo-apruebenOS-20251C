@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
         snprintf(ruta_cfg, sizeof(ruta_cfg), "cpu/%s", argv[2]);
 
     if (access(ruta_cfg, F_OK) == -1) {
-        fprintf(stderr, "❌ No se encontró %s\n\n", ruta_cfg);
+        fprintf(stderr, "No se encontró %s\n\n", ruta_cfg);
         listar_configs_cpu();
         exit(EXIT_FAILURE);
     }

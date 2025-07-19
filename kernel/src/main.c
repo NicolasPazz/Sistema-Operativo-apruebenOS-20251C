@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
 
     if (access(ruta_cfg, F_OK) == -1)
     {
-        fprintf(stderr, "❌ No se encontró %s\n\n", ruta_cfg);
+        fprintf(stderr, "No se encontró %s\n\n", ruta_cfg);
         listar_configs_kernel();
         exit(EXIT_FAILURE);
     }

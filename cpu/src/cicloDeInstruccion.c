@@ -49,7 +49,7 @@ void ejecutar_ciclo_instruccion() {
 
         // Liberar la memoria de la instrucción
         liberar_instruccion(instruccion);
-        log_trace(cpu_log, "[CICLO] ✓ Instrucción liberada de memoria");
+        log_trace(cpu_log, "[CICLO] Instruccion liberada de memoria");
 
         // CHECK INTERRUPT
         if (seguir_ejecutando) {
@@ -60,7 +60,7 @@ void ejecutar_ciclo_instruccion() {
         log_trace(cpu_log, "[CICLO] ═══ FIN CICLO ═══ (Seguir: %d)", seguir_ejecutando);
     }
 
-    log_trace(cpu_log, "[CICLO] ◼ Ciclo de instrucción finalizado para PID: %d", pid_ejecutando);
+    log_trace(cpu_log, "[CICLO] Ciclo de instruccion finalizado para PID: %d", pid_ejecutando);
 }
 
 // fetch
