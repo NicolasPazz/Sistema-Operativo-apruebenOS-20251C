@@ -88,43 +88,31 @@ int main(int argc, char *argv[])
     //////////////////////////// Conexiones del Kernel ////////////////////////////
 
     // Servidor de CPU (Dispatch)
-    pthread_t *hilo_dispatch = malloc(sizeof(pthread_t));
-    if (pthread_create(hilo_dispatch, NULL, hilo_servidor_dispatch, NULL) != 0)
+    pthread_t hilo_dispatch;
+    if (pthread_create(&hilo_dispatch, NULL, hilo_servidor_dispatch, NULL) != 0)
     {
         LOG_ERROR(kernel_log, "Error al crear hilo de servidor Dispatch");
-        free(hilo_dispatch);
         terminar_kernel(EXIT_FAILURE);
     }
-    LOCK_CON_LOG(mutex_hilos);
-    list_add(lista_hilos, hilo_dispatch);
-    LOG_DEBUG(kernel_log, "Hilo %d agregado", list_size(lista_hilos));
-    UNLOCK_CON_LOG(mutex_hilos);
+    pthread_detach(hilo_dispatch);
 
     // Servidor de CPU (Interrupt)
-    pthread_t *hilo_interrupt = malloc(sizeof(pthread_t));
-    if (pthread_create(hilo_interrupt, NULL, hilo_servidor_interrupt, NULL) != 0)
+    pthread_t hilo_interrupt;
+    if (pthread_create(&hilo_interrupt, NULL, hilo_servidor_interrupt, NULL) != 0)
     {
         LOG_ERROR(kernel_log, "Error al crear hilo de servidor Interrupt");
-        free(hilo_interrupt);
         terminar_kernel(EXIT_FAILURE);
     }
-    LOCK_CON_LOG(mutex_hilos);
-    list_add(lista_hilos, hilo_interrupt);
-    LOG_DEBUG(kernel_log, "Hilo %d agregado", list_size(lista_hilos));
-    UNLOCK_CON_LOG(mutex_hilos);
+    pthread_detach(hilo_interrupt);
 
     // Servidor de IO
-    pthread_t *hilo_io = malloc(sizeof(pthread_t));
-    if (pthread_create(hilo_io, NULL, hilo_servidor_io, NULL) != 0)
+    pthread_t hilo_io;
+    if (pthread_create(&hilo_io, NULL, hilo_servidor_io, NULL) != 0)
     {
         LOG_ERROR(kernel_log, "Error al crear hilo de servidor IO");
-        free(hilo_io);
         terminar_kernel(EXIT_FAILURE);
     }
-    LOCK_CON_LOG(mutex_hilos);
-    list_add(lista_hilos, hilo_io);
-    LOG_DEBUG(kernel_log, "Hilo %d agregado", list_size(lista_hilos));
-    UNLOCK_CON_LOG(mutex_hilos);
+    pthread_detach(hilo_io);
 
     //////////////////////////// Esperar conexiones minimas ////////////////////////////
 

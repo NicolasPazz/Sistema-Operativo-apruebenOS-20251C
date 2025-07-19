@@ -25,6 +25,7 @@ t_cache_paginas* inicializar_cache() {
             cache->entradas[i].contenido = NULL;
             cache->entradas[i].modificado = false;
             cache->entradas[i].bit_referencia = 0;
+            cache->entradas[i].pid = -1;
         }
     }
     cache->algoritmo_reemplazo = REEMPLAZO_CACHE;

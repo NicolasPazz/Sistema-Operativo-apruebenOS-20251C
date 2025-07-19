@@ -18,7 +18,7 @@ void *timer_suspension(void *v_arg)
             free(flag);
         }
         free(arg);
-        // terminar_hilo();
+
         return NULL;
     }
     LOCK_CON_LOG_PCB(pcb->mutex, pcb->PID);
@@ -39,7 +39,7 @@ void *timer_suspension(void *v_arg)
             free(flag);
         }
         free(arg);
-        // terminar_hilo();
+
         return NULL;
     }
     else if (!pcb)
@@ -50,7 +50,7 @@ void *timer_suspension(void *v_arg)
             free(flag);
         }
         free(arg);
-        // terminar_hilo();
+
         return NULL;
     }
 
@@ -64,7 +64,7 @@ void *timer_suspension(void *v_arg)
         }
         free(arg);
         UNLOCK_CON_LOG_PCB(pcb->mutex, pcb->PID);
-        // terminar_hilo();
+
         return NULL;
     }
 
@@ -93,7 +93,6 @@ void *timer_suspension(void *v_arg)
 
     SEM_POST(sem_procesos_rechazados);
 
-    // terminar_hilo();
     return NULL;
 }
 
@@ -124,8 +123,5 @@ void iniciar_timer_suspension(t_pcb *pcb)
         LOG_ERROR(kernel_log, "[PLANI MP] No se pudo crear hilo de suspensión para PID %d", pcb->PID);
         terminar_kernel(EXIT_FAILURE);
     }
-    
-    // Detach el hilo para que se libere automáticamente al terminar
     pthread_detach(hilo_timer);
-    LOG_DEBUG(kernel_log, AZUL("[PLANI MP] Hilo de suspensión creado y detached para PID %d"), pcb->PID);
 }

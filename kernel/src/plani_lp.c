@@ -112,7 +112,6 @@ void *planificador_largo_plazo(void *arg)
         UNLOCK_CON_LOG(mutex_inicializacion_procesos);
     }
 
-    // terminar_hilo();
     return NULL;
 }
 
@@ -150,7 +149,6 @@ void *gestionar_exit(void *arg)
         SEM_POST(sem_procesos_rechazados);
     }
 
-    // terminar_hilo();
     return NULL;
 }
 
@@ -277,7 +275,6 @@ void *verificar_procesos_rechazados()
         UNLOCK_CON_LOG(mutex_inicializacion_procesos);
     }
 
-    // terminar_hilo();
     return NULL;
 }
 
