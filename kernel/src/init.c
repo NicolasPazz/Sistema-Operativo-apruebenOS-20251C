@@ -42,7 +42,7 @@ t_list *cola_exit = NULL;
 t_list *cola_procesos = NULL; // Cola con TODOS los procesos sin importar el estado (Procesos totales del sistema)
 t_list *pcbs_bloqueados_por_dump_memory = NULL;
 t_list *pcbs_esperando_io = NULL;
-t_queue *cola_interrupciones = NULL;
+t_list *cola_interrupciones = NULL;
 
 // Listas y semaforos de CPUs y IOs conectadas
 t_list *lista_cpus = NULL;
@@ -186,7 +186,7 @@ void iniciar_sincronizacion_kernel()
     lista_cpus = list_create();
     lista_ios = list_create();
     lista_sockets = list_create();
-    cola_interrupciones = queue_create();
+    cola_interrupciones = list_create();
 
     conectado_cpu = false;
     conectado_io = false;
@@ -306,7 +306,7 @@ void terminar_kernel(int code)
     list_destroy_and_destroy_elements(lista_ios, destruir_io);
     pthread_mutex_destroy(&mutex_ios);
 
-    queue_destroy_and_destroy_elements(cola_interrupciones, free);
+    list_destroy_and_destroy_elements(cola_interrupciones, free);
     sem_destroy(&sem_interrupciones);
     pthread_mutex_destroy(&mutex_cola_interrupciones);
 

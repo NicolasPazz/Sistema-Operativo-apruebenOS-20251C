@@ -1,4 +1,5 @@
 #include "../headers/planificadores.h"
+#include <commons/collections/list.h>
 
 void iniciar_interrupt_handler()
 {
@@ -24,7 +25,7 @@ void *interrupt_handler(void *arg)
 
         LOCK_CON_LOG(mutex_cola_interrupciones);
 
-        t_interrupcion *intr = queue_pop(cola_interrupciones);
+        t_interrupcion *intr = list_remove(cola_interrupciones, 0);
         UNLOCK_CON_LOG(mutex_cola_interrupciones);
 
         if (!intr)
@@ -48,7 +49,7 @@ void interrupt(cpu *cpu_a_desalojar)
 
     LOCK_CON_LOG(mutex_cola_interrupciones);
 
-    queue_push(cola_interrupciones, nueva);
+    list_add(cola_interrupciones, nueva);
     UNLOCK_CON_LOG(mutex_cola_interrupciones);
     LOG_DEBUG(kernel_log, "[INTERRUPT] Interrupción encolada para desalojar CPU %d (fd=%d)", cpu_a_desalojar->id, cpu_a_desalojar->fd);
 

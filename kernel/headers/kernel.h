@@ -48,7 +48,7 @@ extern t_list *cola_exit;
 extern t_list *cola_procesos;
 extern t_list *pcbs_bloqueados_por_dump_memory;
 extern t_list *pcbs_esperando_io;
-extern t_queue *cola_interrupciones;
+extern t_list *cola_interrupciones;
 
 // Listas y semaforos de CPUs y IOs conectadas
 extern t_list *lista_cpus;
