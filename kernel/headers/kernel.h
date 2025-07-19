@@ -23,6 +23,8 @@ extern t_dictionary *archivo_por_pcb;
 extern int fd_kernel_dispatch;
 extern int fd_interrupt;
 
+extern bool kernel_finalizado;
+
 // Config
 extern t_config *kernel_config;
 extern char *IP_MEMORIA;

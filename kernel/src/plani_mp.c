@@ -18,7 +18,7 @@ void *timer_suspension(void *v_arg)
             free(flag);
         }
         free(arg);
-        // terminar_hilo();
+        terminar_hilo();
         return NULL;
     }
     LOCK_CON_LOG_PCB(pcb->mutex, pcb->PID);
@@ -39,7 +39,7 @@ void *timer_suspension(void *v_arg)
             free(flag);
         }
         free(arg);
-        // terminar_hilo();
+        terminar_hilo();
         return NULL;
     }
     else if (!pcb)
@@ -50,7 +50,7 @@ void *timer_suspension(void *v_arg)
             free(flag);
         }
         free(arg);
-        // terminar_hilo();
+        terminar_hilo();
         return NULL;
     }
 
@@ -64,7 +64,7 @@ void *timer_suspension(void *v_arg)
         }
         free(arg);
         UNLOCK_CON_LOG_PCB(pcb->mutex, pcb->PID);
-        // terminar_hilo();
+        terminar_hilo();
         return NULL;
     }
 
@@ -93,13 +93,13 @@ void *timer_suspension(void *v_arg)
 
     SEM_POST(sem_procesos_rechazados);
 
-    // terminar_hilo();
+    terminar_hilo();
     return NULL;
 }
 
 void iniciar_timer_suspension(t_pcb *pcb)
 {
-    pthread_t hilo_timer; // Usamos variable local en lugar de malloc
+    pthread_t *hilo_timer = malloc(sizeof(pthread_t));
     bool *flag = malloc(sizeof(bool));
     *flag = true;
 
@@ -116,16 +116,17 @@ void iniciar_timer_suspension(t_pcb *pcb)
     arg->vigente = flag;
     arg->pid = pcb->PID;
 
-    if (pthread_create(&hilo_timer, NULL, timer_suspension, arg) != 0)
+    if (pthread_create(hilo_timer, NULL, timer_suspension, arg) != 0)
     {
         pcb->timer_flag = NULL;
         free(flag);
         free(arg);
+        free(hilo_timer);
         LOG_ERROR(kernel_log, "[PLANI MP] No se pudo crear hilo de suspensión para PID %d", pcb->PID);
         terminar_kernel(EXIT_FAILURE);
     }
-    
-    // Detach el hilo para que se libere automáticamente al terminar
-    pthread_detach(hilo_timer);
-    LOG_DEBUG(kernel_log, AZUL("[PLANI MP] Hilo de suspensión creado y detached para PID %d"), pcb->PID);
+    LOCK_CON_LOG(mutex_hilos);
+    list_add(lista_hilos, hilo_timer);
+    LOG_DEBUG(kernel_log, "[PLANI MP] Hilo de timer de suspensión creado para PID %d", pcb->PID);
+    UNLOCK_CON_LOG(mutex_hilos);
 }

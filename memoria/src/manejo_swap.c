@@ -41,7 +41,7 @@ int suspender_proceso_completo(int pid) {
     
     // Si ya está suspendido, avisar
     if (proceso->suspendido) {
-        log_info(logger, "[SWAP] PID: %d - Proceso ya suspendido, operación omitida", pid);
+        log_debug(logger, "[SWAP] PID: %d - Proceso ya suspendido, operación omitida", pid);
         return 1; // Retornar éxito para evitar errores
     }
     
