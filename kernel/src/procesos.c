@@ -75,6 +75,164 @@ void mostrar_colas_estados()
     LOG_DEBUG(kernel_log, "Colas -> [NEW: %d, READY: %d, EXEC: %d, BLOCK: %d, SUSP.BLOCK: %d, SUSP.READY: %d, EXIT: %d] | Procesos en total: %d", list_size(cola_new), list_size(cola_ready), list_size(cola_running), list_size(cola_blocked), list_size(cola_susp_blocked), list_size(cola_susp_ready), list_size(cola_exit), list_size(cola_procesos));
 }
 
+void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
+{
+    if (!PCB)
+    {
+        LOG_ERROR(kernel_log, "PCB es NULL");
+        terminar_kernel(EXIT_FAILURE);
+    }
+
+    if (!transicion_valida(PCB->Estado, nuevo_estado_enum))
+    {
+        LOG_ERROR(kernel_log, "Transicion no valida en el PID %d: %s → %s", PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
+        terminar_kernel(EXIT_FAILURE);
+    }
+
+    t_list *cola_destino = obtener_cola_por_estado(nuevo_estado_enum);
+    if (!cola_destino)
+    {
+        LOG_ERROR(kernel_log, "Error al obtener las colas correspondientes");
+        terminar_kernel(EXIT_FAILURE);
+    }
+
+    if (PCB->Estado != INIT)
+    {
+        t_list *cola_origen = obtener_cola_por_estado(PCB->Estado);
+
+        if (!cola_origen)
+        {
+            LOG_ERROR(kernel_log, "Error al obtener las colas correspondientes");
+
+            terminar_kernel(EXIT_FAILURE);
+        }
+
+        log_info(kernel_log, AZUL("## (%u) Pasa del estado ") VERDE("%s") AZUL(" al estado ") VERDE("%s"), PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
+
+        bloquear_cola_por_estado(PCB->Estado);
+        list_remove_element(cola_origen, PCB);
+        liberar_cola_por_estado(PCB->Estado);
+
+        char *pid_key = string_itoa(PCB->PID);
+        t_temporal *cronometro = dictionary_get(tiempos_por_pid, pid_key);
+
+        if (cronometro)
+        {
+            temporal_stop(cronometro);
+            int64_t tiempo = temporal_gettime(cronometro);
+
+            PCB->MT[PCB->Estado] += (int)tiempo;
+            LOG_DEBUG(kernel_log, "Se actualizo el MT en el estado %s del PID %d con %ld", estado_to_string(PCB->Estado), PCB->PID, tiempo);
+            temporal_destroy(cronometro);
+        }
+        cronometro = temporal_create();
+        dictionary_put(tiempos_por_pid, pid_key, cronometro);
+        free(pid_key);
+
+        if (nuevo_estado_enum == EXEC)
+        {
+            PCB->tiempo_inicio_exec = get_time();
+        }
+        else if (PCB->Estado == EXEC)
+        {
+            LOG_DEBUG(kernel_log, "estimacion rafaga anterior del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
+            double rafaga_real = get_time() - PCB->tiempo_inicio_exec;
+
+            // rafaga restante: estimacion de rafaga - (ahora - tiempo_inicio_exec)
+            LOG_DEBUG(kernel_log, "Rafaga real del PID %d: %.3f", PCB->PID, rafaga_real);
+            PCB->estimacion_rafaga = PCB->estimacion_rafaga - rafaga_real;
+
+            LOG_DEBUG(kernel_log, "Nueva estimacion de rafaga del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
+            PCB->tiempo_inicio_exec = -1;
+        }
+
+        if (nuevo_estado_enum == BLOCKED)
+        {
+            PCB->tiempo_inicio_blocked = get_time();
+            iniciar_timer_suspension(PCB);
+        }
+        else if (PCB->Estado == BLOCKED)
+        {
+            PCB->tiempo_inicio_blocked = -1;
+            if (PCB->timer_flag)
+            {
+                *(PCB->timer_flag) = false;
+                PCB->timer_flag = NULL;
+            }
+        }
+
+        PCB->Estado = nuevo_estado_enum;
+        PCB->ME[nuevo_estado_enum] += 1;
+    }
+    else
+    {
+        LOG_DEBUG(kernel_log, "proceso en INIT recibido");
+        char *pid_key = string_itoa(PCB->PID);
+        if (!dictionary_get(tiempos_por_pid, pid_key))
+        {
+            t_temporal *nuevo_crono = temporal_create();
+            dictionary_put(tiempos_por_pid, pid_key, nuevo_crono);
+        }
+        free(pid_key);
+
+        // Cambiar Estado y actualizar Metricas de Estados
+        PCB->Estado = nuevo_estado_enum;
+        PCB->ME[nuevo_estado_enum] += 1; // Se suma 1 en las Metricas de estado del nuevo estado
+        bloquear_cola_por_estado(PCB->Estado);
+        list_add(cola_procesos, PCB);
+        liberar_cola_por_estado(PCB->Estado);
+    }
+
+    Estados estado_viejo = PCB->Estado;
+    bloquear_cola_por_estado(nuevo_estado_enum);
+    list_add(cola_destino, PCB);
+    liberar_cola_por_estado(nuevo_estado_enum);
+
+    switch (nuevo_estado_enum)
+    {
+    case NEW:
+        SEM_POST(sem_proceso_a_new);
+        break;
+    case READY:
+        SEM_POST(sem_proceso_a_ready);
+        SEM_POST(sem_planificador_cp);
+        LOG_DEBUG(kernel_log, "[PLANI CP] Replanificación solicitada por proceso a READY (PID=%d)", PCB->PID);
+        break;
+    case EXEC:
+        SEM_POST(sem_proceso_a_running);
+        break;
+    case BLOCKED:
+        SEM_POST(sem_proceso_a_blocked);
+        break;
+    case SUSP_READY:
+        SEM_POST(sem_proceso_a_susp_ready);
+        break;
+    case SUSP_BLOCKED:
+        SEM_POST(sem_proceso_a_susp_blocked);
+        break;
+    case EXIT_ESTADO:
+        SEM_POST(sem_proceso_a_exit);
+        break;
+    default:
+        LOG_ERROR(kernel_log, "nuevo_estado_enum: Error al pasar PCB de %s a %s", estado_to_string(estado_viejo), estado_to_string(nuevo_estado_enum));
+        terminar_kernel(EXIT_FAILURE);
+    }
+    mostrar_colas_estados();
+}
+
+void cambiar_estado_pcb_mutex(t_pcb *PCB, Estados nuevo_estado_enum)
+{
+    if (!PCB)
+    {
+        LOG_ERROR(kernel_log, "PCB es NULL");
+        terminar_kernel(EXIT_FAILURE);
+    }
+
+    LOCK_CON_LOG_PCB(PCB->mutex, PCB->PID);
+    cambiar_estado_pcb(PCB, nuevo_estado_enum);
+    UNLOCK_CON_LOG_PCB(PCB->mutex, PCB->PID);
+}
+
 void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
 {
     if (!PCB)
@@ -217,19 +375,6 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
         terminar_kernel(EXIT_FAILURE);
     }
     mostrar_colas_estados();
-}
-
-void cambiar_estado_pcb_mutex(t_pcb *PCB, Estados nuevo_estado_enum)
-{
-    if (!PCB)
-    {
-        LOG_ERROR(kernel_log, "PCB es NULL");
-        terminar_kernel(EXIT_FAILURE);
-    }
-
-    LOCK_CON_LOG_PCB(PCB->mutex, PCB->PID);
-    cambiar_estado_pcb(PCB, nuevo_estado_enum);
-    UNLOCK_CON_LOG_PCB(PCB->mutex, PCB->PID);
 }
 
 bool transicion_valida(Estados actual, Estados destino)

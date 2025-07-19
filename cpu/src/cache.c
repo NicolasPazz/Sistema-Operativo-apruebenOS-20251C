@@ -302,7 +302,7 @@ void desalojar_proceso_cache(int pid) {
             if (cache->entradas[i].modificado && cache->entradas[i].numero_pagina >= 0) {
                 int direccion_fisica = traducir_direccion_fisica(cache->entradas[i].numero_pagina * cfg_memoria->TAM_PAGINA);
                 log_info(cpu_log, VERDE("PID: %d - Memory Update - Página: %d - Frame: %d"),
-                         pid, cache->entradas[i].numero_pagina, direccion_fisica); // FIXME: no va direccion fisica al final, va Frame
+                         pid, cache->entradas[i].numero_pagina,(direccion_fisica - (cache->entradas[i].numero_pagina *cfg_memoria->TAM_PAGINA % cfg_memoria->TAM_PAGINA))/ cfg_memoria->TAM_PAGINA);
                 enviar_actualizar_pagina_completa(pid, direccion_fisica, cache->entradas[i].contenido);
             }
 
