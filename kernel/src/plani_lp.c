@@ -10,7 +10,7 @@ void *planificador_largo_plazo(void *arg)
 
     LOCK_CON_LOG(mutex_planificador_lp);
     LOG_DEBUG(kernel_log, "=== PLANIFICADOR LP INICIADO ===");
-    while (1)
+    while (!kernel_finalizado)
     {
         SEM_WAIT(sem_proceso_a_new);
 
@@ -37,7 +37,8 @@ void *planificador_largo_plazo(void *arg)
             LOG_ERROR(kernel_log, "[PLANI LP] Cola NEW vacia");
             UNLOCK_CON_LOG(mutex_cola_new);
             UNLOCK_CON_LOG(mutex_inicializacion_procesos);
-            terminar_kernel(EXIT_FAILURE);
+            //terminar_kernel(EXIT_FAILURE);
+            continue;
         }
 
         if (strcmp(ALGORITMO_INGRESO_A_READY, "FIFO") == 0)
@@ -112,7 +113,7 @@ void *planificador_largo_plazo(void *arg)
         UNLOCK_CON_LOG(mutex_inicializacion_procesos);
     }
 
-    // terminar_hilo();
+    terminar_hilo();
     return NULL;
 }
 
@@ -121,7 +122,7 @@ void *gestionar_exit(void *arg)
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
-    while (1)
+    while (!kernel_finalizado)
     {
         SEM_WAIT(sem_proceso_a_exit);
 
@@ -131,7 +132,8 @@ void *gestionar_exit(void *arg)
         {
             UNLOCK_CON_LOG(mutex_cola_exit);
             LOG_ERROR(kernel_log, "[PLANI LP] [EXIT] Se despertó pero no hay procesos en EXIT");
-            terminar_kernel(EXIT_FAILURE);
+            //terminar_kernel(EXIT_FAILURE);
+            continue;
         }
 
         t_pcb *pcb = elegir_por_fifo(cola_exit);
@@ -150,7 +152,7 @@ void *gestionar_exit(void *arg)
         SEM_POST(sem_procesos_rechazados);
     }
 
-    // terminar_hilo();
+    terminar_hilo();
     return NULL;
 }
 
@@ -159,12 +161,19 @@ void *verificar_procesos_rechazados()
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
-    while (1)
+    while (!kernel_finalizado)
     {
         SEM_WAIT(sem_procesos_rechazados);
         LOCK_CON_LOG(mutex_cola_susp_ready);
         LOCK_CON_LOG(mutex_inicializacion_procesos);
 
+        if(kernel_finalizado)
+        {
+            UNLOCK_CON_LOG(mutex_cola_susp_ready);
+            UNLOCK_CON_LOG(mutex_inicializacion_procesos);
+            continue;
+        }
+        
         bool resultado = true;
 
         while (!list_is_empty(cola_susp_ready))
@@ -277,7 +286,7 @@ void *verificar_procesos_rechazados()
         UNLOCK_CON_LOG(mutex_inicializacion_procesos);
     }
 
-    // terminar_hilo();
+    terminar_hilo();
     return NULL;
 }
 

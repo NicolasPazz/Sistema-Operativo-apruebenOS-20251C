@@ -23,19 +23,26 @@ void *interrupt_handler(void *arg)
 
     LOG_DEBUG(kernel_log, VERDE("=== Interrupt handler iniciado ==="));
 
-    while (1)
+    while (!kernel_finalizado)
     {
         SEM_WAIT(sem_interrupciones);
 
         LOCK_CON_LOG(mutex_cola_interrupciones);
 
+        if (kernel_finalizado)
+        {
+            UNLOCK_CON_LOG(mutex_cola_interrupciones);
+            continue;
+        }
+        
         t_interrupcion *intr = queue_pop(cola_interrupciones);
         UNLOCK_CON_LOG(mutex_cola_interrupciones);
 
         if (!intr)
         {
             LOG_ERROR(kernel_log, VERDE("[INTERRUPT] Cola de interrupción vacía"));
-            terminar_kernel(EXIT_FAILURE);
+            //terminar_kernel(EXIT_FAILURE);
+            continue;
         }
 
         interrumpir_ejecucion(intr->cpu_a_desalojar);
@@ -43,7 +50,7 @@ void *interrupt_handler(void *arg)
         free(intr);
     }
     
-    // terminar_hilo();
+    terminar_hilo();
     return NULL;
 }
 

@@ -7,11 +7,11 @@ void *planificador_corto_plazo(void *arg)
 
     LOG_DEBUG(kernel_log, "=== PLANIFICADOR CP INICIADO ===");
 
-    while (1)
+    while (!kernel_finalizado)
     {
         SEM_WAIT(sem_planificador_cp);
         LOCK_CON_LOG(mutex_cola_ready);
-        if (list_is_empty(cola_ready))
+        if (list_is_empty(cola_ready) || kernel_finalizado)
         {
             LOG_DEBUG(kernel_log, "[PLANI CP] Cola READY vacía, esperando nuevos procesos");
             UNLOCK_CON_LOG(mutex_cola_ready);
@@ -97,7 +97,7 @@ void *planificador_corto_plazo(void *arg)
         dispatch(proceso_a_ejecutar);
     }
 
-    // terminar_hilo();
+    terminar_hilo();
     return NULL;
 }
 

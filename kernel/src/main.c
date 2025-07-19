@@ -175,7 +175,7 @@ int main(int argc, char *argv[])
 
     UNLOCK_CON_LOG(mutex_planificador_lp);
 
-    while (1)
+    while (!kernel_finalizado)
     {
         sleep(10);
     }
