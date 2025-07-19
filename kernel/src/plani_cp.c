@@ -88,7 +88,7 @@ void *planificador_corto_plazo(void *arg)
             LOG_ERROR(kernel_log, "[PLANI CP] No se pudo elegir un proceso para ejecutar");
             UNLOCK_CON_LOG(mutex_lista_cpus);
             UNLOCK_CON_LOG(mutex_cola_ready);
-            terminar_kernel(EXIT_FAILURE);   
+            terminar_kernel(EXIT_FAILURE);
         }
 
         UNLOCK_CON_LOG(mutex_lista_cpus);
@@ -97,7 +97,6 @@ void *planificador_corto_plazo(void *arg)
         dispatch(proceso_a_ejecutar);
     }
 
-    // terminar_hilo();
     return NULL;
 }
 

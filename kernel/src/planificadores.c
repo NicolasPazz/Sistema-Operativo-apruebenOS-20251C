@@ -3,53 +3,37 @@
 
 void iniciar_planificadores()
 {
-    pthread_t *hilo_planificador = malloc(sizeof(pthread_t));
-    if (pthread_create(hilo_planificador, NULL, planificador_largo_plazo, NULL) != 0)
+    pthread_t hilo_planificador;
+    if (pthread_create(&hilo_planificador, NULL, planificador_largo_plazo, NULL) != 0)
     {
         LOG_ERROR(kernel_log, "Error al crear hilo para planificador de largo plazo");
-        free(hilo_planificador);
         terminar_kernel(EXIT_FAILURE);
     }
-    LOCK_CON_LOG(mutex_hilos);
-    list_add(lista_hilos, hilo_planificador);
-    LOG_DEBUG(kernel_log, "Hilo %d agregado", list_size(lista_hilos));
-    UNLOCK_CON_LOG(mutex_hilos);
+    pthread_detach(hilo_planificador);
 
-    pthread_t *hilo_exit = malloc(sizeof(pthread_t));
-    if (pthread_create(hilo_exit, NULL, gestionar_exit, NULL) != 0)
+    pthread_t hilo_exit;
+    if (pthread_create(&hilo_exit, NULL, gestionar_exit, NULL) != 0)
     {
         LOG_ERROR(kernel_log, "Error al crear hilo para gestionar procesos en EXIT");
-        free(hilo_exit);
         terminar_kernel(EXIT_FAILURE);
     }
-    LOCK_CON_LOG(mutex_hilos);
-    list_add(lista_hilos, hilo_exit);
-    LOG_DEBUG(kernel_log, "Hilo %d agregado", list_size(lista_hilos));
-    UNLOCK_CON_LOG(mutex_hilos);
+    pthread_detach(hilo_exit);
 
-    pthread_t *hilo_planificador_cp = malloc(sizeof(pthread_t));
-    if (pthread_create(hilo_planificador_cp, NULL, planificador_corto_plazo, NULL) != 0)
+    pthread_t hilo_planificador_cp;
+    if (pthread_create(&hilo_planificador_cp, NULL, planificador_corto_plazo, NULL) != 0)
     {
         LOG_ERROR(kernel_log, "Error al crear hilo para planificador de corto plazo");
-        free(hilo_planificador_cp);
         terminar_kernel(EXIT_FAILURE);
     }
-    LOCK_CON_LOG(mutex_hilos);
-    list_add(lista_hilos, hilo_planificador_cp);
-    LOG_DEBUG(kernel_log, "Hilo %d agregado", list_size(lista_hilos));
-    UNLOCK_CON_LOG(mutex_hilos);
+    pthread_detach(hilo_planificador_cp);
 
-    pthread_t *hilo_rechazados = malloc(sizeof(pthread_t));
-    if (pthread_create(hilo_rechazados, NULL, verificar_procesos_rechazados, NULL) != 0)
+    pthread_t hilo_rechazados;
+    if (pthread_create(&hilo_rechazados, NULL, verificar_procesos_rechazados, NULL) != 0)
     {
         LOG_ERROR(kernel_log, "[PLANI LP] [EXIT] Error al crear hilo para verificar procesos rechazados");
-        free(hilo_rechazados);
         terminar_kernel(EXIT_FAILURE);
     }
-    LOCK_CON_LOG(mutex_hilos);
-    list_add(lista_hilos, hilo_rechazados);
-    LOG_DEBUG(kernel_log, "Hilo %d agregado", list_size(lista_hilos));
-    UNLOCK_CON_LOG(mutex_hilos);
+    pthread_detach(hilo_rechazados);
 }
 
 // AUXILIARES

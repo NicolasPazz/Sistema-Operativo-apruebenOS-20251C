@@ -57,11 +57,8 @@ extern t_list *lista_ios;
 // Conexiones
 extern pthread_mutex_t mutex_lista_cpus;
 extern pthread_mutex_t mutex_ios;
-extern t_list* lista_hilos;
-extern t_list* lista_sockets;
-extern pthread_mutex_t mutex_hilos;
+extern t_list *lista_sockets;
 extern pthread_mutex_t mutex_sockets;
-
 
 // Conexiones minimas
 extern bool conectado_cpu;
@@ -143,7 +140,6 @@ void iniciar_sincronizacion_kernel();
 void iniciar_diccionario_tiempos();
 void iniciar_diccionario_archivos_por_pcb();
 void terminar_kernel(int code);
-void terminar_hilo();
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //                                            MEMORIA                                           //
