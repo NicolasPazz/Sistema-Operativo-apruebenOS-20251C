@@ -80,12 +80,8 @@ void *timer_suspension(void *v_arg)
     }
     free(arg);
 
-    if (!suspender_proceso(pcb))
-    {
-        LOG_DEBUG(kernel_log, "No se pudo suspender el proceso PID=%d", pcb->PID);
-        UNLOCK_CON_LOG_PCB(pcb->mutex, pcb->PID);
-        return NULL;
-    }
+    suspender_proceso(pcb);
+
     cambiar_estado_pcb(pcb, SUSP_BLOCKED);
     UNLOCK_CON_LOG_PCB(pcb->mutex, pcb->PID);
 

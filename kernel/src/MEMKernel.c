@@ -129,8 +129,8 @@ static bool enviar_op_memoria(int op_code, int pid)
     enviar_paquete(paq, fd_memoria);
     eliminar_paquete(paq);
 
-    // Para operaciones de suspender, desuspender y dump memory, no esperar respuesta
-    if (op_code == SUSPENDER_PROCESO_OP || op_code == DESUSPENDER_PROCESO_OP || op_code == DUMP_MEMORY_OP)
+    // Para operaciones de suspender, no esperar respuesta
+    if (op_code == SUSPENDER_PROCESO_OP)
     {
         LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] Operación %d enviada sin esperar respuesta para PID %d", op_code, pid);
         desconectar_memoria(fd_memoria);
