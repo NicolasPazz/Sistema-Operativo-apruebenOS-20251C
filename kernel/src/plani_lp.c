@@ -3,6 +3,23 @@
 
 int procesos_new_rechazados = 0;
 
+/**
+ * @brief Planificador de largo plazo del kernel.
+ *
+ * Este hilo se encarga de gestionar el ingreso de procesos desde la cola NEW a la cola READY,
+ * siguiendo el algoritmo de ingreso configurado (FIFO o PMCP). 
+ * - Espera a que haya procesos en la cola NEW y verifica que la cola SUSPENDED READY esté vacía.
+ * - Si hay procesos rechazados esperando, rechaza nuevos procesos según la política.
+ * - Selecciona el proceso a ingresar a READY según el algoritmo configurado:
+ *   - FIFO: selecciona el primero en la cola.
+ *   - PMCP: selecciona el último si es el de menor tamaño, de lo contrario lo rechaza.
+ * - Inicializa el proceso en memoria y lo mueve a READY si es posible.
+ * - Utiliza semáforos y mutex para la sincronización entre hilos.
+ * - Registra eventos y estados en el log del kernel para facilitar el debugging.
+ *
+ * @param arg Argumento para el hilo (no utilizado).
+ * @return NULL al finalizar el hilo o en caso de error.
+ */
 void *planificador_largo_plazo(void *arg)
 {
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
@@ -115,6 +132,17 @@ void *planificador_largo_plazo(void *arg)
     return NULL;
 }
 
+/**
+ * @brief Gestiona la finalización de procesos en la cola EXIT.
+ *
+ * Este hilo espera a que haya procesos en la cola EXIT, adquiere el mutex correspondiente,
+ * verifica si la cola está vacía y, en ese caso, libera el mutex y termina. Si hay procesos,
+ * selecciona uno por FIFO, lo procesa llamando a EXIT y luego señala que hay procesos rechazados.
+ * El hilo está preparado para ser cancelado de forma diferida.
+ *
+ * @param arg Argumento para el hilo (no utilizado).
+ * @return NULL al finalizar la gestión o si no hay procesos en EXIT.
+ */
 void *gestionar_exit(void *arg)
 {
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
@@ -146,12 +174,27 @@ void *gestionar_exit(void *arg)
 
         EXIT(&pcb);
 
-        SEM_POST(sem_procesos_rechazados);
+        SEM_POST(sem_liberacion_memoria);
     }
 
     return NULL;
 }
 
+/**
+ * @brief Verifica y gestiona los procesos rechazados en el sistema.
+ *
+ * Esta función se ejecuta en un hilo separado y se encarga de revisar periódicamente
+ * los procesos que han sido rechazados, tanto en la cola de procesos suspendidos (SUSP READY)
+ * como en la cola de procesos nuevos (NEW). Según el algoritmo de ingreso a READY configurado
+ * (FIFO o PMCP), selecciona el proceso correspondiente para intentar desuspenderlo o inicializarlo
+ * en memoria. Si la operación es exitosa, el proceso cambia su estado a READY.
+ *
+ * La función utiliza semáforos y mutex para garantizar la sincronización entre hilos y evitar
+ * condiciones de carrera. Además, realiza logging detallado para facilitar el seguimiento
+ * de las operaciones y posibles errores.
+ *
+ * @return NULL al finalizar la ejecución del hilo.
+ */
 void *verificar_procesos_rechazados()
 {
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
@@ -159,7 +202,7 @@ void *verificar_procesos_rechazados()
 
     while (1)
     {
-        SEM_WAIT(sem_procesos_rechazados);
+        SEM_WAIT(sem_liberacion_memoria);
         LOCK_CON_LOG(mutex_cola_susp_ready);
         LOCK_CON_LOG(mutex_inicializacion_procesos);
 

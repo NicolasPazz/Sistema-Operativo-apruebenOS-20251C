@@ -4,7 +4,7 @@
 #include "types.h"
 #include "../../utils/headers/sockets.h"
 
-int conectar_memoria(); // abre conexión efímera + handshake
+int conectar_memoria(); 
 void desconectar_memoria(int fd);
 bool inicializar_proceso_en_memoria(t_pcb *pcb);
 bool hay_espacio_suficiente_memoria(int tamanio);

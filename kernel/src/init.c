@@ -82,7 +82,7 @@ sem_t sem_proceso_a_exit;
 sem_t sem_cpu_disponible;
 sem_t sem_planificador_cp;
 sem_t sem_interrupciones;
-sem_t sem_procesos_rechazados;
+sem_t sem_liberacion_memoria;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //                                       INICIALIZACIONES                                       //
@@ -181,7 +181,7 @@ void iniciar_sincronizacion_kernel()
     sem_init(&sem_cpu_disponible, 0, 0);
     sem_init(&sem_planificador_cp, 0, 0);
     sem_init(&sem_interrupciones, 0, 0);
-    sem_init(&sem_procesos_rechazados, 0, 0);
+    sem_init(&sem_liberacion_memoria, 0, 0);
 
     lista_cpus = list_create();
     lista_ios = list_create();
@@ -311,7 +311,7 @@ void terminar_kernel(int code)
     pthread_mutex_destroy(&mutex_cola_interrupciones);
 
     pthread_mutex_destroy(&mutex_procesos_rechazados);
-    sem_destroy(&sem_procesos_rechazados);
+    sem_destroy(&sem_liberacion_memoria);
 
     pthread_mutex_destroy(&mutex_inicializacion_procesos);
 
@@ -779,7 +779,7 @@ void *atender_io(void *arg)
                 cambiar_estado_pcb(pcb_fin, SUSP_READY);
                 UNLOCK_CON_LOG_PCB(pcb_fin->mutex, pcb_fin->PID);
 
-                SEM_POST(sem_procesos_rechazados);
+                SEM_POST(sem_liberacion_memoria);
             }
             else if (pcb_fin->Estado == BLOCKED)
             {

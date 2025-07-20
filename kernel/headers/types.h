@@ -4,9 +4,6 @@
 #include "../../utils/headers/sockets.h"
 #include "../../memoria/headers/estructuras.h"
 
-/////////////////////////////// TADs ///////////////////////////////
-
-///// PCB
 typedef struct PCB
 {
     int PID;
@@ -41,7 +38,6 @@ typedef struct
     t_temporal *cronometro;
 } t_pcb_temporal;
 
-///// CPU
 typedef enum
 {
     CPU_DISPATCH,
@@ -57,7 +53,6 @@ typedef struct CPU
     op_code instruccion_actual;
 } cpu;
 
-///// IO
 typedef enum
 {
     IO_DISPONIBLE,
@@ -72,22 +67,19 @@ typedef struct
     t_pcb *proceso_actual;
 } io;
 
-///// PCBs IO
 typedef struct PCB_IO
 {
     t_pcb *pcb;
     io *io;
-    int tiempo_a_usar;     // Tiempo en ms que se va a usar el dispositivo IO
+    int tiempo_a_usar;
 } t_pcb_io;
 
-///// PCBs DUMP MEMORY
 typedef struct PCB_DUMP_MEMORY
 {
     t_pcb *pcb;
-    int timestamp;     // Timestamp para identificar la operación de dump
+    int timestamp;
 } t_pcb_dump_memory;
 
-///// INTERRUPCIONES
 typedef struct
 {
     cpu *cpu_a_desalojar;

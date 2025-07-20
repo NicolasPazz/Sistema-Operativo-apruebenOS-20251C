@@ -1,7 +1,6 @@
 #ifndef PLANIFICADORES_H
 #define PLANIFICADORES_H
-
-#define _GNU_SOURCE // Para usleep() y otras funciones POSIX
+#define _GNU_SOURCE
 
 #include "kernel.h"
 #include "types.h"
@@ -31,7 +30,7 @@ extern sem_t sem_finalizacion_de_proceso;
 extern sem_t sem_cpu_disponible;
 extern sem_t sem_planificador_cp;
 extern sem_t sem_interrupciones;
-extern sem_t sem_procesos_rechazados;
+extern sem_t sem_liberacion_memoria;
 extern int cpu_libre;
 
 typedef enum

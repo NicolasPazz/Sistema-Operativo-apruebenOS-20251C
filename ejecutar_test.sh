@@ -162,7 +162,7 @@ case $numero in
     [[ $exit_io1     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 1 finalizó con error \e[0m"    && ((errores++))
     [[ $exit_io2     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 2 finalizó con error \e[0m"    && ((errores++))
 
-    [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
+    [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" && chmod +x ./detectar_deadlock_kernel.sh && ./detectar_deadlock_kernel.sh || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
 
     imprimir_alerta_multicolor "VERIFICÁ MANUALMENTE QUE SE HAYAN USADO AMBAS IO DE FORMA PARALELA"
     ;;
@@ -217,7 +217,7 @@ case $numero in
     [[ $exit_cpu1    -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ CPU 1 finalizó con error \e[0m"   && ((errores++))
     [[ $exit_io1     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 1 finalizó con error \e[0m"    && ((errores++))
 
-    [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
+    [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" && chmod +x ./detectar_deadlock_kernel.sh && ./detectar_deadlock_kernel.sh || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
 
     imprimir_alerta_multicolor "VERIFICÁ MANUALMENTE QUE EL PID 5 ES EL DE MENOR PROMEDIO DE ESPERA"
     ;;
@@ -272,7 +272,7 @@ case $numero in
     [[ $exit_cpu1    -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ CPU 1 finalizó con error \e[0m"   && ((errores++))
     [[ $exit_io1     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 1 finalizó con error \e[0m"    && ((errores++))
 
-    [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
+    [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" && chmod +x ./detectar_deadlock_kernel.sh && ./detectar_deadlock_kernel.sh || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
 
     imprimir_alerta_multicolor "VERIFICÁ MANUALMENTE QUE OCURRE DESALOJO;"
     imprimir_alerta_multicolor "Y QUE EL PID 5 ES EL DE MENOR PROMEDIO DE ESPERA, Y ES MENOR QUE EN SJF"
@@ -321,7 +321,7 @@ case $numero in
     [[ $exit_cpu1    -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ CPU 1 finalizó con error \e[0m"   && ((errores++))
     [[ $exit_io1     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 1 finalizó con error \e[0m"    && ((errores++))
 
-    [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
+    [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" && chmod +x ./detectar_deadlock_kernel.sh && ./detectar_deadlock_kernel.sh || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
 
     imprimir_alerta_multicolor "VERIFICÁ MANUALMENTE QUE PID 1, 2, 3, 4, 6, 7 Y 8 SON SUSPENDIDOS Y ENVIADOS A SWAP"
     ;;
@@ -369,7 +369,7 @@ case $numero in
     [[ $exit_cpu1    -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ CPU 1 finalizó con error \e[0m"   && ((errores++))
     [[ $exit_io1     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 1 finalizó con error \e[0m"    && ((errores++))
 
-    [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
+    [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" && chmod +x ./detectar_deadlock_kernel.sh && ./detectar_deadlock_kernel.sh || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
 
     imprimir_alerta_multicolor "VERIFICÁ MANUALMENTE QUE EL PID 5 ES EL ULTIMO EN INGRESAR A READY;"
     imprimir_alerta_multicolor "Y QUE PID 1, 2, 3, 4, 6, 7 Y 8 SON SUSPENDIDOS Y ENVIADOS A SWAP"
@@ -418,7 +418,7 @@ case $numero in
     [[ $exit_cpu1    -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ CPU 1 finalizó con error \e[0m"   && ((errores++))
     [[ $exit_io1     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 1 finalizó con error \e[0m"    && ((errores++))
 
-    [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
+    [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" && chmod +x ./detectar_deadlock_kernel.sh && ./detectar_deadlock_kernel.sh || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
 
     imprimir_alerta_multicolor "VERIFICÁ MANUALMENTE QUE AL INICIAR LA IO DE 999999 SE SUSPENDE;"
     imprimir_alerta_multicolor "Y QUE LOS ARCHIVOS DE DUMP Y EL DE SWAP CON CONSISTENTES CON LA PRUEBA"
@@ -467,7 +467,7 @@ case $numero in
     [[ $exit_cpu1    -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ CPU 1 finalizó con error \e[0m"   && ((errores++))
     [[ $exit_io1     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 1 finalizó con error \e[0m"    && ((errores++))
 
-    [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
+    [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" && chmod +x ./detectar_deadlock_kernel.sh && ./detectar_deadlock_kernel.sh || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
 
     imprimir_alerta_multicolor "VERIFICÁ MANUALMENTE QUE LOS REEMPLAZOS DE CACHÉ SE REALIZAN CORRECTAMENTE DE ACUERDO A CLOCK"
     ;;
@@ -515,7 +515,7 @@ case $numero in
     [[ $exit_cpu1    -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ CPU 1 finalizó con error \e[0m"   && ((errores++))
     [[ $exit_io1     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 1 finalizó con error \e[0m"    && ((errores++))
 
-    [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
+    [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" && chmod +x ./detectar_deadlock_kernel.sh && ./detectar_deadlock_kernel.sh || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
 
     imprimir_alerta_multicolor "VERIFICÁ MANUALMENTE QUE LOS REEMPLAZOS DE CACHÉ SE REALIZAN CORRECTAMENTE DE ACUERDO A CLOCK M"
     ;;
@@ -563,7 +563,7 @@ case $numero in
     [[ $exit_cpu1    -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ CPU 1 finalizó con error \e[0m"   && ((errores++))
     [[ $exit_io1     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 1 finalizó con error \e[0m"    && ((errores++))
 
-    [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
+    [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" && chmod +x ./detectar_deadlock_kernel.sh && ./detectar_deadlock_kernel.sh || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
 
     imprimir_alerta_multicolor "VERIFICÁ MANUALMENTE QUE LOS REEMPLAZOS DE LA TLB SE REALIZAN CORRECTAMENTE DE ACUERDO A FIFO"
     ;;
@@ -611,7 +611,7 @@ case $numero in
     [[ $exit_cpu1    -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ CPU 1 finalizó con error \e[0m"   && ((errores++))
     [[ $exit_io1     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 1 finalizó con error \e[0m"    && ((errores++))
 
-    [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
+    [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" && chmod +x ./detectar_deadlock_kernel.sh && ./detectar_deadlock_kernel.sh || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
 
     imprimir_alerta_multicolor "VERIFICÁ MANUALMENTE QUE LOS REEMPLAZOS DE LA TLB SE REALIZAN CORRECTAMENTE DE ACUERDO A LRU"
     ;;
@@ -709,7 +709,7 @@ case $numero in
     [[ $exit_io3     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 3 finalizó con error \e[0m"    && ((errores++))
     [[ $exit_io4     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 4 finalizó con error \e[0m"    && ((errores++))
 
-    [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
+    [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" && chmod +x ./detectar_deadlock_kernel.sh && ./detectar_deadlock_kernel.sh || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
 
     imprimir_alerta_multicolor "VERIFICÁ CON HTOP QUE NO HAYA ESPERAS ACTIVAS NI MEMORY LEAKS; NO HAY ERRORES NI FINALIZA DE MANERA ABRUPTA"
     ;;
@@ -807,7 +807,7 @@ case $numero in
     [[ $exit_io3     -ne 0 ]] && echo -e "\t\t\e[1;97;41m ❌ IO 3 finalizó con error \e[0m"    && ((errores++))
     [[ $exit_io4     -ne 0 ]] && echo -e "\t\t\e[1;97;41m ❌ IO 4 finalizó con error \e[0m"    && ((errores++))
 
-    [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
+    [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" && chmod +x ./detectar_deadlock_kernel.sh && ./detectar_deadlock_kernel.sh || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
 
     imprimir_alerta_multicolor "VERIFICÁ CON HTOP QUE NO HAYA ESPERAS ACTIVAS NI MEMORY LEAKS; NO HAY ERRORES NI FINALIZA DE MANERA ABRUPTA"
 
@@ -910,6 +910,8 @@ else
         echo -e "\t\e[1;30;42m 🟢 No se encontraron errores ni advertencias en $log_file \e[0m"
     fi
 fi
+
+
 
 echo ""
 echo " Test finalizado "

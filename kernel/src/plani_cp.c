@@ -1,5 +1,25 @@
 #include "../headers/planificadores.h"
 
+/**
+ * @brief Función principal del planificador de corto plazo.
+ *
+ * Esta función implementa el ciclo de planificación de corto plazo del kernel, 
+ * seleccionando procesos de la cola READY para ser ejecutados según el algoritmo 
+ * de planificación configurado (FIFO, SJF o SRT). 
+ * 
+ * - Espera la señal de sem_planificador_cp para iniciar la planificación.
+ * - Bloquea los mutex necesarios para acceder a las estructuras compartidas.
+ * - Verifica si hay procesos en la cola READY y si hay CPUs disponibles.
+ * - Selecciona el proceso a ejecutar según el algoritmo de corto plazo:
+ *      - FIFO: selecciona el primer proceso en la cola.
+ *      - SJF: selecciona el proceso con la menor ráfaga estimada.
+ *      - SRT: selecciona el proceso con la menor ráfaga restante, pudiendo interrumpir CPUs si es necesario.
+ * - Desbloquea los mutex y realiza el dispatch del proceso seleccionado.
+ * - Si no hay procesos o CPUs disponibles, espera la próxima señal.
+ *
+ * @param arg Argumento para la función (no utilizado).
+ * @return NULL al finalizar la función.
+ */
 void *planificador_corto_plazo(void *arg)
 {
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
@@ -100,6 +120,15 @@ void *planificador_corto_plazo(void *arg)
     return NULL;
 }
 
+/**
+ * Despacha un proceso para su ejecución en una CPU disponible.
+ *
+ * @param proceso_a_ejecutar Puntero al PCB (Process Control Block) del proceso que se va a ejecutar.
+ *
+ * El método busca una CPU libre y, si la encuentra, asigna el proceso a dicha CPU para su ejecución.
+ * Si no hay CPUs libres, se registra el evento en el log y la función retorna sin despachar el proceso.
+ * Utiliza mecanismos de sincronización para asegurar el acceso seguro a la lista de CPUs.
+ */
 void dispatch(t_pcb *proceso_a_ejecutar)
 {
     LOG_DEBUG(kernel_log, "=== DISPATCH INICIADO PARA PID %d ===", proceso_a_ejecutar->PID);

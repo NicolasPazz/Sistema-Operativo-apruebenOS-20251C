@@ -1,5 +1,24 @@
 #include "../headers/planificadores.h"
 
+/**
+ * @brief Hilo temporizador para la suspensión de un proceso.
+ *
+ * Esta función se ejecuta en un hilo separado y espera un tiempo determinado (TIEMPO_SUSPENSION)
+ * desde que el proceso pasó a estado BLOCKED. Si el proceso sigue en estado BLOCKED y la bandera
+ * de suspensión sigue activa, se procede a suspender el proceso y cambiar su estado a SUSP_BLOCKED.
+ * 
+ * @param v_arg Puntero a una estructura t_timer_arg que contiene el PCB, la bandera de vigencia y el PID.
+ * @return Siempre retorna NULL.
+ *
+ * Comportamiento:
+ * - Verifica que los argumentos sean válidos.
+ * - Calcula el tiempo transcurrido desde que el proceso pasó a BLOCKED.
+ * - Espera el tiempo restante para la suspensión.
+ * - Si la bandera de suspensión sigue activa y el proceso sigue en BLOCKED, lo suspende.
+ * - Libera la memoria utilizada por la bandera y los argumentos.
+ * - Realiza logging en cada paso relevante.
+ * - Señaliza la liberación de memoria mediante un semáforo.
+ */
 void *timer_suspension(void *v_arg)
 {
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
@@ -87,7 +106,7 @@ void *timer_suspension(void *v_arg)
 
     LOG_DEBUG(kernel_log, AZUL("[PLANI MP] Proceso PID %d suspendido correctamente"), pcb->PID);
 
-    SEM_POST(sem_procesos_rechazados);
+    SEM_POST(sem_liberacion_memoria);
 
     return NULL;
 }

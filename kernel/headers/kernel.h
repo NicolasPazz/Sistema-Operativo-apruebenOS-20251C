@@ -12,18 +12,7 @@
 #include <unistd.h>
 #include <commons/collections/queue.h>
 
-// Logger
 extern t_log *kernel_log;
-
-// Cronometro para MT en PCB
-extern t_dictionary *tiempos_por_pid;
-extern t_dictionary *archivo_por_pcb;
-
-// Sockets
-extern int fd_kernel_dispatch;
-extern int fd_interrupt;
-
-// Config
 extern t_config *kernel_config;
 extern char *IP_MEMORIA;
 extern char *PUERTO_MEMORIA;
@@ -37,7 +26,21 @@ extern double TIEMPO_SUSPENSION;
 extern double ESTIMACION_INICIAL;
 extern char *LOG_LEVEL;
 
-// Colas de Estados
+extern t_dictionary *tiempos_por_pid;
+extern t_dictionary *archivo_por_pcb;
+
+extern int fd_kernel_dispatch;
+extern int fd_interrupt;
+extern pthread_mutex_t mutex_lista_cpus;
+extern pthread_mutex_t mutex_ios;
+extern t_list *lista_sockets;
+extern pthread_mutex_t mutex_sockets;
+extern bool conectado_cpu;
+extern bool conectado_io;
+extern pthread_mutex_t mutex_conexiones;
+extern t_list *lista_cpus;
+extern t_list *lista_ios;
+
 extern t_list *cola_new;
 extern t_list *cola_ready;
 extern t_list *cola_running;
@@ -49,21 +52,6 @@ extern t_list *cola_procesos;
 extern t_list *pcbs_bloqueados_por_dump_memory;
 extern t_list *pcbs_esperando_io;
 extern t_list *cola_interrupciones;
-
-// Listas y semaforos de CPUs y IOs conectadas
-extern t_list *lista_cpus;
-extern t_list *lista_ios;
-
-// Conexiones
-extern pthread_mutex_t mutex_lista_cpus;
-extern pthread_mutex_t mutex_ios;
-extern t_list *lista_sockets;
-extern pthread_mutex_t mutex_sockets;
-
-// Conexiones minimas
-extern bool conectado_cpu;
-extern bool conectado_io;
-extern pthread_mutex_t mutex_conexiones;
 
 #define SEM_WAIT(sem)                                                                     \
     do                                                                                    \
@@ -128,10 +116,6 @@ extern pthread_mutex_t mutex_conexiones;
         log_error(logger, "%s: " fmt, __func__, ##__VA_ARGS__); \
     } while (0)
 
-//////////////////////////////////////////////////////////////////////////////////////////////////
-//                                       INICIALIZACIONES                                       //
-//////////////////////////////////////////////////////////////////////////////////////////////////
-
 void iniciar_config_kernel();
 void iniciar_logger_kernel();
 void iniciar_logger_kernel_debug();
@@ -140,30 +124,10 @@ void iniciar_sincronizacion_kernel();
 void iniciar_diccionario_tiempos();
 void iniciar_diccionario_archivos_por_pcb();
 void terminar_kernel(int code);
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-//                                            MEMORIA                                           //
-//////////////////////////////////////////////////////////////////////////////////////////////////
-
 void *hilo_cliente_memoria(void *_);
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-//                                         CPU DISPATCH                                         //
-//////////////////////////////////////////////////////////////////////////////////////////////////
-
 void *hilo_servidor_dispatch(void *_);
 void *atender_cpu_dispatch(void *arg);
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-//                                         CPU INTERRUPT                                        //
-//////////////////////////////////////////////////////////////////////////////////////////////////
-
 void *hilo_servidor_interrupt(void *_);
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-//                                              IO                                              //
-//////////////////////////////////////////////////////////////////////////////////////////////////
-
 void *hilo_servidor_io(void *_);
 void *atender_io(void *arg);
 

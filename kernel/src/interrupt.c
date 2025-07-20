@@ -1,6 +1,13 @@
 #include "../headers/planificadores.h"
 #include <commons/collections/list.h>
 
+/**
+ * @brief Inicializa el manejador de interrupciones creando un hilo dedicado.
+ *
+ * Crea un hilo que ejecuta la función interrupt_handler para manejar las interrupciones
+ * encoladas. Si ocurre un error al crear el hilo, se registra en el log.
+ */
+
 void iniciar_interrupt_handler()
 {
     pthread_t hilo_interrupt_handler;
@@ -12,6 +19,16 @@ void iniciar_interrupt_handler()
     pthread_detach(hilo_interrupt_handler);
 }
 
+/**
+ * @brief Función que maneja las interrupciones encoladas.
+ *
+ * Espera señales en el semáforo de interrupciones, toma la interrupción de la cola,
+ * y ejecuta la función de desalojo de CPU correspondiente. Si la cola está vacía,
+ * termina la ejecución del hilo. Libera la memoria de la interrupción procesada.
+ *
+ * @param arg Argumento no utilizado.
+ * @return NULL al finalizar la ejecución.
+ */
 void *interrupt_handler(void *arg)
 {
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
@@ -42,6 +59,14 @@ void *interrupt_handler(void *arg)
     return NULL;
 }
 
+/**
+ * @brief Encola una nueva interrupción para desalojar una CPU específica.
+ *
+ * Crea una nueva estructura de interrupción, la agrega a la cola protegida por mutex,
+ * y señala al semáforo para que el manejador procese la interrupción.
+ *
+ * @param cpu_a_desalojar Puntero a la CPU que debe ser desalojada.
+ */
 void interrupt(cpu *cpu_a_desalojar)
 {
     t_interrupcion *nueva = malloc(sizeof(t_interrupcion));
