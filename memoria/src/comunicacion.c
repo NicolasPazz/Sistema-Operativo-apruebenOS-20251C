@@ -108,7 +108,7 @@ void procesar_conexion(void* void_args) {
     bool es_cpu = false;  
     switch (handshake) {
         case HANDSHAKE_MEMORIA_KERNEL:
-            log_info(logger, AMARILLO("## Kernel Conectado - FD del socket: %d"), cliente_socket);
+            log_trace(logger, AMARILLO("## Kernel Conectado - FD del socket: %d"), cliente_socket);
             fd_kernel = cliente_socket;
             break;
 
@@ -167,6 +167,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             char* nombre_proceso = strdup((char*)list_get(lista, 1)); // Nombre del proceso
             int tamanio = *(int*)list_get(lista, 2); // Size del proceso en memoria
             
+            log_info(logger, AMARILLO("## Kernel solicita INIT_PROC para PID: %d"), pid);
             log_debug(logger, "[INIT_PROC_OP] Inicialización de proceso solicitada - PID: %d, Tamaño: %d, Nombre: '%s'", pid, tamanio, nombre_proceso);
 
             // ========== EJECUCIÓN DEL PROCESO DE CREACIÓN ==========
@@ -213,6 +214,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
 
             t_list* parametros = recibir_contenido_paquete(cliente_socket);
             int pid = *(int*)list_get(parametros, 0);
+            
+            log_info(logger, AMARILLO("## Kernel solicita DUMP_MEMORY para PID: %d"), pid);
 
             // Ejecutar el dump
             t_resultado_memoria resultado = procesar_memory_dump(pid);
@@ -234,6 +237,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 return;
             }
             int pid = *(int*)list_get(lista, 0);
+            log_info(logger, AMARILLO("## Kernel solicita FINALIZAR_PROC para PID: %d"), pid);
             log_debug(logger, "FINALIZAR_PROC_OP: PID recibido en paquete: %d", pid);
             list_destroy_and_destroy_elements(lista, free);
             log_trace(logger, "Finalización de proceso solicitada - PID: %d", pid);
@@ -496,6 +500,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 return;
             }
             int pid = *(int*)list_get(parametros, 0);
+            
+            log_info(logger, AMARILLO("## Kernel solicita SUSPENDER_PROCESO para PID: %d"), pid);
             list_destroy_and_destroy_elements(parametros, free);
 
             log_trace(logger, "Suspensión de proceso solicitada - PID: %d", pid);
@@ -503,7 +509,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             t_resultado_memoria resultado = suspender_proceso_en_memoria(pid);
 
             t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
-            //send(cliente_socket, &respuesta, sizeof(t_respuesta), 0); Kernel ya no espera nada
+            //send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
 
             log_trace(logger, "Suspensión de proceso %s - PID: %d",
                     (respuesta == OK) ? "exitosa" : "fallida", pid);
@@ -520,7 +526,9 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                 return;
             }
             int pid = *(int*)list_get(parametros, 0);
-            list_destroy_and_destroy_elements(parametros, free);
+            
+            log_info(logger, AMARILLO("## Kernel solicita DESUSPENDER_PROCESO para PID: %d"), pid);
+             list_destroy_and_destroy_elements(parametros, free);
 
             log_trace(logger, "Des-suspensión de proceso solicitada - PID: %d", pid);
 
