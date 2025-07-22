@@ -116,12 +116,12 @@ void* recibir_kernel_dispatch(void* arg) {
                 // Recibir PC y PID usando recibir_contenido_paquete (con prefijo de tamaño)
                 t_list* lista = recibir_contenido_paquete(fd_kernel_dispatch);
                 if (lista == NULL) {
-                    log_debug(cpu_log, AZUL("[DISPATCH]")" Error al recibir paquete EXEC_OP");
+                    log_trace(cpu_log, AZUL("[DISPATCH]")" Error al recibir paquete EXEC_OP");
                     break;
                 }
 
                 if (list_size(lista) < 2) {
-                    log_debug(cpu_log, AZUL("[DISPATCH]")" Paquete EXEC_OP incompleto - Faltan datos");
+                    log_trace(cpu_log, AZUL("[DISPATCH]")" Paquete EXEC_OP incompleto - Faltan datos");
                     list_destroy_and_destroy_elements(lista, free);
                     break;
                 }
@@ -144,11 +144,11 @@ void* recibir_kernel_dispatch(void* arg) {
                 list_destroy_and_destroy_elements(lista, free);
                 break;
             case -1:
-                log_debug(cpu_log, "Se desconectó el Kernel. Finalizando CPU...");
+                log_trace(cpu_log, "Se desconectó el Kernel. Finalizando CPU...");
                 terminar_programa();
                 exit(EXIT_SUCCESS);
             default:
-                log_debug(cpu_log, "[DISPATCH] Operación desconocida de Dispatch: %d", cod_op);
+                log_trace(cpu_log, "[DISPATCH] Operación desconocida de Dispatch: %d", cod_op);
         }
     }
     return NULL;
@@ -159,7 +159,7 @@ void* recibir_kernel_interrupt(void* arg) {
         int cod_op = recibir_operacion(fd_kernel_interrupt);
         switch (cod_op) {
             case -1:
-                log_debug(cpu_log, "Se desconectó el Kernel. Finalizando CPU...");
+                log_trace(cpu_log, "Se desconectó el Kernel. Finalizando CPU...");
                 terminar_programa();
                 exit(EXIT_SUCCESS);
             case INTERRUPCION_OP:
@@ -169,7 +169,7 @@ void* recibir_kernel_interrupt(void* arg) {
 
                 t_list* datos = recibir_contenido_paquete(fd_kernel_interrupt);
                 if (list_size(datos) < 1) {
-                    log_debug(cpu_log, "[INTERRUPT]: No se recibió PID válido en interrupción");
+                    log_trace(cpu_log, "[INTERRUPT]: No se recibió PID válido en interrupción");
                     list_destroy_and_destroy_elements(datos, free);
                     break;
                 }
@@ -177,14 +177,14 @@ void* recibir_kernel_interrupt(void* arg) {
                 pid_interrupt = *(int*)list_get(datos, 0);
                 list_destroy_and_destroy_elements(datos, free);
 
-                log_debug(cpu_log, VERDE("[INTERRUPT]: ## PID recibido para interrupción: %d mientras ejecuta PID %d"), pid_interrupt, pid_ejecutando);
+                log_trace(cpu_log, VERDE("[INTERRUPT]: ## PID recibido para interrupción: %d mientras ejecuta PID %d"), pid_interrupt, pid_ejecutando);
 
                 pthread_mutex_lock(&mutex_estado_proceso);
                 hay_interrupcion = 1;
                 pthread_mutex_unlock(&mutex_estado_proceso);
                 break;
             default:
-                log_debug(cpu_log, "Operacion desconocida de Interrupt: %d", cod_op);
+                log_trace(cpu_log, "Operacion desconocida de Interrupt: %d", cod_op);
         }
     }
 }

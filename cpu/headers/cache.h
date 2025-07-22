@@ -35,4 +35,6 @@ void cache_modificar(int pid, int numero_pagina, int direccion_logica, char* dat
 void cache_escribir(int pid, int frame, char* datos, bool modificado);
 char* cache_leer(int pid, int numero_pagina);
 void enviar_actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido);
+void mostrar_estado_cache_debug(const char* momento);
+void mostrar_entradas_cache_compacto();
 #endif

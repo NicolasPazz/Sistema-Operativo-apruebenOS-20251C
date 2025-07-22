@@ -19,7 +19,7 @@ void inicializar_mmu() {
 
 int traducir_direccion_fisica(int direccion_logica) {
     if (cfg_memoria == NULL) {
-        log_debug(cpu_log, "ERROR: cfg_memoria no inicializada");
+        log_trace(cpu_log, "ERROR: cfg_memoria no inicializada");
         exit(EXIT_FAILURE);
     }
 
@@ -61,18 +61,18 @@ int traducir_direccion_fisica(int direccion_logica) {
 
         op_code codigo_operacion;
         if (recv(fd_memoria, &codigo_operacion, sizeof(op_code), MSG_WAITALL) != sizeof(op_code)) {
-            log_debug(cpu_log, "PID: %d - Error al recibir op_code de respuesta desde Memoria", pid_ejecutando);
+            log_trace(cpu_log, "PID: %d - Error al recibir op_code de respuesta desde Memoria", pid_ejecutando);
             exit(EXIT_FAILURE);
         }
 
         if (codigo_operacion != PAQUETE_OP) {
-            log_debug(cpu_log, "PID: %d - Op_code inesperado en respuesta: %d (esperaba PAQUETE_OP)", pid_ejecutando, codigo_operacion);
+            log_trace(cpu_log, "PID: %d - Op_code inesperado en respuesta: %d (esperaba PAQUETE_OP)", pid_ejecutando, codigo_operacion);
             exit(EXIT_FAILURE);
         }
 
         t_list* lista_respuesta = recibir_contenido_paquete(fd_memoria);
         if (lista_respuesta == NULL || list_size(lista_respuesta) < 1) {
-            log_debug(cpu_log, "PID: %d - Error al recibir respuesta de marco desde Memoria", pid_ejecutando);
+            log_trace(cpu_log, "PID: %d - Error al recibir respuesta de marco desde Memoria", pid_ejecutando);
             exit(EXIT_FAILURE);
         }
 
@@ -80,7 +80,7 @@ int traducir_direccion_fisica(int direccion_logica) {
         list_destroy_and_destroy_elements(lista_respuesta, free);
 
         if (frame == -1) {
-            log_debug(cpu_log, "PID: %d - Error al traducir dirección: Marco no encontrado", pid_ejecutando);
+            log_trace(cpu_log, "PID: %d - Error al traducir dirección: Marco no encontrado", pid_ejecutando);
             exit(EXIT_FAILURE);
         }
 
@@ -90,7 +90,7 @@ int traducir_direccion_fisica(int direccion_logica) {
             pthread_mutex_lock(&mutex_tlb);
             tlb_insertar(pid_ejecutando, nro_pagina, frame);
             pthread_mutex_unlock(&mutex_tlb);
-            log_debug(cpu_log, "TLB insertada (PID=%d): Página %d -> Frame %d", pid_ejecutando, nro_pagina, frame);
+            log_trace(cpu_log, "TLB insertada (PID=%d): Página %d -> Frame %d", pid_ejecutando, nro_pagina, frame);
         }
     }
     return frame * tam_pagina + desplazamiento;
@@ -174,7 +174,7 @@ void desalojar_proceso_tlb(int pid) {
     for (int i = 0; i < list_size(tlb); i++) {
         entrada_tlb_t* entrada = list_get(tlb, i);
         if (entrada && entrada->pid == pid) {
-            log_debug(cpu_log, "Limpiando entrada TLB: PID %d, Página %d, Frame %d", entrada->pid, entrada->pagina, entrada->frame);
+            log_trace(cpu_log, "Limpiando entrada TLB: PID %d, Página %d, Frame %d", entrada->pid, entrada->pagina, entrada->frame);
             free(entrada);
             list_remove(tlb, i);
             i--; // ajustar índice tras eliminación

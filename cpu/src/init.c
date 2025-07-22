@@ -80,14 +80,14 @@ void iniciar_logger_cpu() {
 void* conectar_cpu_memoria() {
     fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, cpu_log);
     if (fd_memoria == -1) {
-        log_debug(cpu_log, "Error al conectar CPU a Memoria");
+        log_trace(cpu_log, "Error al conectar CPU a Memoria");
         exit(EXIT_FAILURE);
     }
 
     /* ────────────── 1. handshake ────────────── */
     int handshake = HANDSHAKE_MEMORIA_CPU;
     if (send(fd_memoria, &handshake, sizeof(int), 0) <= 0) {
-        log_debug(cpu_log, "Error al enviar handshake a Memoria: %s", strerror(errno));
+        log_trace(cpu_log, "Error al enviar handshake a Memoria: %s", strerror(errno));
         close(fd_memoria);
         exit(EXIT_FAILURE);
     }
@@ -96,7 +96,7 @@ void* conectar_cpu_memoria() {
     /* ────────────── 2. pedir la configuración ────────────── */
     op_code op = PEDIR_CONFIG_CPU_OP;
     if (send(fd_memoria, &op, sizeof(op_code), 0) <= 0) {
-        log_debug(cpu_log, "Error al solicitar configuración a Memoria: %s", strerror(errno));
+        log_trace(cpu_log, "Error al solicitar configuración a Memoria: %s", strerror(errno));
         close(fd_memoria);
         exit(EXIT_FAILURE);
     }
@@ -123,13 +123,13 @@ void* conectar_cpu_memoria() {
 void* conectar_kernel_dispatch() {
     fd_kernel_dispatch = crear_conexion(IP_KERNEL, PUERTO_KERNEL_DISPATCH, cpu_log);
     if (fd_kernel_dispatch == -1) {
-        log_debug(cpu_log, "Error al conectar CPU a Kernel Dispatch");
+        log_trace(cpu_log, "Error al conectar CPU a Kernel Dispatch");
         exit(EXIT_FAILURE);
     }
 
     int handshake = HANDSHAKE_CPU_KERNEL_DISPATCH;
     if (send(fd_kernel_dispatch, &handshake, sizeof(int), 0) <= 0) {
-        log_debug(cpu_log, "Error al enviar handshake a Kernel Dispatch: %s", strerror(errno));
+        log_trace(cpu_log, "Error al enviar handshake a Kernel Dispatch: %s", strerror(errno));
         close(fd_kernel_dispatch);
         exit(EXIT_FAILURE);
     }
@@ -141,13 +141,13 @@ void* conectar_kernel_dispatch() {
 void* conectar_kernel_interrupt() {
     fd_kernel_interrupt = crear_conexion(IP_KERNEL, PUERTO_KERNEL_INTERRUPT, cpu_log);
     if (fd_kernel_interrupt == -1) {
-        log_debug(cpu_log, "Error al conectar CPU a Kernel Interrupt");
+        log_trace(cpu_log, "Error al conectar CPU a Kernel Interrupt");
         exit(EXIT_FAILURE);
     }
 
     int handshake = HANDSHAKE_CPU_KERNEL_INTERRUPT;
     if (send(fd_kernel_interrupt, &handshake, sizeof(int), 0) <= 0) {
-        log_debug(cpu_log, "Error al enviar handshake a Kernel Interrupt: %s", strerror(errno));
+        log_trace(cpu_log, "Error al enviar handshake a Kernel Interrupt: %s", strerror(errno));
         close(fd_kernel_interrupt);
         exit(EXIT_FAILURE);
     }

@@ -8,7 +8,7 @@
 t_cache_paginas* inicializar_cache() {
     cache = (t_cache_paginas*)malloc(sizeof(t_cache_paginas));
     if (cache == NULL) {
-        log_debug(cpu_log,"No se pudo inicializar la cache");
+        log_trace(cpu_log,"No se pudo inicializar la cache");
         exit(EXIT_FAILURE);
     }
     cache->entradas = NULL;
@@ -16,7 +16,7 @@ t_cache_paginas* inicializar_cache() {
     if (cache_habilitada(cache)) {
         cache->entradas = (t_entrada_cache*)malloc(cache->cantidad_entradas * sizeof(t_entrada_cache));
         if (cache->entradas == NULL) {
-            log_debug(cpu_log, "Error al asignar memoria para las entradas de la cache");
+            log_trace(cpu_log, "Error al asignar memoria para las entradas de la cache");
             free(cache);
             exit(EXIT_FAILURE);
         }
@@ -30,7 +30,7 @@ t_cache_paginas* inicializar_cache() {
     }
     cache->algoritmo_reemplazo = REEMPLAZO_CACHE;
     if (cache->algoritmo_reemplazo == NULL) {
-        log_debug(cpu_log, "Error al asignar memoria para las entradas de la cache");
+        log_trace(cpu_log, "Error al asignar memoria para las entradas de la cache");
         free(cache);
         exit(EXIT_FAILURE);
     }
@@ -39,6 +39,64 @@ t_cache_paginas* inicializar_cache() {
 }
 bool cache_habilitada() {
     return cache->cantidad_entradas > 0;
+}
+
+// Función para mostrar entradas de caché de forma compacta
+void mostrar_entradas_cache_compacto() {
+    if (cache == NULL || !cache_habilitada(cache)) {
+        log_info(cpu_log, "Cache: [DESHABILITADA]");
+        return;
+    }
+    
+    char estado_cache[512] = {0}; // Buffer para construir el string
+    char entrada_str[64];
+    
+    strcat(estado_cache, "Cache: [");
+    
+    for (int i = 0; i < cache->cantidad_entradas; i++) {
+        if (cache->entradas[i].numero_pagina != -1) {
+            snprintf(entrada_str, sizeof(entrada_str), "%sPag%d(%s%s)%s", 
+                    (i > 0) ? " | " : "",
+                    cache->entradas[i].numero_pagina,
+                    cache->entradas[i].bit_referencia ? "R" : "",
+                    cache->entradas[i].modificado ? "M" : "",
+                    (i == cache->puntero_clock) ? "*" : "");
+        } else {
+            snprintf(entrada_str, sizeof(entrada_str), "%s[VACIA]%s", 
+                    (i > 0) ? " | " : "",
+                    (i == cache->puntero_clock) ? "*" : "");
+        }
+        strcat(estado_cache, entrada_str);
+    }
+    
+    strcat(estado_cache, "] (* = puntero CLOCK)");
+    log_info(cpu_log, "%s", estado_cache);
+}
+
+// Función para mostrar el estado de la caché
+void mostrar_estado_cache_debug(const char* momento) {
+    if (cache == NULL || !cache_habilitada(cache)) {
+        log_debug(cpu_log, "=== ESTADO CACHÉ (%s) === CACHE DESHABILITADA", momento);
+        return;
+    }
+    
+    log_debug(cpu_log, "=== ESTADO CACHÉ (%s) === Puntero CLOCK: %d ===", momento, cache->puntero_clock);
+    for (int i = 0; i < cache->cantidad_entradas; i++) {
+        if (cache->entradas[i].numero_pagina != -1) {
+            log_debug(cpu_log, "  [%d] PID=%d, Página=%d, R=%d, M=%s %s", 
+                    i,
+                    cache->entradas[i].pid,
+                    cache->entradas[i].numero_pagina, 
+                    cache->entradas[i].bit_referencia, 
+                    cache->entradas[i].modificado ? "SÍ" : "NO",
+                    (i == cache->puntero_clock) ? "<-- PUNTERO" : "");
+        } else {
+            log_debug(cpu_log, "  [%d] [VACÍA] %s", 
+                    i, 
+                    (i == cache->puntero_clock) ? "<-- PUNTERO" : "");
+        }
+    }
+    log_debug(cpu_log, "=== FIN ESTADO CACHÉ ===");
 }
 
 int buscar_pagina_en_cache(int pid, int numero_pagina) {
@@ -51,6 +109,7 @@ int buscar_pagina_en_cache(int pid, int numero_pagina) {
             log_info(cpu_log, "PID: %d - Cache Hit - Pagina: %d", pid, numero_pagina);
             if (strcmp(cache->algoritmo_reemplazo, "CLOCK") == 0 || strcmp(cache->algoritmo_reemplazo, "CLOCK-M") == 0) {
                 cache->entradas[i].bit_referencia = 1;
+                mostrar_estado_cache_debug("DESPUÉS DE CACHE HIT - BIT_R=1");
             }
             resultado = i;
             break;
@@ -60,14 +119,14 @@ int buscar_pagina_en_cache(int pid, int numero_pagina) {
 }
 // funcion para seleccionar "victima" de reemplazo (clock)
 int seleccionar_victima_clock() {
-    log_debug(cpu_log, "=== Iniciando Algoritmo CLOCK ===");
-    log_debug(cpu_log, "Estado inicial - Puntero CLOCK en posición: %d", cache->puntero_clock);
+    log_trace(cpu_log, "=== Iniciando Algoritmo CLOCK ===");
+    log_trace(cpu_log, "Estado inicial - Puntero CLOCK en posición: %d", cache->puntero_clock);
     
     // Mostrar estado actual de la caché
-    log_debug(cpu_log, "Estado de la caché antes del reemplazo:");
+    log_trace(cpu_log, "Estado de la caché antes del reemplazo:");
     for (int i = 0; i < cache->cantidad_entradas; i++) {
         if (cache->entradas[i].numero_pagina != -1) {
-            log_debug(cpu_log, "  Entrada %d: PID=%d, Página=%d, Bit_R=%d, Modificado=%s %s", 
+            log_trace(cpu_log, "  Entrada %d: PID=%d, Página=%d, Bit_R=%d, Modificado=%s %s", 
                     i, 
                     cache->entradas[i].pid,
                     cache->entradas[i].numero_pagina, 
@@ -75,20 +134,22 @@ int seleccionar_victima_clock() {
                     cache->entradas[i].modificado ? "Sí" : "No",
                     (i == cache->puntero_clock) ? "<-- PUNTERO CLOCK" : "");
         } else {
-            log_debug(cpu_log, "  Entrada %d: [VACÍA] %s", 
+            log_trace(cpu_log, "  Entrada %d: [VACÍA] %s", 
                     i, 
                     (i == cache->puntero_clock) ? "<-- PUNTERO CLOCK" : "");
         }
     }
     
     int iteraciones = 0;
+    int victima = -1;
     
-    while (1) {
+    // ALGORITMO CLOCK CORREGIDO: Resetear bits R=1 hasta encontrar R=0
+    while (victima == -1) {
         iteraciones++;
         int pos_actual = cache->puntero_clock;
         t_entrada_cache* entrada_actual = &cache->entradas[pos_actual];
         
-        log_debug(cpu_log, "CLOCK Iteración %d: Evaluando entrada %d (PID=%d, Página=%d, Bit_R=%d)", 
+        log_trace(cpu_log, "CLOCK Iteración %d: Evaluando entrada %d (PID=%d, Página=%d, Bit_R=%d)", 
                 iteraciones, 
                 pos_actual,
                 entrada_actual->pid,
@@ -97,50 +158,47 @@ int seleccionar_victima_clock() {
         
         if (entrada_actual->bit_referencia == 0) {
             // Encontramos la víctima
-            log_info(cpu_log, PURPURA("VICTIMA SELECCIONADA: Entrada %d (PID=%d, Página=%d) - Motivo: Bit de referencia = 0"), 
+            log_info(cpu_log, PURPURA("VICTIMA SELECCIONADA: Entrada %d (PID=%d, Página=%d) - Motivo: Bit de uso = 0"), 
                     pos_actual,
                     entrada_actual->pid,
                     entrada_actual->numero_pagina);
             
-            int victima = cache->puntero_clock;
+            victima = pos_actual;
             cache->puntero_clock = (cache->puntero_clock + 1) % cache->cantidad_entradas;
-            
-            log_debug(cpu_log, "Puntero CLOCK avanzado a posición: %d", cache->puntero_clock);
-            log_debug(cpu_log, "=== Fin Algoritmo CLOCK (Total iteraciones: %d) ===", iteraciones);
-            return victima;
+            log_trace(cpu_log, "Puntero CLOCK avanzado a posición: %d", cache->puntero_clock);
         } else {
-            // Bit de referencia = 1, lo ponemos en 0 y continuamos
-            log_debug(cpu_log, "Entrada %d rechazada - Motivo: Bit de referencia = 1, cambiando a 0 y continuando", 
+            // Bit de uso = 1, lo ponemos en 0 y continuamos
+            log_trace(cpu_log, "Entrada %d: Reseteando bit R (era R=1, ahora R=0) y continuando", 
                     pos_actual);
             entrada_actual->bit_referencia = 0;
             cache->puntero_clock = (cache->puntero_clock + 1) % cache->cantidad_entradas;
             
-            log_debug(cpu_log, "Bit de referencia de entrada %d puesto en 0. Puntero CLOCK avanzado a posición: %d", 
+            log_trace(cpu_log, "Bit de uso de entrada %d puesto en 0. Puntero CLOCK avanzado a posición: %d", 
                     pos_actual, cache->puntero_clock);
         }
         
         // Protección contra bucle infinito (aunque no debería pasar)
         if (iteraciones > cache->cantidad_entradas * 2) {
-            log_debug(cpu_log, "ERROR: Algoritmo CLOCK en bucle infinito después de %d iteraciones", iteraciones);
+            log_trace(cpu_log, "ERROR: Algoritmo CLOCK en bucle infinito después de %d iteraciones", iteraciones);
+            victima = cache->puntero_clock; // Tomar cualquiera como última instancia
             break;
         }
     }
     
-    // Esta línea nunca debería ejecutarse
-    log_debug(cpu_log, "ERROR CRÍTICO: Algoritmo CLOCK no pudo seleccionar víctima");
-    return 0;
+    log_trace(cpu_log, "=== Fin Algoritmo CLOCK (Total iteraciones: %d) ===", iteraciones);
+    return victima;
 }
 
 
 int seleccionar_victima_clock_m() {
-    log_debug(cpu_log, "=== Iniciando Algoritmo CLOCK-M (CLOCK Mejorado) ===");
-    log_debug(cpu_log, "Estado inicial - Puntero CLOCK en posición: %d", cache->puntero_clock);
+    log_trace(cpu_log, "=== Iniciando Algoritmo CLOCK-M (CLOCK Mejorado) ===");
+    log_trace(cpu_log, "Estado inicial - Puntero CLOCK en posición: %d", cache->puntero_clock);
     
     // Mostrar estado actual de la caché
-    log_debug(cpu_log, "Estado de la caché antes del reemplazo:");
+    log_trace(cpu_log, "Estado de la caché antes del reemplazo:");
     for (int i = 0; i < cache->cantidad_entradas; i++) {
         if (cache->entradas[i].numero_pagina != -1) {
-            log_debug(cpu_log, "  Entrada %d: PID=%d, Página=%d, Bit_R=%d, Modificado=%s %s", 
+            log_trace(cpu_log, "  Entrada %d: PID=%d, Página=%d, Bit_R=%d, Modificado=%s %s", 
                     i, 
                     cache->entradas[i].pid,
                     cache->entradas[i].numero_pagina, 
@@ -148,121 +206,113 @@ int seleccionar_victima_clock_m() {
                     cache->entradas[i].modificado ? "Sí" : "No",
                     (i == cache->puntero_clock) ? "<-- PUNTERO CLOCK" : "");
         } else {
-            log_debug(cpu_log, "  Entrada %d: [VACÍA] %s", 
+            log_trace(cpu_log, "  Entrada %d: [VACÍA] %s", 
                     i, 
                     (i == cache->puntero_clock) ? "<-- PUNTERO CLOCK" : "");
         }
     }
     
-    int comienzo = cache->puntero_clock;
     int iteraciones_total = 0;
-
-    // =================== PRIMERA PASADA: buscar (R=0, M=0) ===================
-    log_debug(cpu_log, "PASADA 1: Buscando páginas (R=0, M=0) - No referenciadas y no modificadas");
-    int iteraciones_pasada1 = 0;
+    int ciclo = 1;
     
-    do {
-        iteraciones_total++;
-        iteraciones_pasada1++;
-        int pos_actual = cache->puntero_clock;
-        t_entrada_cache* entrada_actual = &cache->entradas[pos_actual];
+    // =================== BUCLE PRINCIPAL: Alternar entre Vuelta 1 y Vuelta 2 ===================
+    while (true) {
+        int comienzo = cache->puntero_clock;
         
-        log_debug(cpu_log, "CLOCK-M Pasada1 Iter.%d: Evaluando entrada %d (PID=%d, Página=%d, R=%d, M=%d)", 
-                iteraciones_pasada1,
-                pos_actual,
-                entrada_actual->pid,
-                entrada_actual->numero_pagina, 
-                entrada_actual->bit_referencia,
-                entrada_actual->modificado ? 1 : 0);
+        // =================== VUELTA 1: buscar (R=0, M=0) SIN MODIFICAR NADA ===================
+        log_trace(cpu_log, "=== CICLO %d - VUELTA 1: Buscando páginas (R=0, M=0) - Sin modificar bits ===", ciclo);
+        int iteraciones_vuelta1 = 0;
         
-        if (entrada_actual->bit_referencia == 0 && !entrada_actual->modificado) {
-            log_info(cpu_log, PURPURA("VICTIMA SELECCIONADA (Pasada 1): Entrada %d (PID=%d, Página=%d) - Motivo: R=0 y M=0 (óptima)"), 
+        do {
+            iteraciones_total++;
+            iteraciones_vuelta1++;
+            int pos_actual = cache->puntero_clock;
+            t_entrada_cache* entrada_actual = &cache->entradas[pos_actual];
+            
+            log_trace(cpu_log, "CLOCK-M Ciclo%d-V1 Iter.%d: Evaluando entrada %d (PID=%d, Página=%d, R=%d, M=%d)", 
+                    ciclo, iteraciones_vuelta1,
                     pos_actual,
                     entrada_actual->pid,
-                    entrada_actual->numero_pagina);
+                    entrada_actual->numero_pagina, 
+                    entrada_actual->bit_referencia,
+                    entrada_actual->modificado ? 1 : 0);
             
-            int victima = cache->puntero_clock;
+            if (entrada_actual->bit_referencia == 0 && !entrada_actual->modificado) {
+                log_info(cpu_log, PURPURA("VICTIMA SELECCIONADA (Ciclo %d - Vuelta 1): Entrada %d (PID=%d, Página=%d) - Motivo: R=0 y M=0 (óptima)"), 
+                        ciclo, pos_actual,
+                        entrada_actual->pid,
+                        entrada_actual->numero_pagina);
+                
+                int victima = cache->puntero_clock;
+                cache->puntero_clock = (cache->puntero_clock + 1) % cache->cantidad_entradas;
+                log_trace(cpu_log, "Puntero CLOCK avanzado a posición: %d", cache->puntero_clock);
+                log_trace(cpu_log, "=== Fin Algoritmo CLOCK-M (Total iteraciones: %d) ===", iteraciones_total);
+                return victima;
+            } else {
+                log_trace(cpu_log, "Entrada %d NO es víctima - R=%d, M=%d (buscamos R=0 y M=0)", 
+                        pos_actual, entrada_actual->bit_referencia, entrada_actual->modificado ? 1 : 0);
+            }
+            
             cache->puntero_clock = (cache->puntero_clock + 1) % cache->cantidad_entradas;
-            log_debug(cpu_log, "Puntero CLOCK avanzado a posición: %d", cache->puntero_clock);
-            log_debug(cpu_log, "=== Fin Algoritmo CLOCK-M (Total iteraciones: %d) ===", iteraciones_total);
-            return victima;
-        } else {
-            log_debug(cpu_log, "Entrada %d rechazada - Motivo: R=%d o M=%d (buscamos R=0 y M=0)", 
-                    pos_actual, entrada_actual->bit_referencia, entrada_actual->modificado ? 1 : 0);
-        }
-        
-        cache->puntero_clock = (cache->puntero_clock + 1) % cache->cantidad_entradas;
-    } while (cache->puntero_clock != comienzo);
+        } while (cache->puntero_clock != comienzo);
 
-    // =================== SEGUNDA PASADA: buscar (R=0, M=1) y limpiar R=1 ===================
-    log_debug(cpu_log, "PASADA 2: Buscando páginas (R=0, M=1) y limpiando bits R=1");
-    int iteraciones_pasada2 = 0;
-    
-    do {
-        iteraciones_total++;
-        iteraciones_pasada2++;
-        int pos_actual = cache->puntero_clock;
-        t_entrada_cache* entrada_actual = &cache->entradas[pos_actual];
+        // =================== VUELTA 2: buscar solo (R=0, M=1) Y resetear R=1 sobre la marcha ===================
+        log_trace(cpu_log, "=== CICLO %d - VUELTA 2: Buscando solo (R=0, M=1) y reseteando R=1 sobre la marcha ===", ciclo);
+        int iteraciones_vuelta2 = 0;
         
-        log_debug(cpu_log, "CLOCK-M Pasada2 Iter.%d: Evaluando entrada %d (PID=%d, Página=%d, R=%d, M=%d)", 
-                iteraciones_pasada2,
-                pos_actual,
-                entrada_actual->pid,
-                entrada_actual->numero_pagina, 
-                entrada_actual->bit_referencia,
-                entrada_actual->modificado ? 1 : 0);
-        
-        if (entrada_actual->bit_referencia == 0 && entrada_actual->modificado) {
-            log_info(cpu_log, PURPURA("VICTIMA SELECCIONADA (Pasada 2): Entrada %d (PID=%d, Página=%d) - Motivo: R=0 y M=1"), 
+        do {
+            iteraciones_total++;
+            iteraciones_vuelta2++;
+            int pos_actual = cache->puntero_clock;
+            t_entrada_cache* entrada_actual = &cache->entradas[pos_actual];
+            
+            log_trace(cpu_log, "CLOCK-M Ciclo%d-V2 Iter.%d: Evaluando entrada %d (PID=%d, Página=%d, R=%d, M=%d)", 
+                    ciclo, iteraciones_vuelta2,
                     pos_actual,
                     entrada_actual->pid,
-                    entrada_actual->numero_pagina);
+                    entrada_actual->numero_pagina, 
+                    entrada_actual->bit_referencia,
+                    entrada_actual->modificado ? 1 : 0);
             
+            if (entrada_actual->bit_referencia == 0 && entrada_actual->modificado) {
+                // Encontramos (R=0, M=1) - la víctima buscada
+                log_info(cpu_log, PURPURA("VICTIMA SELECCIONADA (Ciclo %d - Vuelta 2): Entrada %d (PID=%d, Página=%d) - Motivo: R=0 y M=1"), 
+                        ciclo, pos_actual,
+                        entrada_actual->pid,
+                        entrada_actual->numero_pagina);
+                
+                int victima = cache->puntero_clock;
+                cache->puntero_clock = (cache->puntero_clock + 1) % cache->cantidad_entradas;
+                log_trace(cpu_log, "Puntero CLOCK avanzado a posición: %d", cache->puntero_clock);
+                log_trace(cpu_log, "=== Fin Algoritmo CLOCK-M (Total iteraciones: %d) ===", iteraciones_total);
+                return victima;
+            } else if (entrada_actual->bit_referencia == 1) {
+                // Resetear R=1 → R=0 y continuar (independientemente de M)
+                log_trace(cpu_log, "Entrada %d: Reseteando R=1 → R=0 y continuando (Página %d, M=%d)", 
+                        pos_actual, entrada_actual->numero_pagina, entrada_actual->modificado ? 1 : 0);
+                entrada_actual->bit_referencia = 0;
+            } else {
+                // Es (R=0, M=0) - no es lo que buscamos en esta vuelta, continuar
+                log_trace(cpu_log, "Entrada %d: R=0,M=0 encontrado pero esta vuelta busca R=0,M=1 - continuando", pos_actual);
+            }
+
+            cache->puntero_clock = (cache->puntero_clock + 1) % cache->cantidad_entradas;
+        } while (cache->puntero_clock != comienzo);
+        
+        // Si llegamos aca, la vuelta 2 no encontró víctimas, volver a vuelta 1
+        log_trace(cpu_log, "Ciclo %d completado sin éxito - iniciando ciclo %d", ciclo, ciclo + 1);
+        ciclo++;
+        
+        // Protección contra bucle infinito
+        if (ciclo > cache->cantidad_entradas * 5) {
+            log_trace(cpu_log, "ERROR: CLOCK-M en bucle infinito después de %d ciclos", ciclo);
+            // Tomar cualquiera como última instancia
             int victima = cache->puntero_clock;
             cache->puntero_clock = (cache->puntero_clock + 1) % cache->cantidad_entradas;
-            log_debug(cpu_log, "Puntero CLOCK avanzado a posición: %d", cache->puntero_clock);
-            log_debug(cpu_log, "=== Fin Algoritmo CLOCK-M (Total iteraciones: %d) ===", iteraciones_total);
+            log_trace(cpu_log, "=== Fin Algoritmo CLOCK-M (Total iteraciones: %d) ===", iteraciones_total);
             return victima;
-        } else if (entrada_actual->bit_referencia == 1) {
-            log_debug(cpu_log, "Entrada %d: Limpiando bit R (era R=1, ahora R=0) - Página %d", 
-                    pos_actual, entrada_actual->numero_pagina);
-            entrada_actual->bit_referencia = 0;
-        } else {
-            log_debug(cpu_log, "Entrada %d rechazada - Motivo: R=0 pero M=0 (buscamos R=0 y M=1)", pos_actual);
         }
-
-        cache->puntero_clock = (cache->puntero_clock + 1) % cache->cantidad_entradas;
-    } while (cache->puntero_clock != comienzo);
-
-    // =================== TERCERA PASADA: elegir cualquiera (todos tienen R=0) ===================
-    log_debug(cpu_log, "PASADA 3: Todos los bits R están en 0, eligiendo el primero disponible");
-    int iteraciones_pasada3 = 0;
-    
-    do {
-        iteraciones_total++;
-        iteraciones_pasada3++;
-        int pos_actual = cache->puntero_clock;
-        t_entrada_cache* entrada_actual = &cache->entradas[pos_actual];
-        
-        log_debug(cpu_log, "CLOCK-M Pasada3 Iter.%d: Seleccionando entrada %d (PID=%d, Página=%d, R=%d, M=%d)", 
-                iteraciones_pasada3,
-                pos_actual,
-                entrada_actual->pid,
-                entrada_actual->numero_pagina, 
-                entrada_actual->bit_referencia,
-                entrada_actual->modificado ? 1 : 0);
-        
-        log_info(cpu_log, PURPURA("VICTIMA SELECCIONADA (Pasada 3): Entrada %d (PID=%d, Página=%d) - Motivo: Primera disponible (todos R=0)"), 
-                pos_actual,
-                entrada_actual->pid,
-                entrada_actual->numero_pagina);
-        
-        int victima = cache->puntero_clock;
-        cache->puntero_clock = (cache->puntero_clock + 1) % cache->cantidad_entradas;
-        log_debug(cpu_log, "Puntero CLOCK avanzado a posición: %d", cache->puntero_clock);
-        log_debug(cpu_log, "=== Fin Algoritmo CLOCK-M (Total iteraciones: %d) ===", iteraciones_total);
-        return victima;
-    } while (true);  // siempre encontrará uno, porque hay entradas
+    }
 }
 
 
@@ -293,6 +343,8 @@ void desalojar_proceso_cache(int pid) {
         return;
     }
 
+    mostrar_estado_cache_debug("ANTES DE DESALOJAR PROCESO");
+
     for (int i = 0; i < cache->cantidad_entradas; i++) {
         if (cache->entradas[i].pid == pid) {
 
@@ -315,6 +367,7 @@ void desalojar_proceso_cache(int pid) {
     }
 
     cache->puntero_clock = 0;
+    mostrar_estado_cache_debug("DESPUÉS DE DESALOJAR PROCESO");
     pthread_mutex_unlock(&mutex_cache);
 }
 
@@ -365,7 +418,7 @@ void cache_modificar(int pid, int numero_pagina, int direccion_logica, char* dat
 
     // Asegurar que tenemos contenido válido
     if (cache->entradas[pos].contenido == NULL) {
-        log_debug(cpu_log, "PID: %d - Contenido de caché nulo para página %d", pid, numero_pagina);
+        log_trace(cpu_log, "PID: %d - Contenido de caché nulo para página %d", pid, numero_pagina);
         pthread_mutex_unlock(&mutex_cache);
         return;
     }
@@ -375,7 +428,7 @@ void cache_modificar(int pid, int numero_pagina, int direccion_logica, char* dat
     
     // Validar que la escritura no exceda los límites de la página
     if (offset + tamanio > cfg_memoria->TAM_PAGINA) {
-        log_debug(cpu_log, "PID: %d - Escritura excede límites de página (offset=%d + tamaño=%d > TAM_PAGINA=%d)", 
+        log_trace(cpu_log, "PID: %d - Escritura excede límites de página (offset=%d + tamaño=%d > TAM_PAGINA=%d)", 
                  pid, offset, tamanio, cfg_memoria->TAM_PAGINA);
         pthread_mutex_unlock(&mutex_cache);
         return;
@@ -385,8 +438,14 @@ void cache_modificar(int pid, int numero_pagina, int direccion_logica, char* dat
     memcpy(cache->entradas[pos].contenido + offset, datos, tamanio);
     cache->entradas[pos].modificado = true;
 
-    log_debug(cpu_log, "PID: %d - Cache MODIFICADA: Página %d, Offset %d, Tamaño %d, Datos: '%s'", 
+    log_trace(cpu_log, "PID: %d - Cache MODIFICADA: Página %d, Offset %d, Tamaño %d, Datos: '%s'", 
             pid, numero_pagina, offset, tamanio, datos);
+    
+    mostrar_estado_cache_debug("DESPUÉS DE MODIFICAR PÁGINA EN CACHÉ");
+    
+    // Log compacto de modificación
+    log_info(cpu_log, AMARILLO("MODIFICACIÓN EN CACHE: Página %d"), numero_pagina);
+    mostrar_entradas_cache_compacto();
     
     // Debug: mostrar contenido completo de la página después de la modificación
     char vista_pagina[65]; // Mostrar primeros 64 chars de la página
@@ -419,16 +478,29 @@ void cache_escribir(int pid, int frame, char* datos, bool modificado) {
 
     // Si no hay entradas libres, seleccionar víctima
     if (entrada_index == -1) {
-        log_debug(cpu_log, "CACHE LLENA - Iniciando selección de víctima");
+        log_trace(cpu_log, "CACHE LLENA - Iniciando selección de víctima");
+        mostrar_estado_cache_debug("ANTES DE REEMPLAZO - CACHÉ LLENA");
+        
         entrada_index = (strcmp(cache->algoritmo_reemplazo, "CLOCK-M") == 0)
                         ? seleccionar_victima_clock_m()
                         : seleccionar_victima_clock();
         
+        mostrar_estado_cache_debug("DESPUÉS DE SELECCIONAR VÍCTIMA");
+        
         if (entrada_index == -1) {
-            log_debug(cpu_log, "Error crítico: No se pudo seleccionar víctima en caché");
+            log_trace(cpu_log, "Error crítico: No se pudo seleccionar víctima en caché");
             pthread_mutex_unlock(&mutex_cache);
             return;
         }
+        
+        // Log informativo del reemplazo
+        t_entrada_cache* entrada_victima = &cache->entradas[entrada_index];
+        log_info(cpu_log, AZUL("REEMPLAZO: Página %d → Página %d"), entrada_victima->numero_pagina, frame);
+        mostrar_entradas_cache_compacto();
+    } else {
+        // Log cuando hay entrada libre
+        log_info(cpu_log, VERDE("CARGA DIRECTA: Página %d en entrada libre %d"), frame, entrada_index);
+        mostrar_entradas_cache_compacto();
     }
 
     t_entrada_cache* entrada = &cache->entradas[entrada_index];
@@ -441,7 +513,7 @@ void cache_escribir(int pid, int frame, char* datos, bool modificado) {
         int pagina_vieja = entrada->numero_pagina;
         int pid_viejo = entrada->pid;
         
-        log_debug(cpu_log, "Iniciando WRITEBACK: Página %d (PID=%d) será escrita a memoria antes del reemplazo", 
+        log_trace(cpu_log, "Iniciando WRITEBACK: Página %d (PID=%d) será escrita a memoria antes del reemplazo", 
                 pagina_vieja, pid_viejo);
 
         t_paquete* paquete = crear_paquete_op(ACCESO_TABLA_PAGINAS_OP);
@@ -453,7 +525,7 @@ void cache_escribir(int pid, int frame, char* datos, bool modificado) {
         op_code codigo_operacion;
         if (recv(fd_memoria, &codigo_operacion, sizeof(op_code), MSG_WAITALL) != sizeof(op_code) ||
             codigo_operacion != PAQUETE_OP) {
-            log_debug(cpu_log, "Error al obtener marco de memoria para (PID=%d, Página=%d)", pid_viejo, pagina_vieja);
+            log_trace(cpu_log, "Error al obtener marco de memoria para (PID=%d, Página=%d)", pid_viejo, pagina_vieja);
         } else {
             t_list* respuesta = recibir_contenido_paquete(fd_memoria);
             int marco = *(int*)list_get(respuesta, 0);
@@ -466,7 +538,8 @@ void cache_escribir(int pid, int frame, char* datos, bool modificado) {
                 enviar_actualizar_pagina_completa(pid_viejo, direccion_fisica, entrada->contenido);
                 // Log obligatorio Memory Update
                 log_info(cpu_log, VERDE("PID: %d - Memory Update - Página: %d - Frame: %d"), pid_viejo, pagina_vieja, marco);
-                log_debug(cpu_log, "Cache Writeback: PID=%d Página=%d bajada a memoria", pid_viejo, pagina_vieja);
+                log_trace(cpu_log, "Cache Writeback: PID=%d Página=%d bajada a memoria", pid_viejo, pagina_vieja);
+                mostrar_estado_cache_debug("DESPUÉS DE WRITEBACK A MEMORIA");
             } else {
                 log_info(cpu_log, "La página a desalojar (PID=%d, Página=%d) ya no está mapeada. No se actualiza.",
                             pid_viejo, pagina_vieja);
@@ -485,7 +558,7 @@ void cache_escribir(int pid, int frame, char* datos, bool modificado) {
     int tam_pagina = cfg_memoria->TAM_PAGINA;
     entrada->contenido = malloc(tam_pagina);
     if (!entrada->contenido) {
-        log_debug(cpu_log, "Error al reservar memoria para caché (página %d)", frame);
+        log_trace(cpu_log, "Error al reservar memoria para caché (página %d)", frame);
         pthread_mutex_unlock(&mutex_cache);
         return;
     }
@@ -496,7 +569,7 @@ void cache_escribir(int pid, int frame, char* datos, bool modificado) {
     // Copiar datos de forma segura
     int datos_len = strlen(datos);
     if (datos_len > tam_pagina) {
-        log_debug(cpu_log, "Datos exceden tamaño de página, truncando");
+        log_trace(cpu_log, "Datos exceden tamaño de página, truncando");
         datos_len = tam_pagina - 1;  // Dejar espacio para \0
     }
     memcpy(entrada->contenido, datos, datos_len);
@@ -506,8 +579,14 @@ void cache_escribir(int pid, int frame, char* datos, bool modificado) {
     entrada->pid = pid;
     
     log_info(cpu_log, "PID: %d - Cache Add - Página: %d", pid, frame);
-    log_debug(cpu_log, "CACHE CARGA COMPLETADA: Página %d (PID=%d) cargada en entrada %d - Estado: %s", 
+    log_trace(cpu_log, "CACHE CARGA COMPLETADA: Página %d (PID=%d) cargada en entrada %d - Estado: %s", 
             frame, pid, entrada_index, modificado ? "MODIFICADA" : "LIMPIA");
+
+    mostrar_estado_cache_debug("DESPUÉS DE CARGAR NUEVA PÁGINA");
+    
+    // Log final compacto del estado
+    log_info(cpu_log, VERDE("CACHE ACTUALIZADA:"));
+    mostrar_entradas_cache_compacto();
 
     pthread_mutex_unlock(&mutex_cache);
 }
@@ -520,20 +599,20 @@ char* cache_leer(int pid, int numero_pagina) {
     int indice = buscar_pagina_en_cache(pid, numero_pagina);
     if (indice == -1) {
         pthread_mutex_unlock(&mutex_cache);
-        log_debug(cpu_log, "PID: %d - Cache Leer - Página %d no encontrada en caché", pid, numero_pagina);
+        log_trace(cpu_log, "PID: %d - Cache Leer - Página %d no encontrada en caché", pid, numero_pagina);
         return NULL;
     }
 
     if (cache->entradas[indice].contenido == NULL) {
         pthread_mutex_unlock(&mutex_cache);
-        log_debug(cpu_log, "PID: %d - Cache Leer - Contenido nulo en entrada de página %d", pid, numero_pagina);
+        log_trace(cpu_log, "PID: %d - Cache Leer - Contenido nulo en entrada de página %d", pid, numero_pagina);
         return NULL;
     }
 
     char* copia = strdup(cache->entradas[indice].contenido);
     if (copia == NULL) {
         pthread_mutex_unlock(&mutex_cache);
-        log_debug(cpu_log, "PID: %d - Error al duplicar contenido de caché para página %d", pid, numero_pagina);
+        log_trace(cpu_log, "PID: %d - Error al duplicar contenido de caché para página %d", pid, numero_pagina);
         return NULL;
     }
     pthread_mutex_unlock(&mutex_cache);
@@ -555,12 +634,12 @@ void enviar_actualizar_pagina_completa(int pid, int direccion_fisica, void* cont
 
     t_respuesta respuesta;
     if (recv(fd_memoria, &respuesta, sizeof(t_respuesta), MSG_WAITALL) != sizeof(t_respuesta)) {
-        log_debug(cpu_log, "Error al recibir respuesta de actualización de página completa");
+        log_trace(cpu_log, "Error al recibir respuesta de actualización de página completa");
         exit(EXIT_FAILURE);
     }
 
     if (respuesta != OK) {
-        log_debug(cpu_log, "Actualización de página completa fallida en Memoria");
+        log_trace(cpu_log, "Actualización de página completa fallida en Memoria");
         exit(EXIT_FAILURE);
     }
 
