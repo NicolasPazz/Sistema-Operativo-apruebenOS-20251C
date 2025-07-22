@@ -71,12 +71,12 @@ int main(int argc, char* argv[]) {
     iniciar_logger_memoria();
     
     log_trace(logger, AZUL("=== INICIANDO SISTEMA DE MEMORIA ==="));
-    log_debug(logger, "Configuración cargada - TAM_MEMORIA: %d, TAM_PAGINA: %d, NIVELES: %d, ENTRADAS_POR_TABLA: %d", 
+    log_trace(logger, "Configuración cargada - TAM_MEMORIA: %d, TAM_PAGINA: %d, NIVELES: %d, ENTRADAS_POR_TABLA: %d", 
              cfg->TAM_MEMORIA, cfg->TAM_PAGINA, cfg->CANTIDAD_NIVELES, cfg->ENTRADAS_POR_TABLA);
 
     // Inicializar el sistema completo de memoria con paginación multinivel
     if (inicializar_sistema_memoria() != MEMORIA_OK) {
-        log_debug(logger, "Error crítico al inicializar el sistema de memoria");
+        log_trace(logger, "Error crítico al inicializar el sistema de memoria");
         cerrar_programa();
         return EXIT_FAILURE;
     }
@@ -101,7 +101,7 @@ int main(int argc, char* argv[]) {
     free(puerto);
 
     if (memoria_server == -1) {
-        log_debug(logger, "Error al iniciar el servidor de memoria");
+        log_trace(logger, "Error al iniciar el servidor de memoria");
         liberar_sistema_memoria();
         cerrar_programa();
         return EXIT_FAILURE;

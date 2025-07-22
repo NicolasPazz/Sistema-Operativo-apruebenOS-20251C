@@ -51,13 +51,13 @@ static t_entrada_tabla* _buscar_entrada_pagina(int pid, int numero_pagina) {
  */
 t_proceso_memoria* crear_proceso_memoria(int pid, int tamanio) {
     if (pid < 0) {
-        log_debug(logger, "[INIT_PROC_OP] PID: %d - Error al crear proceso: Parámetros inválidos (tamaño=%d)", pid, tamanio);
+        log_trace(logger, "[INIT_PROC_OP] PID: %d - Error al crear proceso: Parámetros inválidos (tamaño=%d)", pid, tamanio);
         return NULL;
     }
 
     t_proceso_memoria* proceso = malloc(sizeof(t_proceso_memoria));
     if (!proceso) {
-        log_debug(logger, "[INIT_PROC_OP] PID: %d - Error al asignar memoria para estructura de proceso", pid);
+        log_trace(logger, "[INIT_PROC_OP] PID: %d - Error al asignar memoria para estructura de proceso", pid);
         return NULL;
     }
 
@@ -74,7 +74,7 @@ t_proceso_memoria* crear_proceso_memoria(int pid, int tamanio) {
     // Crear estructura de páginas
     proceso->estructura_paginas = crear_estructura_paginas(pid, tamanio);
     if (!proceso->estructura_paginas) {
-        log_debug(logger, "[INIT_PROC_OP] PID: %d - Error al crear estructura de páginas", pid);
+        log_trace(logger, "[INIT_PROC_OP] PID: %d - Error al crear estructura de páginas", pid);
         free(proceso);
         return NULL;
     }
@@ -82,7 +82,7 @@ t_proceso_memoria* crear_proceso_memoria(int pid, int tamanio) {
     // Crear métricas
     proceso->metricas = crear_metricas_proceso(pid);
     if (!proceso->metricas) {
-        log_debug(logger, "[INIT_PROC_OP] PID: %d - Error al crear métricas del proceso", pid);
+        log_trace(logger, "[INIT_PROC_OP] PID: %d - Error al crear métricas del proceso", pid);
         destruir_estructura_paginas(proceso->estructura_paginas);
         free(proceso);
         return NULL;
@@ -91,7 +91,7 @@ t_proceso_memoria* crear_proceso_memoria(int pid, int tamanio) {
     // Inicializar lista de instrucciones
     proceso->instrucciones = list_create();
     if (!proceso->instrucciones) {
-        log_debug(logger, "[INIT_PROC_OP] PID: %d - Error al crear lista de instrucciones", pid);
+        log_trace(logger, "[INIT_PROC_OP] PID: %d - Error al crear lista de instrucciones", pid);
         destruir_metricas_proceso(proceso->metricas);
         destruir_estructura_paginas(proceso->estructura_paginas);
         free(proceso);
@@ -102,7 +102,7 @@ t_proceso_memoria* crear_proceso_memoria(int pid, int tamanio) {
     // int paginas_totales = proceso->estructura_paginas->paginas_totales;
     // int marcos_disponibles = sistema_memoria->admin_marcos->frames_libres;
     // if (marcos_disponibles < paginas_totales) {
-    //     log_debug(logger, "PID: %d - No hay marcos suficientes para inicializar todas las páginas (%d requeridas, %d libres)", pid, paginas_totales, marcos_disponibles);
+    //     log_trace(logger, "PID: %d - No hay marcos suficientes para inicializar todas las páginas (%d requeridas, %d libres)", pid, paginas_totales, marcos_disponibles);
     //     list_destroy_and_destroy_elements(proceso->instrucciones, free);
     //     destruir_metricas_proceso(proceso->metricas);
     //     destruir_estructura_paginas(proceso->estructura_paginas);
@@ -112,7 +112,7 @@ t_proceso_memoria* crear_proceso_memoria(int pid, int tamanio) {
     // for (int i = 0; i < paginas_totales; i++) {
     //     int frame = asignar_marco_libre(pid, i);
     //     if (frame == -1) {
-    //         log_debug(logger, "PID: %d - Error al asignar marco para página %d al crear proceso", pid, i);
+    //         log_trace(logger, "PID: %d - Error al asignar marco para página %d al crear proceso", pid, i);
     //         // Liberar recursos ya asignados
     //         for (int j = 0; j < i; j++) {
     //             t_entrada_tabla* entrada = buscar_entrada_tabla(proceso->estructura_paginas, j);
@@ -141,29 +141,29 @@ t_proceso_memoria* crear_proceso_memoria(int pid, int tamanio) {
 t_resultado_memoria crear_proceso_en_memoria(int pid, int tamanio, char* nombre_archivo) {
     // ========== VALIDACIONES INICIALES ==========
     if (pid < 0) {
-        log_debug(logger, "[INIT_PROC_OP] PID: %d - Error al crear proceso: Parámetros inválidos (tamaño=%d)", pid, tamanio);
+        log_trace(logger, "[INIT_PROC_OP] PID: %d - Error al crear proceso: Parámetros inválidos (tamaño=%d)", pid, tamanio);
         return MEMORIA_ERROR_DIRECCION_INVALIDA;
     }
 
     if (!nombre_archivo || strlen(nombre_archivo) == 0) {
-        log_debug(logger, "[INIT_PROC_OP] PID: %d - Error al crear proceso: Nombre de archivo inválido", pid);
+        log_trace(logger, "[INIT_PROC_OP] PID: %d - Error al crear proceso: Nombre de archivo inválido", pid);
         return MEMORIA_ERROR_DIRECCION_INVALIDA;
     }
 
     if (!sistema_memoria) {
-        log_debug(logger, "[INIT_PROC_OP] PID: %d - Error al crear proceso: Sistema de memoria no inicializado", pid);
+        log_trace(logger, "[INIT_PROC_OP] PID: %d - Error al crear proceso: Sistema de memoria no inicializado", pid);
         return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
     }
 
     // Verificar si el proceso ya existe
     if (obtener_proceso(pid)) {
-        log_debug(logger, "[INIT_PROC_OP] PID: %d - Error al crear proceso: Ya existe", pid);
+        log_trace(logger, "[INIT_PROC_OP] PID: %d - Error al crear proceso: Ya existe", pid);
         return MEMORIA_ERROR_PROCESO_EXISTENTE;
     }
 
     // ========== CÁLCULO DE MEMORIA NECESARIA ==========
     int paginas_necesarias = (tamanio + cfg->TAM_PAGINA - 1) / cfg->TAM_PAGINA;
-    log_debug(logger, "[INIT_PROC_OP] PID: %d - Páginas necesarias: %d (tamaño=%d, tam_pagina=%d)", 
+    log_trace(logger, "[INIT_PROC_OP] PID: %d - Páginas necesarias: %d (tamaño=%d, tam_pagina=%d)", 
               pid, paginas_necesarias, tamanio, cfg->TAM_PAGINA);
 
     // ========== VALIDACIÓN DE MEMORIA DISPONIBLE ==========
@@ -178,7 +178,7 @@ t_resultado_memoria crear_proceso_en_memoria(int pid, int tamanio, char* nombre_
              pid, marcos_disponibles, marcos_ocupados, total_marcos);
     
     if (marcos_disponibles < paginas_necesarias) {
-        log_debug(logger, "[INIT_PROC_OP] PID: %d - No hay suficiente memoria física (necesita %d páginas, disponibles %d)", 
+        log_trace(logger, "[INIT_PROC_OP] PID: %d - No hay suficiente memoria física (necesita %d páginas, disponibles %d)", 
                   pid, paginas_necesarias, marcos_disponibles);
         pthread_mutex_unlock(&sistema_memoria->admin_marcos->mutex_frames);
         return MEMORIA_ERROR_NO_ESPACIO;
@@ -188,7 +188,7 @@ t_resultado_memoria crear_proceso_en_memoria(int pid, int tamanio, char* nombre_
     // ========== CREACIÓN DE ESTRUCTURA DE PROCESO ==========
     t_proceso_memoria* proceso = crear_proceso_memoria(pid, tamanio);
     if (!proceso) {
-        log_debug(logger, "[INIT_PROC_OP] PID: %d - Error al crear estructura de proceso", pid);
+        log_trace(logger, "[INIT_PROC_OP] PID: %d - Error al crear estructura de proceso", pid);
         return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
     }
 
@@ -196,7 +196,7 @@ t_resultado_memoria crear_proceso_en_memoria(int pid, int tamanio, char* nombre_
     if (nombre_archivo) {
         proceso->nombre_archivo = strdup(nombre_archivo);
         if (!proceso->nombre_archivo) {
-            log_debug(logger, "[INIT_PROC_OP] PID: %d - Error al copiar nombre de archivo", pid);
+            log_trace(logger, "[INIT_PROC_OP] PID: %d - Error al copiar nombre de archivo", pid);
             destruir_proceso(proceso);
             return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
         }
@@ -223,11 +223,11 @@ t_resultado_memoria crear_proceso_en_memoria(int pid, int tamanio, char* nombre_
     pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
 
     // ========== ASIGNACIÓN DE MARCOS FÍSICOS PARA TODAS LAS PÁGINAS ==========
-    log_debug(logger, "[INIT_PROC_OP] PID: %d - Iniciando asignación de %d marcos físicos", pid, paginas_necesarias);
+    log_trace(logger, "[INIT_PROC_OP] PID: %d - Iniciando asignación de %d marcos físicos", pid, paginas_necesarias);
     
     t_resultado_memoria resultado_asignacion = asignar_marcos_proceso(pid);
     if (resultado_asignacion != MEMORIA_OK) {
-        log_debug(logger, "[INIT_PROC_OP] PID: %d - Error en asignación de marcos: %d", pid, resultado_asignacion);
+        log_trace(logger, "[INIT_PROC_OP] PID: %d - Error en asignación de marcos: %d", pid, resultado_asignacion);
         
         // Revertir el registro en diccionarios antes de destruir el proceso
         log_trace(logger, "[INIT_PROC_OP] crear_proceso_en_memoria: esperando mutex_procesos para revertir registro");
@@ -248,11 +248,11 @@ t_resultado_memoria crear_proceso_en_memoria(int pid, int tamanio, char* nombre_
     // ========== LOG OBLIGATORIO DE CREACIÓN ==========
     log_info(logger, PURPURA("## PID: %d - Proceso Creado - Tamaño: %d"), pid, tamanio);
     
-    log_debug(logger, "PID: %d - Proceso creado exitosamente:", pid);
-    log_debug(logger, "   - Páginas totales: %d", paginas_necesarias);
-    log_debug(logger, "   - Páginas asignadas: %d", proceso->estructura_paginas->paginas_asignadas);
-    log_debug(logger, "   - Niveles de paginación: %d", cfg->CANTIDAD_NIVELES);
-    log_debug(logger, "   - Marcos físicos utilizados: %d", paginas_necesarias);
+    log_trace(logger, "PID: %d - Proceso creado exitosamente:", pid);
+    log_trace(logger, "   - Páginas totales: %d", paginas_necesarias);
+    log_trace(logger, "   - Páginas asignadas: %d", proceso->estructura_paginas->paginas_asignadas);
+    log_trace(logger, "   - Niveles de paginación: %d", cfg->CANTIDAD_NIVELES);
+    log_trace(logger, "   - Marcos físicos utilizados: %d", paginas_necesarias);
     
     return MEMORIA_OK;
 }
@@ -303,7 +303,7 @@ void destruir_proceso(t_proceso_memoria* proceso) {
 
 t_resultado_memoria finalizar_proceso_en_memoria(int pid) {
     if (!sistema_memoria) {
-        log_debug(logger, "Sistema de memoria no inicializado");
+        log_trace(logger, "Sistema de memoria no inicializado");
         return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
     }
     
@@ -317,7 +317,7 @@ t_resultado_memoria finalizar_proceso_en_memoria(int pid) {
     // Verificar si el proceso existe
     t_proceso_memoria* proceso = dictionary_get(sistema_memoria->procesos, pid_str);
     if (!proceso) {
-        log_debug(logger, "PID: %d - Proceso no encontrado para finalizar", pid);
+        log_trace(logger, "PID: %d - Proceso no encontrado para finalizar", pid);
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
         return MEMORIA_ERROR_PROCESO_NO_ENCONTRADO;
     }
@@ -325,52 +325,52 @@ t_resultado_memoria finalizar_proceso_en_memoria(int pid) {
     log_trace(logger, "FINALIZAR_PROC: Proceso PID %d encontrado, tamaño: %d bytes", pid, proceso->tamanio);
     
     // Imprimir métricas antes de finalizar
-    log_debug(logger, "FINALIZAR_PROC: Imprimiendo métricas para PID %d", pid);
+    log_trace(logger, "FINALIZAR_PROC: Imprimiendo métricas para PID %d", pid);
     imprimir_metricas_proceso(pid);
-    log_debug(logger, "FINALIZAR_PROC: Métricas impresas para PID %d", pid);
+    log_trace(logger, "FINALIZAR_PROC: Métricas impresas para PID %d", pid);
     
     // Liberar todos los marcos físicos del proceso
-    log_debug(logger, "FINALIZAR_PROC: Liberando marcos para PID %d", pid);
+    log_trace(logger, "FINALIZAR_PROC: Liberando marcos para PID %d", pid);
     liberar_marcos_proceso(pid);
-    log_debug(logger, "FINALIZAR_PROC: Marcos liberados para PID %d", pid);
+    log_trace(logger, "FINALIZAR_PROC: Marcos liberados para PID %d", pid);
 
     // Liberar espacio de SWAP asociado al proceso
-    log_debug(logger, "FINALIZAR_PROC: Liberando espacio de SWAP para PID %d", pid);
+    log_trace(logger, "FINALIZAR_PROC: Liberando espacio de SWAP para PID %d", pid);
     liberar_espacio_swap_proceso(pid);
-    log_debug(logger, "FINALIZAR_PROC: Espacio de SWAP liberado para PID %d", pid);
+    log_trace(logger, "FINALIZAR_PROC: Espacio de SWAP liberado para PID %d", pid);
     
     // Actualizar estadísticas del sistema
-    log_debug(logger, "FINALIZAR_PROC: Actualizando estadísticas del sistema para PID %d", pid);
+    log_trace(logger, "FINALIZAR_PROC: Actualizando estadísticas del sistema para PID %d", pid);
     sistema_memoria->procesos_activos--;
     sistema_memoria->memoria_utilizada -= proceso->tamanio;
     sistema_memoria->total_liberaciones_memoria++;
     
     // Liberar instrucciones del proceso ANTES de remover del diccionario
-    log_debug(logger, "FINALIZAR_PROC: Liberando instrucciones para PID %d", pid);
+    log_trace(logger, "FINALIZAR_PROC: Liberando instrucciones para PID %d", pid);
     destruir_instrucciones_proceso(pid);
-    log_debug(logger, "FINALIZAR_PROC: Instrucciones liberadas para PID %d", pid);
+    log_trace(logger, "FINALIZAR_PROC: Instrucciones liberadas para PID %d", pid);
 
     // Remover del diccionario y liberar
-    log_debug(logger, "FINALIZAR_PROC: Removiendo de diccionarios para PID %d", pid);
+    log_trace(logger, "FINALIZAR_PROC: Removiendo de diccionarios para PID %d", pid);
     dictionary_remove(sistema_memoria->procesos, pid_str);
     dictionary_remove(sistema_memoria->estructuras_paginas, pid_str);
     dictionary_remove(sistema_memoria->metricas_procesos, pid_str);
     dictionary_remove(sistema_memoria->process_instructions, pid_str);  // Ahora solo remueve entrada vacía
     
-    log_debug(logger, "FINALIZAR_PROC: Liberando proceso para PID %d", pid);
+    log_trace(logger, "FINALIZAR_PROC: Liberando proceso para PID %d", pid);
     destruir_proceso(proceso);
     
     pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
     
     log_trace(logger, "FINALIZAR_PROC: Proceso PID %d finalizado exitosamente", pid);
     log_trace(logger, "## PID: %d - Finaliza el proceso", pid);
-    log_debug(logger, "FINALIZAR_PROC: Retornando MEMORIA_OK para PID %d", pid);
+    log_trace(logger, "FINALIZAR_PROC: Retornando MEMORIA_OK para PID %d", pid);
     return MEMORIA_OK;
 }
 
 t_resultado_memoria suspender_proceso_en_memoria(int pid) {
     if (!sistema_memoria) {
-        log_debug(logger, "Sistema de memoria no inicializado");
+        log_trace(logger, "Sistema de memoria no inicializado");
         return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
     }
     
@@ -381,19 +381,19 @@ t_resultado_memoria suspender_proceso_en_memoria(int pid) {
     
     t_proceso_memoria* proceso = dictionary_get(sistema_memoria->procesos, pid_str);
     if (!proceso) {
-        log_debug(logger, "PID: %d - Proceso no encontrado para suspender", pid);
+        log_trace(logger, "PID: %d - Proceso no encontrado para suspender", pid);
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
         return MEMORIA_ERROR_PROCESO_NO_ENCONTRADO;
     }
     
     if (proceso->suspendido) {
-        log_debug(logger, "PID: %d - Proceso ya está suspendido", pid);
+        log_trace(logger, "PID: %d - Proceso ya está suspendido", pid);
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
         return MEMORIA_OK;
     }
     
     if (proceso->suspending) {
-        log_debug(logger, "PID: %d - Proceso ya está siendo suspendido por otro hilo", pid);
+        log_trace(logger, "PID: %d - Proceso ya está siendo suspendido por otro hilo", pid);
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
         return MEMORIA_OK;
     }
@@ -404,7 +404,7 @@ t_resultado_memoria suspender_proceso_en_memoria(int pid) {
     // Escribir páginas del proceso a SWAP, liberar marcos y marcar como no presente
     int resultado = suspender_proceso_completo(pid);
     if (resultado != 1) {
-        log_debug(logger, "PID: %d - Error al suspender proceso a SWAP", pid);
+        log_trace(logger, "PID: %d - Error al suspender proceso a SWAP", pid);
         // Limpiar flag suspending en caso de error
         proceso->suspending = false;
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
@@ -428,7 +428,7 @@ t_resultado_memoria suspender_proceso_en_memoria(int pid) {
 
 t_resultado_memoria reanudar_proceso_en_memoria(int pid) {
     if (!sistema_memoria) {
-        log_debug(logger, "Sistema de memoria no inicializado");
+        log_trace(logger, "Sistema de memoria no inicializado");
         return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
     }
     
@@ -439,13 +439,13 @@ t_resultado_memoria reanudar_proceso_en_memoria(int pid) {
     
     t_proceso_memoria* proceso = dictionary_get(sistema_memoria->procesos, pid_str);
     if (!proceso) {
-        log_debug(logger, "PID: %d - Proceso no encontrado para reanudar", pid);
+        log_trace(logger, "PID: %d - Proceso no encontrado para reanudar", pid);
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
         return MEMORIA_ERROR_PROCESO_NO_ENCONTRADO;
     }
     
     if (!proceso->suspendido) {
-        log_debug(logger, "PID: %d - Proceso no está suspendido", pid);
+        log_trace(logger, "PID: %d - Proceso no está suspendido", pid);
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
         return MEMORIA_OK;
     }
@@ -461,11 +461,11 @@ t_resultado_memoria reanudar_proceso_en_memoria(int pid) {
         sistema_memoria->memoria_utilizada += proceso->tamanio;
         sistema_memoria->total_reanudaciones++;
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
-        log_debug(logger, "PID: %d - Proceso reanudado exitosamente (vía manejo_swap)", pid);
+        log_trace(logger, "PID: %d - Proceso reanudado exitosamente (vía manejo_swap)", pid);
         return MEMORIA_OK;
     } else {
         pthread_mutex_unlock(&sistema_memoria->mutex_procesos);
-        log_debug(logger, "PID: %d - Error al reanudar proceso (vía manejo_swap)", pid);
+        log_trace(logger, "PID: %d - Error al reanudar proceso (vía manejo_swap)", pid);
         return MEMORIA_ERROR_IO;
     }
 }
@@ -477,7 +477,7 @@ t_resultado_memoria reanudar_proceso_en_memoria(int pid) {
 t_estructura_paginas* crear_estructura_paginas(int pid, int tamanio) {
     t_estructura_paginas* estructura = malloc(sizeof(t_estructura_paginas));
     if (!estructura) {
-        log_debug(logger, "PID: %d - Error al asignar memoria para estructura de paginación", pid);
+        log_trace(logger, "PID: %d - Error al asignar memoria para estructura de paginación", pid);
         return NULL;
     }
     
@@ -501,7 +501,7 @@ t_estructura_paginas* crear_estructura_paginas(int pid, int tamanio) {
     
     // Inicializar mutex
     if (pthread_mutex_init(&estructura->mutex_estructura, NULL) != 0) {
-        log_debug(logger, "PID: %d - Error al inicializar mutex de estructura", pid);
+        log_trace(logger, "PID: %d - Error al inicializar mutex de estructura", pid);
         free(estructura);
         return NULL;
     }
@@ -509,7 +509,7 @@ t_estructura_paginas* crear_estructura_paginas(int pid, int tamanio) {
     // Crear tabla raíz
     estructura->tabla_raiz = crear_tabla_paginas(cfg->CANTIDAD_NIVELES - 1);
     if (!estructura->tabla_raiz) {
-        log_debug(logger, "PID: %d - Error al crear tabla raíz", pid);
+        log_trace(logger, "PID: %d - Error al crear tabla raíz", pid);
         pthread_mutex_destroy(&estructura->mutex_estructura);
         free(estructura);
         return NULL;
@@ -527,7 +527,7 @@ t_resultado_memoria configurar_entrada_pagina(t_estructura_paginas* estructura, 
 
     t_entrada_tabla* entrada = crear_entrada_tabla_si_no_existe(estructura, numero_pagina);
     if (!entrada) {
-        log_debug(logger, "PID: %d - Error al crear entrada para página %d", estructura->pid, numero_pagina);
+        log_trace(logger, "PID: %d - Error al crear entrada para página %d", estructura->pid, numero_pagina);
         return MEMORIA_ERROR_DIRECCION_INVALIDA;
     }
 
@@ -580,7 +580,7 @@ int acceso_tabla_paginas(int pid, int numero_pagina) {
         
         // Verificar que el índice esté dentro del rango
         if (indice >= estructura->entradas_por_tabla) {
-            log_debug(logger, "PID: %d - Índice fuera de rango en nivel %d", pid, nivel);
+            log_trace(logger, "PID: %d - Índice fuera de rango en nivel %d", pid, nivel);
             pthread_mutex_unlock(&estructura->mutex_estructura);
             return -1;
         }
@@ -598,7 +598,7 @@ int acceso_tabla_paginas(int pid, int numero_pagina) {
         if (nivel < estructura->cantidad_niveles - 1) {
             tabla_actual = entrada->tabla_siguiente;
             if (!tabla_actual) {
-                log_debug(logger, "PID: %d - Tabla siguiente nula en nivel %d", pid, nivel);
+                log_trace(logger, "PID: %d - Tabla siguiente nula en nivel %d", pid, nivel);
                 pthread_mutex_unlock(&estructura->mutex_estructura);
                 return -1;
             }
@@ -633,7 +633,7 @@ t_resultado_memoria leer_memoria_fisica(uint32_t direccion_fisica, int tamanio, 
 
     // Validar que la dirección física está dentro del rango de memoria
     if (direccion_fisica + tamanio > cfg->TAM_MEMORIA) {
-        log_debug(logger, "Dirección física fuera de rango: %u", direccion_fisica);
+        log_trace(logger, "Dirección física fuera de rango: %u", direccion_fisica);
         return MEMORIA_ERROR_DIRECCION_INVALIDA;
     }
 
@@ -650,7 +650,7 @@ t_resultado_memoria escribir_memoria_fisica(uint32_t direccion_fisica, void* dat
 
     // Validar que la dirección física está dentro del rango de memoria
     if (direccion_fisica + tamanio > cfg->TAM_MEMORIA) {
-        log_debug(logger, "Dirección física fuera de rango: %u", direccion_fisica);
+        log_trace(logger, "Dirección física fuera de rango: %u", direccion_fisica);
         return MEMORIA_ERROR_DIRECCION_INVALIDA;
     }
 
@@ -671,21 +671,21 @@ t_resultado_memoria escribir_memoria_fisica(uint32_t direccion_fisica, void* dat
  */
 static t_resultado_memoria liberar_marco_interno(int numero_frame) {
     if (!sistema_memoria || !sistema_memoria->admin_marcos) {
-        log_debug(logger, "Sistema de memoria no inicializado");
+        log_trace(logger, "Sistema de memoria no inicializado");
         return MEMORIA_ERROR_MEMORIA_INSUFICIENTE;
     }
     
     t_administrador_marcos* admin = sistema_memoria->admin_marcos;
     
     if (numero_frame < 0 || numero_frame >= admin->cantidad_total_frames) {
-        log_debug(logger, "Número de frame inválido: %d", numero_frame);
+        log_trace(logger, "Número de frame inválido: %d", numero_frame);
         return MEMORIA_ERROR_DIRECCION_INVALIDA;
     }
     
     t_frame* frame = &admin->frames[numero_frame];
     
     if (!frame->ocupado) {
-        log_debug(logger, "Intento de liberar frame ya libre: %d", numero_frame);
+        log_trace(logger, "Intento de liberar frame ya libre: %d", numero_frame);
         return MEMORIA_ERROR_DIRECCION_INVALIDA;
     }
     
@@ -720,16 +720,16 @@ static t_resultado_memoria liberar_marco_interno(int numero_frame) {
 
 static void liberar_marcos_proceso(int pid) {
     if (!sistema_memoria || !sistema_memoria->admin_marcos) {
-        log_debug(logger, "liberar_marcos_proceso: Sistema de memoria no inicializado");
+        log_trace(logger, "liberar_marcos_proceso: Sistema de memoria no inicializado");
         return;
     }
 
-    log_debug(logger, "LIBERAR_MARCOS: Iniciando liberación de marcos para PID %d", pid);
+    log_trace(logger, "LIBERAR_MARCOS: Iniciando liberación de marcos para PID %d", pid);
     pthread_mutex_lock(&sistema_memoria->admin_marcos->mutex_frames);
-    log_debug(logger, "LIBERAR_MARCOS: Mutex adquirido para PID %d", pid);
+    log_trace(logger, "LIBERAR_MARCOS: Mutex adquirido para PID %d", pid);
 
     // Log del estado actual de marcos antes de liberar
-    log_debug(logger, "LIBERAR_MARCOS: Estado actual - Total frames: %d, Libres: %d, Ocupados: %d", 
+    log_trace(logger, "LIBERAR_MARCOS: Estado actual - Total frames: %d, Libres: %d, Ocupados: %d", 
               sistema_memoria->admin_marcos->cantidad_total_frames,
               sistema_memoria->admin_marcos->frames_libres,
               sistema_memoria->admin_marcos->frames_ocupados);
@@ -738,22 +738,22 @@ static void liberar_marcos_proceso(int pid) {
     for (int i = 0; i < sistema_memoria->admin_marcos->cantidad_total_frames; i++) {
         t_frame* frame = &sistema_memoria->admin_marcos->frames[i];
         if (frame->ocupado && frame->pid_propietario == pid) {
-            log_debug(logger, "LIBERAR_MARCOS: Liberando marco %d para PID %d", i, pid);
+            log_trace(logger, "LIBERAR_MARCOS: Liberando marco %d para PID %d", i, pid);
             liberar_marco_interno(i);
             marcos_liberados++;
-            log_debug(logger, "LIBERAR_MARCOS: Marco %d liberado para PID %d", i, pid);
+            log_trace(logger, "LIBERAR_MARCOS: Marco %d liberado para PID %d", i, pid);
         }
     }
 
     // Log del estado final de marcos después de liberar
-    log_debug(logger, "LIBERAR_MARCOS: Estado final - Total frames: %d, Libres: %d, Ocupados: %d", 
+    log_trace(logger, "LIBERAR_MARCOS: Estado final - Total frames: %d, Libres: %d, Ocupados: %d", 
               sistema_memoria->admin_marcos->cantidad_total_frames,
               sistema_memoria->admin_marcos->frames_libres,
               sistema_memoria->admin_marcos->frames_ocupados);
 
-    log_debug(logger, "LIBERAR_MARCOS: Total de marcos liberados para PID %d: %d", pid, marcos_liberados);
+    log_trace(logger, "LIBERAR_MARCOS: Total de marcos liberados para PID %d: %d", pid, marcos_liberados);
     pthread_mutex_unlock(&sistema_memoria->admin_marcos->mutex_frames);
-    log_debug(logger, "LIBERAR_MARCOS: Mutex liberado para PID %d", pid);
+    log_trace(logger, "LIBERAR_MARCOS: Mutex liberado para PID %d", pid);
 }
 
 void* acceso_espacio_usuario_lectura(int pid, int direccion_fisica, int tamanio) {
@@ -762,19 +762,19 @@ void* acceso_espacio_usuario_lectura(int pid, int direccion_fisica, int tamanio)
     
     // Validar parámetros
     if (direccion_fisica < 0 || tamanio <= 0) {
-        log_debug(logger, "PID: %d - Parámetros inválidos para lectura", pid);
+        log_trace(logger, "PID: %d - Parámetros inválidos para lectura", pid);
         return NULL;
     }
     
     // Validar que la dirección está dentro del espacio de memoria
     if (direccion_fisica + tamanio > cfg->TAM_MEMORIA) {
-        log_debug(logger, "PID: %d - Dirección fuera de rango: %d + %d > %d", 
+        log_trace(logger, "PID: %d - Dirección fuera de rango: %d + %d > %d", 
                  pid, direccion_fisica, tamanio, cfg->TAM_MEMORIA);
         return NULL;
     }
     
     if (!proceso_existe(pid)) {
-        log_debug(logger, "PID: %d - Proceso no existe para lectura", pid);
+        log_trace(logger, "PID: %d - Proceso no existe para lectura", pid);
         return NULL;
     }
     
@@ -787,7 +787,7 @@ void* acceso_espacio_usuario_lectura(int pid, int direccion_fisica, int tamanio)
         *pag = direccion_fisica / cfg->TAM_PAGINA;
         list_add(paginas_bloqueadas, pag);
     } else {
-        log_debug(logger, "PID: %d - No se pudo bloquear página %d para lectura", pid, direccion_fisica / cfg->TAM_PAGINA);
+        log_trace(logger, "PID: %d - No se pudo bloquear página %d para lectura", pid, direccion_fisica / cfg->TAM_PAGINA);
         return NULL;
     }
     
@@ -798,7 +798,7 @@ void* acceso_espacio_usuario_lectura(int pid, int direccion_fisica, int tamanio)
         int* pag = list_get(paginas_bloqueadas, 0);
         desbloquear_marco_por_pagina(pid, *pag, "LECTURA_ESPACIO_USUARIO");
         list_destroy_and_destroy_elements(paginas_bloqueadas, free);
-        log_debug(logger, "PID: %d - No se pudo obtener marco para página %d", pid, numero_pagina);
+        log_trace(logger, "PID: %d - No se pudo obtener marco para página %d", pid, numero_pagina);
         return NULL;
     }
     
@@ -808,7 +808,7 @@ void* acceso_espacio_usuario_lectura(int pid, int direccion_fisica, int tamanio)
         int* pag = list_get(paginas_bloqueadas, 0);
         desbloquear_marco_por_pagina(pid, *pag, "LECTURA_ESPACIO_USUARIO");
         list_destroy_and_destroy_elements(paginas_bloqueadas, free);
-        log_debug(logger, "Error al asignar memoria para leer marco %d", numero_marco);
+        log_trace(logger, "Error al asignar memoria para leer marco %d", numero_marco);
         return NULL;
     }
     
@@ -817,7 +817,7 @@ void* acceso_espacio_usuario_lectura(int pid, int direccion_fisica, int tamanio)
         int* pag = list_get(paginas_bloqueadas, 0);
         desbloquear_marco_por_pagina(pid, *pag, "LECTURA_ESPACIO_USUARIO");
         list_destroy_and_destroy_elements(paginas_bloqueadas, free);
-        log_debug(logger, "PID: %d - Error al leer contenido del marco %d", pid, numero_marco);
+        log_trace(logger, "PID: %d - Error al leer contenido del marco %d", pid, numero_marco);
         return NULL;
     }
     
@@ -835,7 +835,7 @@ void* acceso_espacio_usuario_lectura(int pid, int direccion_fisica, int tamanio)
         int* pag = list_get(paginas_bloqueadas, 0);
         desbloquear_marco_por_pagina(pid, *pag, "LECTURA_ESPACIO_USUARIO");
         list_destroy_and_destroy_elements(paginas_bloqueadas, free);
-        log_debug(logger, "Error al asignar memoria para valor leído");
+        log_trace(logger, "Error al asignar memoria para valor leído");
         return NULL;
     }
     
@@ -865,20 +865,20 @@ bool acceso_espacio_usuario_escritura(int pid, int direccion_fisica, int tamanio
     
     // Validar parámetros
     if (direccion_fisica < 0 || tamanio <= 0 || datos == NULL) {
-        log_debug(logger, "PID: %d - Parámetros inválidos para escritura", pid);
+        log_trace(logger, "PID: %d - Parámetros inválidos para escritura", pid);
         return false;
     }
     
     // Validar que la dirección está dentro del espacio de memoria
     if (direccion_fisica + tamanio > cfg->TAM_MEMORIA) {
-        log_debug(logger, "PID: %d - Dirección fuera de rango: %d + %d > %d", 
+        log_trace(logger, "PID: %d - Dirección fuera de rango: %d + %d > %d", 
                  pid, direccion_fisica, tamanio, cfg->TAM_MEMORIA);
         return false;
     }
     
     // Validar que el proceso existe
     if (!proceso_existe(pid)) {
-        log_debug(logger, "PID: %d - Proceso no existe para escritura", pid);
+        log_trace(logger, "PID: %d - Proceso no existe para escritura", pid);
         return false;
     }
     
@@ -892,7 +892,7 @@ bool acceso_espacio_usuario_escritura(int pid, int direccion_fisica, int tamanio
         *pag = direccion_fisica / cfg->TAM_PAGINA;
         list_add(paginas_bloqueadas, pag);
     } else {
-        log_debug(logger, "PID: %d - No se pudo bloquear página %d para escritura", pid, direccion_fisica / cfg->TAM_PAGINA);
+        log_trace(logger, "PID: %d - No se pudo bloquear página %d para escritura", pid, direccion_fisica / cfg->TAM_PAGINA);
         return false;
     }
     
@@ -926,25 +926,25 @@ bool acceso_espacio_usuario_escritura(int pid, int direccion_fisica, int tamanio
  * coincidir con la posición del byte 0 de la página.
  */
 void* leer_pagina_completa(int pid, int direccion_base_pagina) {
-    log_debug(logger, "PID: %d - Leer página completa - Dir. Base Página: %d", pid, direccion_base_pagina);
+    log_trace(logger, "PID: %d - Leer página completa - Dir. Base Página: %d", pid, direccion_base_pagina);
     
     // Validar que la dirección coincide con el byte 0 de una página
     if (direccion_base_pagina % cfg->TAM_PAGINA != 0) {
-        log_debug(logger, "PID: %d - Dirección base %d no coincide con byte 0 de página (TAM_PAGINA=%d)", 
+        log_trace(logger, "PID: %d - Dirección base %d no coincide con byte 0 de página (TAM_PAGINA=%d)", 
                  pid, direccion_base_pagina, cfg->TAM_PAGINA);
         return NULL;
     }
     
     // Validar que la dirección está dentro del espacio de memoria
     if (direccion_base_pagina + cfg->TAM_PAGINA > cfg->TAM_MEMORIA) {
-        log_debug(logger, "PID: %d - Página fuera de rango: %d + %d > %d", 
+        log_trace(logger, "PID: %d - Página fuera de rango: %d + %d > %d", 
                  pid, direccion_base_pagina, cfg->TAM_PAGINA, cfg->TAM_MEMORIA);
         return NULL;
     }
     
     // Validar que el proceso existe
     if (!proceso_existe(pid)) {
-        log_debug(logger, "PID: %d - Proceso no existe para leer página completa", pid);
+        log_trace(logger, "PID: %d - Proceso no existe para leer página completa", pid);
         return NULL;
     }
     
@@ -967,7 +967,7 @@ void* leer_pagina_completa(int pid, int direccion_base_pagina) {
         *pag = numero_pagina;
         list_add(paginas_bloqueadas, pag);
     } else {
-        log_debug(logger, "PID: %d - No se pudo bloquear página %d para lectura completa", pid, numero_pagina);
+        log_trace(logger, "PID: %d - No se pudo bloquear página %d para lectura completa", pid, numero_pagina);
         return NULL;
     }
     
@@ -980,7 +980,7 @@ void* leer_pagina_completa(int pid, int direccion_base_pagina) {
     // Reservar memoria para la página completa
     void* pagina_completa = malloc(cfg->TAM_PAGINA);
     if (pagina_completa == NULL) {
-        log_debug(logger, "PID: %d - Error al reservar memoria para página completa", pid);
+        log_trace(logger, "PID: %d - Error al reservar memoria para página completa", pid);
         int* pag = list_get(paginas_bloqueadas, 0);
         desbloquear_marco_por_pagina(pid, *pag, "LECTURA_PAGINA_COMPLETA");
         list_destroy_and_destroy_elements(paginas_bloqueadas, free);
@@ -1007,31 +1007,31 @@ void* leer_pagina_completa(int pid, int direccion_base_pagina) {
  * Usuario y se responderá como OK.
  */
 bool actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido_pagina) {
-    log_debug(logger, "PID: %d - Actualizar página completa - Dir. Física: %d", pid, direccion_fisica);
+    log_trace(logger, "PID: %d - Actualizar página completa - Dir. Física: %d", pid, direccion_fisica);
     
     // Validar parámetros
     if (contenido_pagina == NULL) {
-        log_debug(logger, "PID: %d - Contenido de página es NULL", pid);
+        log_trace(logger, "PID: %d - Contenido de página es NULL", pid);
         return false;
     }
     
     // Validar que la dirección coincide con el byte 0 de una página
     if (direccion_fisica % cfg->TAM_PAGINA != 0) {
-        log_debug(logger, "PID: %d - Dirección física %d no coincide con byte 0 de página (TAM_PAGINA=%d)", 
+        log_trace(logger, "PID: %d - Dirección física %d no coincide con byte 0 de página (TAM_PAGINA=%d)", 
                  pid, direccion_fisica, cfg->TAM_PAGINA);
         return false;
     }
     
     // Validar que la dirección está dentro del espacio de memoria
     if (direccion_fisica + cfg->TAM_PAGINA > cfg->TAM_MEMORIA) {
-        log_debug(logger, "PID: %d - Página fuera de rango: %d + %d > %d", 
+        log_trace(logger, "PID: %d - Página fuera de rango: %d + %d > %d", 
                  pid, direccion_fisica, cfg->TAM_PAGINA, cfg->TAM_MEMORIA);
         return false;
     }
     
     // Validar que el proceso existe
     if (!proceso_existe(pid)) {
-        log_debug(logger, "PID: %d - Proceso no existe para actualizar página completa", pid);
+        log_trace(logger, "PID: %d - Proceso no existe para actualizar página completa", pid);
         return false;
     }
     
@@ -1055,7 +1055,7 @@ bool actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido_p
         *pag = numero_pagina;
         list_add(paginas_bloqueadas, pag);
     } else {
-        log_debug(logger, "PID: %d - No se pudo bloquear página %d para escritura completa", pid, numero_pagina);
+        log_trace(logger, "PID: %d - No se pudo bloquear página %d para escritura completa", pid, numero_pagina);
         return false;
     }
     

@@ -24,7 +24,7 @@ extern t_config_memoria* cfg;
 int suspender_proceso_completo(int pid) {
     log_trace(logger, "[SWAP] >>>>> ENTRANDO a suspender_proceso_completo para PID %d", pid);
     if (!proceso_existe(pid)) {
-        log_debug(logger, "[SWAP] PID: %d - Proceso no existe, no se puede suspender", pid);
+        log_trace(logger, "[SWAP] PID: %d - Proceso no existe, no se puede suspender", pid);
         return 0;
     }
     
@@ -35,7 +35,7 @@ int suspender_proceso_completo(int pid) {
     free(pid_str);
     
     if (proceso == NULL) {
-        log_debug(logger, "[SWAP] PID: %d - Proceso no encontrado", pid);
+        log_trace(logger, "[SWAP] PID: %d - Proceso no encontrado", pid);
         return 0;
     }
     
@@ -51,14 +51,14 @@ int suspender_proceso_completo(int pid) {
     // Obtener estructura de páginas del proceso
     t_estructura_paginas* estructura = proceso->estructura_paginas;
     if (estructura == NULL) {
-        log_debug(logger, "[SWAP] PID: %d - No se encontró estructura de páginas", pid);
+        log_trace(logger, "[SWAP] PID: %d - No se encontró estructura de páginas", pid);
         pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
         return 0;
     }
     
     // Verificar espacio en SWAP ANTES de comenzar la suspensión
     if (!asignar_espacio_swap_proceso(pid)) {
-        log_debug(logger, "[SWAP] PID: %d - No hay suficiente espacio en SWAP", pid);
+        log_trace(logger, "[SWAP] PID: %d - No hay suficiente espacio en SWAP", pid);
         pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
         return 0;
     }
@@ -77,20 +77,20 @@ int suspender_proceso_completo(int pid) {
         if (entrada != NULL) {
             void* contenido_pagina = malloc(cfg->TAM_PAGINA);
             if (contenido_pagina == NULL) {
-                log_debug(logger, "[SWAP] Error al asignar memoria para página %d del proceso %d", i, pid);
+                log_trace(logger, "[SWAP] Error al asignar memoria para página %d del proceso %d", i, pid);
                 suspension_exitosa = false;
                 break;
             }
             log_trace(logger, "[SWAP] PID: %d - Leyendo página %d del marco %d", pid, i, entrada->numero_frame);
             if (leer_pagina_memoria(entrada->numero_frame, contenido_pagina) != MEMORIA_OK) {
-                log_debug(logger, "[SWAP] Error al leer página %d del proceso %d", i, pid);
+                log_trace(logger, "[SWAP] Error al leer página %d del proceso %d", i, pid);
                 free(contenido_pagina);
                 suspension_exitosa = false;
                 break;
             }
             log_trace(logger, "[SWAP] PID: %d - Escribiendo página %d a SWAP", pid, i);
             if (!escribir_pagina_proceso_swap(pid, i, contenido_pagina)) {
-                log_debug(logger, "[SWAP] Error al escribir página %d del proceso %d a SWAP", i, pid);
+                log_trace(logger, "[SWAP] Error al escribir página %d del proceso %d a SWAP", i, pid);
                 free(contenido_pagina);
                 suspension_exitosa = false;
                 break;
@@ -117,22 +117,22 @@ int suspender_proceso_completo(int pid) {
     int marcos_libres_despues = sistema_memoria->admin_marcos->frames_libres;
     marcos_liberados = marcos_libres_despues - marcos_libres_antes;
     if (marcos_liberados != paginas_escritas) {
-        log_debug(logger, "[SWAP][CHECK] PID: %d - Marcos liberados (%d) != páginas escritas a swap (%d)", pid, marcos_liberados, paginas_escritas);
+        log_trace(logger, "[SWAP][CHECK] PID: %d - Marcos liberados (%d) != páginas escritas a swap (%d)", pid, marcos_liberados, paginas_escritas);
     } else {
-        log_debug(logger, "[SWAP][CHECK] PID: %d - Marcos liberados correctamente: %d", pid, marcos_liberados);
+        log_trace(logger, "[SWAP][CHECK] PID: %d - Marcos liberados correctamente: %d", pid, marcos_liberados);
     }
     if (paginas_con_presente > 0 || paginas_con_frame > 0) {
-        log_debug(logger, "[SWAP][CHECK] PID: %d - %d páginas quedaron con presente=true y %d con numero_frame!=0 tras suspensión", pid, paginas_con_presente, paginas_con_frame);
+        log_trace(logger, "[SWAP][CHECK] PID: %d - %d páginas quedaron con presente=true y %d con numero_frame!=0 tras suspensión", pid, paginas_con_presente, paginas_con_frame);
     } else {
-        log_debug(logger, "[SWAP][CHECK] PID: %d - Todas las entradas de página correctamente con presente=false y numero_frame=0", pid);
+        log_trace(logger, "[SWAP][CHECK] PID: %d - Todas las entradas de página correctamente con presente=false y numero_frame=0", pid);
     }
     if (suspension_exitosa) {
         proceso->suspendido = true;
         incrementar_bajadas_swap(pid);
-        log_debug(logger, "[SWAP] PID: %d - Proceso suspendido completamente. Páginas escritas a SWAP: %d, omitidas: %d", pid, paginas_escritas, paginas_omitidas);
+        log_trace(logger, "[SWAP] PID: %d - Proceso suspendido completamente. Páginas escritas a SWAP: %d, omitidas: %d", pid, paginas_escritas, paginas_omitidas);
         
     } else {
-        log_debug(logger, "[SWAP] PID: %d - Falló la suspensión, liberando páginas de SWAP", pid);
+        log_trace(logger, "[SWAP] PID: %d - Falló la suspensión, liberando páginas de SWAP", pid);
         liberar_espacio_swap_proceso(pid);
     }
     pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
@@ -145,7 +145,7 @@ int suspender_proceso_completo(int pid) {
 
 int reanudar_proceso_suspendido(int pid) {
     if (!proceso_existe(pid)) {
-        log_debug(logger, "PID: %d - Proceso no existe, no se puede reanudar", pid);
+        log_trace(logger, "PID: %d - Proceso no existe, no se puede reanudar", pid);
         return 0;
     }
     
@@ -156,7 +156,7 @@ int reanudar_proceso_suspendido(int pid) {
     snprintf(pid_str, sizeof(pid_str), "%d", pid);
     t_proceso_memoria* proceso = dictionary_get(sistema_memoria->procesos, pid_str);
     if (proceso == NULL || !proceso->suspendido) {
-        log_debug(logger, "PID: %d - Proceso no está suspendido", pid);
+        log_trace(logger, "PID: %d - Proceso no está suspendido", pid);
         return 0;
     }
     
@@ -165,14 +165,14 @@ int reanudar_proceso_suspendido(int pid) {
     // Obtener estructura de páginas del proceso
     t_estructura_paginas* estructura = proceso->estructura_paginas;
     if (estructura == NULL) {
-        log_debug(logger, "PID: %d - No se encontró estructura de páginas", pid);
+        log_trace(logger, "PID: %d - No se encontró estructura de páginas", pid);
         pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
         return 0;
     }
     
     // Verificar si hay espacio suficiente en memoria principal
     if (sistema_memoria->admin_marcos->frames_libres < estructura->paginas_totales) {
-        log_debug(logger, "PID: %d - No hay suficiente espacio en memoria para reanudar proceso", pid);
+        log_trace(logger, "PID: %d - No hay suficiente espacio en memoria para reanudar proceso", pid);
         pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
         return 0;
     }
@@ -184,16 +184,16 @@ int reanudar_proceso_suspendido(int pid) {
     int pagina_actual = 0; // Declarar variable para el bucle de limpieza
     
     for (pagina_actual = 0; pagina_actual < estructura->paginas_totales && reanudacion_exitosa; pagina_actual++) {
-        log_debug(logger, "PID: %d - [REANUDAR] INICIO iteración página %d de %d", pid, pagina_actual, estructura->paginas_totales);
+        log_trace(logger, "PID: %d - [REANUDAR] INICIO iteración página %d de %d", pid, pagina_actual, estructura->paginas_totales);
         t_entrada_tabla* entrada = buscar_entrada_tabla(estructura, pagina_actual);
         
         if (entrada != NULL && !entrada->presente) {
-            log_debug(logger, "PID: %d - [REANUDAR] Antes de asignar_marco_libre para página %d", pid, pagina_actual);
+            log_trace(logger, "PID: %d - [REANUDAR] Antes de asignar_marco_libre para página %d", pid, pagina_actual);
             // Asignar nuevo frame en memoria principal
             int nuevo_frame = asignar_marco_libre(pid, pagina_actual);
-            log_debug(logger, "PID: %d - [REANUDAR] Después de asignar_marco_libre para página %d (frame=%d)", pid, pagina_actual, nuevo_frame);
+            log_trace(logger, "PID: %d - [REANUDAR] Después de asignar_marco_libre para página %d (frame=%d)", pid, pagina_actual, nuevo_frame);
             if (nuevo_frame == -1) {
-                log_debug(logger, "PID: %d - No se pudo asignar frame para página %d", pid, pagina_actual);
+                log_trace(logger, "PID: %d - No se pudo asignar frame para página %d", pid, pagina_actual);
                 reanudacion_exitosa = false;
                 break;
             }
@@ -202,11 +202,11 @@ int reanudar_proceso_suspendido(int pid) {
             entrada->numero_frame = nuevo_frame;
             entrada->timestamp_acceso = time(NULL);
 
-            log_debug(logger, "PID: %d - [REANUDAR] Antes de leer_pagina_proceso_swap para página %d", pid, pagina_actual);
+            log_trace(logger, "PID: %d - [REANUDAR] Antes de leer_pagina_proceso_swap para página %d", pid, pagina_actual);
             void* contenido = leer_pagina_proceso_swap(pid, pagina_actual);
-            log_debug(logger, "PID: %d - [REANUDAR] Después de leer_pagina_proceso_swap para página %d (contenido=%p)", pid, pagina_actual, contenido);
+            log_trace(logger, "PID: %d - [REANUDAR] Después de leer_pagina_proceso_swap para página %d (contenido=%p)", pid, pagina_actual, contenido);
             if (contenido == NULL) {
-                log_debug(logger, "PID: %d - Error al leer página %d desde SWAP", pid, pagina_actual);
+                log_trace(logger, "PID: %d - Error al leer página %d desde SWAP", pid, pagina_actual);
                 // Revertir entrada y liberar marco
                 entrada->presente = false;
                 entrada->numero_frame = 0;
@@ -216,9 +216,9 @@ int reanudar_proceso_suspendido(int pid) {
                 break;
             }
             // Escribir contenido en memoria principal
-            log_debug(logger, "PID: %d - [REANUDAR] Antes de escribir_pagina_memoria para página %d", pid, pagina_actual);
+            log_trace(logger, "PID: %d - [REANUDAR] Antes de escribir_pagina_memoria para página %d", pid, pagina_actual);
             if (escribir_pagina_memoria(nuevo_frame, contenido) != MEMORIA_OK) {
-                log_debug(logger, "PID: %d - Error al escribir página %d en memoria", pid, pagina_actual);
+                log_trace(logger, "PID: %d - Error al escribir página %d en memoria", pid, pagina_actual);
                 free(contenido);
                 entrada->presente = false;
                 entrada->numero_frame = 0;
@@ -227,34 +227,34 @@ int reanudar_proceso_suspendido(int pid) {
                 reanudacion_exitosa = false;
                 break;
             }
-            log_debug(logger, "PID: %d - [REANUDAR] Después de escribir_pagina_memoria para página %d", pid, pagina_actual);
+            log_trace(logger, "PID: %d - [REANUDAR] Después de escribir_pagina_memoria para página %d", pid, pagina_actual);
             paginas_cargadas++;
             free(contenido);
             log_trace(logger, "PID: %d - Página %d reanudada exitosamente en marco %d", pid, pagina_actual, nuevo_frame);
         } else if (entrada == NULL) {
-            log_debug(logger, "PID: %d - Entrada de tabla nula para página %d al reanudar", pid, pagina_actual);
+            log_trace(logger, "PID: %d - Entrada de tabla nula para página %d al reanudar", pid, pagina_actual);
             paginas_fallidas++;
         } else if (entrada->presente) {
             log_trace(logger, "PID: %d - Página %d ya presente en memoria al reanudar", pid, pagina_actual);
         }
-        log_debug(logger, "PID: %d - [REANUDAR] FIN iteración página %d", pid, pagina_actual);
+        log_trace(logger, "PID: %d - [REANUDAR] FIN iteración página %d", pid, pagina_actual);
     }
     
     if (reanudacion_exitosa) {
         // Liberar el mutex ANTES de liberar el espacio de swap para evitar deadlock
         pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
         liberar_espacio_swap_proceso(pid);
-        // No es necesario volver a tomar el mutex aquí
+        // No es necesario volver a tomar el mutex aca
         // Marcar proceso como activo
         proceso->suspendido = false;
         // Incrementar métrica de subidas a memoria principal
         incrementar_subidas_memoria_principal(pid);
         
-        log_debug(logger, "PID: %d - Proceso reanudado exitosamente. Páginas cargadas desde SWAP: %d, fallidas: %d", 
+        log_trace(logger, "PID: %d - Proceso reanudado exitosamente. Páginas cargadas desde SWAP: %d, fallidas: %d", 
                  pid, paginas_cargadas, paginas_fallidas);
     } else {
         // Si falló la reanudación, liberar los marcos ya asignados en esta operación
-        log_debug(logger, "PID: %d - Falló la reanudación, liberando marcos asignados", pid);
+        log_trace(logger, "PID: %d - Falló la reanudación, liberando marcos asignados", pid);
         for (int j = 0; j < pagina_actual; j++) {
             t_entrada_tabla* entrada_liberar = buscar_entrada_tabla(estructura, j);
             if (entrada_liberar && entrada_liberar->presente) {
@@ -292,7 +292,7 @@ int escribir_pagina_proceso_swap(int pid, int numero_pagina, void* contenido) {
     t_proceso_memoria* proceso = dictionary_get(sistema_memoria->procesos, pid_str);
 
     if (!proceso || !proceso->estructura_paginas) {
-        log_debug(logger, "PID: %d - Proceso no encontrado para escribir página %d", pid, numero_pagina);
+        log_trace(logger, "PID: %d - Proceso no encontrado para escribir página %d", pid, numero_pagina);
         // desbloquear_marco_por_pagina(pid, numero_pagina, "ESCRITURA_SWAP");
         return 0;
     }
@@ -309,7 +309,7 @@ int escribir_pagina_proceso_swap(int pid, int numero_pagina, void* contenido) {
 
     // Validar que el marco tiene el tamaño correcto
     if (cfg->TAM_PAGINA > sizeof(buffer_pagina)) {
-        log_debug(logger, "Tamaño de página (%d) excede el buffer (%d)", cfg->TAM_PAGINA, (int)sizeof(buffer_pagina));
+        log_trace(logger, "Tamaño de página (%d) excede el buffer (%d)", cfg->TAM_PAGINA, (int)sizeof(buffer_pagina));
         // desbloquear_marco_por_pagina(pid, numero_pagina, "ESCRITURA_SWAP");
         return 0;
     }
@@ -323,7 +323,7 @@ int escribir_pagina_proceso_swap(int pid, int numero_pagina, void* contenido) {
         }
     }
     if (entrada_swap == -1) {
-        log_debug(logger, "PID: %d - No hay entradas libres en SWAP para registrar página %d", pid, numero_pagina);
+        log_trace(logger, "PID: %d - No hay entradas libres en SWAP para registrar página %d", pid, numero_pagina);
         return 0;
     }
 
@@ -339,7 +339,7 @@ int escribir_pagina_proceso_swap(int pid, int numero_pagina, void* contenido) {
     
     // Posicionarse en el offset correcto
     if (lseek(sistema_memoria->admin_swap->fd_swap, offset, SEEK_SET) == -1) {
-        log_debug(logger, "Error al posicionarse en SWAP para escribir página %d del proceso %d: %s", numero_pagina, pid, strerror(errno));
+        log_trace(logger, "Error al posicionarse en SWAP para escribir página %d del proceso %d: %s", numero_pagina, pid, strerror(errno));
         return 0;
     }
 
@@ -347,7 +347,7 @@ int escribir_pagina_proceso_swap(int pid, int numero_pagina, void* contenido) {
     log_trace(logger, "[DEBUG SWAP] write: fd=%d, offset=%ld, size=%d", sistema_memoria->admin_swap->fd_swap, offset, cfg->TAM_PAGINA);
     ssize_t bytes_escritos = write(sistema_memoria->admin_swap->fd_swap, buffer_pagina, cfg->TAM_PAGINA);
     if (bytes_escritos != cfg->TAM_PAGINA) {
-        log_debug(logger, "Error al escribir página a SWAP: solo se escribieron %zd de %d bytes. errno=%d (%s)", 
+        log_trace(logger, "Error al escribir página a SWAP: solo se escribieron %zd de %d bytes. errno=%d (%s)", 
                   bytes_escritos, cfg->TAM_PAGINA, errno, strerror(errno));
         return 0;
     }
@@ -358,13 +358,13 @@ int escribir_pagina_proceso_swap(int pid, int numero_pagina, void* contenido) {
     sistema_memoria->admin_swap->entradas[entrada_swap].numero_pagina = numero_pagina;
     sistema_memoria->admin_swap->paginas_libres_swap--;
     sistema_memoria->admin_swap->paginas_ocupadas_swap++;
-    log_debug(logger, "PID: %d - Página %d escrita en SWAP en entrada %d (offset %ld)", pid, numero_pagina, entrada_swap, offset);
+    log_trace(logger, "PID: %d - Página %d escrita en SWAP en entrada %d (offset %ld)", pid, numero_pagina, entrada_swap, offset);
     
     // Actualizar información de SWAP
     entrada->presente = false;  // Ya no está en memoria principal
     entrada->timestamp_acceso = time(NULL);
     
-    // NO incrementar métrica aquí - se hace una sola vez por proceso en suspender_proceso_completo
+    // NO incrementar métrica aca - se hace una sola vez por proceso en suspender_proceso_completo
     // incrementar_bajadas_swap(pid);
     
     return 1;
@@ -385,27 +385,27 @@ void* leer_pagina_proceso_swap(int pid, int numero_pagina) {
         }
     }
     if (posicion_swap == -1) {
-        log_debug(logger, "PID: %d - Página %d no encontrada en SWAP", pid, numero_pagina);
+        log_trace(logger, "PID: %d - Página %d no encontrada en SWAP", pid, numero_pagina);
         // pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
         return NULL;
     }
     // Asignar memoria para el contenido
     void* contenido = malloc(cfg->TAM_PAGINA);
     if (contenido == NULL) {
-        log_debug(logger, "PID: %d - Error al asignar memoria para leer página %d", pid, numero_pagina);
+        log_trace(logger, "PID: %d - Error al asignar memoria para leer página %d", pid, numero_pagina);
         // pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
         return NULL;
     }
     // Calcular offset y leer desde el archivo SWAP
     off_t offset = posicion_swap * cfg->TAM_PAGINA;
     if (lseek(sistema_memoria->admin_swap->fd_swap, offset, SEEK_SET) == -1) {
-        log_debug(logger, "PID: %d - Error al posicionarse en SWAP para leer página %d", pid, numero_pagina);
+        log_trace(logger, "PID: %d - Error al posicionarse en SWAP para leer página %d", pid, numero_pagina);
         free(contenido);
         // pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
         return NULL;
     }
     if (read(sistema_memoria->admin_swap->fd_swap, contenido, cfg->TAM_PAGINA) != cfg->TAM_PAGINA) {
-        log_debug(logger, "PID: %d - Error al leer página %d desde SWAP", pid, numero_pagina);
+        log_trace(logger, "PID: %d - Error al leer página %d desde SWAP", pid, numero_pagina);
         free(contenido);
         // pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
         return NULL;
@@ -413,7 +413,7 @@ void* leer_pagina_proceso_swap(int pid, int numero_pagina) {
     // Incrementar métrica de subidas desde SWAP
     incrementar_subidas_memoria_principal(pid);
     // pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
-    // NO aplicar retardo aquí
+    // NO aplicar retardo aca
     // aplicar_retardo_swap();
     // DESBLOQUEAR PÁGINA AL FINALIZAR (solo si la bloqueamos en este call)
     return contenido;
@@ -430,14 +430,14 @@ int asignar_espacio_swap_proceso(int pid) {
     t_proceso_memoria* proceso = dictionary_get(sistema_memoria->procesos, pid_str);
     
     if (proceso == NULL) {
-        log_debug(logger, "PID: %d - Proceso no encontrado para asignar SWAP", pid);
+        log_trace(logger, "PID: %d - Proceso no encontrado para asignar SWAP", pid);
         return 0;
     }
     
     int paginas_necesarias = proceso->estructura_paginas->paginas_totales;
     // NO BLOQUEAR EL MUTEX ACA porq ya está bloqueado afuera
     if (sistema_memoria->admin_swap->paginas_libres_swap < paginas_necesarias) {
-        log_debug(logger, "PID: %d - No hay suficiente espacio en SWAP (%d páginas necesarias, %d disponibles)", 
+        log_trace(logger, "PID: %d - No hay suficiente espacio en SWAP (%d páginas necesarias, %d disponibles)", 
                   pid, paginas_necesarias, sistema_memoria->admin_swap->paginas_libres_swap);
         return 0;
     }

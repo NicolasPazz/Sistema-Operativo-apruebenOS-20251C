@@ -73,7 +73,7 @@ void destruir_instrucciones_proceso(int pid) {
         }
     }
     
-    log_debug(logger, "PID: %d - No se encontraron instrucciones para liberar", pid);
+    log_trace(logger, "PID: %d - No se encontraron instrucciones para liberar", pid);
 }
 
 // Función corregida para destruir TODAS las instrucciones al cerrar sistema
@@ -102,7 +102,7 @@ t_process_instructions* load_process_instructions(int pid, char* instructions_fi
     // Open the instruction file
     FILE* file = fopen(instructions_file, "r");
     if (file == NULL) {
-        log_debug(logger, "PID: %d - Error opening instruction file: %s", pid, instructions_file);
+        log_trace(logger, "PID: %d - Error opening instruction file: %s", pid, instructions_file);
         // Create empty instructions list and return (failsafe)
         return process_inst;
     }
@@ -252,7 +252,7 @@ t_process_instructions* load_process_instructions(int pid, char* instructions_fi
         } 
         else {
             // Unknown instruction, skip it
-            log_debug(logger, "PID: %d - Unknown instruction type: %s", pid, token);
+            log_trace(logger, "PID: %d - Unknown instruction type: %s", pid, token);
             free(instruction->instruccion_base.parametros1);
             free(instruction->instruccion_base.parametros2);
             free(instruction->instruccion_base.parametros3);
@@ -284,7 +284,7 @@ t_process_instructions* load_process_instructions(int pid, char* instructions_fi
 // Obtiene una instrucción específica para un proceso
 t_instruccion* get_instruction(int pid, int pc) {
     if (process_instructions_list == NULL) {
-        log_debug(logger, "Lista de instrucciones del proceso PID: %d no inicializada", pid);
+        log_trace(logger, "Lista de instrucciones del proceso PID: %d no inicializada", pid);
         return NULL;
     }
     
@@ -299,7 +299,7 @@ t_instruccion* get_instruction(int pid, int pc) {
     }
     
     if (process_inst == NULL) {
-        log_debug(logger, "PID: %d - No se encontraron instrucciones para este proceso", pid);
+        log_trace(logger, "PID: %d - No se encontraron instrucciones para este proceso", pid);
         return NULL;
     }
     
@@ -311,7 +311,7 @@ t_instruccion* get_instruction(int pid, int pc) {
     
     // Verificar que el PC sea válido
     if (pc_index < 0 || pc_index >= list_size(process_inst->instructions)) {
-        log_debug(logger, "PID: %d - PC fuera de rango: %d (índice: %d, tamaño lista: %d)", 
+        log_trace(logger, "PID: %d - PC fuera de rango: %d (índice: %d, tamaño lista: %d)", 
                  pid, pc, pc_index, list_size(process_inst->instructions));
         return NULL;
     }
