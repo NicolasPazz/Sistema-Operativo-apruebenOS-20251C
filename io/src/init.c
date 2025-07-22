@@ -66,7 +66,7 @@ void iniciar_conexiones_io(char* nombre_io) {
 
     fd_kernel_io = crear_conexion(IP_KERNEL, PUERTO_KERNEL, io_log);
     if (fd_kernel_io == -1) {
-        log_debug(io_log, "Error crítico: No se pudo conectar IO a Kernel en %s:%s", IP_KERNEL, PUERTO_KERNEL);
+        log_trace(io_log, "Error crítico: No se pudo conectar IO a Kernel en %s:%s", IP_KERNEL, PUERTO_KERNEL);
         exit(EXIT_FAILURE);
     }
 
@@ -74,7 +74,7 @@ void iniciar_conexiones_io(char* nombre_io) {
 
     int handshake = HANDSHAKE_IO_KERNEL;
     if (send(fd_kernel_io, &handshake, sizeof(int), 0) <= 0) {
-        log_debug(io_log, "Error al enviar handshake a Kernel: %s", strerror(errno));
+        log_trace(io_log, "Error al enviar handshake a Kernel: %s", strerror(errno));
         close(fd_kernel_io);
         exit(EXIT_FAILURE);
     }
@@ -82,7 +82,7 @@ void iniciar_conexiones_io(char* nombre_io) {
     log_trace(io_log, "Handshake enviado. Enviando nombre del dispositivo: '%s'", nombre_io);
 
     if (send(fd_kernel_io, nombre_io, strlen(nombre_io) + 1, 0) <= 0) {
-        log_debug(io_log, "Error al enviar el nombre de IO a Kernel: %s", strerror(errno));
+        log_trace(io_log, "Error al enviar el nombre de IO a Kernel: %s", strerror(errno));
         close(fd_kernel_io);
         exit(EXIT_FAILURE);
     }
@@ -100,7 +100,7 @@ void terminar_io() {
         if (close(fd_kernel_io) == 0) {
             log_trace(io_log, "✓ Conexión con Kernel cerrada correctamente");
         } else {
-            log_debug(io_log, "⚠ Error al cerrar conexión con Kernel: %s", strerror(errno));
+            log_trace(io_log, "⚠ Error al cerrar conexión con Kernel: %s", strerror(errno));
         }
         fd_kernel_io = -1;
     } else {

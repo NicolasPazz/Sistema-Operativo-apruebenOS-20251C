@@ -17,7 +17,7 @@ modulo_info obtener_info_modulo(char* nombre) {
     if (strcmp(nombre, "cpu_dispatch") == 0) return (modulo_info) {"cpu_dispatch", "127.0.0.1", "8001"};
     if (strcmp(nombre, "cpu_interrupt") == 0) return (modulo_info) {"cpu_interrupt", "127.0.0.1", "8004"};
 
-    log_debug(mock_log, "Módulo desconocido: %s", nombre);
+    log_trace(mock_log, "Módulo desconocido: %s", nombre);
     exit(EXIT_FAILURE);
 }
 
@@ -28,7 +28,7 @@ int obtener_handshake(char* soy, char* destino) {
     if (strcmp(soy, "kernel") == 0 && strcmp(destino, "cpu_dispatch") == 0) return HANDSHAKE_CPU_KERNEL_DISPATCH;
     if (strcmp(soy, "kernel") == 0 && strcmp(destino, "kernel_io") == 0) return HANDSHAKE_IO_KERNEL;
 
-    log_debug(mock_log, "Handshake no definido para %s -> %s", soy, destino);
+    log_trace(mock_log, "Handshake no definido para %s -> %s", soy, destino);
     exit(EXIT_FAILURE);
 }
 
@@ -49,7 +49,7 @@ int main(int argc, char* argv[]) {
 
     int handshake = obtener_handshake(soy, testear);
     if (send(fd_modulo_test, &handshake, sizeof(int), 0) <= 0) {
-        log_debug(mock_log, "Error al enviar handshake a %s", testear);
+        log_trace(mock_log, "Error al enviar handshake a %s", testear);
         close(fd_modulo_test);
         exit(EXIT_FAILURE);
     }

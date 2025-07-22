@@ -44,7 +44,7 @@ void INIT_PROC(char* nombre_archivo, int tam_memoria) {
     // Esperar respuesta de memoria (t_respuesta)
     t_respuesta respuesta;
     if (recv(fd_memoria, &respuesta, sizeof(t_respuesta), 0) <= 0) {
-        log_debug(mock_log, "Error al recibir respuesta de memoria para INIT_PROC");
+        log_trace(mock_log, "Error al recibir respuesta de memoria para INIT_PROC");
         return;
     }
     
@@ -66,7 +66,7 @@ void INIT_PROC(char* nombre_archivo, int tam_memoria) {
         
         log_trace(mock_log, "## (%d) - Proceso creado", nuevo_proceso->PID);
     } else {
-        log_debug(mock_log, "Error al inicializar proceso en memoria");
+        log_trace(mock_log, "Error al inicializar proceso en memoria");
     }
 }
 
@@ -83,7 +83,7 @@ void FINALIZAR_PROC(int pid) {
     // Esperar respuesta de memoria
     t_list* lista_respuesta = recibir_paquete(fd_memoria);
     if (lista_respuesta == NULL) {
-        log_debug(mock_log, "Error al recibir respuesta de memoria para FINALIZAR_PROC");
+        log_trace(mock_log, "Error al recibir respuesta de memoria para FINALIZAR_PROC");
         return;
     }
     
@@ -115,7 +115,7 @@ void FINALIZAR_PROC(int pid) {
             log_info(mock_log, "## (%d) - Finaliza el proceso", pid);
         }
     } else {
-        log_debug(mock_log, "Error al finalizar proceso en memoria");
+        log_trace(mock_log, "Error al finalizar proceso en memoria");
     }
     
     list_destroy_and_destroy_elements(lista_respuesta, (void*)eliminar_paquete);
@@ -134,7 +134,7 @@ void DUMP_MEMORY(int pid) {
     // Esperar respuesta de memoria
     t_list* lista_respuesta = recibir_paquete(fd_memoria);
     if (lista_respuesta == NULL) {
-        log_debug(mock_log, "Error al recibir respuesta de memoria para DUMP_MEMORY");
+        log_trace(mock_log, "Error al recibir respuesta de memoria para DUMP_MEMORY");
         return;
     }
     
@@ -143,7 +143,7 @@ void DUMP_MEMORY(int pid) {
     if (respuesta->codigo_operacion == DUMP_MEMORY_OP) {
         log_trace(mock_log, "## (%d) - Memory Dump completado", pid);
     } else {
-        log_debug(mock_log, "Error al realizar memory dump");
+        log_trace(mock_log, "Error al realizar memory dump");
     }
     
     list_destroy_and_destroy_elements(lista_respuesta, (void*)eliminar_paquete);
@@ -162,7 +162,7 @@ bool CHECK_MEMORY_SPACE(int tamanio) {
     // Esperar respuesta de memoria
     t_list* lista_respuesta = recibir_paquete(fd_memoria);
     if (lista_respuesta == NULL) {
-        log_debug(mock_log, "Error al recibir respuesta de memoria para CHECK_MEMORY_SPACE");
+        log_trace(mock_log, "Error al recibir respuesta de memoria para CHECK_MEMORY_SPACE");
         return false;
     }
     
@@ -192,7 +192,7 @@ bool PEDIR_INSTRUCCION_OP_mock(int cliente_socket) {
     // Recibo la instrucción desde Memoria
     t_list* lista_respuesta = recibir_paquete(cliente_socket);
     if (lista_respuesta == NULL) {
-        log_debug(mock_log, "Error al recibir instrucción de memoria");
+        log_trace(mock_log, "Error al recibir instrucción de memoria");
         return false;
     }
 

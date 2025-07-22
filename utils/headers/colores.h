@@ -31,6 +31,6 @@
  * printf(AZUL("hola")ROJO("como")VERDE("estas"))
  * 
  * @note en un log:
- * log_debug(logger, AZUL("hola")ROJO("como")VERDE("estas"));
+ * log_trace(logger, AZUL("hola")ROJO("como")VERDE("estas"));
  * 
  */
