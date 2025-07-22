@@ -3,12 +3,12 @@
 
 int conectar_memoria()
 {
-    LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] Conectando a Memoria en %s:%s", IP_MEMORIA, PUERTO_MEMORIA);
+    log_trace(kernel_log, "[KERNEL->MEMORIA] Conectando a Memoria en %s:%s", IP_MEMORIA, PUERTO_MEMORIA);
 
     int fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, kernel_log);
     if (fd_memoria == -1)
     {
-        LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] no se pudo abrir socket");
+        log_trace(kernel_log, "[KERNEL->MEMORIA] no se pudo abrir socket");
         return -1;
     }
 
@@ -16,17 +16,17 @@ int conectar_memoria()
     list_add(lista_sockets, (void *)(intptr_t)fd_memoria);
     UNLOCK_CON_LOG(mutex_sockets);
 
-    LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] socket abierto");
+    log_trace(kernel_log, "[KERNEL->MEMORIA] socket abierto");
 
     int handshake = HANDSHAKE_MEMORIA_KERNEL;
     if (send(fd_memoria, &handshake, sizeof(handshake), 0) <= 0)
     {
-        LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] fallo handshake");
+        log_trace(kernel_log, "[KERNEL->MEMORIA] fallo handshake");
         close(fd_memoria);
         return -1;
     }
 
-    LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] fd_memoria=%d OK", fd_memoria);
+    log_trace(kernel_log, "[KERNEL->MEMORIA] fd_memoria=%d OK", fd_memoria);
     return fd_memoria;
 }
 
@@ -40,13 +40,13 @@ void desconectar_memoria(int fd_memoria)
         list_remove_element(lista_sockets, (void *)(intptr_t)fd_memoria);
         UNLOCK_CON_LOG(mutex_sockets);
 
-        LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] Socket cerrado (fd=%d)", fd_memoria);
+        log_trace(kernel_log, "[KERNEL->MEMORIA] Socket cerrado (fd=%d)", fd_memoria);
     }
 }
 
 bool inicializar_proceso_en_memoria(t_pcb *pcb)
 {
-    LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] Inicializando proceso en Memoria: PID %d", pcb->PID);
+    log_trace(kernel_log, "[KERNEL->MEMORIA] Inicializando proceso en Memoria: PID %d", pcb->PID);
 
     int fd_memoria = conectar_memoria();
 
@@ -58,13 +58,13 @@ bool inicializar_proceso_en_memoria(t_pcb *pcb)
     enviar_paquete(paq, fd_memoria);
     eliminar_paquete(paq);
 
-    LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] Esperando respuesta de Memoria para INIT_PROC_OP");
+    log_trace(kernel_log, "[KERNEL->MEMORIA] Esperando respuesta de Memoria para INIT_PROC_OP");
 
     t_respuesta rsp;
     if (recv(fd_memoria, &rsp, sizeof(rsp), MSG_WAITALL) <= 0 ||
         (rsp != OK && rsp != ERROR))
     {
-        LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] INIT_PROC_OP: respuesta inválida/timeout");
+        log_trace(kernel_log, "[KERNEL->MEMORIA] INIT_PROC_OP: respuesta inválida/timeout");
         desconectar_memoria(fd_memoria);
         return false;
     }
@@ -73,11 +73,11 @@ bool inicializar_proceso_en_memoria(t_pcb *pcb)
 
     if (rsp == OK)
     {
-        LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] INIT_PROC_OP: PID %d inicializado en Memoria", pcb->PID);
+        log_trace(kernel_log, "[KERNEL->MEMORIA] INIT_PROC_OP: PID %d inicializado en Memoria", pcb->PID);
         return true;
     }
 
-    LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] INIT_PROC_OP: Memoria sin espacio para PID %d", pcb->PID);
+    log_trace(kernel_log, "[KERNEL->MEMORIA] INIT_PROC_OP: Memoria sin espacio para PID %d", pcb->PID);
     return false;
 }
 
@@ -85,7 +85,7 @@ bool hay_espacio_suficiente_memoria(int tamanio)
 {
     int fd_memoria = conectar_memoria();
 
-    LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] Verificando espacio suficiente en memoria para tamaño %d", tamanio);
+    log_trace(kernel_log, "[KERNEL->MEMORIA] Verificando espacio suficiente en memoria para tamaño %d", tamanio);
     t_paquete *paquete = crear_paquete_op(CHECK_MEMORY_SPACE_OP);
     agregar_entero_a_paquete(paquete, tamanio);
     enviar_paquete(paquete, fd_memoria);
@@ -96,23 +96,23 @@ bool hay_espacio_suficiente_memoria(int tamanio)
 
     if (respuesta < 0 || (respuesta != OK && respuesta != ERROR))
     {
-        LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] Error al recibir respuesta de memoria");
+        log_trace(kernel_log, "[KERNEL->MEMORIA] Error al recibir respuesta de memoria");
         return false;
     }
 
     if (respuesta == OK)
     {
-        LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] Espacio suficiente en memoria para tamaño %d", tamanio);
+        log_trace(kernel_log, "[KERNEL->MEMORIA] Espacio suficiente en memoria para tamaño %d", tamanio);
         return true;
     }
     else if (respuesta == ERROR)
     {
-        LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] No hay espacio suficiente en memoria para tamaño %d", tamanio);
+        log_trace(kernel_log, "[KERNEL->MEMORIA] No hay espacio suficiente en memoria para tamaño %d", tamanio);
         return false;
     }
     else
     {
-        LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] Respuesta inesperada de memoria: %d", respuesta);
+        log_trace(kernel_log, "[KERNEL->MEMORIA] Respuesta inesperada de memoria: %d", respuesta);
         return false;
     }
     return false;
@@ -122,27 +122,19 @@ static bool enviar_op_memoria(int op_code, int pid)
 {
     int fd_memoria = conectar_memoria();
 
-    LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] Enviando operación %d a Memoria para PID %d", op_code, pid);
+    log_trace(kernel_log, "[KERNEL->MEMORIA] Enviando operación %d a Memoria para PID %d", op_code, pid);
     t_paquete *paq = crear_paquete_op(op_code);
     agregar_entero_a_paquete(paq, pid);
 
     enviar_paquete(paq, fd_memoria);
     eliminar_paquete(paq);
 
-    // Para operaciones de suspender, no esperar respuesta
-    if (op_code == SUSPENDER_PROCESO_OP)
-    {
-        LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] Operación %d enviada sin esperar respuesta para PID %d", op_code, pid);
-        desconectar_memoria(fd_memoria);
-        return true; // Asumir éxito para estas operaciones
-    }
-
     // Para otras operaciones, esperar respuesta como antes
     t_respuesta rsp;
     if (recv(fd_memoria, &rsp, sizeof(rsp), MSG_WAITALL) <= 0 ||
         (rsp != OK && rsp != ERROR))
     {
-        LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] Error al recibir respuesta de Memoria para OP %d y PID %d", op_code, pid);
+        log_trace(kernel_log, "[KERNEL->MEMORIA] Error al recibir respuesta de Memoria para OP %d y PID %d", op_code, pid);
         desconectar_memoria(fd_memoria);
         return false;
     }
@@ -151,11 +143,11 @@ static bool enviar_op_memoria(int op_code, int pid)
 
     if (rsp == OK)
     {
-        LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] Operación %d exitosa para PID %d", op_code, pid);
+        log_trace(kernel_log, "[KERNEL->MEMORIA] Operación %d exitosa para PID %d", op_code, pid);
         return true;
     }
 
-    LOG_DEBUG(kernel_log, "[KERNEL->MEMORIA] Operación %d fallida para PID %d", op_code, pid);
+    log_trace(kernel_log, "[KERNEL->MEMORIA] Operación %d fallida para PID %d", op_code, pid);
     return false;
 }
 

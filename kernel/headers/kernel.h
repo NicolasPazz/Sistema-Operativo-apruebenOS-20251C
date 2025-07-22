@@ -98,10 +98,10 @@ extern t_list *cola_interrupciones;
         log_trace(kernel_log, VERDE("UNLOCK_CON_LOG(%s) (%d): liberado en %s."), #mutex, pid, __func__); \
     } while (0)
 
-#define LOG_DEBUG(logger, fmt, ...)                             \
+#define log_trace(logger, fmt, ...)                             \
     do                                                          \
     {                                                           \
-        log_debug(logger, "%s: " fmt, __func__, ##__VA_ARGS__); \
+        log_trace(logger, "%s: " fmt, __func__, ##__VA_ARGS__); \
     } while (0)
 
 #define LOG_WARNING(logger, fmt, ...)                             \

@@ -24,7 +24,7 @@ const char *estado_to_string(Estados estado)
     case EXIT_ESTADO:
         return "EXIT";
     default:
-        LOG_DEBUG(kernel_log, "estado_to_string: Estado desconocido %d", estado);
+        log_trace(kernel_log, "estado_to_string: Estado desconocido %d", estado);
         return "DESCONOCIDO";
     }
 }
@@ -33,22 +33,22 @@ void mostrar_pcb(t_pcb *PCB)
 {
     if (!PCB)
     {
-        LOG_DEBUG(kernel_log, "PCB es NULL");
+        log_trace(kernel_log, "PCB es NULL");
         return;
     }
 
     LOCK_CON_LOG_PCB(PCB->mutex, PCB->PID);
-    LOG_DEBUG(kernel_log, "-*-*-*-*-*- PCB -*-*-*-*-*-");
-    LOG_DEBUG(kernel_log, "PID: %d", PCB->PID);
-    LOG_DEBUG(kernel_log, "PC: %d", PCB->PC);
+    log_trace(kernel_log, "-*-*-*-*-*- PCB -*-*-*-*-*-");
+    log_trace(kernel_log, "PID: %d", PCB->PID);
+    log_trace(kernel_log, "PC: %d", PCB->PC);
     mostrar_metrica("ME", PCB->ME);
     mostrar_metrica("MT", PCB->MT);
-    LOG_DEBUG(kernel_log, "Estado: %s", estado_to_string(PCB->Estado));
-    LOG_DEBUG(kernel_log, "Tiempo inicio exec: %.3f", PCB->tiempo_inicio_exec);
-    LOG_DEBUG(kernel_log, "Rafaga estimada: %.3f", PCB->estimacion_rafaga);
-    LOG_DEBUG(kernel_log, "Path: %s", PCB->path ? PCB->path : "(null)");
-    LOG_DEBUG(kernel_log, "Tamanio de memoria: %d", PCB->tamanio_memoria);
-    LOG_DEBUG(kernel_log, "-*-*-*-*-*-*-*-*-*-*-*-*-*-");
+    log_trace(kernel_log, "Estado: %s", estado_to_string(PCB->Estado));
+    log_trace(kernel_log, "Tiempo inicio exec: %.3f", PCB->tiempo_inicio_exec);
+    log_trace(kernel_log, "Rafaga estimada: %.3f", PCB->estimacion_rafaga);
+    log_trace(kernel_log, "Path: %s", PCB->path ? PCB->path : "(null)");
+    log_trace(kernel_log, "Tamanio de memoria: %d", PCB->tamanio_memoria);
+    log_trace(kernel_log, "-*-*-*-*-*-*-*-*-*-*-*-*-*-");
     UNLOCK_CON_LOG_PCB(PCB->mutex, PCB->PID);
 }
 
@@ -66,32 +66,32 @@ void mostrar_metrica(const char *nombre, int *metrica)
 
     snprintf(buffer + offset, sizeof(buffer) - offset, "]");
 
-    LOG_DEBUG(kernel_log, "%s", buffer);
+    log_trace(kernel_log, "%s", buffer);
 }
 
 void mostrar_colas_estados()
 {
-    LOG_DEBUG(kernel_log, "Colas -> [NEW: %d, READY: %d, EXEC: %d, BLOCK: %d, SUSP.BLOCK: %d, SUSP.READY: %d, EXIT: %d] | Procesos en total: %d", list_size(cola_new), list_size(cola_ready), list_size(cola_running), list_size(cola_blocked), list_size(cola_susp_blocked), list_size(cola_susp_ready), list_size(cola_exit), list_size(cola_procesos));
+    log_trace(kernel_log, "Colas -> [NEW: %d, READY: %d, EXEC: %d, BLOCK: %d, SUSP.BLOCK: %d, SUSP.READY: %d, EXIT: %d] | Procesos en total: %d", list_size(cola_new), list_size(cola_ready), list_size(cola_running), list_size(cola_blocked), list_size(cola_susp_blocked), list_size(cola_susp_ready), list_size(cola_exit), list_size(cola_procesos));
 }
 
 void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
 {
     if (!PCB)
     {
-        LOG_DEBUG(kernel_log, "PCB es NULL");
+        log_trace(kernel_log, "PCB es NULL");
         return;
     }
 
     if (!transicion_valida(PCB->Estado, nuevo_estado_enum))
     {
-        LOG_DEBUG(kernel_log, "Transicion no valida en el PID %d: %s → %s", PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
+        log_trace(kernel_log, "Transicion no valida en el PID %d: %s → %s", PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
         return;
     }
 
     t_list *cola_destino = obtener_cola_por_estado(nuevo_estado_enum);
     if (!cola_destino)
     {
-        LOG_DEBUG(kernel_log, "Error al obtener las colas correspondientes");
+        log_trace(kernel_log, "Error al obtener las colas correspondientes");
         return;
     }
 
@@ -101,7 +101,7 @@ void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
 
         if (!cola_origen)
         {
-            LOG_DEBUG(kernel_log, "Error al obtener las colas correspondientes");
+            log_trace(kernel_log, "Error al obtener las colas correspondientes");
             return;
         }
 
@@ -120,7 +120,7 @@ void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
             int64_t tiempo = temporal_gettime(cronometro);
 
             PCB->MT[PCB->Estado] += (int)tiempo;
-            LOG_DEBUG(kernel_log, "Se actualizo el MT en el estado %s del PID %d con %ld", estado_to_string(PCB->Estado), PCB->PID, tiempo);
+            log_trace(kernel_log, "Se actualizo el MT en el estado %s del PID %d con %ld", estado_to_string(PCB->Estado), PCB->PID, tiempo);
             temporal_destroy(cronometro);
         }
         cronometro = temporal_create();
@@ -133,14 +133,14 @@ void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
         }
         else if (PCB->Estado == EXEC)
         {
-            LOG_DEBUG(kernel_log, "estimacion rafaga anterior del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
+            log_trace(kernel_log, "estimacion rafaga anterior del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
             double rafaga_real = get_time() - PCB->tiempo_inicio_exec;
 
             // rafaga restante: estimacion de rafaga - (ahora - tiempo_inicio_exec)
-            LOG_DEBUG(kernel_log, "Rafaga real del PID %d: %.3f", PCB->PID, rafaga_real);
+            log_trace(kernel_log, "Rafaga real del PID %d: %.3f", PCB->PID, rafaga_real);
             PCB->estimacion_rafaga = PCB->estimacion_rafaga - rafaga_real;
 
-            LOG_DEBUG(kernel_log, "Nueva estimacion de rafaga del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
+            log_trace(kernel_log, "Nueva estimacion de rafaga del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
             PCB->tiempo_inicio_exec = -1;
         }
 
@@ -164,7 +164,7 @@ void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
     }
     else
     {
-        LOG_DEBUG(kernel_log, "proceso en INIT recibido");
+        log_trace(kernel_log, "proceso en INIT recibido");
         char *pid_key = string_itoa(PCB->PID);
         if (!dictionary_get(tiempos_por_pid, pid_key))
         {
@@ -194,7 +194,7 @@ void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
     case READY:
         SEM_POST(sem_proceso_a_ready);
         SEM_POST(sem_planificador_cp);
-        LOG_DEBUG(kernel_log, "[PLANI CP] Replanificación solicitada por proceso a READY (PID=%d)", PCB->PID);
+        log_trace(kernel_log, "[PLANI CP] Replanificación solicitada por proceso a READY (PID=%d)", PCB->PID);
         break;
     case EXEC:
         SEM_POST(sem_proceso_a_running);
@@ -212,7 +212,7 @@ void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
         SEM_POST(sem_proceso_a_exit);
         break;
     default:
-        LOG_DEBUG(kernel_log, "nuevo_estado_enum: Error al pasar PCB de %s a %s", estado_to_string(estado_viejo), estado_to_string(nuevo_estado_enum));
+        log_trace(kernel_log, "nuevo_estado_enum: Error al pasar PCB de %s a %s", estado_to_string(estado_viejo), estado_to_string(nuevo_estado_enum));
         return;
     }
     mostrar_colas_estados();
@@ -221,7 +221,7 @@ void cambiar_estado_pcb_mutex_srt(t_pcb *PCB, Estados nuevo_estado_enum)
 {
     if (!PCB)
     {
-        LOG_DEBUG(kernel_log, "PCB es NULL");
+        log_trace(kernel_log, "PCB es NULL");
         return;
     }
 
@@ -234,7 +234,7 @@ void cambiar_estado_pcb_mutex(t_pcb *PCB, Estados nuevo_estado_enum)
 {
     if (!PCB)
     {
-        LOG_DEBUG(kernel_log, "PCB es NULL");
+        log_trace(kernel_log, "PCB es NULL");
         return;
     }
 
@@ -247,20 +247,20 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
 {
     if (!PCB)
     {
-        LOG_DEBUG(kernel_log, "PCB es NULL");
+        log_trace(kernel_log, "PCB es NULL");
         return;
     }
 
     if (!transicion_valida(PCB->Estado, nuevo_estado_enum))
     {
-        LOG_DEBUG(kernel_log, "Transicion no valida en el PID %d: %s → %s", PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
+        log_trace(kernel_log, "Transicion no valida en el PID %d: %s → %s", PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
         return;
     }
 
     t_list *cola_destino = obtener_cola_por_estado(nuevo_estado_enum);
     if (!cola_destino)
     {
-        LOG_DEBUG(kernel_log, "Error al obtener las colas correspondientes");
+        log_trace(kernel_log, "Error al obtener las colas correspondientes");
         return;
     }
 
@@ -270,7 +270,7 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
 
         if (!cola_origen)
         {
-            LOG_DEBUG(kernel_log, "Error al obtener las colas correspondientes");
+            log_trace(kernel_log, "Error al obtener las colas correspondientes");
 
             return;
         }
@@ -290,7 +290,7 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
             int64_t tiempo = temporal_gettime(cronometro);
 
             PCB->MT[PCB->Estado] += (int)tiempo;
-            LOG_DEBUG(kernel_log, "Se actualizo el MT en el estado %s del PID %d con %ld", estado_to_string(PCB->Estado), PCB->PID, tiempo);
+            log_trace(kernel_log, "Se actualizo el MT en el estado %s del PID %d con %ld", estado_to_string(PCB->Estado), PCB->PID, tiempo);
             temporal_destroy(cronometro);
         }
         cronometro = temporal_create();
@@ -303,13 +303,13 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
         }
         else if (PCB->Estado == EXEC)
         {
-            LOG_DEBUG(kernel_log, "estimacion rafaga anterior del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
+            log_trace(kernel_log, "estimacion rafaga anterior del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
             double rafaga_real = get_time() - PCB->tiempo_inicio_exec;
 
-            LOG_DEBUG(kernel_log, "Rafaga real del PID %d: %.3f", PCB->PID, rafaga_real);
+            log_trace(kernel_log, "Rafaga real del PID %d: %.3f", PCB->PID, rafaga_real);
             PCB->estimacion_rafaga = ALFA * rafaga_real + (1.0 - ALFA) * PCB->estimacion_rafaga;
 
-            LOG_DEBUG(kernel_log, "Nueva estimacion de rafaga del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
+            log_trace(kernel_log, "Nueva estimacion de rafaga del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
             PCB->tiempo_inicio_exec = -1;
         }
 
@@ -333,7 +333,7 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
     }
     else
     {
-        LOG_DEBUG(kernel_log, "proceso en INIT recibido");
+        log_trace(kernel_log, "proceso en INIT recibido");
         char *pid_key = string_itoa(PCB->PID);
         if (!dictionary_get(tiempos_por_pid, pid_key))
         {
@@ -363,7 +363,7 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
     case READY:
         SEM_POST(sem_proceso_a_ready);
         SEM_POST(sem_planificador_cp);
-        LOG_DEBUG(kernel_log, "[PLANI CP] Replanificación solicitada por proceso a READY (PID=%d)", PCB->PID);
+        log_trace(kernel_log, "[PLANI CP] Replanificación solicitada por proceso a READY (PID=%d)", PCB->PID);
         break;
     case EXEC:
         SEM_POST(sem_proceso_a_running);
@@ -381,7 +381,7 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
         SEM_POST(sem_proceso_a_exit);
         break;
     default:
-        LOG_DEBUG(kernel_log, "nuevo_estado_enum: Error al pasar PCB de %s a %s", estado_to_string(estado_viejo), estado_to_string(nuevo_estado_enum));
+        log_trace(kernel_log, "nuevo_estado_enum: Error al pasar PCB de %s a %s", estado_to_string(estado_viejo), estado_to_string(nuevo_estado_enum));
         return;
     }
     mostrar_colas_estados();
@@ -406,7 +406,7 @@ bool transicion_valida(Estados actual, Estados destino)
     case SUSP_READY:
         return destino == READY;
     default:
-        LOG_DEBUG(kernel_log, "transicion_valida: Estado desconocido %d", actual);
+        log_trace(kernel_log, "transicion_valida: Estado desconocido %d", actual);
         return false;
     }
 }
@@ -430,7 +430,7 @@ t_list *obtener_cola_por_estado(Estados estado)
     case EXIT_ESTADO:
         return cola_exit;
     default:
-        LOG_DEBUG(kernel_log, "obtener_cola_por_estado: Estado desconocido %d", estado);
+        log_trace(kernel_log, "obtener_cola_por_estado: Estado desconocido %d", estado);
         return NULL;
     }
 }
@@ -461,7 +461,7 @@ void bloquear_cola_por_estado(Estados estado)
         LOCK_CON_LOG(mutex_cola_exit);
         break;
     default:
-        LOG_DEBUG(kernel_log, "bloquear_cola_por_estado: Estado desconocido %d", estado);
+        log_trace(kernel_log, "bloquear_cola_por_estado: Estado desconocido %d", estado);
         return;
     }
 }
@@ -492,7 +492,7 @@ void liberar_cola_por_estado(Estados estado)
         UNLOCK_CON_LOG(mutex_cola_exit);
         break;
     default:
-        LOG_DEBUG(kernel_log, "liberar_cola_por_estado: Estado desconocido %d", estado);
+        log_trace(kernel_log, "liberar_cola_por_estado: Estado desconocido %d", estado);
         return;
     }
 }
@@ -501,7 +501,7 @@ void loguear_metricas_estado(t_pcb *pcb)
 {
     if (!pcb)
     {
-        LOG_DEBUG(kernel_log, "PCB es NULL");
+        log_trace(kernel_log, "PCB es NULL");
         return;
     }
 
@@ -550,7 +550,7 @@ t_pcb *buscar_pcb(int pid)
 
     if (!resultado)
     {
-        LOG_DEBUG(kernel_log, "buscar_pcb: No se encontró PCB para PID=%d", pid);
+        log_trace(kernel_log, "buscar_pcb: No se encontró PCB para PID=%d", pid);
         return NULL;
     }
 
@@ -561,7 +561,7 @@ t_pcb *buscar_y_remover_pcb_por_pid(t_list *cola, int pid)
 {
     if (!cola)
     {
-        LOG_DEBUG(kernel_log, "cola es NULL");
+        log_trace(kernel_log, "cola es NULL");
         return NULL;
     }
 
@@ -576,7 +576,7 @@ t_pcb *buscar_y_remover_pcb_por_pid(t_list *cola, int pid)
     }
 
     // No se encontró el PCB
-    LOG_DEBUG(kernel_log, "buscar_y_remover_pcb_por_pid: No se encontró PCB con PID %d en la cola", pid);
+    log_trace(kernel_log, "buscar_y_remover_pcb_por_pid: No se encontró PCB con PID %d en la cola", pid);
     return NULL;
 }
 
@@ -584,7 +584,7 @@ void liberar_pcb(t_pcb *pcb)
 {
     if (!pcb)
     {
-        LOG_DEBUG(kernel_log, "PCB es NULL");
+        log_trace(kernel_log, "PCB es NULL");
         return;
     }
 
@@ -616,7 +616,7 @@ void liberar_pcb(t_pcb *pcb)
 
 void verificar_procesos_restantes()
 {
-    LOG_DEBUG(kernel_log, "EXIT: verificando si quedan procesos en el sistema");
+    log_trace(kernel_log, "EXIT: verificando si quedan procesos en el sistema");
 
     int total_estimado = list_size(cola_new) + list_size(cola_ready) +
                          list_size(cola_running) + list_size(cola_blocked) +
@@ -663,7 +663,7 @@ void verificar_procesos_restantes()
                          cantidad_susp_ready + cantidad_susp_blocked +
                          cantidad_exit + cantidad_procesos;
 
-    LOG_DEBUG(kernel_log, "EXIT: Total de procesos restantes en el sistema: %d", total_procesos);
+    log_trace(kernel_log, "EXIT: Total de procesos restantes en el sistema: %d", total_procesos);
 
     if (total_procesos == 0)
     {

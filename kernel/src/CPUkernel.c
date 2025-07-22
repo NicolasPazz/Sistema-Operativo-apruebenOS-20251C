@@ -16,7 +16,7 @@ cpu *get_cpu_from_fd(int fd)
 
     if (!cpu_asociada)
     {
-        LOG_DEBUG(kernel_log, "No se encontró CPU asociada al fd=%d", fd);
+        log_trace(kernel_log, "No se encontró CPU asociada al fd=%d", fd);
         return NULL;
     }
 
@@ -27,7 +27,7 @@ cpu *buscar_y_remover_cpu_por_fd(int fd)
 {
     if (!lista_cpus)
     {
-        LOG_DEBUG(kernel_log, "lista_cpus es NULL");
+        log_trace(kernel_log, "lista_cpus es NULL");
         return NULL;
     }
 
@@ -41,7 +41,7 @@ cpu *buscar_y_remover_cpu_por_fd(int fd)
             return cpu_removida;
         }
     }
-    LOG_DEBUG(kernel_log, "No se encontró CPU con fd %d", fd);
+    log_trace(kernel_log, "No se encontró CPU con fd %d", fd);
     return NULL;
 }
 
@@ -62,7 +62,7 @@ int obtener_fd_interrupt(int id_cpu)
             return c->fd;
         }
     }
-    LOG_DEBUG(kernel_log, "obtener_fd_interrupt: No se encontró CPU con ID %d", id_cpu);
+    log_trace(kernel_log, "obtener_fd_interrupt: No se encontró CPU con ID %d", id_cpu);
     return -1;
 }
 
@@ -78,7 +78,7 @@ void liberar_cpu(cpu *cpu_a_eliminar)
 
     // Liberar CPU para que el planificador pueda usarla
     SEM_POST(sem_planificador_cp);
-    LOG_DEBUG(kernel_log, "[PLANI CP] Replanificación solicitada por liberación de CPU (fd=%d, ID=%d)", cpu_a_eliminar->fd, cpu_a_eliminar->id);
+    log_trace(kernel_log, "[PLANI CP] Replanificación solicitada por liberación de CPU (fd=%d, ID=%d)", cpu_a_eliminar->fd, cpu_a_eliminar->id);
 }
 
 cpu *proxima_cpu_libre()
@@ -100,14 +100,14 @@ cpu *proxima_cpu_libre()
                 if (!cpu_disponible)
                 {
                     cpu_disponible = c;
-                    LOG_DEBUG(kernel_log, "Proxima CPU libre encontrada: ID=%d, fd=%d", c->id, c->fd);
+                    log_trace(kernel_log, "Proxima CPU libre encontrada: ID=%d, fd=%d", c->id, c->fd);
                 }
             }
         }
-        LOG_DEBUG(kernel_log, "CPU %d - tipo=%d, pid=%d, fd=%d, estado=%s", c->id, c->tipo_conexion, c->pid, c->fd, c->tipo_conexion == CPU_DISPATCH ? (c->pid == -1 ? "LIBRE" : "OCUPADA") : "NO-DISPATCH");
+        log_trace(kernel_log, "CPU %d - tipo=%d, pid=%d, fd=%d, estado=%s", c->id, c->tipo_conexion, c->pid, c->fd, c->tipo_conexion == CPU_DISPATCH ? (c->pid == -1 ? "LIBRE" : "OCUPADA") : "NO-DISPATCH");
     }
 
-    LOG_DEBUG(kernel_log, "Total CPUs=%d, CPUs DISPATCH=%d, CPUs libres=%d", total_cpus, cpus_dispatch, cpus_libres);
+    log_trace(kernel_log, "Total CPUs=%d, CPUs DISPATCH=%d, CPUs libres=%d", total_cpus, cpus_dispatch, cpus_libres);
 
     return cpu_disponible;
 }
@@ -135,13 +135,13 @@ cpu *hay_cpu_rafaga_restante_mayor()
 
     if (!candidato_ready)
     {
-        LOG_DEBUG(kernel_log, "No se encontró candidato en cola READY");
+        log_trace(kernel_log, "No se encontró candidato en cola READY");
         return NULL;
     }
 
     if (candidato_ready->tiempo_inicio_exec > 0)
     {
-        LOG_DEBUG(kernel_log, "Proceso %d en cola READY no tiene tiempo de inicio de ejecución válido", candidato_ready->PID);
+        log_trace(kernel_log, "Proceso %d en cola READY no tiene tiempo de inicio de ejecución válido", candidato_ready->PID);
         return NULL;
     }
 
@@ -151,7 +151,7 @@ cpu *hay_cpu_rafaga_restante_mayor()
 
     if (list_is_empty(cola_running))
     {
-        LOG_DEBUG(kernel_log, "Cola RUNNING está vacía (no hay procesos ejecutándose ni cpu_libre)");
+        log_trace(kernel_log, "Cola RUNNING está vacía (no hay procesos ejecutándose ni cpu_libre)");
         UNLOCK_CON_LOG(mutex_cola_running);
         return NULL;
     }
@@ -177,7 +177,7 @@ cpu *hay_cpu_rafaga_restante_mayor()
         }
         else
         {
-            LOG_DEBUG(kernel_log, "Proceso %d en cola RUNNING no tiene tiempo de inicio de ejecución válido", candidato_exec_actual->PID);
+            log_trace(kernel_log, "Proceso %d en cola RUNNING no tiene tiempo de inicio de ejecución válido", candidato_exec_actual->PID);
             UNLOCK_CON_LOG(mutex_cola_running);
             return NULL;
         }
@@ -185,7 +185,7 @@ cpu *hay_cpu_rafaga_restante_mayor()
 
     if (rafaga_ready_min < rafaga_exec_max)
     {
-        LOG_DEBUG(kernel_log, "Proceso READY PID=%d tiene rafaga restante menor que el proceso RUNNING PID=%d", candidato_ready->PID, candidato_exec->PID);
+        log_trace(kernel_log, "Proceso READY PID=%d tiene rafaga restante menor que el proceso RUNNING PID=%d", candidato_ready->PID, candidato_exec->PID);
         UNLOCK_CON_LOG(mutex_cola_running);
         return (cpu *)get_cpu_dispatch_by_pid(candidato_exec->PID);
     }
@@ -210,7 +210,7 @@ cpu *get_cpu_dispatch_by_pid(int pid)
 
     if (!cpu_asociada)
     {
-        LOG_DEBUG(kernel_log, "No se encontró CPU asociada al PID=%d", pid);
+        log_trace(kernel_log, "No se encontró CPU asociada al PID=%d", pid);
         return NULL;
     }
     return cpu_asociada;
@@ -223,7 +223,7 @@ void interrumpir_ejecucion(cpu *cpu_a_desalojar)
     int fd_interrupt = obtener_fd_interrupt(cpu_a_desalojar->id);
     if (fd_interrupt < 0)
     {
-        LOG_DEBUG(kernel_log, VERDE("[INTERRUPT] No se encontró fd_interrupt para CPU %d"), cpu_a_desalojar->id);
+        log_trace(kernel_log, VERDE("[INTERRUPT] No se encontró fd_interrupt para CPU %d"), cpu_a_desalojar->id);
         UNLOCK_CON_LOG(mutex_lista_cpus);
         return;
     }
@@ -231,7 +231,7 @@ void interrumpir_ejecucion(cpu *cpu_a_desalojar)
 
     UNLOCK_CON_LOG(mutex_lista_cpus);
 
-    LOG_DEBUG(kernel_log, VERDE("[INTERRUPT] Enviando interrupción a CPU %d (fd=%d)"), cpu_a_desalojar->id, fd_interrupt);
+    log_trace(kernel_log, VERDE("[INTERRUPT] Enviando interrupción a CPU %d (fd=%d)"), cpu_a_desalojar->id, fd_interrupt);
 
     t_paquete *paquete = crear_paquete_op(INTERRUPCION_OP);
     agregar_entero_a_paquete(paquete, pid_exec);
@@ -243,19 +243,19 @@ void interrumpir_ejecucion(cpu *cpu_a_desalojar)
     switch (respuesta)
     {
     case OK:
-        LOG_DEBUG(kernel_log, VERDE("[INTERRUPT] CPU %d respondió OK"), cpu_a_desalojar->id);
+        log_trace(kernel_log, VERDE("[INTERRUPT] CPU %d respondió OK"), cpu_a_desalojar->id);
 
         t_list *contenido = recibir_contenido_paquete(fd_interrupt);
         if (!contenido)
         {
-            LOG_DEBUG(kernel_log, "[INTERRUPT] El contenido recibido es NULL");
+            log_trace(kernel_log, "[INTERRUPT] El contenido recibido es NULL");
             return;
         }
-        LOG_DEBUG(kernel_log, "[INTERRUPT] Cantidad de elementos en contenido recibido: %d", list_size(contenido));
+        log_trace(kernel_log, "[INTERRUPT] Cantidad de elementos en contenido recibido: %d", list_size(contenido));
 
         if (list_size(contenido) < 2)
         {
-            LOG_DEBUG(kernel_log, "[INTERRUPT] Error en buffer recibido de CPU");
+            log_trace(kernel_log, "[INTERRUPT] Error en buffer recibido de CPU");
             list_destroy_and_destroy_elements(contenido, free);
             return;
         }
@@ -266,25 +266,25 @@ void interrumpir_ejecucion(cpu *cpu_a_desalojar)
 
         if (pid_recibido != pid_exec)
         {
-            LOG_DEBUG(kernel_log, "[INTERRUPT] PID recibido (%d) no coincide con PID esperado (%d)", pid_recibido, pid_exec);
+            log_trace(kernel_log, "[INTERRUPT] PID recibido (%d) no coincide con PID esperado (%d)", pid_recibido, pid_exec);
             return;
         }
 
         t_pcb *pcb = buscar_pcb(pid_recibido);
 
         log_info(kernel_log, MAGENTA("## (%d) - Desalojado por SJF/SRT"), pid_recibido);
-        LOG_DEBUG(kernel_log, "[INTERRUPT] Actualizando PCB PID=%d con nuevo PC=%d", pid_recibido, nuevo_pc);
+        log_trace(kernel_log, "[INTERRUPT] Actualizando PCB PID=%d con nuevo PC=%d", pid_recibido, nuevo_pc);
 
         pcb->PC = nuevo_pc;
         cambiar_estado_pcb_mutex_srt(pcb, READY);
         liberar_cpu(cpu_a_desalojar);
-        LOG_DEBUG(kernel_log, "[INTERRUPT] CPU %d liberada", cpu_a_desalojar->id);
+        log_trace(kernel_log, "[INTERRUPT] CPU %d liberada", cpu_a_desalojar->id);
         break;
     case ERROR:
-        LOG_DEBUG(kernel_log, VERDE("[INTERRUPT] CPU %d respondió con ERROR"), cpu_a_desalojar->id);
+        log_trace(kernel_log, VERDE("[INTERRUPT] CPU %d respondió con ERROR"), cpu_a_desalojar->id);
         break;
     default:
-        LOG_DEBUG(kernel_log, "[INTERRUPT] No se pudo recibir respuesta de CPU %d", cpu_a_desalojar->id);
+        log_trace(kernel_log, "[INTERRUPT] No se pudo recibir respuesta de CPU %d", cpu_a_desalojar->id);
         return;
     }
 }
@@ -304,7 +304,7 @@ int get_exec_pid_from_id(int id)
     }
     if (!cpu_asociada)
     {
-        LOG_DEBUG(kernel_log, "No se encontró CPU asociada al ID=%d", id);
+        log_trace(kernel_log, "No se encontró CPU asociada al ID=%d", id);
         return -1;
     }
 
