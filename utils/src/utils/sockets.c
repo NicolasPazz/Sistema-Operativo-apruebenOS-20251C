@@ -44,21 +44,21 @@ int iniciar_servidor(char *puerto, t_log* logger, char* msj_server) {
 	hints.ai_flags = AI_PASSIVE;
 
 	if (getaddrinfo(NULL, puerto, &hints, &servinfo) != 0) {
-		log_trace(logger, "%s: error en getaddrinfo para el puerto %s", msj_server, puerto);
+		log_error(logger, "%s: error en getaddrinfo para el puerto %s", msj_server, puerto);
 		return -1;
 	}
 
 	// Crear socket
 	int socket_servidor = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
 	if (socket_servidor < 0) {
-		log_trace(logger, "%s: error al crear un socket servidor para el puerto %s: %s", msj_server, puerto, strerror(errno));
+		log_error(logger, "%s: error al crear un socket servidor para el puerto %s: %s", msj_server, puerto, strerror(errno));
 		freeaddrinfo(servinfo);
 		return -1;
 	}
 
 	// Aplicar SO_REUSEADDR
 	if (setsockopt(socket_servidor, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0) {
-		log_trace(logger, "%s: error al aplicar SO_REUSEADDR para el puerto %s: %s", msj_server, puerto, strerror(errno));
+		log_error(logger, "%s: error al aplicar SO_REUSEADDR para el puerto %s: %s", msj_server, puerto, strerror(errno));
 		close(socket_servidor);
 		freeaddrinfo(servinfo);
 		return -1;
@@ -66,14 +66,18 @@ int iniciar_servidor(char *puerto, t_log* logger, char* msj_server) {
 
 	// Bind y Listen
 	if (bind(socket_servidor, servinfo->ai_addr, servinfo->ai_addrlen) < 0) {
-		log_trace(logger, "%s: error en bind para el puerto %s: %s", msj_server, puerto, strerror(errno));
+		if (errno == EADDRINUSE) {
+            log_error(logger, "%s: el puerto %s ya está en uso. " "Cerrá el proceso que lo ocupa o cambiá la config.", msj_server, puerto);
+        } else {
+            log_error(logger, "%s: error en bind para el puerto %s: %s", msj_server, puerto, strerror(errno));
+        }
 		close(socket_servidor);
 		freeaddrinfo(servinfo);
 		return -1;
 	}
 
 	if (listen(socket_servidor, SOMAXCONN) < 0) {
-		log_trace(logger, "%s: error en listen para el puerto %s: %s", msj_server, puerto, strerror(errno));
+		log_error(logger, "%s: error en listen para el puerto %s: %s", msj_server, puerto, strerror(errno));
 		close(socket_servidor);
 		freeaddrinfo(servinfo);
 		return -1;
@@ -97,26 +101,26 @@ int crear_conexion(char *ip, char* puerto, t_log* logger) {
     hints.ai_flags = AI_PASSIVE;
 
 	if (getaddrinfo(ip, puerto, &hints, &server_info) != 0) {
-        log_trace(logger, "crear_conexion: Error en getaddrinfo para %s:%s", ip, puerto);
+        log_error(logger, "crear_conexion: Error en getaddrinfo para %s:%s", ip, puerto);
         return -1;
     }
 
     socket_cliente = socket(server_info->ai_family, server_info->ai_socktype, server_info->ai_protocol);
     if (socket_cliente < 0) {
-        log_trace(logger, "crear_conexion: Error al crear socket para %s:%s", ip, puerto);
+        log_error(logger, "crear_conexion: Error al crear socket para %s:%s", ip, puerto);
         freeaddrinfo(server_info);
         return -1;
     }
 
     if (setsockopt(socket_cliente, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0) {
-        log_trace(logger, "crear_conexion: Error al aplicar SO_REUSEADDR para %s:%s", ip, puerto);
+        log_error(logger, "crear_conexion: Error al aplicar SO_REUSEADDR para %s:%s", ip, puerto);
         close(socket_cliente);
         freeaddrinfo(server_info);
         return -1;
     }
 
     if (connect(socket_cliente, server_info->ai_addr, server_info->ai_addrlen) == -1) {
-        log_trace(logger, "crear_conexion: No se pudo conectar a %s:%s", ip, puerto);
+        log_error(logger, "crear_conexion: No se pudo conectar a %s:%s", ip, puerto);
         close(socket_cliente);
         freeaddrinfo(server_info);
         return -1;
@@ -133,7 +137,7 @@ int esperar_cliente(int socket_servidor, t_log* logger) {
     }
     int socket_cliente = accept(socket_servidor, NULL, NULL);
     if (socket_cliente == -1) {
-        log_trace(logger, "Error al aceptar cliente: %s", strerror(errno));
+        log_error(logger, "Error al aceptar cliente: %s", strerror(errno));
         return -1;
     }
     log_trace(logger, "Se conecto un nuevo cliente (fd = %d)", socket_cliente);
@@ -188,12 +192,12 @@ void liberar_conexion(int socket_cliente) {
 bool validar_handshake(int fd, handshake_code esperado, t_log* log) {
     int recibido;
     if (recv(fd, &recibido, sizeof(int), MSG_WAITALL) != sizeof(int)) {
-        log_trace(log, "Error recibiendo handshake (fd=%d): %s", fd, strerror(errno));
+        log_error(log, "Error recibiendo handshake (fd=%d): %s", fd, strerror(errno));
         return false;
     }
 
     if (recibido != esperado) {
-        log_trace(log, "Handshake invalido (fd=%d): se esperaba %d, se recibio %d", fd, esperado, recibido);
+        log_warning(log, "Handshake invalido (fd=%d): se esperaba %d, se recibio %d", fd, esperado, recibido);
         return false;
     }
 

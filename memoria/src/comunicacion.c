@@ -205,7 +205,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             } else {
                 log_trace(logger, "[INIT_PROC_OP] Enviando respuesta ERROR a cliente (fd=%d) - Falló creación del proceso %d", cliente_socket, pid);
             }
-            
+            // aplicar retardo memoria?
             send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
             break;
         }
@@ -223,6 +223,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             // Enviar respuesta a Kernel
             t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
             log_trace(logger, "Enviando respuesta %s a cliente (fd=%d)", (respuesta == OK) ? "OK" : "ERROR", cliente_socket);
+            // aplicar retardo memoria?
             send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
 
             list_destroy_and_destroy_elements(parametros, free);
@@ -246,6 +247,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             log_trace(logger, "FINALIZAR_PROC_OP: finalizar_proceso_en_memoria retornó %d para PID %d", resultado, pid);
             t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
             log_trace(logger, "FINALIZAR_PROC_OP: Preparando envío de respuesta %s a cliente (fd=%d)", (respuesta == OK) ? "OK" : "ERROR", cliente_socket);
+            // aplicar retardo memoria?
             int bytes_sent = send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
             log_trace(logger, "FINALIZAR_PROC_OP: Respuesta enviada (%d bytes) exitosamente", bytes_sent);
             break;
