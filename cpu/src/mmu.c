@@ -122,14 +122,25 @@ void tlb_insertar(int pid, int pagina, int frame) {
     nueva_entrada->orden_fifo = orden_fifo++;
 
     if (list_size(tlb) < atoi(ENTRADAS_TLB)) {
+        // log_info(cpu_log, "ENTRO A agregar la pagina");
         list_add(tlb, nueva_entrada);
     } else {
+        // log_info(cpu_log, "ENTRO A REEMPLAZAR LA VICTIMA");
         int victima = seleccionar_victima_tlb();
         entrada_tlb_t* entrada_reemplazo = list_get(tlb, victima);
+
+        // 🔽 Logueamos el reemplazo antes de liberar la entrada
+        log_info(cpu_log,
+            PURPURA("Reemplazo en TLB: (PID=%d, Página=%d -> Frame=%d) reemplazado por (PID=%d, Página=%d -> Frame=%d)"),
+            entrada_reemplazo->pid, entrada_reemplazo->pagina, entrada_reemplazo->frame,
+            nueva_entrada->pid, nueva_entrada->pagina, nueva_entrada->frame
+        );
+
         free(entrada_reemplazo);
         list_replace(tlb, victima, nueva_entrada);
     }
 }
+
 
 int seleccionar_victima_tlb() {
     int victima = 0;
