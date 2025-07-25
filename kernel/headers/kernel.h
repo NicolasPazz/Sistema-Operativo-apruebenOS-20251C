@@ -1,6 +1,9 @@
 #ifndef KERNEL_H
 #define KERNEL_H
 
+#include <signal.h>
+#include <unistd.h>
+#include <commons/collections/queue.h>
 #include "../../utils/headers/sockets.h"
 #include "procesos.h"
 #include "syscalls.h"
@@ -8,9 +11,6 @@
 #include "IOKernel.h"
 #include "CPUKernel.h"
 #include "MEMKernel.h"
-#include <signal.h>
-#include <unistd.h>
-#include <commons/collections/queue.h>
 
 extern t_log *kernel_log;
 extern t_config *kernel_config;
@@ -40,6 +40,7 @@ extern bool conectado_io;
 extern pthread_mutex_t mutex_conexiones;
 extern t_list *lista_cpus;
 extern t_list *lista_ios;
+extern bool auto_start;
 
 extern t_list *cola_new;
 extern t_list *cola_ready;

@@ -1,5 +1,5 @@
-#include "../headers/planificadores.h"
 #include <commons/collections/list.h>
+#include "../headers/planificadores.h"
 
 /**
  * @brief Inicializa el manejador de interrupciones creando un hilo dedicado.
@@ -13,7 +13,7 @@ void iniciar_interrupt_handler()
     pthread_t hilo_interrupt_handler;
     if (pthread_create(&hilo_interrupt_handler, NULL, interrupt_handler, NULL) != 0)
     {
-        LOG_TRACE(kernel_log, "[INTERRUPT] Error al crear hilo para manejar interrupciones");
+        LOG_ERROR(kernel_log, "[INTERRUPT] Error al crear hilo para manejar interrupciones");
         return;
     }
     pthread_detach(hilo_interrupt_handler);

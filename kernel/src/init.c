@@ -1,7 +1,7 @@
+#include <libgen.h>
 #include "../headers/kernel.h"
 #include "../headers/CPUKernel.h"
 #include "../headers/syscalls.h"
-#include <libgen.h>
 
 /////////////////////////////// Declaracion de variables globales ///////////////////////////////
 
@@ -85,7 +85,7 @@ sem_t sem_interrupciones;
 sem_t sem_liberacion_memoria;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-//                                       INICIALIZACIONES                                       //
+// INICIALIZACIONES                                       //
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 void iniciar_config_kernel(const char *path_cfg)
@@ -109,7 +109,7 @@ void iniciar_config_kernel(const char *path_cfg)
         !ALGORITMO_CORTO_PLAZO || !ALGORITMO_INGRESO_A_READY || !LOG_LEVEL)
     {
         fprintf(stderr, "iniciar_config_kernel: Faltan campos obligatorios en %s\n", path_cfg);
-        config_destroy(kernel_config);
+        // config_destroy(kernel_config);
         exit(EXIT_FAILURE);
     }
     else
@@ -251,6 +251,9 @@ void terminar_kernel(int code)
         close(fd);
         LOG_TRACE(kernel_log, "Socket cerrado: fd=%d", fd);
     }
+    /*
+
+
     list_destroy(lista_sockets);
     pthread_mutex_destroy(&mutex_sockets);
 
@@ -321,7 +324,7 @@ void terminar_kernel(int code)
 
     UNLOCK_CON_LOG(mutex_planificador_lp);
     pthread_mutex_destroy(&mutex_planificador_lp);
-
+*/
     if (code)
     {
         LOG_TRACE(kernel_log, "Kernel finalizado con errores. Código de salida: %d", code);
@@ -331,14 +334,14 @@ void terminar_kernel(int code)
         log_info(kernel_log, "Kernel finalizado correctamente.");
     }
 
-    log_destroy(kernel_log);
-    config_destroy(kernel_config);
+    // log_destroy(kernel_log);
+    // config_destroy(kernel_config);
 
     exit(code);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-//                                         CPU DISPATCH                                         //
+// CPU DISPATCH                                         //
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 void *hilo_servidor_dispatch(void *_)
@@ -390,7 +393,7 @@ void *hilo_servidor_dispatch(void *_)
         pthread_t hilo;
         if (pthread_create(&hilo, NULL, atender_cpu_dispatch, arg) != 0)
         {
-            LOG_TRACE(kernel_log, "Error al crear hilo para atender CPU Dispatch (fd=%d)", fd_cpu_dispatch);
+            LOG_ERROR(kernel_log, "Error al crear hilo para atender CPU Dispatch (fd=%d)", fd_cpu_dispatch);
             LOCK_CON_LOG(mutex_lista_cpus);
             list_remove_element(lista_cpus, nueva_cpu);
             cpu_libre--;
@@ -550,7 +553,7 @@ void *atender_cpu_dispatch(void *arg)
             break;
 
         default:
-            LOG_TRACE(kernel_log, "[SERVIDOR DISPATCH] (%d) Código op desconocido recibido de Dispatch fd %d: %d", pid, fd_cpu_dispatch, cop);
+            LOG_ERROR(kernel_log, "[SERVIDOR DISPATCH] (%d) Código op desconocido recibido de Dispatch fd %d: %d", pid, fd_cpu_dispatch, cop);
             break;
         }
 
@@ -583,7 +586,7 @@ void *atender_cpu_dispatch(void *arg)
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-//                                         CPU INTERRUPT                                        //
+// CPU INTERRUPT                                        //
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 void *hilo_servidor_interrupt(void *_)
@@ -651,7 +654,7 @@ void *hilo_servidor_interrupt(void *_)
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-//                                              IO                                              //
+// IO                                              //
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 void *hilo_servidor_io(void *_)
@@ -709,7 +712,7 @@ void *hilo_servidor_io(void *_)
         pthread_t hilo;
         if (pthread_create(&hilo, NULL, atender_io, arg) != 0)
         {
-            LOG_TRACE(kernel_log, "[SERVIDOR IO] Error al crear hilo para atender IO '%s' (fd=%d)", nueva_io->nombre, fd_io);
+            LOG_ERROR(kernel_log, "[SERVIDOR IO] Error al crear hilo para atender IO '%s' (fd=%d)", nueva_io->nombre, fd_io);
             LOCK_CON_LOG(mutex_ios);
             list_remove_element(lista_ios, nueva_io);
             UNLOCK_CON_LOG(mutex_ios);
@@ -799,7 +802,7 @@ void *atender_io(void *arg)
             break;
         }
         default:
-            LOG_TRACE(kernel_log, "[SERVIDOR IO] Código op desconocido recibido desde IO '%s' (fd=%d): %d", dispositivo_io->nombre, fd_io, cop);
+            LOG_ERROR(kernel_log, "[SERVIDOR IO] Código op desconocido recibido desde IO '%s' (fd=%d): %d", dispositivo_io->nombre, fd_io, cop);
             return NULL;
             break;
         }

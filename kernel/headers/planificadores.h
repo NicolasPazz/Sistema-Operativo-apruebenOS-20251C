@@ -2,9 +2,9 @@
 #define PLANIFICADORES_H
 #define _GNU_SOURCE
 
+#include <semaphore.h>
 #include "kernel.h"
 #include "types.h"
-#include <semaphore.h>
 
 extern pthread_mutex_t mutex_cola_new;
 extern pthread_mutex_t mutex_cola_susp_ready;

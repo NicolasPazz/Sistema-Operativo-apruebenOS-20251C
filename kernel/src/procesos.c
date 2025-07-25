@@ -1,7 +1,5 @@
-#include "../headers/procesos.h"
 #include <commons/collections/list.h>
-
-/////////////////////////////// Funciones ///////////////////////////////
+#include "../headers/procesos.h"
 
 const char *estado_to_string(Estados estado)
 {
@@ -24,7 +22,7 @@ const char *estado_to_string(Estados estado)
     case EXIT_ESTADO:
         return "EXIT";
     default:
-        LOG_TRACE(kernel_log, "estado_to_string: Estado desconocido %d", estado);
+        LOG_ERROR(kernel_log, "Estado desconocido %d", estado);
         return "DESCONOCIDO";
     }
 }
@@ -84,7 +82,7 @@ void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
 
     if (!transicion_valida(PCB->Estado, nuevo_estado_enum))
     {
-        LOG_TRACE(kernel_log, "Transicion no valida en el PID %d: %s → %s", PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
+        LOG_ERROR(kernel_log, "Transicion no valida en el PID %d: %s → %s", PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
         return;
     }
 
@@ -253,7 +251,7 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
 
     if (!transicion_valida(PCB->Estado, nuevo_estado_enum))
     {
-        LOG_TRACE(kernel_log, "Transicion no valida en el PID %d: %s → %s", PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
+        LOG_ERROR(kernel_log, "Transicion no valida en el PID %d: %s → %s", PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
         return;
     }
 
@@ -406,7 +404,7 @@ bool transicion_valida(Estados actual, Estados destino)
     case SUSP_READY:
         return destino == READY;
     default:
-        LOG_TRACE(kernel_log, "transicion_valida: Estado desconocido %d", actual);
+        LOG_ERROR(kernel_log, "Estado desconocido %d", actual);
         return false;
     }
 }
@@ -430,7 +428,7 @@ t_list *obtener_cola_por_estado(Estados estado)
     case EXIT_ESTADO:
         return cola_exit;
     default:
-        LOG_TRACE(kernel_log, "obtener_cola_por_estado: Estado desconocido %d", estado);
+        LOG_ERROR(kernel_log, "Estado desconocido %d", estado);
         return NULL;
     }
 }
@@ -461,7 +459,7 @@ void bloquear_cola_por_estado(Estados estado)
         LOCK_CON_LOG(mutex_cola_exit);
         break;
     default:
-        LOG_TRACE(kernel_log, "bloquear_cola_por_estado: Estado desconocido %d", estado);
+        LOG_ERROR(kernel_log, "Estado desconocido %d", estado);
         return;
     }
 }
@@ -492,7 +490,7 @@ void liberar_cola_por_estado(Estados estado)
         UNLOCK_CON_LOG(mutex_cola_exit);
         break;
     default:
-        LOG_TRACE(kernel_log, "liberar_cola_por_estado: Estado desconocido %d", estado);
+        LOG_ERROR(kernel_log, "Estado desconocido %d", estado);
         return;
     }
 }
@@ -591,7 +589,7 @@ void liberar_pcb(t_pcb *pcb)
     if (pcb->timer_flag)
     {
         *pcb->timer_flag = false;
-        //free(pcb->timer_flag);
+        // free(pcb->timer_flag);
         pcb->timer_flag = NULL;
     }
 
@@ -668,7 +666,15 @@ void verificar_procesos_restantes()
     if (total_procesos == 0)
     {
         mostrar_colas_estados();
-        log_info(kernel_log, "Todos los procesos han terminado. Finalizando kernel...");
-        terminar_kernel(EXIT_SUCCESS);
+        log_info(kernel_log, "Todos los procesos han terminado.");
+        if (auto_start)
+        {
+            log_info(kernel_log, "Finalizando kernel...");
+            terminar_kernel(EXIT_SUCCESS);
+        }
+        else
+        {
+            log_info(kernel_log, "Esperando...");
+        }
     }
 }

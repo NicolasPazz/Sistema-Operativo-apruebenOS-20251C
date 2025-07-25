@@ -4,7 +4,6 @@
 #include "syscalls.h"
 #include "kernel.h"
 #include "types.h"
-#include <semaphore.h>
 
 io *get_io(char *nombre_io);
 io *buscar_io_por_fd(int fd);

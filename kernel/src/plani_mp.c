@@ -6,7 +6,7 @@
  * Esta función se ejecuta en un hilo separado y espera un tiempo determinado (TIEMPO_SUSPENSION)
  * desde que el proceso pasó a estado BLOCKED. Si el proceso sigue en estado BLOCKED y la bandera
  * de suspensión sigue activa, se procede a suspender el proceso y cambiar su estado a SUSP_BLOCKED.
- * 
+ *
  * @param v_arg Puntero a una estructura t_timer_arg que contiene el PCB, la bandera de vigencia y el PID.
  * @return Siempre retorna NULL.
  *
@@ -99,9 +99,10 @@ void *timer_suspension(void *v_arg)
     }
     free(arg);
 
+    cambiar_estado_pcb(pcb, SUSP_BLOCKED);
+
     suspender_proceso(pcb);
 
-    cambiar_estado_pcb(pcb, SUSP_BLOCKED);
     UNLOCK_CON_LOG_PCB(pcb->mutex, pcb->PID);
 
     LOG_TRACE(kernel_log, AZUL("[PLANI MP] Proceso PID %d suspendido correctamente"), pcb->PID);
@@ -135,7 +136,7 @@ void iniciar_timer_suspension(t_pcb *pcb)
         pcb->timer_flag = NULL;
         free(flag);
         free(arg);
-        LOG_TRACE(kernel_log, "[PLANI MP] No se pudo crear hilo de suspensión para PID %d", pcb->PID);
+        LOG_ERROR(kernel_log, "[PLANI MP] No se pudo crear hilo de suspensión para PID %d", pcb->PID);
         return;
     }
     pthread_detach(hilo_timer);

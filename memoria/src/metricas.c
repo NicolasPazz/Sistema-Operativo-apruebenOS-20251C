@@ -165,6 +165,6 @@ void actualizar_metricas(int pid, char* operacion) {
     } else if (strcmp(operacion, "SWAP_IN") == 0) {
         incrementar_subidas_memoria_principal(pid);
     } else {
-        log_trace(logger, "PID: %d - Operación desconocida para métricas: %s", pid, operacion);
+        log_error(logger, "PID: %d - Operación desconocida para métricas: %s", pid, operacion);
     }
 } 

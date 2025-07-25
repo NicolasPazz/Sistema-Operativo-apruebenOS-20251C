@@ -132,7 +132,7 @@ t_administrador_marcos* crear_administrador_marcos(int cantidad_frames, int tam_
         admin->frames[i].contenido = (char*)sistema_memoria->memoria_principal + (i * tam_pagina);
         admin->frames[i].timestamp_asignacion = 0;
         
-        //   FIX: Inicializar campos de bloqueo para evitar valores no inicializados
+        // FIX: Inicializar campos de bloqueo para evitar valores no inicializados
         admin->frames[i].bloqueado = false;
         admin->frames[i].thread_bloqueador = 0;
         admin->frames[i].mutex_inicializado = false;

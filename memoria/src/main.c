@@ -9,13 +9,12 @@ extern t_sistema_memoria* sistema_memoria;
 // Manejador de señales para terminación limpia
 void signal_handler(int sig) {
     if (sig == SIGINT) {
-        printf("\nRecibida señal de terminación. Cerrando Memoria...\n");
-        log_trace(logger, "Recibida señal SIGINT. Iniciando terminación limpia de Memoria...");
-        
+        // printf("\nRecibida señal de terminación. Cerrando Memoria...\n");
+        log_trace(logger, "Recibida señal de terminación. Cerrando Memoria...");
         // Liberar recursos del sistema de memoria
-        liberar_sistema_memoria();
-        
-        cerrar_programa();
+        // liberar_sistema_memoria();
+        // cerrar_programa();
+        log_info(logger, "Memoria finalizada correctamente.");
         exit(EXIT_SUCCESS);
     }
 }

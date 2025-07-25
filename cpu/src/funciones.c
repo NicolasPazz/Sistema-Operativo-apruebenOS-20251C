@@ -51,7 +51,7 @@ void func_write(char* direccion_logica_str, char* datos) {
     if (cache_habilitada()) {
         int pos = buscar_pagina_en_cache(pid_ejecutando, nro_pagina);
         if (pos != -1) {
-            //int offset = direccion_logica % tam_pagina; // WARNING: VARIABLE NO UTILIZADA
+            // int offset = direccion_logica % tam_pagina; // WARNING: VARIABLE NO UTILIZADA
             
             log_info(cpu_log, "PID: %d - Cache HIT - Página: %d", pid_ejecutando, nro_pagina);
             
@@ -77,12 +77,12 @@ void func_write(char* direccion_logica_str, char* datos) {
 
     t_respuesta respuesta;
     if (recv(fd_memoria, &respuesta, sizeof(t_respuesta), MSG_WAITALL) != sizeof(t_respuesta)) {
-        log_trace(cpu_log, "PID: %d - Error al recibir respuesta de WRITE desde Memoria", pid_ejecutando);
+        log_error(cpu_log, "PID: %d - Error al recibir respuesta de WRITE desde Memoria", pid_ejecutando);
         exit(EXIT_FAILURE);
     }
 
     if (respuesta != OK) {
-        log_trace(cpu_log, "PID: %d - Error en escritura de memoria: %d", pid_ejecutando, respuesta);
+        log_error(cpu_log, "PID: %d - Error en escritura de memoria: %d", pid_ejecutando, respuesta);
         exit(EXIT_FAILURE);
     }
 
@@ -98,18 +98,18 @@ void func_write(char* direccion_logica_str, char* datos) {
 
         op_code codigo_operacion;
         if (recv(fd_memoria, &codigo_operacion, sizeof(op_code), MSG_WAITALL) != sizeof(op_code)) {
-            log_trace(cpu_log, "PID: %d - Error al recibir op_code de respuesta desde Memoria", pid_ejecutando);
+            log_error(cpu_log, "PID: %d - Error al recibir op_code de respuesta desde Memoria", pid_ejecutando);
             exit(EXIT_FAILURE);
         }
 
         if (codigo_operacion != PAQUETE_OP) {
-            log_trace(cpu_log, "PID: %d - Op_code inesperado en respuesta: %d", pid_ejecutando, codigo_operacion);
+            log_error(cpu_log, "PID: %d - Op_code inesperado en respuesta: %d", pid_ejecutando, codigo_operacion);
             exit(EXIT_FAILURE);
         }
 
         t_list* lista_respuesta = recibir_contenido_paquete(fd_memoria);
         if (lista_respuesta == NULL || list_size(lista_respuesta) < 1) {
-            log_trace(cpu_log, "PID: %d - Error al recibir respuesta de página desde Memoria", pid_ejecutando);
+            log_error(cpu_log, "PID: %d - Error al recibir respuesta de página desde Memoria", pid_ejecutando);
             exit(EXIT_FAILURE);
         }
 
@@ -151,18 +151,18 @@ void func_read(char* direccion_logica_str, char* tam_str) {
 
     op_code codigo_operacion;
     if (recv(fd_memoria, &codigo_operacion, sizeof(op_code), MSG_WAITALL) != sizeof(op_code)) {
-        log_trace(cpu_log, "PID: %d - Error al recibir op_code de respuesta desde Memoria", pid_ejecutando);
+        log_error(cpu_log, "PID: %d - Error al recibir op_code de respuesta desde Memoria", pid_ejecutando);
         exit(EXIT_FAILURE);
     }
 
     if (codigo_operacion != PAQUETE_OP) {
-        log_trace(cpu_log, "PID: %d - Op_code inesperado en respuesta: %d", pid_ejecutando, codigo_operacion);
+        log_error(cpu_log, "PID: %d - Op_code inesperado en respuesta: %d", pid_ejecutando, codigo_operacion);
         exit(EXIT_FAILURE);
     }
 
     t_list* lista_respuesta = recibir_contenido_paquete(fd_memoria);
     if (lista_respuesta == NULL || list_size(lista_respuesta) < 1) {
-        log_trace(cpu_log, "PID: %d - Error al recibir respuesta de READ desde Memoria", pid_ejecutando);
+        log_error(cpu_log, "PID: %d - Error al recibir respuesta de READ desde Memoria", pid_ejecutando);
         exit(EXIT_FAILURE);
     }
 
@@ -186,18 +186,18 @@ void func_read(char* direccion_logica_str, char* tam_str) {
 
         op_code codigo_operacion_pagina;
         if (recv(fd_memoria, &codigo_operacion_pagina, sizeof(op_code), MSG_WAITALL) != sizeof(op_code)) {
-            log_trace(cpu_log, "PID: %d - Error al recibir op_code de respuesta de página desde Memoria", pid_ejecutando);
+            log_error(cpu_log, "PID: %d - Error al recibir op_code de respuesta de página desde Memoria", pid_ejecutando);
             exit(EXIT_FAILURE);
         }
 
         if (codigo_operacion_pagina != PAQUETE_OP) {
-            log_trace(cpu_log, "PID: %d - Op_code inesperado en respuesta de página: %d", pid_ejecutando, codigo_operacion_pagina);
+            log_error(cpu_log, "PID: %d - Op_code inesperado en respuesta de página: %d", pid_ejecutando, codigo_operacion_pagina);
             exit(EXIT_FAILURE);
         }
 
         t_list* lista_respuesta_pagina = recibir_contenido_paquete(fd_memoria);
         if (lista_respuesta_pagina == NULL || list_size(lista_respuesta_pagina) < 1) {
-            log_trace(cpu_log, "PID: %d - Error al recibir respuesta de página desde Memoria", pid_ejecutando);
+            log_error(cpu_log, "PID: %d - Error al recibir respuesta de página desde Memoria", pid_ejecutando);
             exit(EXIT_FAILURE);
         }
 
@@ -256,12 +256,12 @@ void func_init_proc(t_instruccion* instruccion) {
 
 void func_dump_memory() {
     
-    pc++; //INCREMENTAR PC ANTES DE ENVIAR SYSCALL (igual que en func_io)
+    pc++; // INCREMENTAR PC ANTES DE ENVIAR SYSCALL (igual que en func_io)
 
     // Pedirle a Kernel que ejecute el DUMP por ser una SYSCALL
     t_paquete* paquete = crear_paquete_op(DUMP_MEMORY_OP);
     agregar_entero_a_paquete(paquete, pid_ejecutando);
-    agregar_entero_a_paquete(paquete, pc);  //   ENVIAR PC ACTUALIZADO (igual que en func_io)
+    agregar_entero_a_paquete(paquete, pc);  // ENVIAR PC ACTUALIZADO (igual que en func_io)
     enviar_paquete(paquete, fd_kernel_dispatch);
     eliminar_paquete(paquete);
 

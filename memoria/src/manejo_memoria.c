@@ -102,38 +102,38 @@ t_proceso_memoria* crear_proceso_memoria(int pid, int tamanio) {
     // int paginas_totales = proceso->estructura_paginas->paginas_totales;
     // int marcos_disponibles = sistema_memoria->admin_marcos->frames_libres;
     // if (marcos_disponibles < paginas_totales) {
-    //     log_trace(logger, "PID: %d - No hay marcos suficientes para inicializar todas las páginas (%d requeridas, %d libres)", pid, paginas_totales, marcos_disponibles);
-    //     list_destroy_and_destroy_elements(proceso->instrucciones, free);
-    //     destruir_metricas_proceso(proceso->metricas);
-    //     destruir_estructura_paginas(proceso->estructura_paginas);
-    //     free(proceso);
-    //     return NULL;
+    // log_trace(logger, "PID: %d - No hay marcos suficientes para inicializar todas las páginas (%d requeridas, %d libres)", pid, paginas_totales, marcos_disponibles);
+    // list_destroy_and_destroy_elements(proceso->instrucciones, free);
+    // destruir_metricas_proceso(proceso->metricas);
+    // destruir_estructura_paginas(proceso->estructura_paginas);
+    // free(proceso);
+    // return NULL;
     // }
     // for (int i = 0; i < paginas_totales; i++) {
-    //     int frame = asignar_marco_libre(pid, i);
-    //     if (frame == -1) {
-    //         log_trace(logger, "PID: %d - Error al asignar marco para página %d al crear proceso", pid, i);
-    //         // Liberar recursos ya asignados
-    //         for (int j = 0; j < i; j++) {
-    //             t_entrada_tabla* entrada = buscar_entrada_tabla(proceso->estructura_paginas, j);
-    //             if (entrada && entrada->presente) {
-    //                 liberar_marco(entrada->numero_frame);
-    //                 entrada->presente = false;
-    //                 entrada->numero_frame = 0;
-    //             }
-    //         }
-    //         list_destroy_and_destroy_elements(proceso->instrucciones, free);
-    //         destruir_metricas_proceso(proceso->metricas);
-    //         destruir_estructura_paginas(proceso->estructura_paginas);
-    //         free(proceso);
-    //         return NULL;
-    //     }
-    //     t_entrada_tabla* entrada = buscar_entrada_tabla(proceso->estructura_paginas, i);
-    //     if (entrada) {
-    //         entrada->presente = true;
-    //         entrada->numero_frame = frame;
-    //         entrada->timestamp_acceso = time(NULL);
-    //     }
+    // int frame = asignar_marco_libre(pid, i);
+    // if (frame == -1) {
+    // log_trace(logger, "PID: %d - Error al asignar marco para página %d al crear proceso", pid, i);
+    // // Liberar recursos ya asignados
+    // for (int j = 0; j < i; j++) {
+    // t_entrada_tabla* entrada = buscar_entrada_tabla(proceso->estructura_paginas, j);
+    // if (entrada && entrada->presente) {
+    // liberar_marco(entrada->numero_frame);
+    // entrada->presente = false;
+    // entrada->numero_frame = 0;
+    // }
+    // }
+    // list_destroy_and_destroy_elements(proceso->instrucciones, free);
+    // destruir_metricas_proceso(proceso->metricas);
+    // destruir_estructura_paginas(proceso->estructura_paginas);
+    // free(proceso);
+    // return NULL;
+    // }
+    // t_entrada_tabla* entrada = buscar_entrada_tabla(proceso->estructura_paginas, i);
+    // if (entrada) {
+    // entrada->presente = true;
+    // entrada->numero_frame = frame;
+    // entrada->timestamp_acceso = time(NULL);
+    // }
     // }
     return proceso;
 }

@@ -42,7 +42,7 @@ int iniciar_conexiones_memoria(char* PUERTO_ESCUCHA, t_log* logger_param) {
     fd_memoria = iniciar_servidor(PUERTO_ESCUCHA, logger_param, "Memoria iniciado");
 
     if (fd_memoria == -1) {
-        log_trace(logger_param, "No se pudo iniciar el servidor de Memoria");
+        log_error(logger_param, "No se pudo iniciar el servidor de Memoria");
         exit(EXIT_FAILURE);
     }
 
@@ -50,7 +50,7 @@ int iniciar_conexiones_memoria(char* PUERTO_ESCUCHA, t_log* logger_param) {
     return fd_memoria; // Devuelve el socket del servidor
 }
 
-//   OPCIÓN A: Usar lista de threads para hacer join al finalizar
+// OPCIÓN A: Usar lista de threads para hacer join al finalizar
 static t_list* threads_activos = NULL;
 
 int server_escuchar(char* server_name, int server_socket) {
@@ -65,9 +65,15 @@ int server_escuchar(char* server_name, int server_socket) {
         args->fd = cliente_socket;
         args->server_name = server_name;
         
-        pthread_create(hilo, NULL, (void*) procesar_conexion, (void*) args);
+        if (pthread_create(hilo, NULL, (void*) procesar_conexion, (void*) args) != 0) {
+            log_error(logger, "Error al crear hilo para procesar conexión de %s (fd=%d)", server_name, cliente_socket);
+            // free(hilo);
+            // free(args);
+            close(cliente_socket);
+            exit(EXIT_FAILURE);
+        }
         
-        //   Guardar thread para hacer join después
+        // Guardar thread para hacer join después
         list_add(threads_activos, hilo);
         
         return 1;
@@ -75,7 +81,7 @@ int server_escuchar(char* server_name, int server_socket) {
     return 0;
 }
 
-//   Función para limpiar threads al finalizar sistema
+// Función para limpiar threads al finalizar sistema
 void finalizar_threads_servidor() {
     if (threads_activos) {
         for (int i = 0; i < list_size(threads_activos); i++) {
@@ -139,8 +145,8 @@ void procesar_conexion(void* void_args) {
         cpus_conectadas--;
 
         if (cpus_conectadas == 0) {
-            //log_info(logger, "## Última CPU desconectada ⇒ cerrando Memoria");
-            finalizar_sistema_memoria();
+            log_info(logger, "Se desconectaron todas las CPU. Finalizando Memoria...");
+            // finalizar_sistema_memoria();
             exit(EXIT_SUCCESS);
         }
     }
@@ -510,6 +516,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
 
             t_resultado_memoria resultado = suspender_proceso_en_memoria(pid);
 
+            aplicar_retardo_swap();
+
             t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
             send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
 
@@ -536,6 +544,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
 
             t_resultado_memoria resultado = reanudar_proceso_en_memoria(pid);
 
+            aplicar_retardo_swap();
+            
             t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
             send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
 
@@ -543,17 +553,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
                     (respuesta == OK) ? "exitosa" : "fallida", pid);
             break;
         }
-        case SHUTDOWN_OP: {
-            log_trace(logger, "SHUTDOWN_OP recibido - Finalizando Memoria");
-            // Cerrar todas las conexiones y liberar recursos
-            if (fd_kernel != -1) close(fd_kernel);
-            if (fd_cpu != -1) close(fd_cpu);
-            if (fd_memoria != -1) close(fd_memoria);
-            exit(EXIT_SUCCESS);
-            break;
-        }
         default: { 
-            log_trace(logger, "Codigo de operacion desconocido recibido del cliente %d: %d", cliente_socket, cop);
+            log_error(logger, "Codigo de operacion desconocido recibido del cliente %d: %d", cliente_socket, cop);
             break;
         }
     }

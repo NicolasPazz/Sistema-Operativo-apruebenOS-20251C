@@ -7,7 +7,7 @@ int procesos_new_rechazados = 0;
  * @brief Planificador de largo plazo del kernel.
  *
  * Este hilo se encarga de gestionar el ingreso de procesos desde la cola NEW a la cola READY,
- * siguiendo el algoritmo de ingreso configurado (FIFO o PMCP). 
+ * siguiendo el algoritmo de ingreso configurado (FIFO o PMCP).
  * - Espera a que haya procesos en la cola NEW y verifica que la cola SUSPENDED READY esté vacía.
  * - Si hay procesos rechazados esperando, rechaza nuevos procesos según la política.
  * - Selecciona el proceso a ingresar a READY según el algoritmo configurado:

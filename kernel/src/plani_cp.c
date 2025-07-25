@@ -3,10 +3,10 @@
 /**
  * @brief Función principal del planificador de corto plazo.
  *
- * Esta función implementa el ciclo de planificación de corto plazo del kernel, 
- * seleccionando procesos de la cola READY para ser ejecutados según el algoritmo 
- * de planificación configurado (FIFO, SJF o SRT). 
- * 
+ * Esta función implementa el ciclo de planificación de corto plazo del kernel,
+ * seleccionando procesos de la cola READY para ser ejecutados según el algoritmo
+ * de planificación configurado (FIFO, SJF o SRT).
+ *
  * - Espera la señal de sem_planificador_cp para iniciar la planificación.
  * - Bloquea los mutex necesarios para acceder a las estructuras compartidas.
  * - Verifica si hay procesos en la cola READY y si hay CPUs disponibles.

@@ -1,14 +1,17 @@
-#include "../headers/kernel.h"
 #include <dirent.h>
 #include <signal.h>
+#include "../headers/kernel.h"
 
-// Manejador de señales para terminación limpia
+bool auto_start = false; // Variable para determinar si se inicia automáticamente
+
 void signal_handler(int sig)
 {
     if (sig == SIGINT)
     {
-        printf("\nRecibida señal de terminación. Cerrando kernel...\n");
+        // printf("\nRecibida señal de terminación. Cerrando Kernel...\n");
+        log_info(kernel_log, "Recibida señal de terminación. Cerrando Kernel...");
         terminar_kernel(EXIT_SUCCESS);
+        exit(EXIT_SUCCESS);
     }
 }
 
@@ -50,7 +53,7 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    bool auto_start = (argc == 5 && strcmp(argv[4], "--action") == 0);
+    auto_start = (argc == 5 && strcmp(argv[4], "--action") == 0);
 
     /* ---------------- Ruta del .config ---------------- */
     char ruta_cfg[256] = "kernel/kernel.config"; /* default */
@@ -88,31 +91,31 @@ int main(int argc, char *argv[])
     //////////////////////////// Conexiones del Kernel ////////////////////////////
 
     // Servidor de CPU (Dispatch)
-    pthread_t hilo_dispatch;
-    if (pthread_create(&hilo_dispatch, NULL, hilo_servidor_dispatch, NULL) != 0)
+    pthread_t *hilo_dispatch = malloc(sizeof(pthread_t));
+    if (pthread_create(hilo_dispatch, NULL, hilo_servidor_dispatch, NULL) != 0)
     {
-        LOG_TRACE(kernel_log, "Error al crear hilo de servidor Dispatch");
+        LOG_ERROR(kernel_log, "Error al crear hilo de servidor Dispatch");
+        free(hilo_dispatch);
         terminar_kernel(EXIT_FAILURE);
     }
-    pthread_detach(hilo_dispatch);
 
     // Servidor de CPU (Interrupt)
-    pthread_t hilo_interrupt;
-    if (pthread_create(&hilo_interrupt, NULL, hilo_servidor_interrupt, NULL) != 0)
+    pthread_t *hilo_interrupt = malloc(sizeof(pthread_t));
+    if (pthread_create(hilo_interrupt, NULL, hilo_servidor_interrupt, NULL) != 0)
     {
-        LOG_TRACE(kernel_log, "Error al crear hilo de servidor Interrupt");
+        LOG_ERROR(kernel_log, "Error al crear hilo de servidor Interrupt");
+        free(hilo_interrupt);
         terminar_kernel(EXIT_FAILURE);
     }
-    pthread_detach(hilo_interrupt);
 
     // Servidor de IO
-    pthread_t hilo_io;
-    if (pthread_create(&hilo_io, NULL, hilo_servidor_io, NULL) != 0)
+    pthread_t *hilo_io = malloc(sizeof(pthread_t));
+    if (pthread_create(hilo_io, NULL, hilo_servidor_io, NULL) != 0)
     {
-        LOG_TRACE(kernel_log, "Error al crear hilo de servidor IO");
+        LOG_ERROR(kernel_log, "Error al crear hilo de servidor IO");
+        free(hilo_io);
         terminar_kernel(EXIT_FAILURE);
     }
-    pthread_detach(hilo_io);
 
     //////////////////////////// Esperar conexiones minimas ////////////////////////////
 
@@ -137,7 +140,7 @@ int main(int argc, char *argv[])
 
     //////////////////////////// Primer proceso ////////////////////////////
 
-    LOG_TRACE(kernel_log, "Creando proceso inicial:  Archivo: %s, Tamanio: %d", archivo_pseudocodigo, tamanio_proceso);
+    log_info(kernel_log, "Creando proceso inicial:  Archivo: %s, Tamanio: %d", archivo_pseudocodigo, tamanio_proceso);
     INIT_PROC(archivo_pseudocodigo, tamanio_proceso);
 
     //////////////////////////// Esperar enter ////////////////////////////
@@ -163,10 +166,13 @@ int main(int argc, char *argv[])
 
     UNLOCK_CON_LOG(mutex_planificador_lp);
 
-    while (1)
-    {
-        sleep(10);
-    }
+    // Bloquear para que no termine main
+    pthread_join(*hilo_dispatch, NULL);
+    free(hilo_dispatch);
+    pthread_join(*hilo_interrupt, NULL);
+    free(hilo_interrupt);
+    pthread_join(*hilo_io, NULL);
+    free(hilo_io);
 
     //////////////////////////// Terminar ////////////////////////////
 

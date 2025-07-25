@@ -78,24 +78,26 @@ MEMORY_LEAK_THRESHOLD=1000
 # Detected errors counter
 errores=0
 
-make clean
+if [[ $numero -ne 13 ]]; then
+    make clean
 
-# Liberar puertos 8001 a 8004
-fuser -k 8001/tcp 2>/dev/null || true
-fuser -k 8002/tcp 2>/dev/null || true
-fuser -k 8003/tcp 2>/dev/null || true
-fuser -k 8004/tcp 2>/dev/null || true
-pkill -f valgrind || true
+    # Liberar puertos 8001 a 8004
+    fuser -k 8001/tcp 2>/dev/null || true
+    fuser -k 8002/tcp 2>/dev/null || true
+    fuser -k 8003/tcp 2>/dev/null || true
+    fuser -k 8004/tcp 2>/dev/null || true
+    pkill -f valgrind || true
 
-clear
-echo -e "\t\e[34m Compilando...\e[0m"
-echo ""
-if ! make; then
-  echo -e "\t\e[1;97;41m ❌ Error: Falló la compilación con make. Abortando.\e[0m"
-  exit 1
+    clear
+    echo -e "\t\e[34m Compilando...\e[0m"
+    echo ""
+    if ! make; then
+    echo -e "\t\e[1;97;41m ❌ Error: Falló la compilación con make. Abortando.\e[0m"
+    exit 1
+    fi
+    clear
+    echo ""
 fi
-clear
-echo ""
 
 case $numero in
 1)
@@ -139,7 +141,7 @@ case $numero in
     echo ""
 
     main_pid=$$
-    ( sleep 90 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_cpu2 $pid_io1 $pid_io2 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
+    ( sleep 90 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado el $(date '+%d/%m/%Y a las %H:%M:%S'), los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_cpu2 $pid_io1 $pid_io2 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -198,7 +200,7 @@ case $numero in
     echo ""
 
     main_pid=$$
-    ( sleep 90 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
+    ( sleep 90 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado el $(date '+%d/%m/%Y a las %H:%M:%S'), los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -253,7 +255,7 @@ case $numero in
     echo ""
 
     main_pid=$$
-    ( sleep 90 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
+    ( sleep 90 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado el $(date '+%d/%m/%Y a las %H:%M:%S'), los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -302,7 +304,7 @@ case $numero in
     sleep $(echo "5 - 0.5 * 3" | bc)
 
     main_pid=$$
-    ( sleep 180 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
+    ( sleep 180 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado el $(date '+%d/%m/%Y a las %H:%M:%S'), los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -350,7 +352,7 @@ case $numero in
     sleep $(echo "5 - 0.5 * 3" | bc)
 
     main_pid=$$
-    ( sleep 150 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
+    ( sleep 150 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado el $(date '+%d/%m/%Y a las %H:%M:%S'), los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -399,7 +401,7 @@ case $numero in
     sleep $(echo "5 - 0.5 * 3" | bc)
 
     main_pid=$$
-    ( sleep 180 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
+    ( sleep 180 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado el $(date '+%d/%m/%Y a las %H:%M:%S'), los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -448,7 +450,7 @@ case $numero in
     sleep $(echo "5 - 0.5 * 3" | bc)
 
     main_pid=$$
-    ( sleep 180 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
+    ( sleep 180 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado el $(date '+%d/%m/%Y a las %H:%M:%S'), los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -496,7 +498,7 @@ case $numero in
     sleep $(echo "5 - 0.5 * 3" | bc)
 
     main_pid=$$
-    ( sleep 180 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
+    ( sleep 180 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado el $(date '+%d/%m/%Y a las %H:%M:%S'), los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -544,7 +546,7 @@ case $numero in
     sleep $(echo "5 - 0.5 * 3" | bc)
 
     main_pid=$$
-    ( sleep 1100 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
+    ( sleep 1100 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado el $(date '+%d/%m/%Y a las %H:%M:%S'), los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -592,7 +594,7 @@ case $numero in
     sleep $(echo "5 - 0.5 * 3" | bc)
 
     main_pid=$$
-    ( sleep 1100 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
+    ( sleep 1100 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado el $(date '+%d/%m/%Y a las %H:%M:%S'), los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -661,7 +663,7 @@ case $numero in
     pid_io4=$!
     sleep 0.5
 
-    sleep $(echo "1800 / 2" | bc)   # Objetivo: 30 minutos (1800)
+    sleep $(echo "1800 / 1" | bc)
 
     echo -e "\e[1;34;47m =====    🔄 Matando todos los modulos (SIGINT)    ===== \e[0m"
     kill -SIGINT "$pid_io1"
@@ -678,7 +680,7 @@ case $numero in
     echo ""
 
     main_pid=$$
-    ( sleep 60 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_cpu2 $pid_cpu3 $pid_cpu4 $pid_io1 $pid_io2 $pid_io3 $pid_io4 >/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) & 
+    ( sleep 60 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado el $(date '+%d/%m/%Y a las %H:%M:%S'), los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_cpu2 $pid_cpu3 $pid_cpu4 $pid_io1 $pid_io2 $pid_io3 $pid_io4 >/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) & 
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -759,7 +761,7 @@ case $numero in
     pid_io4=$!
     sleep 0.5
 
-    sleep $(echo "1800 / 2" | bc)   # Objetivo: 30 minutos (1800)
+    sleep $(echo "1800 / 1" | bc)
 
     echo -e "\e[1;34;47m =====    🔄 Matando todos los modulos (SIGINT)    ===== \e[0m"
     kill -SIGINT "$pid_io1"
@@ -776,7 +778,7 @@ case $numero in
     echo ""
 
     main_pid=$$
-    ( sleep 60 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado, los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_cpu2 $pid_cpu3 $pid_cpu4 $pid_io1 $pid_io2 $pid_io3 $pid_io4 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) & 
+    ( sleep 60 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado el $(date '+%d/%m/%Y a las %H:%M:%S'), los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_cpu2 $pid_cpu3 $pid_cpu4 $pid_io1 $pid_io2 $pid_io3 $pid_io4 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) & 
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -914,5 +916,5 @@ fi
 
 
 echo ""
-echo " Test finalizado "
+echo " Test $numero finalizado "
 exit $errores

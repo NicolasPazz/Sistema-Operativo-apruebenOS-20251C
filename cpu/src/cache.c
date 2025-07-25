@@ -8,7 +8,7 @@
 t_cache_paginas* inicializar_cache() {
     cache = (t_cache_paginas*)malloc(sizeof(t_cache_paginas));
     if (cache == NULL) {
-        log_trace(cpu_log,"No se pudo inicializar la cache");
+        log_error(cpu_log,"No se pudo inicializar la cache");
         exit(EXIT_FAILURE);
     }
     cache->entradas = NULL;
@@ -16,8 +16,8 @@ t_cache_paginas* inicializar_cache() {
     if (cache_habilitada(cache)) {
         cache->entradas = (t_entrada_cache*)malloc(cache->cantidad_entradas * sizeof(t_entrada_cache));
         if (cache->entradas == NULL) {
-            log_trace(cpu_log, "Error al asignar memoria para las entradas de la cache");
-            free(cache);
+            log_error(cpu_log, "Error al asignar memoria para las entradas de la cache");
+            // free(cache);
             exit(EXIT_FAILURE);
         }
         for (int i = 0 ; i < cache->cantidad_entradas ; i++) {
@@ -30,8 +30,8 @@ t_cache_paginas* inicializar_cache() {
     }
     cache->algoritmo_reemplazo = REEMPLAZO_CACHE;
     if (cache->algoritmo_reemplazo == NULL) {
-        log_trace(cpu_log, "Error al asignar memoria para las entradas de la cache");
-        free(cache);
+        log_error(cpu_log, "Error al asignar memoria para las entradas de la cache");
+        // free(cache);
         exit(EXIT_FAILURE);
     }
     cache->puntero_clock = 0;
@@ -48,12 +48,14 @@ void mostrar_entradas_cache_compacto() {
         return;
     }
     
-    char estado_cache[512] = {0}; // Buffer para construir el string
-    char entrada_str[64];
+    char estado_cache[1024] = {0}; // Buffer más grande
+    char entrada_str[128]; // Buffer más grande para entrada individual
+    int offset = 0;
     
-    strcat(estado_cache, "Cache: [");
+    // Usar snprintf en lugar de strcat para controlar límites
+    offset = snprintf(estado_cache, sizeof(estado_cache), "Cache: [");
     
-    for (int i = 0; i < cache->cantidad_entradas; i++) {
+    for (int i = 0; i < cache->cantidad_entradas && offset < sizeof(estado_cache) - 100; i++) {
         if (cache->entradas[i].numero_pagina != -1) {
             snprintf(entrada_str, sizeof(entrada_str), "%sPag%d(%s%s)%s", 
                     (i > 0) ? " | " : "",
@@ -66,11 +68,22 @@ void mostrar_entradas_cache_compacto() {
                     (i > 0) ? " | " : "",
                     (i == cache->puntero_clock) ? "*" : "");
         }
-        strcat(estado_cache, entrada_str);
+        
+        // Verificar que hay espacio suficiente antes de concatenar
+        int remaining = sizeof(estado_cache) - offset - 50; // Dejar espacio para el cierre
+        if (strlen(entrada_str) < remaining) {
+            offset += snprintf(estado_cache + offset, remaining, "%s", entrada_str);
+        } else {
+            break; // Salir si no hay más espacio
+        }
     }
     
-    strcat(estado_cache, "] (* = puntero CLOCK)");
-    log_info(cpu_log, "%s", estado_cache);
+    // Agregar cierre de forma segura
+    if (offset < sizeof(estado_cache) - 30) {
+        snprintf(estado_cache + offset, sizeof(estado_cache) - offset, "] (* = puntero CLOCK)");
+    }
+    
+    log_debug(cpu_log, "%s", estado_cache);
 }
 
 // Función para mostrar el estado de la caché
@@ -634,12 +647,12 @@ void enviar_actualizar_pagina_completa(int pid, int direccion_fisica, void* cont
 
     t_respuesta respuesta;
     if (recv(fd_memoria, &respuesta, sizeof(t_respuesta), MSG_WAITALL) != sizeof(t_respuesta)) {
-        log_trace(cpu_log, "Error al recibir respuesta de actualización de página completa");
+        log_error(cpu_log, "Error al recibir respuesta de actualización de página completa");
         exit(EXIT_FAILURE);
     }
 
     if (respuesta != OK) {
-        log_trace(cpu_log, "Actualización de página completa fallida en Memoria");
+        log_error(cpu_log, "Actualización de página completa fallida en Memoria");
         exit(EXIT_FAILURE);
     }
 

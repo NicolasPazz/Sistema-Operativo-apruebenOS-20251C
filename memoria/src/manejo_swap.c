@@ -138,7 +138,7 @@ int suspender_proceso_completo(int pid) {
     pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
     log_trace(logger, "[SWAP] PID: %d - mutex_swap liberado", pid);
     log_trace(logger, "[SWAP] PID: %d - Aplicando retardo SWAP (solo una vez por suspensión)", pid);
-    aplicar_retardo_swap();
+    // aplicar_retardo_swap();
     log_trace(logger, "[SWAP] <<<<< SALIENDO de suspender_proceso_completo para PID %d (resultado: %d)", pid, suspension_exitosa ? 1 : 0);
     return suspension_exitosa ? 1 : 0;
 }
@@ -267,7 +267,7 @@ int reanudar_proceso_suspendido(int pid) {
         pthread_mutex_unlock(&sistema_memoria->admin_swap->mutex_swap);
     }
     // Aplicar retardo de SWAP
-    aplicar_retardo_swap();
+    // aplicar_retardo_swap();
     return reanudacion_exitosa ? 1 : 0;
 }
 

@@ -24,6 +24,7 @@ void ejecutar_ciclo_instruccion() {
         t_instruccion* instruccion = fetch();
         if (instruccion == NULL) {
             log_trace(cpu_log, "[CICLO] ✗ Error al obtener instrucción, finalizando ciclo");
+            free(instruccion);
             break;
         }
 
@@ -70,8 +71,8 @@ t_instruccion* fetch() {
     // Enviar Paquete OP a Memoria
     log_trace(cpu_log, "[FETCH] Enviando solicitud PEDIR_INSTRUCCION_OP a memoria...");
     t_paquete* paquete = crear_paquete_op(PEDIR_INSTRUCCION_OP);
-    agregar_entero_a_paquete(paquete, pid_ejecutando);  //PID primero
-    agregar_entero_a_paquete(paquete, pc);              //PC segundo
+    agregar_entero_a_paquete(paquete, pid_ejecutando);  // PID primero
+    agregar_entero_a_paquete(paquete, pc);              // PC segundo
     
     // DEBUGGING: Enviar paquete (función void, no devuelve valor)
     enviar_paquete(paquete, fd_memoria);
@@ -103,7 +104,7 @@ op_code decode(char* nombre_instruccion) {
     
     op_code resultado = -1;
     
-    //INSTRUCCIONES
+    // INSTRUCCIONES
     if (strcmp(nombre_instruccion, "NOOP") == 0) {
         resultado = NOOP_OP;
     } else if (strcmp(nombre_instruccion, "WRITE") == 0) {
@@ -112,7 +113,7 @@ op_code decode(char* nombre_instruccion) {
         resultado = READ_OP;
     } else if (strcmp(nombre_instruccion, "GOTO") == 0) {
         resultado = GOTO_OP;
-    //SYSCALLS
+    // SYSCALLS
     } else if (strcmp(nombre_instruccion, "IO") == 0) {
         resultado = IO_OP;
     } else if (strcmp(nombre_instruccion, "INIT_PROC") == 0) {
@@ -132,7 +133,7 @@ op_code decode(char* nombre_instruccion) {
     return resultado;
 }
 
-//execute
+// execute
 void execute(op_code tipo_instruccion, t_instruccion* instruccion) {
     // CAMBIO: Log obligatorio 
     char* params_str = string_new();
@@ -190,7 +191,7 @@ void execute(op_code tipo_instruccion, t_instruccion* instruccion) {
             func_exit();
             break;
         default:
-            log_trace(cpu_log, "Instrucción desconocida");
+            log_error(cpu_log, "Instrucción desconocida");
         break;
     }
 }

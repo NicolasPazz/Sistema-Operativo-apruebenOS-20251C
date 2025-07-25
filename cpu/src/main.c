@@ -15,8 +15,8 @@ int numero_cpu;
 // Manejador de señales para terminación limpia
 void signal_handler(int sig) {
     if (sig == SIGINT) {
-        printf("\nRecibida señal de terminación. Cerrando CPU...\n");
-        log_trace(cpu_log, "Recibida señal SIGINT. Iniciando terminación limpia del CPU...");
+        // printf("\nRecibida señal de terminación. Cerrando CPU...\n");
+        log_info(cpu_log, "Recibida señal de terminación. Cerrando CPU...");
         terminar_programa();
         exit(EXIT_SUCCESS);
     }
@@ -77,17 +77,23 @@ int main(int argc, char* argv[]) {
     conectar_cpu_memoria();
 
     pthread_t atiende_respuestas_kernel_dispatch;
-    pthread_create(&atiende_respuestas_kernel_dispatch, NULL, (void *) recibir_kernel_dispatch, (void*)& fd_kernel_dispatch);
+    if (pthread_create(&atiende_respuestas_kernel_dispatch, NULL, (void *) recibir_kernel_dispatch, (void*)& fd_kernel_dispatch) != 0) {
+        log_error(cpu_log, "Error al crear hilo de recepción de Kernel Dispatch");
+        exit(EXIT_FAILURE);
+    }
     pthread_detach(atiende_respuestas_kernel_dispatch);
 
     pthread_t atiende_respuestas_kernel_interrupt;
-    pthread_create(&atiende_respuestas_kernel_interrupt, NULL, (void *) recibir_kernel_interrupt, (void*)& fd_kernel_interrupt);
+    if (pthread_create(&atiende_respuestas_kernel_interrupt, NULL, (void *) recibir_kernel_interrupt, (void*)& fd_kernel_interrupt) != 0) {
+        log_error(cpu_log, "Error al crear hilo de recepción de Kernel Interrupt");
+        exit(EXIT_FAILURE);
+    }
     pthread_detach(atiende_respuestas_kernel_interrupt);
 
     // CAMBIO: Comentamos esta línea para que CPU no ejecute prematuramente
     // ejecutar_ciclo_instruccion();
     
-    //provisorio para que no finalice
+    // provisorio para que no finalice
     while (1) {
         sleep(1);
     }
@@ -144,11 +150,11 @@ void* recibir_kernel_dispatch(void* arg) {
                 list_destroy_and_destroy_elements(lista, free);
                 break;
             case -1:
-                log_trace(cpu_log, "Se desconectó el Kernel. Finalizando CPU...");
+                log_info(cpu_log, "Se desconectó Kernel. Finalizando CPU...");
                 terminar_programa();
                 exit(EXIT_SUCCESS);
             default:
-                log_trace(cpu_log, "[DISPATCH] Operación desconocida de Dispatch: %d", cod_op);
+                log_error(cpu_log, "[DISPATCH] Operación desconocida de Dispatch: %d", cod_op);
         }
     }
     return NULL;
@@ -159,7 +165,7 @@ void* recibir_kernel_interrupt(void* arg) {
         int cod_op = recibir_operacion(fd_kernel_interrupt);
         switch (cod_op) {
             case -1:
-                log_trace(cpu_log, "Se desconectó el Kernel. Finalizando CPU...");
+                log_info(cpu_log, "Se desconectó Kernel. Finalizando CPU...");
                 terminar_programa();
                 exit(EXIT_SUCCESS);
             case INTERRUPCION_OP:
@@ -184,7 +190,7 @@ void* recibir_kernel_interrupt(void* arg) {
                 pthread_mutex_unlock(&mutex_estado_proceso);
                 break;
             default:
-                log_trace(cpu_log, "Operacion desconocida de Interrupt: %d", cod_op);
+                log_error(cpu_log, "Operacion desconocida de Interrupt: %d", cod_op);
         }
     }
 }
@@ -211,7 +217,7 @@ void terminar_programa() {
         log_trace(cpu_log, "Conexión Memoria cerrada");
         close(fd_memoria);
     }
-    
+    /*
     if (cfg_memoria != NULL) {
         log_trace(cpu_log, "Configuración MEMORIA liberada");
         free(cfg_memoria);
@@ -224,5 +230,7 @@ void terminar_programa() {
 
     if (cpu_config != NULL) {
         config_destroy(cpu_config);
-    }
+    }*/
+
+    log_info(cpu_log, "CPU finalizada correctamente.");
 }

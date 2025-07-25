@@ -1,6 +1,6 @@
+#include <time.h>
 #include "../headers/syscalls.h"
 #include "../headers/planificadores.h"
-#include <time.h>
 
 // Variable global para el siguiente PID
 static int siguiente_pid = 0;

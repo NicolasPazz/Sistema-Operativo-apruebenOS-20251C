@@ -88,9 +88,9 @@ io *io_disponible(char *nombre)
         LOG_TRACE(kernel_log, "Nombre de IO nulo");
         return false;
     }
-    
+
     LOCK_CON_LOG(mutex_ios);
-    
+
     for (int i = 0; i < list_size(lista_ios); i++)
     {
         io *dispositivo = list_get(lista_ios, i);
@@ -163,9 +163,9 @@ void verificar_procesos_bloqueados(io *io)
     if (!pendiente)
     {
         LOG_TRACE(kernel_log, "No hay procesos pendientes para la IO '%s'", io->nombre);
-        
+
         LOCK_CON_LOG(mutex_ios);
-        
+
         io->estado = IO_DISPONIBLE;
         io->proceso_actual = NULL;
         UNLOCK_CON_LOG(mutex_ios);
@@ -218,7 +218,7 @@ void exit_procesos_relacionados(io *dispositivo)
     io *otra_io = NULL;
 
     LOCK_CON_LOG(mutex_ios);
-    
+
     for (int j = 0; j < list_size(lista_ios); j++)
     {
         otra_io = list_get(lista_ios, j);
@@ -236,7 +236,7 @@ void exit_procesos_relacionados(io *dispositivo)
         t_list *pcbs_afectados = list_create();
 
         LOCK_CON_LOG(mutex_pcbs_esperando_io);
-        
+
         int i = 0;
         while (i < list_size(pcbs_esperando_io))
         {
