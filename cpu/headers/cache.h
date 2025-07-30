@@ -37,4 +37,5 @@ char* cache_leer(int pid, int numero_pagina);
 void enviar_actualizar_pagina_completa(int pid, int direccion_fisica, void* contenido);
 void mostrar_estado_cache_debug(const char* momento);
 void mostrar_entradas_cache_compacto();
+void aplicar_retardo_cache(void);
 #endif

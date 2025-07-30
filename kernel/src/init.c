@@ -3,8 +3,6 @@
 #include "../headers/CPUKernel.h"
 #include "../headers/syscalls.h"
 
-/////////////////////////////// Declaracion de variables globales ///////////////////////////////
-
 // Logger
 t_log *kernel_log = NULL;
 
@@ -84,9 +82,7 @@ sem_t sem_planificador_cp;
 sem_t sem_interrupciones;
 sem_t sem_liberacion_memoria;
 
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// INICIALIZACIONES                                       //
-//////////////////////////////////////////////////////////////////////////////////////////////////
+// INICIALIZACIONES
 
 void iniciar_config_kernel(const char *path_cfg)
 {
@@ -242,7 +238,7 @@ static void destruir_pcb_dump(void *elem)
 
 void terminar_kernel(int code)
 {
-    close(fd_kernel_io);
+    /*close(fd_kernel_io);
     close(fd_kernel_dispatch);
     close(fd_interrupt);
     for (int i = 0; i < list_size(lista_sockets); i++)
@@ -251,7 +247,7 @@ void terminar_kernel(int code)
         close(fd);
         LOG_TRACE(kernel_log, "Socket cerrado: fd=%d", fd);
     }
-    /*
+
 
 
     list_destroy(lista_sockets);
@@ -340,9 +336,7 @@ void terminar_kernel(int code)
     exit(code);
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// CPU DISPATCH                                         //
-//////////////////////////////////////////////////////////////////////////////////////////////////
+// CPU DISPATCH
 
 void *hilo_servidor_dispatch(void *_)
 {
@@ -420,9 +414,6 @@ void *hilo_servidor_dispatch(void *_)
 
 void *atender_cpu_dispatch(void *arg)
 {
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
-
     int fd_cpu_dispatch = *(int *)arg;
     free(arg);
 
@@ -585,9 +576,7 @@ void *atender_cpu_dispatch(void *arg)
     return NULL;
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// CPU INTERRUPT                                        //
-//////////////////////////////////////////////////////////////////////////////////////////////////
+// CPU INTERRUPT
 
 void *hilo_servidor_interrupt(void *_)
 {
@@ -653,9 +642,7 @@ void *hilo_servidor_interrupt(void *_)
     return NULL;
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// IO                                              //
-//////////////////////////////////////////////////////////////////////////////////////////////////
+// IO
 
 void *hilo_servidor_io(void *_)
 {
@@ -730,9 +717,6 @@ void *hilo_servidor_io(void *_)
 
 void *atender_io(void *arg)
 {
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
-
     int fd_io = *(int *)arg;
     free(arg);
 
@@ -781,7 +765,7 @@ void *atender_io(void *arg)
                 log_info(kernel_log, AMARILLO("## (%d) finalizó IO y pasa a SUSP_READY"), pid_finalizado);
                 cambiar_estado_pcb(pcb_fin, SUSP_READY);
                 UNLOCK_CON_LOG_PCB(pcb_fin->mutex, pcb_fin->PID);
-
+                mostrar_colas_lp();
                 SEM_POST(sem_liberacion_memoria);
             }
             else if (pcb_fin->Estado == BLOCKED)
@@ -789,6 +773,7 @@ void *atender_io(void *arg)
                 log_info(kernel_log, AMARILLO("## (%d) finalizó IO y pasa a READY"), pid_finalizado);
                 cambiar_estado_pcb(pcb_fin, READY);
                 UNLOCK_CON_LOG_PCB(pcb_fin->mutex, pcb_fin->PID);
+                mostrar_colas_lp();
             }
             else
             {

@@ -129,7 +129,7 @@ void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
         {
             PCB->tiempo_inicio_exec = get_time();
         }
-        else if (PCB->Estado == EXEC)
+        else if (PCB->Estado == EXEC && nuevo_estado_enum != EXIT_ESTADO)
         {
             LOG_TRACE(kernel_log, "estimacion rafaga anterior del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
             double rafaga_real = get_time() - PCB->tiempo_inicio_exec;
@@ -140,6 +140,11 @@ void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
 
             LOG_TRACE(kernel_log, "Nueva estimacion de rafaga del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
             PCB->tiempo_inicio_exec = -1;
+
+            if (strcmp(ALGORITMO_CORTO_PLAZO, "FIFO") != 0)
+            {
+                log_info(kernel_log, NARANJA("## (%d) - Estimación de ráfaga actualizada a %.3f ms (ráfaga restante)"), PCB->PID, PCB->estimacion_rafaga);
+            }
         }
 
         if (nuevo_estado_enum == BLOCKED)
@@ -299,16 +304,21 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
         {
             PCB->tiempo_inicio_exec = get_time();
         }
-        else if (PCB->Estado == EXEC)
+        else if (PCB->Estado == EXEC && nuevo_estado_enum != EXIT_ESTADO)
         {
-            LOG_TRACE(kernel_log, "estimacion rafaga anterior del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
+            LOG_DEBUG(kernel_log, "estimacion rafaga anterior del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
             double rafaga_real = get_time() - PCB->tiempo_inicio_exec;
 
-            LOG_TRACE(kernel_log, "Rafaga real del PID %d: %.3f", PCB->PID, rafaga_real);
+            LOG_DEBUG(kernel_log, "Rafaga real del PID %d: %.3f", PCB->PID, rafaga_real);
             PCB->estimacion_rafaga = ALFA * rafaga_real + (1.0 - ALFA) * PCB->estimacion_rafaga;
 
-            LOG_TRACE(kernel_log, "Nueva estimacion de rafaga del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
+            LOG_DEBUG(kernel_log, "Nueva estimacion de rafaga del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
             PCB->tiempo_inicio_exec = -1;
+
+            if (strcmp(ALGORITMO_CORTO_PLAZO, "FIFO") != 0)
+            {
+                log_info(kernel_log, NARANJA("## (%d) - Estimación de ráfaga actualizada a %.3f ms"), PCB->PID, PCB->estimacion_rafaga);
+            }
         }
 
         if (nuevo_estado_enum == BLOCKED)
@@ -505,7 +515,8 @@ void loguear_metricas_estado(t_pcb *pcb)
 
     log_info(kernel_log, NARANJA("## (%d) - Métricas de estado:"), pcb->PID);
 
-    for (int i = 0; i < 7; i++)
+    // Para mostrar exit: < 7
+    for (int i = 0; i < 6; i++)
     {
         const char *nombre_estado = estado_to_string((Estados)i);
         unsigned veces = pcb->ME[i];
@@ -677,4 +688,63 @@ void verificar_procesos_restantes()
             log_info(kernel_log, "Esperando...");
         }
     }
+}
+
+void mostrar_colas_lp()
+{
+    // Buffer para construir los strings de las colas
+    char buffer_new[1024] = "";
+    char buffer_susp_ready[1024] = "";
+
+    // Mostrar cola SUSPENDED READY
+    LOCK_CON_LOG(mutex_cola_susp_ready);
+    if (!list_is_empty(cola_susp_ready))
+    {
+        strcat(buffer_susp_ready, "    - SUSP_READY: ");
+        for (int i = 0; i < list_size(cola_susp_ready); i++)
+        {
+            t_pcb *pcb = (t_pcb *)list_get(cola_susp_ready, i);
+            if (pcb)
+            {
+                char temp[32];
+                if (i == 0)
+                {
+                    snprintf(temp, sizeof(temp), "(%d) %d B", pcb->PID, pcb->tamanio_memoria);
+                }
+                else
+                {
+                    snprintf(temp, sizeof(temp), ", (%d) %d B", pcb->PID, pcb->tamanio_memoria);
+                }
+                strcat(buffer_susp_ready, temp);
+            }
+        }
+        log_info(kernel_log, AZUL("%s"), buffer_susp_ready);
+    }
+    UNLOCK_CON_LOG(mutex_cola_susp_ready);
+
+    // Mostrar cola NEW
+    LOCK_CON_LOG(mutex_cola_new);
+    if (!list_is_empty(cola_new))
+    {
+        strcat(buffer_new, "    - NEW: ");
+        for (int i = 0; i < list_size(cola_new); i++)
+        {
+            t_pcb *pcb = (t_pcb *)list_get(cola_new, i);
+            if (pcb)
+            {
+                char temp[32];
+                if (i == 0)
+                {
+                    snprintf(temp, sizeof(temp), "(%d) %d B", pcb->PID, pcb->tamanio_memoria);
+                }
+                else
+                {
+                    snprintf(temp, sizeof(temp), ", (%d) %d B", pcb->PID, pcb->tamanio_memoria);
+                }
+                strcat(buffer_new, temp);
+            }
+        }
+        log_info(kernel_log, VERDE("%s"), buffer_new);
+    }
+    UNLOCK_CON_LOG(mutex_cola_new);
 }

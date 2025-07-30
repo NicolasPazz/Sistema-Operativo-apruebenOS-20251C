@@ -129,6 +129,17 @@ void ejecutar_proceso(cpu *cpu_disponible, t_pcb *proceso_a_ejecutar)
     eliminar_paquete(paquete);
 }
 
+/**
+ * @brief Busca la CPU asociada al proceso en ejecución (RUNNING) con la mayor ráfaga restante,
+ *        siempre y cuando exista un proceso en READY con una ráfaga estimada menor.
+ *
+ * Esta función implementa la lógica de comparación entre el proceso con menor ráfaga estimada en READY
+ * (utilizando Shortest Remaining Time, SRT) y los procesos actualmente en ejecución (RUNNING).
+ * Si algún proceso en RUNNING tiene una ráfaga restante mayor que la mínima de READY, retorna la CPU
+ * asociada a ese proceso RUNNING. Si no se cumple la condición, retorna NULL.
+ *
+ * @return cpu* Puntero a la CPU del proceso RUNNING con mayor ráfaga restante si corresponde, o NULL en caso contrario.
+ */
 cpu *hay_cpu_rafaga_restante_mayor()
 {
     t_pcb *candidato_ready = elegir_por_srt(cola_ready);
@@ -146,6 +157,7 @@ cpu *hay_cpu_rafaga_restante_mayor()
     }
 
     double rafaga_ready_min = candidato_ready->estimacion_rafaga;
+    LOG_DEBUG(kernel_log, "Proceso READY PID=%d tiene rafaga mínima %.3f ms", candidato_ready->PID, rafaga_ready_min);
 
     LOCK_CON_LOG(mutex_cola_running);
 
@@ -166,6 +178,12 @@ cpu *hay_cpu_rafaga_restante_mayor()
     {
         t_pcb *candidato_exec_actual = (t_pcb *)list_get(cola_running, i);
 
+        if (!candidato_exec_actual)
+        {
+            LOG_TRACE(kernel_log, "Elemento NULL encontrado en cola_running en posición %d", i);
+            continue;
+        }
+
         if (candidato_exec_actual->tiempo_inicio_exec > 0)
         {
             double restante_exec = candidato_exec_actual->estimacion_rafaga - (ahora - candidato_exec_actual->tiempo_inicio_exec);
@@ -173,19 +191,29 @@ cpu *hay_cpu_rafaga_restante_mayor()
             {
                 rafaga_exec_max = restante_exec;
                 candidato_exec = candidato_exec_actual;
+                LOG_DEBUG(kernel_log, "Proceso RUNNING PID=%d tiene rafaga restante %.3f ms", candidato_exec->PID, rafaga_exec_max);
             }
         }
         else
         {
             LOG_TRACE(kernel_log, "Proceso %d en cola RUNNING no tiene tiempo de inicio de ejecución válido", candidato_exec_actual->PID);
             UNLOCK_CON_LOG(mutex_cola_running);
-            return NULL;
+            continue;
         }
+    }
+
+    if (!candidato_exec)
+    {
+        LOG_TRACE(kernel_log, "No se encontró candidato en cola RUNNING");
+        UNLOCK_CON_LOG(mutex_cola_running);
+        return NULL;
     }
 
     if (rafaga_ready_min < rafaga_exec_max)
     {
-        LOG_TRACE(kernel_log, "Proceso READY PID=%d tiene rafaga restante menor que el proceso RUNNING PID=%d", candidato_ready->PID, candidato_exec->PID);
+        LOG_DEBUG(kernel_log, "Proceso READY PID=%d tiene rafaga menor que el proceso RUNNING PID=%d", candidato_ready->PID, candidato_exec->PID);
+        log_info(kernel_log, NARANJA("## (%d) - Elegido con menor ráfaga estimada %.3f ms"), candidato_ready->PID, candidato_ready->estimacion_rafaga);
+        log_info(kernel_log, NARANJA("## (%d) - Elegido en ejecución con mayor ráfaga restante %.3f ms"), candidato_exec->PID, candidato_exec->estimacion_rafaga);
         UNLOCK_CON_LOG(mutex_cola_running);
         return (cpu *)get_cpu_dispatch_by_pid(candidato_exec->PID);
     }
@@ -197,10 +225,24 @@ cpu *hay_cpu_rafaga_restante_mayor()
 cpu *get_cpu_dispatch_by_pid(int pid)
 {
     cpu *cpu_asociada = NULL;
+
+    if (!lista_cpus)
+    {
+        LOG_TRACE(kernel_log, "lista_cpus es NULL");
+        return NULL;
+    }
+
     int cantidad_cpus = list_size(lista_cpus);
     for (int i = 0; i < cantidad_cpus; i++)
     {
         cpu *c = list_get(lista_cpus, i);
+
+        if (!c)
+        {
+            LOG_TRACE(kernel_log, "Elemento NULL encontrado en lista_cpus en posición %d", i);
+            continue;
+        }
+
         if (c->tipo_conexion == CPU_DISPATCH && c->pid == pid)
         {
             cpu_asociada = c;
@@ -231,7 +273,7 @@ void interrumpir_ejecucion(cpu *cpu_a_desalojar)
 
     UNLOCK_CON_LOG(mutex_lista_cpus);
 
-    LOG_TRACE(kernel_log, VERDE("[INTERRUPT] Enviando interrupción a CPU %d (fd=%d)"), cpu_a_desalojar->id, fd_interrupt);
+    LOG_DEBUG(kernel_log, VERDE("[INTERRUPT] Enviando interrupción a CPU %d (fd=%d)"), cpu_a_desalojar->id, fd_interrupt);
 
     t_paquete *paquete = crear_paquete_op(INTERRUPCION_OP);
     agregar_entero_a_paquete(paquete, pid_exec);
@@ -243,7 +285,7 @@ void interrumpir_ejecucion(cpu *cpu_a_desalojar)
     switch (respuesta)
     {
     case OK:
-        LOG_TRACE(kernel_log, VERDE("[INTERRUPT] CPU %d respondió OK"), cpu_a_desalojar->id);
+        LOG_DEBUG(kernel_log, VERDE("[INTERRUPT] CPU %d respondió OK"), cpu_a_desalojar->id);
 
         t_list *contenido = recibir_contenido_paquete(fd_interrupt);
         if (!contenido)
@@ -277,6 +319,7 @@ void interrumpir_ejecucion(cpu *cpu_a_desalojar)
 
         pcb->PC = nuevo_pc;
         cambiar_estado_pcb_mutex_srt(pcb, READY);
+        mostrar_colas_lp();
         liberar_cpu(cpu_a_desalojar);
         LOG_TRACE(kernel_log, "[INTERRUPT] CPU %d liberada", cpu_a_desalojar->id);
         break;

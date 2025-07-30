@@ -21,9 +21,6 @@
  */
 void *timer_suspension(void *v_arg)
 {
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
-
     t_timer_arg *arg = v_arg;
     t_pcb *pcb = arg->pcb;
     bool *flag = arg->vigente;
@@ -103,9 +100,11 @@ void *timer_suspension(void *v_arg)
 
     suspender_proceso(pcb);
 
+    //cambiar_estado_pcb(pcb, SUSP_BLOCKED);
+
     UNLOCK_CON_LOG_PCB(pcb->mutex, pcb->PID);
 
-    LOG_TRACE(kernel_log, AZUL("[PLANI MP] Proceso PID %d suspendido correctamente"), pcb->PID);
+    log_info(kernel_log, NARANJA("## (%d) Confirmación de suspensión recibida"), pcb->PID);
 
     SEM_POST(sem_liberacion_memoria);
 

@@ -22,9 +22,6 @@ int procesos_new_rechazados = 0;
  */
 void *planificador_largo_plazo(void *arg)
 {
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
-
     LOCK_CON_LOG(mutex_planificador_lp);
     LOG_TRACE(kernel_log, "=== PLANIFICADOR LP INICIADO ===");
     while (1)
@@ -32,7 +29,6 @@ void *planificador_largo_plazo(void *arg)
         SEM_WAIT(sem_proceso_a_new);
 
         LOCK_CON_LOG(mutex_cola_susp_ready);
-
         bool susp_vacia = list_is_empty(cola_susp_ready);
         UNLOCK_CON_LOG(mutex_cola_susp_ready);
 
@@ -42,6 +38,8 @@ void *planificador_largo_plazo(void *arg)
             aumentar_procesos_rechazados();
             continue;
         }
+
+        //mostrar_colas_lp();
 
         LOCK_CON_LOG(mutex_inicializacion_procesos);
         LOCK_CON_LOG(mutex_cola_new);
@@ -126,6 +124,7 @@ void *planificador_largo_plazo(void *arg)
         }
 
         cambiar_estado_pcb_mutex(pcb, READY);
+        mostrar_colas_lp();
         UNLOCK_CON_LOG(mutex_inicializacion_procesos);
     }
 
@@ -145,9 +144,6 @@ void *planificador_largo_plazo(void *arg)
  */
 void *gestionar_exit(void *arg)
 {
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
-
     while (1)
     {
         SEM_WAIT(sem_proceso_a_exit);
@@ -197,12 +193,10 @@ void *gestionar_exit(void *arg)
  */
 void *verificar_procesos_rechazados()
 {
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
-
     while (1)
     {
         SEM_WAIT(sem_liberacion_memoria);
+        //mostrar_colas_lp();
         LOCK_CON_LOG(mutex_cola_susp_ready);
         LOCK_CON_LOG(mutex_inicializacion_procesos);
 
@@ -251,6 +245,7 @@ void *verificar_procesos_rechazados()
                 LOG_TRACE(kernel_log, "[PLANI LP] [RECHAZADOS] Proceso PID %d desuspendido correctamente", pcb_susp->PID);
                 UNLOCK_CON_LOG(mutex_cola_susp_ready);
                 cambiar_estado_pcb_mutex(pcb_susp, READY);
+                mostrar_colas_lp();
                 LOCK_CON_LOG(mutex_cola_susp_ready);
                 // disminuir_procesos_rechazados();
             }
@@ -311,6 +306,7 @@ void *verificar_procesos_rechazados()
                 LOG_TRACE(kernel_log, "[PLANI LP] [RECHAZADOS] Proceso PID %d inicializado en memoria", pcb->PID);
                 UNLOCK_CON_LOG(mutex_cola_new);
                 cambiar_estado_pcb_mutex(pcb, READY);
+                mostrar_colas_lp();
                 procesos_new_rechazados--;
             }
         }

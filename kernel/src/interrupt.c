@@ -31,9 +31,6 @@ void iniciar_interrupt_handler()
  */
 void *interrupt_handler(void *arg)
 {
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
-
     LOG_TRACE(kernel_log, VERDE("=== Interrupt handler iniciado ==="));
 
     while (1)
@@ -41,14 +38,13 @@ void *interrupt_handler(void *arg)
         SEM_WAIT(sem_interrupciones);
 
         LOCK_CON_LOG(mutex_cola_interrupciones);
-
         t_interrupcion *intr = list_remove(cola_interrupciones, 0);
         UNLOCK_CON_LOG(mutex_cola_interrupciones);
 
         if (!intr)
         {
             LOG_TRACE(kernel_log, VERDE("[INTERRUPT] Cola de interrupción vacía"));
-            return NULL;
+            continue;
         }
 
         interrumpir_ejecucion(intr->cpu_a_desalojar);
@@ -73,10 +69,10 @@ void interrupt(cpu *cpu_a_desalojar)
     nueva->cpu_a_desalojar = cpu_a_desalojar;
 
     LOCK_CON_LOG(mutex_cola_interrupciones);
-
     list_add(cola_interrupciones, nueva);
     UNLOCK_CON_LOG(mutex_cola_interrupciones);
-    LOG_TRACE(kernel_log, "[INTERRUPT] Interrupción encolada para desalojar CPU %d (fd=%d)", cpu_a_desalojar->id, cpu_a_desalojar->fd);
+
+    LOG_DEBUG(kernel_log, "[INTERRUPT] Interrupción encolada para desalojar CPU %d (fd=%d)", cpu_a_desalojar->id, cpu_a_desalojar->fd);
 
     SEM_POST(sem_interrupciones);
 }
