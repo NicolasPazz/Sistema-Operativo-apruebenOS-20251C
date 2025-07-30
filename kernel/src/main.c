@@ -6,6 +6,7 @@ bool auto_start = false; // Variable para determinar si se inicia automáticamen
 pthread_t *hilo_dispatch = NULL;
 pthread_t *hilo_interrupt = NULL;
 pthread_t *hilo_io = NULL;
+char *archivo_pseudocodigo = NULL;
 
 void signal_handler(int sig)
 {
@@ -101,7 +102,7 @@ int main(int argc, char *argv[])
         iniciar_interrupt_handler();
     }
 
-    char *archivo_pseudocodigo = argv[1];
+    archivo_pseudocodigo = argv[1];
     int tamanio_proceso = atoi(argv[2]);
 
     //////////////////////////// Conexiones del Kernel ////////////////////////////

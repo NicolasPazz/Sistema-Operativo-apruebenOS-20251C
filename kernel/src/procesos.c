@@ -80,6 +80,8 @@ void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
         return;
     }
 
+    Estados estado_viejo = PCB->Estado;
+
     if (!transicion_valida(PCB->Estado, nuevo_estado_enum))
     {
         LOG_ERROR(kernel_log, "Transicion no valida en el PID %d: %s → %s", PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
@@ -184,10 +186,14 @@ void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
         liberar_cola_por_estado(PCB->Estado);
     }
 
-    Estados estado_viejo = PCB->Estado;
     bloquear_cola_por_estado(nuevo_estado_enum);
     list_add(cola_destino, PCB);
     liberar_cola_por_estado(nuevo_estado_enum);
+
+    if (estado_viejo == NEW || estado_viejo == SUSP_READY || nuevo_estado_enum == NEW || nuevo_estado_enum == SUSP_READY)
+    {
+        mostrar_colas_lp();
+    }
 
     switch (nuevo_estado_enum)
     {
@@ -253,6 +259,8 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
         LOG_TRACE(kernel_log, "PCB es NULL");
         return;
     }
+
+    Estados estado_viejo = PCB->Estado;
 
     if (!transicion_valida(PCB->Estado, nuevo_estado_enum))
     {
@@ -358,10 +366,14 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
         liberar_cola_por_estado(PCB->Estado);
     }
 
-    Estados estado_viejo = PCB->Estado;
     bloquear_cola_por_estado(nuevo_estado_enum);
     list_add(cola_destino, PCB);
     liberar_cola_por_estado(nuevo_estado_enum);
+
+    if (estado_viejo == NEW || estado_viejo == SUSP_READY || nuevo_estado_enum == NEW || nuevo_estado_enum == SUSP_READY)
+    {
+        mostrar_colas_lp();
+    }
 
     switch (nuevo_estado_enum)
     {
@@ -692,59 +704,62 @@ void verificar_procesos_restantes()
 
 void mostrar_colas_lp()
 {
-    // Buffer para construir los strings de las colas
-    char buffer_new[1024] = "";
-    char buffer_susp_ready[1024] = "";
-
-    // Mostrar cola SUSPENDED READY
-    LOCK_CON_LOG(mutex_cola_susp_ready);
-    if (!list_is_empty(cola_susp_ready))
+    if (strcmp(archivo_pseudocodigo, "PLANI_LYM_PLAZO") == 0)
     {
-        strcat(buffer_susp_ready, "    - SUSP_READY: ");
-        for (int i = 0; i < list_size(cola_susp_ready); i++)
-        {
-            t_pcb *pcb = (t_pcb *)list_get(cola_susp_ready, i);
-            if (pcb)
-            {
-                char temp[32];
-                if (i == 0)
-                {
-                    snprintf(temp, sizeof(temp), "(%d) %d B", pcb->PID, pcb->tamanio_memoria);
-                }
-                else
-                {
-                    snprintf(temp, sizeof(temp), ", (%d) %d B", pcb->PID, pcb->tamanio_memoria);
-                }
-                strcat(buffer_susp_ready, temp);
-            }
-        }
-        log_info(kernel_log, AZUL("%s"), buffer_susp_ready);
-    }
-    UNLOCK_CON_LOG(mutex_cola_susp_ready);
+        // Buffer para construir los strings de las colas
+        char buffer_new[1024] = "";
+        char buffer_susp_ready[1024] = "";
 
-    // Mostrar cola NEW
-    LOCK_CON_LOG(mutex_cola_new);
-    if (!list_is_empty(cola_new))
-    {
-        strcat(buffer_new, "    - NEW: ");
-        for (int i = 0; i < list_size(cola_new); i++)
+        // Mostrar cola SUSPENDED READY
+        LOCK_CON_LOG(mutex_cola_susp_ready);
+        if (!list_is_empty(cola_susp_ready))
         {
-            t_pcb *pcb = (t_pcb *)list_get(cola_new, i);
-            if (pcb)
+            strcat(buffer_susp_ready, "    - SUSP_READY: ");
+            for (int i = 0; i < list_size(cola_susp_ready); i++)
             {
-                char temp[32];
-                if (i == 0)
+                t_pcb *pcb = (t_pcb *)list_get(cola_susp_ready, i);
+                if (pcb)
                 {
-                    snprintf(temp, sizeof(temp), "(%d) %d B", pcb->PID, pcb->tamanio_memoria);
+                    char temp[32];
+                    if (i == 0)
+                    {
+                        snprintf(temp, sizeof(temp), "(%d) %d B", pcb->PID, pcb->tamanio_memoria);
+                    }
+                    else
+                    {
+                        snprintf(temp, sizeof(temp), ", (%d) %d B", pcb->PID, pcb->tamanio_memoria);
+                    }
+                    strcat(buffer_susp_ready, temp);
                 }
-                else
-                {
-                    snprintf(temp, sizeof(temp), ", (%d) %d B", pcb->PID, pcb->tamanio_memoria);
-                }
-                strcat(buffer_new, temp);
             }
+            log_info(kernel_log, AZUL("%s"), buffer_susp_ready);
         }
-        log_info(kernel_log, VERDE("%s"), buffer_new);
+        UNLOCK_CON_LOG(mutex_cola_susp_ready);
+
+        // Mostrar cola NEW
+        LOCK_CON_LOG(mutex_cola_new);
+        if (!list_is_empty(cola_new))
+        {
+            strcat(buffer_new, "    - NEW: ");
+            for (int i = 0; i < list_size(cola_new); i++)
+            {
+                t_pcb *pcb = (t_pcb *)list_get(cola_new, i);
+                if (pcb)
+                {
+                    char temp[32];
+                    if (i == 0)
+                    {
+                        snprintf(temp, sizeof(temp), "(%d) %d B", pcb->PID, pcb->tamanio_memoria);
+                    }
+                    else
+                    {
+                        snprintf(temp, sizeof(temp), ", (%d) %d B", pcb->PID, pcb->tamanio_memoria);
+                    }
+                    strcat(buffer_new, temp);
+                }
+            }
+            log_info(kernel_log, VERDE("%s"), buffer_new);
+        }
+        UNLOCK_CON_LOG(mutex_cola_new);
     }
-    UNLOCK_CON_LOG(mutex_cola_new);
 }

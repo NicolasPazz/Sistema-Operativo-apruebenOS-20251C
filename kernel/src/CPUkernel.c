@@ -319,7 +319,6 @@ void interrumpir_ejecucion(cpu *cpu_a_desalojar)
 
         pcb->PC = nuevo_pc;
         cambiar_estado_pcb_mutex_srt(pcb, READY);
-        mostrar_colas_lp();
         liberar_cpu(cpu_a_desalojar);
         LOG_TRACE(kernel_log, "[INTERRUPT] CPU %d liberada", cpu_a_desalojar->id);
         break;

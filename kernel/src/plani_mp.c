@@ -106,7 +106,7 @@ void *timer_suspension(void *v_arg)
 
     log_info(kernel_log, NARANJA("## (%d) Confirmación de suspensión recibida"), pcb->PID);
 
-    SEM_POST(sem_liberacion_memoria);
+    //SEM_POST(sem_liberacion_memoria);
 
     return NULL;
 }

@@ -765,7 +765,6 @@ void *atender_io(void *arg)
                 log_info(kernel_log, AMARILLO("## (%d) finalizó IO y pasa a SUSP_READY"), pid_finalizado);
                 cambiar_estado_pcb(pcb_fin, SUSP_READY);
                 UNLOCK_CON_LOG_PCB(pcb_fin->mutex, pcb_fin->PID);
-                mostrar_colas_lp();
                 SEM_POST(sem_liberacion_memoria);
             }
             else if (pcb_fin->Estado == BLOCKED)
@@ -773,7 +772,6 @@ void *atender_io(void *arg)
                 log_info(kernel_log, AMARILLO("## (%d) finalizó IO y pasa a READY"), pid_finalizado);
                 cambiar_estado_pcb(pcb_fin, READY);
                 UNLOCK_CON_LOG_PCB(pcb_fin->mutex, pcb_fin->PID);
-                mostrar_colas_lp();
             }
             else
             {

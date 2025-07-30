@@ -1,6 +1,8 @@
 #include "../headers/MEMKernel.h"
 #include "../headers/kernel.h"
 
+int memoria_ocupada = 0;
+
 int conectar_memoria()
 {
     LOG_TRACE(kernel_log, "[KERNEL->MEMORIA] Conectando a Memoria en %s:%s", IP_MEMORIA, PUERTO_MEMORIA);
@@ -48,6 +50,12 @@ bool inicializar_proceso_en_memoria(t_pcb *pcb)
 {
     LOG_TRACE(kernel_log, "[KERNEL->MEMORIA] Inicializando proceso en Memoria: PID %d", pcb->PID);
 
+    /*if (!hay_espacio_suficiente_memoria(pcb->tamanio_memoria))
+    {
+        LOG_TRACE(kernel_log, "[KERNEL->MEMORIA] No hay espacio suficiente en memoria para PID %d", pcb->PID);
+        return false;
+    }*/
+
     int fd_memoria = conectar_memoria();
 
     t_paquete *paq = crear_paquete_op(INIT_PROC_OP);
@@ -74,6 +82,12 @@ bool inicializar_proceso_en_memoria(t_pcb *pcb)
     if (rsp == OK)
     {
         LOG_TRACE(kernel_log, "[KERNEL->MEMORIA] INIT_PROC_OP: PID %d inicializado en Memoria", pcb->PID);
+        if (strcmp(archivo_pseudocodigo, "PLANI_LYM_PLAZO") == 0)
+        {
+            memoria_ocupada += pcb->tamanio_memoria;
+            int restante = 256 - memoria_ocupada;
+            log_info(kernel_log, AMARILLO("## (%d) - Memoria ocupada: %d B totales (%d B restantes)"), pcb->PID, memoria_ocupada, restante);
+        }
         return true;
     }
 
@@ -129,6 +143,24 @@ static bool enviar_op_memoria(int op_code, int pid)
     enviar_paquete(paq, fd_memoria);
     eliminar_paquete(paq);
 
+    if ((op_code == SUSPENDER_PROCESO_OP) && strcmp(archivo_pseudocodigo, "PLANI_LYM_PLAZO") == 0)
+    {
+        t_pcb *pcb = buscar_pcb(pid);
+        if (!pcb)
+        {
+            LOG_TRACE(kernel_log, "[KERNEL->MEMORIA] No se encontró PCB para PID %d al finalizar/suspender", pid);
+            return false;
+        }
+        memoria_ocupada -= pcb->tamanio_memoria;
+        int restante = 256 - memoria_ocupada;
+        log_info(kernel_log, AMARILLO("## (%d) - Memoria ocupada: %d B totales (%d B restantes)"), pcb->PID, memoria_ocupada, restante);
+    }
+
+    if (op_code == SUSPENDER_PROCESO_OP)
+    {
+        SEM_POST(sem_liberacion_memoria);
+    }
+
     t_respuesta rsp;
     if (recv(fd_memoria, &rsp, sizeof(rsp), MSG_WAITALL) <= 0 ||
         (rsp != OK && rsp != ERROR))
@@ -143,6 +175,32 @@ static bool enviar_op_memoria(int op_code, int pid)
     if (rsp == OK)
     {
         LOG_TRACE(kernel_log, "[KERNEL->MEMORIA] Operación %d exitosa para PID %d", op_code, pid);
+
+        if ((op_code == FINALIZAR_PROC_OP) && strcmp(archivo_pseudocodigo, "PLANI_LYM_PLAZO") == 0)
+        {
+            t_pcb *pcb = buscar_pcb(pid);
+            if (!pcb)
+            {
+                LOG_TRACE(kernel_log, "[KERNEL->MEMORIA] No se encontró PCB para PID %d al finalizar/suspender", pid);
+                return false;
+            }
+            memoria_ocupada -= pcb->tamanio_memoria;
+            int restante = 256 - memoria_ocupada;
+            log_info(kernel_log, AMARILLO("## (%d) - Memoria ocupada: %d B totales (%d B restantes)"), pcb->PID, memoria_ocupada, restante);
+        }
+        else if (op_code == DESUSPENDER_PROCESO_OP && strcmp(archivo_pseudocodigo, "PLANI_LYM_PLAZO") == 0)
+        {
+            t_pcb *pcb = buscar_pcb(pid);
+            if (!pcb)
+            {
+                LOG_TRACE(kernel_log, "[KERNEL->MEMORIA] No se encontró PCB para PID %d al finalizar/suspender", pid);
+                return false;
+            }
+            memoria_ocupada += pcb->tamanio_memoria;
+            int restante = 256 - memoria_ocupada;
+            log_info(kernel_log, AMARILLO("## (%d) - Memoria ocupada: %d B totales (%d B restantes)"), pcb->PID, memoria_ocupada, restante);
+        }
+
         return true;
     }
 
@@ -157,6 +215,11 @@ bool suspender_proceso(t_pcb *pcb)
 
 bool desuspender_proceso(t_pcb *pcb)
 {
+    /*if (!hay_espacio_suficiente_memoria(pcb->tamanio_memoria))
+    {
+        LOG_TRACE(kernel_log, "[KERNEL->MEMORIA] No hay espacio suficiente en memoria para desuspender PID %d", pcb->PID);
+        return false;
+    }*/
     return enviar_op_memoria(DESUSPENDER_PROCESO_OP, pcb->PID);
 }
 
