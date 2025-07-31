@@ -125,10 +125,8 @@ void tlb_insertar(int pid, int pagina, int frame) {
 
         // 🔽 Logueamos el reemplazo antes de liberar la entrada
         log_info(cpu_log,
-            PURPURA("Reemplazo en TLB: (PID=%d, Página=%d -> Frame=%d) reemplazado por (PID=%d, Página=%d -> Frame=%d)"),
-            entrada_reemplazo->pid, entrada_reemplazo->pagina, entrada_reemplazo->frame,
-            nueva_entrada->pid, nueva_entrada->pagina, nueva_entrada->frame
-        );
+            PURPURA("Reemplazo en TLB: Página=%d reemplazado por Página=%d"),
+            entrada_reemplazo->pagina, nueva_entrada->pagina);
 
         free(entrada_reemplazo);
         list_replace(tlb, victima, nueva_entrada);
