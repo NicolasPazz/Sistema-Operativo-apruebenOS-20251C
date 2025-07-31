@@ -119,10 +119,10 @@ int buscar_pagina_en_cache(int pid, int numero_pagina) {
     }
     for (int i = 0; i < cache->cantidad_entradas; i++) {
         if (cache->entradas[i].numero_pagina == numero_pagina && cache->entradas[i].pid == pid) {
-            log_info(cpu_log, "PID: %d - Cache Hit - Pagina: %d", pid, numero_pagina);
+            //log_info(cpu_log, "PID: %d - Cache Hit - Pagina: %d", pid, numero_pagina);
             if (strcmp(cache->algoritmo_reemplazo, "CLOCK") == 0 || strcmp(cache->algoritmo_reemplazo, "CLOCK-M") == 0) {
                 cache->entradas[i].bit_referencia = 1;
-                mostrar_estado_cache_debug("DESPUÉS DE CACHE HIT - BIT_R=1");
+                //mostrar_estado_cache_debug("DESPUÉS DE CACHE HIT - BIT_R=1");
             }
             resultado = i;
             break;

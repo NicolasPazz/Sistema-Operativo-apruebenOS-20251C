@@ -58,7 +58,7 @@ void func_write(char* direccion_logica_str, char* datos) {
             // Pasar tamaño calculado en lugar de usar strlen() interno
             cache_modificar(pid_ejecutando, nro_pagina, direccion_logica, datos, tamanio_real);
             
-            log_trace(cpu_log, "PID: %d - Cache HIT - Pagina: %d - Valor escrito: %s", pid_ejecutando, nro_pagina, datos);
+            //log_trace(cpu_log, "PID: %d - Cache HIT - Pagina: %d - Valor escrito: %s", pid_ejecutando, nro_pagina, datos);
             return;
         }
         log_info(cpu_log, ROJO("PID: %d - Cache Miss - Página: %d"), pid_ejecutando, nro_pagina);
