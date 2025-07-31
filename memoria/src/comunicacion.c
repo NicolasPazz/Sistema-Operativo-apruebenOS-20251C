@@ -518,7 +518,9 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
 
             t_resultado_memoria resultado = suspender_proceso_en_memoria(pid);
 
-            aplicar_retardo_swap();
+            if (resultado == MEMORIA_OK) {
+                aplicar_retardo_swap();
+            }    
 
             t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
             send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
@@ -546,8 +548,10 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
 
             t_resultado_memoria resultado = reanudar_proceso_en_memoria(pid);
 
-            aplicar_retardo_swap();
-            
+            if (resultado == MEMORIA_OK) {
+                aplicar_retardo_swap();
+            }            
+
             t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
             send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
 

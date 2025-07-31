@@ -86,7 +86,7 @@ bool inicializar_proceso_en_memoria(t_pcb *pcb)
         {
             memoria_ocupada += pcb->tamanio_memoria;
             int restante = 256 - memoria_ocupada;
-            log_info(kernel_log, AMARILLO("## (%d) - Memoria ocupada: %d B totales (%d B restantes)"), pcb->PID, memoria_ocupada, restante);
+            log_info(kernel_log, AMARILLO("## (%d) - %d B - Memoria ocupada: %d B ocupados, %d B libres"), pcb->PID, pcb->tamanio_memoria, memoria_ocupada, restante);
         }
         return true;
     }
@@ -153,7 +153,7 @@ static bool enviar_op_memoria(int op_code, int pid)
         }
         memoria_ocupada -= pcb->tamanio_memoria;
         int restante = 256 - memoria_ocupada;
-        log_info(kernel_log, AMARILLO("## (%d) - Memoria ocupada: %d B totales (%d B restantes)"), pcb->PID, memoria_ocupada, restante);
+        log_info(kernel_log, AMARILLO("## (%d) - %d B - Memoria liberada: %d B ocupados, %d B libres"), pcb->PID, pcb->tamanio_memoria, memoria_ocupada, restante);
     }
 
     if (op_code == SUSPENDER_PROCESO_OP)
@@ -186,7 +186,7 @@ static bool enviar_op_memoria(int op_code, int pid)
             }
             memoria_ocupada -= pcb->tamanio_memoria;
             int restante = 256 - memoria_ocupada;
-            log_info(kernel_log, AMARILLO("## (%d) - Memoria ocupada: %d B totales (%d B restantes)"), pcb->PID, memoria_ocupada, restante);
+            log_info(kernel_log, AMARILLO("## (%d) - %d B - Memoria liberada: %d B ocupados, %d B libres"), pcb->PID, pcb->tamanio_memoria, memoria_ocupada, restante);
         }
         else if (op_code == DESUSPENDER_PROCESO_OP && strcmp(archivo_pseudocodigo, "PLANI_LYM_PLAZO") == 0)
         {
@@ -198,7 +198,7 @@ static bool enviar_op_memoria(int op_code, int pid)
             }
             memoria_ocupada += pcb->tamanio_memoria;
             int restante = 256 - memoria_ocupada;
-            log_info(kernel_log, AMARILLO("## (%d) - Memoria ocupada: %d B totales (%d B restantes)"), pcb->PID, memoria_ocupada, restante);
+            log_info(kernel_log, AMARILLO("## (%d) - %d B - Memoria ocupada: %d B ocupados, %d B libres"), pcb->PID, pcb->tamanio_memoria, memoria_ocupada, restante);
         }
 
         return true;

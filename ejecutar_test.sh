@@ -401,7 +401,7 @@ case $numero in
     sleep $(echo "5 - 0.5 * 3" | bc)
 
     main_pid=$$
-    ( sleep 180 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado el $(date '+%d/%m/%Y a las %H:%M:%S'), los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
+    ( sleep 240 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado el $(date '+%d/%m/%Y a las %H:%M:%S'), los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?

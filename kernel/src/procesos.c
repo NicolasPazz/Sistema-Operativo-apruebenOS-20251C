@@ -143,7 +143,7 @@ void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
             LOG_TRACE(kernel_log, "Nueva estimacion de rafaga del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
             PCB->tiempo_inicio_exec = -1;
 
-            if (strcmp(ALGORITMO_CORTO_PLAZO, "FIFO") != 0)
+            if (strcmp(ALGORITMO_CORTO_PLAZO, "FIFO") != 0 && strcmp(archivo_pseudocodigo, "PLANI_CORTO_PLAZO") != 0)
             {
                 log_info(kernel_log, NARANJA("## (%d) - Estimación de ráfaga actualizada a %.3f ms (ráfaga restante)"), PCB->PID, PCB->estimacion_rafaga);
             }
@@ -323,7 +323,7 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
             LOG_DEBUG(kernel_log, "Nueva estimacion de rafaga del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
             PCB->tiempo_inicio_exec = -1;
 
-            if (strcmp(ALGORITMO_CORTO_PLAZO, "FIFO") != 0)
+            if (strcmp(ALGORITMO_CORTO_PLAZO, "FIFO") != 0 && strcmp(archivo_pseudocodigo, "PLANI_CORTO_PLAZO") != 0)
             {
                 log_info(kernel_log, NARANJA("## (%d) - Estimación de ráfaga actualizada a %.3f ms"), PCB->PID, PCB->estimacion_rafaga);
             }
@@ -544,7 +544,7 @@ void loguear_metricas_estado(t_pcb *pcb)
 
     unsigned promedio = pcb->ME[1] > 0 ? pcb->MT[1] / pcb->ME[1] : 0;
 
-    if (strcmp(ALGORITMO_CORTO_PLAZO, "FIFO") != 0)
+    if (strcmp(ALGORITMO_CORTO_PLAZO, "FIFO") != 0 && strcmp(archivo_pseudocodigo, "PLANI_CORTO_PLAZO") != 0)
     {
         log_info(kernel_log, "    " NARANJA("%-24s") " | Tiempo: " VERDE("%6u ms"), "PROMEDIO DE ESPERA", promedio);
     }
