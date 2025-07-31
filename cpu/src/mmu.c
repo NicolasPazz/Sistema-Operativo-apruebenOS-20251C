@@ -24,35 +24,27 @@ int traducir_direccion_fisica(int direccion_logica) {
     }
 
     int tam_pagina = cfg_memoria->TAM_PAGINA;
-    int entradas_por_tabla = cfg_memoria->ENTRADAS_POR_TABLA;
-    int cantidad_niveles = cfg_memoria->CANTIDAD_NIVELES;
+    
 
     int nro_pagina = direccion_logica / tam_pagina;
     int desplazamiento = direccion_logica % tam_pagina;
 
-    int entradas[cantidad_niveles];
-    (void)entradas; // Para silenciar warning
-
-    for (int nivel = 0; nivel < cantidad_niveles; nivel++) {
-        int divisor = 1;
-        for (int j = 0; j < cantidad_niveles - (nivel + 1); j++)
-            divisor *= entradas_por_tabla;
-        entradas[nivel] = (nro_pagina / divisor) % entradas_por_tabla;
-    }
-
     int frame = 0;
     bool hit = false;
+
     if (tlb_habilitada()) {
         pthread_mutex_lock(&mutex_tlb);
         hit = tlb_buscar(pid_ejecutando, nro_pagina, &frame);
         pthread_mutex_unlock(&mutex_tlb);
+
+        if (hit) {
+            log_info(cpu_log, "PID: %d - TLB HIT - Página: %d", pid_ejecutando, nro_pagina);
+        } else if (list_size(tlb) > 0) {
+            log_info(cpu_log, "PID: %d - TLB MISS - Página: %d", pid_ejecutando, nro_pagina);
+        }
     }
 
-    if (tlb_habilitada() && hit) {
-        log_info(cpu_log, "PID: %d - TLB HIT - Página: %d", pid_ejecutando, nro_pagina);    
-    } else {
-        log_info(cpu_log, "PID: %d - TLB MISS - Página: %d", pid_ejecutando, nro_pagina);
-
+    if (!hit) {
         t_paquete* paquete = crear_paquete_op(ACCESO_TABLA_PAGINAS_OP);
         agregar_entero_a_paquete(paquete, pid_ejecutando);
         agregar_entero_a_paquete(paquete, nro_pagina);
@@ -93,8 +85,10 @@ int traducir_direccion_fisica(int direccion_logica) {
             log_trace(cpu_log, "TLB insertada (PID=%d): Página %d -> Frame %d", pid_ejecutando, nro_pagina, frame);
         }
     }
+
     return frame * tam_pagina + desplazamiento;
 }
+
 
 bool tlb_buscar(int pid, int pagina, int* frame_out) {
     for (int i = 0; i < list_size(tlb); i++) {
@@ -131,10 +125,8 @@ void tlb_insertar(int pid, int pagina, int frame) {
 
         // 🔽 Logueamos el reemplazo antes de liberar la entrada
         log_info(cpu_log,
-            PURPURA("Reemplazo en TLB: (PID=%d, Página=%d -> Frame=%d) reemplazado por (PID=%d, Página=%d -> Frame=%d)"),
-            entrada_reemplazo->pid, entrada_reemplazo->pagina, entrada_reemplazo->frame,
-            nueva_entrada->pid, nueva_entrada->pagina, nueva_entrada->frame
-        );
+            PURPURA("Reemplazo en TLB: Página=%d reemplazado por Página=%d"),
+            entrada_reemplazo->pagina, nueva_entrada->pagina);
 
         free(entrada_reemplazo);
         list_replace(tlb, victima, nueva_entrada);
