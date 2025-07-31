@@ -141,8 +141,17 @@ void DUMP_MEMORY(t_pcb *pcb_dump)
 
     if (dump_memory(pcb_dump->PID))
     {
-        cambiar_estado_pcb_mutex(pcb_dump, READY);
-        LOG_TRACE(kernel_log, "## (%d) finalizó DUMP_MEMORY exitosamente y pasa a READY", pcb_dump->PID);
+        if (pcb_dump->Estado == SUSP_BLOCKED)
+        {
+            cambiar_estado_pcb_mutex(pcb_dump, SUSP_READY);
+            LOG_TRACE(kernel_log, "## (%d) finalizó DUMP_MEMORY exitosamente y pasa a SUSP_READY", pcb_dump->PID);
+            SEM_POST(sem_liberacion_memoria);
+        }
+        else
+        {
+            cambiar_estado_pcb_mutex(pcb_dump, READY);
+            LOG_TRACE(kernel_log, "## (%d) finalizó DUMP_MEMORY exitosamente y pasa a READY", pcb_dump->PID);
+        }
     }
     else
     {

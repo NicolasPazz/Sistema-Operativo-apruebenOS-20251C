@@ -141,7 +141,7 @@ int crear_conexion(char *ip, char *puerto, t_log *logger)
 
     if (connect(socket_cliente, server_info->ai_addr, server_info->ai_addrlen) == -1)
     {
-        log_error(logger, "crear_conexion: No se pudo conectar a %s:%s", ip, puerto);
+        log_debug(logger, "crear_conexion: No se pudo conectar a %s:%s", ip, puerto);
         close(socket_cliente);
         freeaddrinfo(server_info);
         return -1;
@@ -351,7 +351,7 @@ void enviar_mensaje(char *mensaje, int socket_cliente)
 
     if (send(socket_cliente, a_enviar, bytes, 0) != bytes)
     {
-        perror("Error al enviar paquete");
+        //perror("Error al enviar paquete");
     }
 
     free(a_enviar);
@@ -424,7 +424,7 @@ void enviar_paquete(t_paquete *paquete, int socket_cliente)
 
     if (send(socket_cliente, a_enviar, bytes, 0) != bytes)
     {
-        perror("Error al enviar paquete");
+        //perror("Error al enviar paquete");
     }
 
     free(a_enviar);

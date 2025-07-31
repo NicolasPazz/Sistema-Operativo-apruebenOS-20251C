@@ -4,6 +4,7 @@
 #include "../headers/init.h"
 #include "../headers/cicloDeInstruccion.h"
 #include "../headers/main.h"
+#include <unistd.h>
 
 t_cache_paginas* inicializar_cache() {
     cache = (t_cache_paginas*)malloc(sizeof(t_cache_paginas));
@@ -83,20 +84,20 @@ void mostrar_entradas_cache_compacto() {
         snprintf(estado_cache + offset, sizeof(estado_cache) - offset, "] (* = puntero CLOCK)");
     }
     
-    log_debug(cpu_log, "%s", estado_cache);
+    log_trace(cpu_log, "%s", estado_cache);
 }
 
 // Función para mostrar el estado de la caché
 void mostrar_estado_cache_debug(const char* momento) {
     if (cache == NULL || !cache_habilitada(cache)) {
-        log_debug(cpu_log, "=== ESTADO CACHÉ (%s) === CACHE DESHABILITADA", momento);
+        log_trace(cpu_log, "=== ESTADO CACHÉ (%s) === CACHE DESHABILITADA", momento);
         return;
     }
     
-    log_debug(cpu_log, "=== ESTADO CACHÉ (%s) === Puntero CLOCK: %d ===", momento, cache->puntero_clock);
+    log_trace(cpu_log, "=== ESTADO CACHÉ (%s) === Puntero CLOCK: %d ===", momento, cache->puntero_clock);
     for (int i = 0; i < cache->cantidad_entradas; i++) {
         if (cache->entradas[i].numero_pagina != -1) {
-            log_debug(cpu_log, "  [%d] PID=%d, Página=%d, R=%d, M=%s %s", 
+            log_trace(cpu_log, "  [%d] PID=%d, Página=%d, R=%d, M=%s %s", 
                     i,
                     cache->entradas[i].pid,
                     cache->entradas[i].numero_pagina, 
@@ -104,12 +105,23 @@ void mostrar_estado_cache_debug(const char* momento) {
                     cache->entradas[i].modificado ? "SÍ" : "NO",
                     (i == cache->puntero_clock) ? "<-- PUNTERO" : "");
         } else {
-            log_debug(cpu_log, "  [%d] [VACÍA] %s", 
+            log_trace(cpu_log, "  [%d] [VACÍA] %s", 
                     i, 
                     (i == cache->puntero_clock) ? "<-- PUNTERO" : "");
         }
     }
-    log_debug(cpu_log, "=== FIN ESTADO CACHÉ ===");
+    log_trace(cpu_log, "=== FIN ESTADO CACHÉ ===");
+}
+
+// Aplica el retardo configurado para la caché
+void aplicar_retardo_cache(void) {
+    int retardo = atoi(RETARDO_CACHE);
+    log_trace(cpu_log, "Aplicando retardo de cache: %d ms", retardo);
+    if (retardo < 0) {
+        log_error(cpu_log, "Retardo de cache negativo configurado: %d ms", retardo);
+        return;
+    }
+    usleep(retardo * 1000);
 }
 
 int buscar_pagina_en_cache(int pid, int numero_pagina) {
@@ -345,6 +357,7 @@ char* acceder_a_pagina_en_cache(int pid, int numero_pagina) {
     if (nro_pagina_en_cache > -1)
         resultado = cache->entradas[nro_pagina_en_cache].contenido;
     pthread_mutex_unlock(&mutex_cache);
+    aplicar_retardo_cache();
     return resultado;
 }
 
@@ -468,6 +481,7 @@ void cache_modificar(int pid, int numero_pagina, int direccion_logica, char* dat
     log_trace(cpu_log, "PID: %d - Contenido página %d después de modificación: '%s'", pid, numero_pagina, vista_pagina);
     
     pthread_mutex_unlock(&mutex_cache);
+    aplicar_retardo_cache();
 }
 
 
@@ -602,6 +616,7 @@ void cache_escribir(int pid, int frame, char* datos, bool modificado) {
     mostrar_entradas_cache_compacto();
 
     pthread_mutex_unlock(&mutex_cache);
+    aplicar_retardo_cache();
 }
 
 
@@ -629,6 +644,7 @@ char* cache_leer(int pid, int numero_pagina) {
         return NULL;
     }
     pthread_mutex_unlock(&mutex_cache);
+    aplicar_retardo_cache();
     return copia;
 }
 

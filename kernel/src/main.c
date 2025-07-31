@@ -3,6 +3,10 @@
 #include "../headers/kernel.h"
 
 bool auto_start = false; // Variable para determinar si se inicia automáticamente
+pthread_t *hilo_dispatch = NULL;
+pthread_t *hilo_interrupt = NULL;
+pthread_t *hilo_io = NULL;
+char *archivo_pseudocodigo = NULL;
 
 void signal_handler(int sig)
 {
@@ -10,8 +14,21 @@ void signal_handler(int sig)
     {
         // printf("\nRecibida señal de terminación. Cerrando Kernel...\n");
         log_info(kernel_log, "Recibida señal de terminación. Cerrando Kernel...");
+
+        if (hilo_dispatch)
+        {
+            pthread_cancel(*hilo_dispatch);
+        }
+        if (hilo_interrupt)
+        {
+            pthread_cancel(*hilo_interrupt);
+        }
+        if (hilo_io)
+        {
+            pthread_cancel(*hilo_io);
+        }
+
         terminar_kernel(EXIT_SUCCESS);
-        exit(EXIT_SUCCESS);
     }
 }
 
@@ -85,13 +102,13 @@ int main(int argc, char *argv[])
         iniciar_interrupt_handler();
     }
 
-    char *archivo_pseudocodigo = argv[1];
+    archivo_pseudocodigo = argv[1];
     int tamanio_proceso = atoi(argv[2]);
 
     //////////////////////////// Conexiones del Kernel ////////////////////////////
 
     // Servidor de CPU (Dispatch)
-    pthread_t *hilo_dispatch = malloc(sizeof(pthread_t));
+    hilo_dispatch = malloc(sizeof(pthread_t));
     if (pthread_create(hilo_dispatch, NULL, hilo_servidor_dispatch, NULL) != 0)
     {
         LOG_ERROR(kernel_log, "Error al crear hilo de servidor Dispatch");
@@ -100,7 +117,7 @@ int main(int argc, char *argv[])
     }
 
     // Servidor de CPU (Interrupt)
-    pthread_t *hilo_interrupt = malloc(sizeof(pthread_t));
+    hilo_interrupt = malloc(sizeof(pthread_t));
     if (pthread_create(hilo_interrupt, NULL, hilo_servidor_interrupt, NULL) != 0)
     {
         LOG_ERROR(kernel_log, "Error al crear hilo de servidor Interrupt");
@@ -109,7 +126,7 @@ int main(int argc, char *argv[])
     }
 
     // Servidor de IO
-    pthread_t *hilo_io = malloc(sizeof(pthread_t));
+    hilo_io = malloc(sizeof(pthread_t));
     if (pthread_create(hilo_io, NULL, hilo_servidor_io, NULL) != 0)
     {
         LOG_ERROR(kernel_log, "Error al crear hilo de servidor IO");
@@ -153,7 +170,8 @@ int main(int argc, char *argv[])
     }
     else
     {
-        puts("\nPresione ENTER para iniciar planificación…");
+        //puts("\nPresione ENTER para iniciar planificación…");
+        log_info(kernel_log, VERDE("Presione ENTER para iniciar planificación…"));
         int c;
         while ((c = getchar()) != '\n')
         {

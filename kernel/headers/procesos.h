@@ -25,5 +25,6 @@ t_pcb *ultimo_proceso_new();
 t_pcb *ultimo_si_es_menor();
 void verificar_procesos_restantes();
 void liberar_pcb(t_pcb *pcb);
+void mostrar_colas_lp();
 
 #endif /* PROCESOS_H */

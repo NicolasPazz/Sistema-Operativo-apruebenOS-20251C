@@ -106,7 +106,7 @@ case $numero in
 
     ./memoria/bin/memoria memoria_plani_corto_plazo.config &
     pid_memoria=$!
-    sleep 0.5
+    sleep 1
 
     (
     ./kernel/bin/kernel PLANI_CORTO_PLAZO 0 kernel_plani_corto_plazo_fifo.config --action
@@ -116,15 +116,15 @@ case $numero in
 
     ./cpu/bin/cpu 1 cpu_plani_corto_plazo.config &
     pid_cpu1=$!
-    sleep 0.5
+    sleep 1
 
     ./cpu/bin/cpu 2 cpu_plani_corto_plazo.config &
     pid_cpu2=$!
-    sleep 0.5
+    sleep 1
 
     ./io/bin/io DISCO & 
     pid_io1=$!
-    sleep 0.5
+    sleep 1
 
     sleep $(echo "5 - 0.5 * 4" | bc)
 
@@ -174,7 +174,7 @@ case $numero in
 
     ./memoria/bin/memoria memoria_plani_corto_plazo.config &
     pid_memoria=$!
-    sleep 0.5
+    sleep 1
 
     (
     ./kernel/bin/kernel PLANI_CORTO_PLAZO 0 kernel_plani_corto_plazo_sjf.config --action
@@ -184,11 +184,11 @@ case $numero in
 
     ./cpu/bin/cpu 1 cpu_plani_corto_plazo.config &
     pid_cpu1=$!
-    sleep 0.5
+    sleep 1
 
     ./io/bin/io DISCO & 
     pid_io1=$!
-    sleep 0.5
+    sleep 1
 
     sleep $(echo "5 - 0.5 * 3" | bc)
 
@@ -229,7 +229,7 @@ case $numero in
 
     ./memoria/bin/memoria memoria_plani_corto_plazo.config &
     pid_memoria=$!
-    sleep 0.5
+    sleep 1
 
     (
     ./kernel/bin/kernel PLANI_CORTO_PLAZO 0 kernel_plani_corto_plazo_srt.config --action
@@ -239,11 +239,11 @@ case $numero in
 
     ./cpu/bin/cpu 1 cpu_plani_corto_plazo.config &
     pid_cpu1=$!
-    sleep 0.5
+    sleep 1
 
     ./io/bin/io DISCO & 
     pid_io1=$!
-    sleep 0.5
+    sleep 1
 
     sleep $(echo "5 - 0.5 * 3" | bc)
 
@@ -285,7 +285,7 @@ case $numero in
 
     ./memoria/bin/memoria memoria_plani_lym_plazo.config &
     pid_memoria=$!
-    sleep 0.5
+    sleep 1
 
     (
     ./kernel/bin/kernel PLANI_LYM_PLAZO 0 kernel_plani_lym_plazo_fifo.config --action
@@ -295,16 +295,16 @@ case $numero in
 
     ./cpu/bin/cpu 1 cpu_plani_lym_plazo.config &
     pid_cpu1=$!
-    sleep 0.5
+    sleep 1
 
     ./io/bin/io DISCO & 
     pid_io1=$!
-    sleep 0.5
+    sleep 1
 
     sleep $(echo "5 - 0.5 * 3" | bc)
 
     main_pid=$$
-    ( sleep 180 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado el $(date '+%d/%m/%Y a las %H:%M:%S'), los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
+    ( sleep 240 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado el $(date '+%d/%m/%Y a las %H:%M:%S'), los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -333,7 +333,7 @@ case $numero in
 
     ./memoria/bin/memoria memoria_plani_lym_plazo.config &
     pid_memoria=$!
-    sleep 0.5
+    sleep 1
 
     (
     ./kernel/bin/kernel PLANI_LYM_PLAZO 0 kernel_plani_lym_plazo_pmcp.config --action
@@ -343,11 +343,11 @@ case $numero in
 
     ./cpu/bin/cpu 1 cpu_plani_lym_plazo.config &
     pid_cpu1=$!
-    sleep 0.5
+    sleep 1
 
     ./io/bin/io DISCO & 
     pid_io1=$!
-    sleep 0.5
+    sleep 1
 
     sleep $(echo "5 - 0.5 * 3" | bc)
 
@@ -382,7 +382,7 @@ case $numero in
 
     ./memoria/bin/memoria memoria_memoria_io.config &
     pid_memoria=$!
-    sleep 0.5
+    sleep 1
 
     (
     ./kernel/bin/kernel MEM_IO_GH_ACTION 90 kernel_memoria_io.config --action
@@ -392,11 +392,11 @@ case $numero in
 
     ./cpu/bin/cpu 1 cpu_memoria_io.config &
     pid_cpu1=$!
-    sleep 0.5
+    sleep 1
 
     ./io/bin/io DISCO & 
     pid_io1=$!
-    sleep 0.5
+    sleep 1
 
     sleep $(echo "5 - 0.5 * 3" | bc)
 
@@ -431,7 +431,7 @@ case $numero in
 
     ./memoria/bin/memoria memoria_memoria_base.config &
     pid_memoria=$!
-    sleep 0.5
+    sleep 1
 
     (
     ./kernel/bin/kernel MEM_BASE_GH_ACTION 256 kernel_memoria_base.config --action
@@ -441,11 +441,11 @@ case $numero in
 
     ./cpu/bin/cpu 1 cpu_memoria_base_clock.config &
     pid_cpu1=$!
-    sleep 0.5
+    sleep 1
 
     ./io/bin/io DISCO & 
     pid_io1=$!
-    sleep 0.5
+    sleep 1
 
     sleep $(echo "5 - 0.5 * 3" | bc)
 
@@ -479,7 +479,7 @@ case $numero in
 
     ./memoria/bin/memoria memoria_memoria_base.config &
     pid_memoria=$!
-    sleep 0.5
+    sleep 1
 
     (
     ./kernel/bin/kernel MEM_BASE_GH_ACTION 256 kernel_memoria_base.config --action
@@ -489,11 +489,11 @@ case $numero in
 
     ./cpu/bin/cpu 1 cpu_memoria_base_clock_m.config &
     pid_cpu1=$!
-    sleep 0.5
+    sleep 1
 
     ./io/bin/io DISCO & 
     pid_io1=$!
-    sleep 0.5
+    sleep 1
 
     sleep $(echo "5 - 0.5 * 3" | bc)
 
@@ -527,7 +527,7 @@ case $numero in
 
     ./memoria/bin/memoria memoria_memoria_base.config &
     pid_memoria=$!
-    sleep 0.5
+    sleep 1
 
     (
     ./kernel/bin/kernel MEM_BASE_GH_ACTION 256 kernel_memoria_base.config --action
@@ -537,11 +537,11 @@ case $numero in
 
     ./cpu/bin/cpu 1 cpu_memoria_base_fifo.config &
     pid_cpu1=$!
-    sleep 0.5
+    sleep 1
 
     ./io/bin/io DISCO & 
     pid_io1=$!
-    sleep 0.5
+    sleep 1
 
     sleep $(echo "5 - 0.5 * 3" | bc)
 
@@ -575,7 +575,7 @@ case $numero in
 
     ./memoria/bin/memoria memoria_memoria_base.config &
     pid_memoria=$!
-    sleep 0.5
+    sleep 1
 
     (
     ./kernel/bin/kernel MEM_BASE_GH_ACTION 256 kernel_memoria_base.config --action
@@ -585,11 +585,11 @@ case $numero in
 
     ./cpu/bin/cpu 1 cpu_memoria_base_lru.config &
     pid_cpu1=$!
-    sleep 0.5
+    sleep 1
 
     ./io/bin/io DISCO & 
     pid_io1=$!
-    sleep 0.5
+    sleep 1
 
     sleep $(echo "5 - 0.5 * 3" | bc)
 
@@ -623,7 +623,7 @@ case $numero in
 
     ./memoria/bin/memoria memoria_estabilidad_general.config &
     pid_memoria=$!
-    sleep 0.5
+    sleep 1
 
     (
     ./kernel/bin/kernel ESTABILIDAD_GENERAL 256 kernel_estabilidad_general.config --action
@@ -633,43 +633,63 @@ case $numero in
 
     ./cpu/bin/cpu 1 cpu_1_estabilidad_general.config &
     pid_cpu1=$!
-    sleep 0.5
+    sleep 1
 
     ./cpu/bin/cpu 2 cpu_2_estabilidad_general.config &
     pid_cpu2=$!
-    sleep 0.5
+    sleep 1
 
     ./cpu/bin/cpu 3 cpu_3_estabilidad_general.config &
     pid_cpu3=$!
-    sleep 0.5
+    sleep 1
 
     ./cpu/bin/cpu 4 cpu_4_estabilidad_general.config & 
     pid_cpu4=$!
-    sleep 0.5
+    sleep 1
 
     ./io/bin/io DISCO & 
     pid_io1=$!
-    sleep 0.5
+    sleep 1
 
     ./io/bin/io DISCO & 
     pid_io2=$!
-    sleep 0.5
+    sleep 1
 
     ./io/bin/io DISCO & 
     pid_io3=$!
-    sleep 0.5
+    sleep 1
 
     ./io/bin/io DISCO & 
     pid_io4=$!
-    sleep 0.5
+    sleep 200
 
-    sleep $(echo "1800 / 1" | bc)
+    ./io/bin/io DISCO & 
+    pid_io5=$!
+    sleep 1
+
+    ./io/bin/io DISCO &
+    pid_io6=$!
+    sleep 1
+
+    ./io/bin/io DISCO &
+    pid_io7=$!
+    sleep 1
+
+    ./io/bin/io DISCO &
+    pid_io8=$!
+    sleep 1
+
+    sleep $(echo "1600 / 2" | bc)
 
     echo -e "\e[1;34;47m =====    🔄 Matando todos los modulos (SIGINT)    ===== \e[0m"
     kill -SIGINT "$pid_io1"
     kill -SIGINT "$pid_io2"
     kill -SIGINT "$pid_io3"
     kill -SIGINT "$pid_io4"
+    kill -SIGINT "$pid_io5"
+    kill -SIGINT "$pid_io6"
+    kill -SIGINT "$pid_io7"
+    kill -SIGINT "$pid_io8"
     kill -SIGINT "$pid_kernel"
     kill -SIGINT "$pid_cpu1"
     kill -SIGINT "$pid_cpu2"
@@ -680,7 +700,7 @@ case $numero in
     echo ""
 
     main_pid=$$
-    ( sleep 60 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado el $(date '+%d/%m/%Y a las %H:%M:%S'), los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_cpu2 $pid_cpu3 $pid_cpu4 $pid_io1 $pid_io2 $pid_io3 $pid_io4 >/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) & 
+    ( sleep 60 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado el $(date '+%d/%m/%Y a las %H:%M:%S'), los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_io1 $pid_io2 $pid_io3 $pid_io4 $pid_io5 $pid_io6 $pid_io7 $pid_io8 $pid_kernel $pid_cpu1 $pid_cpu2 $pid_cpu3 $pid_cpu4 $pid_memoria >/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) & 
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -693,6 +713,10 @@ case $numero in
     wait $pid_io2; exit_io2=$?
     wait $pid_io3; exit_io3=$?
     wait $pid_io4; exit_io4=$?
+    wait $pid_io5; exit_io5=$?
+    wait $pid_io6; exit_io6=$?
+    wait $pid_io7; exit_io7=$?
+    wait $pid_io8; exit_io8=$?
 
     kill $watcher_pid 2>/dev/null
 
@@ -710,6 +734,10 @@ case $numero in
     [[ $exit_io2     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 2 finalizó con error \e[0m"    && ((errores++))
     [[ $exit_io3     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 3 finalizó con error \e[0m"    && ((errores++))
     [[ $exit_io4     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 4 finalizó con error \e[0m"    && ((errores++))
+    [[ $exit_io5     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 5 finalizó con error \e[0m"    && ((errores++))
+    [[ $exit_io6     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 6 finalizó con error \e[0m"    && ((errores++))
+    [[ $exit_io7     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 7 finalizó con error \e[0m"    && ((errores++))
+    [[ $exit_io8     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 8 finalizó con error \e[0m"    && ((errores++))
 
     [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" && chmod +x ./detectar_deadlock_kernel.sh && ./detectar_deadlock_kernel.sh || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
 
@@ -721,7 +749,7 @@ case $numero in
 
     valgrind --leak-check=full --log-file=memoria/memoria.valgrind ./memoria/bin/memoria memoria_estabilidad_general.config &
     pid_memoria=$!
-    sleep 0.5
+    sleep 1
 
     (
     valgrind --leak-check=full --log-file=kernel/kernel.valgrind ./kernel/bin/kernel ESTABILIDAD_GENERAL 256 kernel_estabilidad_general.config --action
@@ -731,43 +759,63 @@ case $numero in
 
     valgrind --leak-check=full --log-file=cpu/cpu_1.valgrind ./cpu/bin/cpu 1 cpu_1_estabilidad_general.config &
     pid_cpu1=$!
-    sleep 0.5
+    sleep 1
 
     valgrind --leak-check=full --log-file=cpu/cpu_2.valgrind ./cpu/bin/cpu 2 cpu_2_estabilidad_general.config &
     pid_cpu2=$!
-    sleep 0.5
+    sleep 1
 
     valgrind --leak-check=full --log-file=cpu/cpu_3.valgrind ./cpu/bin/cpu 3 cpu_3_estabilidad_general.config &
     pid_cpu3=$!
-    sleep 0.5
+    sleep 1
 
     valgrind --leak-check=full --log-file=cpu/cpu_4.valgrind ./cpu/bin/cpu 4 cpu_4_estabilidad_general.config & 
     pid_cpu4=$!
-    sleep 0.5
+    sleep 1
 
     valgrind --leak-check=full --log-file=io/io_disco_1.valgrind ./io/bin/io DISCO & 
     pid_io1=$!
-    sleep 0.5
+    sleep 1
 
     valgrind --leak-check=full --log-file=io/io_disco_2.valgrind ./io/bin/io DISCO & 
     pid_io2=$!
-    sleep 0.5
+    sleep 1
 
     valgrind --leak-check=full --log-file=io/io_disco_3.valgrind ./io/bin/io DISCO & 
     pid_io3=$!
-    sleep 0.5
+    sleep 1
 
     valgrind --leak-check=full --log-file=io/io_disco_4.valgrind ./io/bin/io DISCO & 
     pid_io4=$!
-    sleep 0.5
+    sleep 200
+    
+    valgrind --leak-check=full --log-file=io/io_disco_5.valgrind ./io/bin/io DISCO & 
+    pid_io5=$!
+    sleep 1
 
-    sleep $(echo "1800 / 1" | bc)
+    valgrind --leak-check=full --log-file=io/io_disco_6.valgrind ./io/bin/io DISCO & 
+    pid_io6=$!
+    sleep 1
+
+    valgrind --leak-check=full --log-file=io/io_disco_7.valgrind ./io/bin/io DISCO & 
+    pid_io7=$!
+    sleep 1
+
+    valgrind --leak-check=full --log-file=io/io_disco_8.valgrind ./io/bin/io DISCO & 
+    pid_io8=$!
+    sleep 1
+
+    sleep $(echo "1600 / 2" | bc)
 
     echo -e "\e[1;34;47m =====    🔄 Matando todos los modulos (SIGINT)    ===== \e[0m"
     kill -SIGINT "$pid_io1"
     kill -SIGINT "$pid_io2"
     kill -SIGINT "$pid_io3"
     kill -SIGINT "$pid_io4"
+    kill -SIGINT "$pid_io5"
+    kill -SIGINT "$pid_io6"
+    kill -SIGINT "$pid_io7"
+    kill -SIGINT "$pid_io8"
     kill -SIGINT "$pid_kernel"
     kill -SIGINT "$pid_cpu1"
     kill -SIGINT "$pid_cpu2"
@@ -778,7 +826,7 @@ case $numero in
     echo ""
 
     main_pid=$$
-    ( sleep 60 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado el $(date '+%d/%m/%Y a las %H:%M:%S'), los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_cpu2 $pid_cpu3 $pid_cpu4 $pid_io1 $pid_io2 $pid_io3 $pid_io4 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) & 
+    ( sleep 60 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado el $(date '+%d/%m/%Y a las %H:%M:%S'), los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_io1 $pid_io2 $pid_io3 $pid_io4 $pid_io5 $pid_io6 $pid_io7 $pid_io8 $pid_kernel $pid_cpu1 $pid_cpu2 $pid_cpu3 $pid_cpu4 $pid_memoria >/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) & 
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -791,6 +839,10 @@ case $numero in
     wait $pid_io2; exit_io2=$?
     wait $pid_io3; exit_io3=$?
     wait $pid_io4; exit_io4=$?
+    wait $pid_io5; exit_io5=$?
+    wait $pid_io6; exit_io6=$?
+    wait $pid_io7; exit_io7=$?
+    wait $pid_io8; exit_io8=$?
 
     kill $watcher_pid 2>/dev/null
 
@@ -798,16 +850,20 @@ case $numero in
     echo -e "\e[1;34;47m =====    Resultados de los procesos    ===== \e[0m"
     echo ""
 
-    [[ $exit_memoria -ne 0 ]] && echo -e "\t\t\e[1;97;41m ❌ Memoria finalizó con error \e[0m" && ((errores++))
-    [[ $exit_kernel  -ne 0 ]] && echo -e "\t\t\e[1;97;41m ❌ Kernel finalizó con error \e[0m"  && ((errores++))
-    [[ $exit_cpu1    -ne 0 ]] && echo -e "\t\t\e[1;97;41m ❌ CPU 1 finalizó con error \e[0m"   && ((errores++))
-    [[ $exit_cpu2    -ne 0 ]] && echo -e "\t\t\e[1;97;41m ❌ CPU 2 finalizó con error \e[0m"   && ((errores++))
-    [[ $exit_cpu3    -ne 0 ]] && echo -e "\t\t\e[1;97;41m ❌ CPU 3 finalizó con error \e[0m"   && ((errores++))
-    [[ $exit_cpu4    -ne 0 ]] && echo -e "\t\t\e[1;97;41m ❌ CPU 4 finalizó con error \e[0m"   && ((errores++))
-    [[ $exit_io1     -ne 0 ]] && echo -e "\t\t\e[1;97;41m ❌ IO 1 finalizó con error \e[0m"    && ((errores++))
-    [[ $exit_io2     -ne 0 ]] && echo -e "\t\t\e[1;97;41m ❌ IO 2 finalizó con error \e[0m"    && ((errores++))
-    [[ $exit_io3     -ne 0 ]] && echo -e "\t\t\e[1;97;41m ❌ IO 3 finalizó con error \e[0m"    && ((errores++))
-    [[ $exit_io4     -ne 0 ]] && echo -e "\t\t\e[1;97;41m ❌ IO 4 finalizó con error \e[0m"    && ((errores++))
+    [[ $exit_memoria -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Memoria finalizó con error \e[0m" && ((errores++))
+    [[ $exit_kernel  -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Kernel finalizó con error \e[0m"  && ((errores++))
+    [[ $exit_cpu1    -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ CPU 1 finalizó con error \e[0m"   && ((errores++))
+    [[ $exit_cpu2    -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ CPU 2 finalizó con error \e[0m"   && ((errores++))
+    [[ $exit_cpu3    -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ CPU 3 finalizó con error \e[0m"   && ((errores++))
+    [[ $exit_cpu4    -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ CPU 4 finalizó con error \e[0m"   && ((errores++))
+    [[ $exit_io1     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 1 finalizó con error \e[0m"    && ((errores++))
+    [[ $exit_io2     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 2 finalizó con error \e[0m"    && ((errores++))
+    [[ $exit_io3     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 3 finalizó con error \e[0m"    && ((errores++))
+    [[ $exit_io4     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 4 finalizó con error \e[0m"    && ((errores++))
+    [[ $exit_io5     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 5 finalizó con error \e[0m"    && ((errores++))
+    [[ $exit_io6     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 6 finalizó con error \e[0m"    && ((errores++))
+    [[ $exit_io7     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 7 finalizó con error \e[0m"    && ((errores++))
+    [[ $exit_io8     -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ IO 8 finalizó con error \e[0m"    && ((errores++))
 
     [[ $errores -ne 0 ]] && echo -e "\t\e[1;97;41m ❌ Fallaron $errores módulos \e[0m" && chmod +x ./detectar_deadlock_kernel.sh && ./detectar_deadlock_kernel.sh || echo -e "\t\e[1;30;42m ✅ Todos los procesos finalizaron correctamente \e[0m"
 

@@ -38,6 +38,14 @@ void iniciar_planificadores()
 
 // AUXILIARES
 
+/**
+ * @brief Obtains the current time in milliseconds.
+ *
+ * This function retrieves the current time using gettimeofday and returns
+ * the time as a double representing milliseconds since the Epoch.
+ *
+ * @return The current time in milliseconds as a double.
+ */
 double get_time()
 {
     struct timeval tv;

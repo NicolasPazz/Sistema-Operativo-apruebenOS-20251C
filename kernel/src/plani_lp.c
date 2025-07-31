@@ -22,9 +22,6 @@ int procesos_new_rechazados = 0;
  */
 void *planificador_largo_plazo(void *arg)
 {
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
-
     LOCK_CON_LOG(mutex_planificador_lp);
     LOG_TRACE(kernel_log, "=== PLANIFICADOR LP INICIADO ===");
     while (1)
@@ -32,7 +29,6 @@ void *planificador_largo_plazo(void *arg)
         SEM_WAIT(sem_proceso_a_new);
 
         LOCK_CON_LOG(mutex_cola_susp_ready);
-
         bool susp_vacia = list_is_empty(cola_susp_ready);
         UNLOCK_CON_LOG(mutex_cola_susp_ready);
 
@@ -145,9 +141,6 @@ void *planificador_largo_plazo(void *arg)
  */
 void *gestionar_exit(void *arg)
 {
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
-
     while (1)
     {
         SEM_WAIT(sem_proceso_a_exit);
@@ -197,9 +190,6 @@ void *gestionar_exit(void *arg)
  */
 void *verificar_procesos_rechazados()
 {
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
-
     while (1)
     {
         SEM_WAIT(sem_liberacion_memoria);

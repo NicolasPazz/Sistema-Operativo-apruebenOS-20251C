@@ -486,6 +486,8 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             tamanio = *(int*)list_get(datos, 0);
             list_destroy_and_destroy_elements(datos, free);
             
+            log_info(logger, AMARILLO("## Kernel solicita CHECK_MEMORY_SPACE para tamaño: %d"), tamanio);
+
             // Verificar espacio disponible
             bool hay_espacio = verificar_espacio_disponible(tamanio);
             
