@@ -734,6 +734,7 @@ void verificar_procesos_restantes()
         }
     }
     UNLOCK_CON_LOG(mutex_cantidad_procesos);
+    mostrar_colas_estados();
 }
 
 void mostrar_colas_lp()
