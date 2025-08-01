@@ -689,15 +689,15 @@ void verificar_procesos_restantes()
     if (total_procesos == 0)
     {
         mostrar_colas_estados();
-        log_info(kernel_log, "Todos los procesos han terminado.");
+        //log_info(kernel_log, "Todos los procesos han terminado.");
         if (auto_start)
         {
-            log_info(kernel_log, "Finalizando kernel...");
+            //log_info(kernel_log, "Finalizando kernel...");
             terminar_kernel(EXIT_SUCCESS);
         }
         else
         {
-            log_info(kernel_log, "Esperando...");
+            //log_info(kernel_log, "Esperando...");
         }
     }
 }

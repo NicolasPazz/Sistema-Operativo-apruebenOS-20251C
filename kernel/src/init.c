@@ -327,7 +327,7 @@ void terminar_kernel(int code)
     }
     else
     {
-        log_info(kernel_log, "Kernel finalizado correctamente.");
+        LOG_TRACE(kernel_log, "Kernel finalizado correctamente.");
     }
 
     // log_destroy(kernel_log);

@@ -626,7 +626,7 @@ case $numero in
     sleep 1
 
     (
-    ./kernel/bin/kernel ESTABILIDAD_GENERAL 256 kernel_estabilidad_general.config --action
+    ./kernel/bin/kernel ESTABILIDAD_GENERAL 0 kernel_estabilidad_general.config --action
     ) &
     pid_kernel=$!
     sleep 1
@@ -752,7 +752,7 @@ case $numero in
     sleep 1
 
     (
-    valgrind --leak-check=full --log-file=kernel/kernel.valgrind ./kernel/bin/kernel ESTABILIDAD_GENERAL 256 kernel_estabilidad_general.config --action
+    valgrind --leak-check=full --log-file=kernel/kernel.valgrind ./kernel/bin/kernel ESTABILIDAD_GENERAL 0 kernel_estabilidad_general.config --action
     ) &
     pid_kernel=$!
     sleep 1

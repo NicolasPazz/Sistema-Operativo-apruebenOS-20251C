@@ -263,4 +263,25 @@ void exit_procesos_relacionados(io *dispositivo)
 
         list_destroy(pcbs_afectados);
     }
+    else
+    {
+        // reasignar procesos esperando IO a otra instancia
+        LOG_TRACE(kernel_log, "Existe otra instancia de IO '%s', reasignando procesos esperando", dispositivo->nombre);
+
+        LOCK_CON_LOG(mutex_pcbs_esperando_io);
+
+        // Actualizar las referencias de IO en los PCBs esperando
+        for (int i = 0; i < list_size(pcbs_esperando_io); i++)
+        {
+            t_pcb_io *pcb_io = list_get(pcbs_esperando_io, i);
+            if (pcb_io->io == dispositivo)
+            {
+                pcb_io->io = otra_io;
+                LOG_TRACE(kernel_log, "Proceso PID=%d reasignado de IO desconectada a otra instancia de '%s'",
+                          pcb_io->pcb->PID, otra_io->nombre);
+            }
+        }
+
+        UNLOCK_CON_LOG(mutex_pcbs_esperando_io);
+    }
 }
