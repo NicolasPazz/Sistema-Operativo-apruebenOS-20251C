@@ -76,7 +76,10 @@ void *planificador_corto_plazo(void *arg)
             {
                 LOG_TRACE(kernel_log, "[PLANI CP] [SRT] Hay CPU disponible, eligiendo proceso");
                 proceso_a_ejecutar = elegir_por_srt(cola_ready);
-                log_info(kernel_log, NARANJA("## (%d) - Elegido con menor ráfaga estimada %.3f ms"), proceso_a_ejecutar->PID, proceso_a_ejecutar->estimacion_rafaga);
+                if (strcmp(archivo_pseudocodigo, "PLANI_CORTO_PLAZO") == 0)
+                {
+                    log_info(kernel_log, NARANJA("## (%d) - Elegido con menor ráfaga estimada %.3f ms"), proceso_a_ejecutar->PID, proceso_a_ejecutar->estimacion_rafaga);
+                }
             }
             else if ((cpu_mayor_rafaga = hay_cpu_rafaga_restante_mayor()))
             {
@@ -170,7 +173,10 @@ t_pcb *elegir_por_sjf()
 
     if (seleccionado)
     {
-        log_info(kernel_log, NARANJA("## (%d) - Elegido con menor ráfaga estimada %.3f ms"), seleccionado->PID, seleccionado->estimacion_rafaga);
+        if (strcmp(archivo_pseudocodigo, "PLANI_CORTO_PLAZO") == 0)
+        {
+            log_info(kernel_log, NARANJA("## (%d) - Elegido con menor ráfaga estimada %.3f ms"), seleccionado->PID, seleccionado->estimacion_rafaga);
+        }
     }
     else
     {

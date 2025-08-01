@@ -100,13 +100,16 @@ void *timer_suspension(void *v_arg)
 
     suspender_proceso(pcb);
 
-    //cambiar_estado_pcb(pcb, SUSP_BLOCKED);
+    // cambiar_estado_pcb(pcb, SUSP_BLOCKED);
 
     UNLOCK_CON_LOG_PCB(pcb->mutex, pcb->PID);
 
-    log_info(kernel_log, NARANJA("## (%d) Confirmación de suspensión recibida"), pcb->PID);
+    if (strcmp(archivo_pseudocodigo, "PLANI_LYM_PLAZO") == 0)
+    {
+        log_info(kernel_log, NARANJA("## (%d) Confirmación de suspensión recibida"), pcb->PID);
+    }
 
-    //SEM_POST(sem_liberacion_memoria);
+    // SEM_POST(sem_liberacion_memoria);
 
     return NULL;
 }

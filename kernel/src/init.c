@@ -201,6 +201,7 @@ void iniciar_diccionario_archivos_por_pcb()
     archivo_por_pcb = dictionary_create();
 }
 
+/*
 static void destruir_cpu(void *elem)
 {
     if (!elem)
@@ -237,7 +238,7 @@ static void destruir_pcb_io(void *elem)
 static void destruir_pcb_dump(void *elem)
 {
     free(elem);
-}
+}*/
 
 void terminar_kernel(int code)
 {
@@ -508,10 +509,6 @@ void *atender_cpu_dispatch(void *arg)
 
             t_pcb *pcb_a_finalizar = buscar_pcb(pid);
             cambiar_estado_pcb_mutex(pcb_a_finalizar, EXIT_ESTADO);
-
-            LOCK_CON_LOG(mutex_cantidad_procesos);
-            cantidad_procesos--;
-            UNLOCK_CON_LOG(mutex_cantidad_procesos);
 
             liberar_cpu(cpu_actual);
 

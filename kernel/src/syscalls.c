@@ -29,11 +29,11 @@ void INIT_PROC(char *nombre_archivo, int tam_memoria)
     nuevo_proceso->tiempo_inicio_blocked = -1;
     pthread_mutex_init(&nuevo_proceso->mutex, NULL);
 
-    cambiar_estado_pcb_mutex(nuevo_proceso, NEW);
-
     LOCK_CON_LOG(mutex_cantidad_procesos);
     cantidad_procesos++;
     UNLOCK_CON_LOG(mutex_cantidad_procesos);
+
+    cambiar_estado_pcb_mutex(nuevo_proceso, NEW);
 
     log_info(kernel_log, CYAN("## (%d) Se crea el proceso - Estado: ") AZUL("NEW"), nuevo_proceso->PID);
 }
@@ -54,10 +54,6 @@ void IO(char *nombre_io, int tiempo_a_usar, t_pcb *pcb_a_io)
     {
         LOG_TRACE(kernel_log, "No existe el dispositivo '%s'", nombre_io);
         cambiar_estado_pcb_mutex(pcb_a_io, EXIT_ESTADO);
-
-        LOCK_CON_LOG(mutex_cantidad_procesos);
-        cantidad_procesos--;
-        UNLOCK_CON_LOG(mutex_cantidad_procesos);
 
         return;
     }
@@ -98,6 +94,10 @@ void EXIT(t_pcb **ptr_pcb_a_finalizar)
     *ptr_pcb_a_finalizar = NULL;
 
     UNLOCK_CON_LOG(mutex_cola_exit);
+
+    LOCK_CON_LOG(mutex_cantidad_procesos);
+    cantidad_procesos--;
+    UNLOCK_CON_LOG(mutex_cantidad_procesos);
 
     verificar_procesos_restantes();
 }
@@ -166,10 +166,6 @@ void DUMP_MEMORY(t_pcb *pcb_dump)
     else
     {
         cambiar_estado_pcb_mutex(pcb_dump, EXIT_ESTADO);
-
-        LOCK_CON_LOG(mutex_cantidad_procesos);
-        cantidad_procesos--;
-        UNLOCK_CON_LOG(mutex_cantidad_procesos);
 
         LOG_TRACE(kernel_log, "## (%d) - Error en DUMP_MEMORY, proceso enviado a EXIT", pcb_dump->PID);
     }

@@ -69,7 +69,7 @@ void mostrar_metrica(const char *nombre, int *metrica)
 
 void mostrar_colas_estados()
 {
-    LOG_TRACE(kernel_log, "Colas -> [NEW: %d, READY: %d, EXEC: %d, BLOCK: %d, SUSP.BLOCK: %d, SUSP.READY: %d, EXIT: %d] | Procesos en total: %d", list_size(cola_new), list_size(cola_ready), list_size(cola_running), list_size(cola_blocked), list_size(cola_susp_blocked), list_size(cola_susp_ready), list_size(cola_exit), list_size(cola_procesos));
+    LOG_TRACE(kernel_log, "Colas -> [NEW: %d, READY: %d, EXEC: %d, BLOCK: %d, SUSP.BLOCK: %d, SUSP.READY: %d, EXIT: %d] | Procesos en total: %d / %f ", list_size(cola_new), list_size(cola_ready), list_size(cola_running), list_size(cola_blocked), list_size(cola_susp_blocked), list_size(cola_susp_ready), list_size(cola_exit), list_size(cola_procesos), cantidad_procesos);
 }
 
 void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
@@ -103,6 +103,15 @@ void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
         {
             LOG_TRACE(kernel_log, "Error al obtener las colas correspondientes");
             return;
+        }
+
+        if (nuevo_estado_enum == READY)
+        {
+            mostrar_colas_lp();
+        }
+        else if (nuevo_estado_enum == EXEC)
+        {
+            mostrar_colas_cp();
         }
 
         log_info(kernel_log, AZUL("## (%u) Pasa del estado ") VERDE("%s") AZUL(" al estado ") VERDE("%s"), PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
@@ -143,7 +152,7 @@ void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
             LOG_TRACE(kernel_log, "Nueva estimacion de rafaga del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
             PCB->tiempo_inicio_exec = -1;
 
-            if (strcmp(ALGORITMO_CORTO_PLAZO, "FIFO") != 0 && strcmp(archivo_pseudocodigo, "PLANI_CORTO_PLAZO") != 0)
+            if (strcmp(ALGORITMO_CORTO_PLAZO, "FIFO") != 0 && strcmp(archivo_pseudocodigo, "PLANI_CORTO_PLAZO") == 0)
             {
                 log_info(kernel_log, NARANJA("## (%d) - Estimación de ráfaga actualizada a %.3f ms (ráfaga restante)"), PCB->PID, PCB->estimacion_rafaga);
             }
@@ -190,9 +199,13 @@ void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
     list_add(cola_destino, PCB);
     liberar_cola_por_estado(nuevo_estado_enum);
 
-    if (estado_viejo == NEW || estado_viejo == SUSP_READY || nuevo_estado_enum == NEW || nuevo_estado_enum == SUSP_READY)
+    if (nuevo_estado_enum == READY)
     {
         mostrar_colas_lp();
+    }
+    else if (nuevo_estado_enum == EXEC)
+    {
+        mostrar_colas_cp();
     }
 
     switch (nuevo_estado_enum)
@@ -286,6 +299,15 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
             return;
         }
 
+        if (nuevo_estado_enum == READY)
+        {
+            mostrar_colas_lp();
+        }
+        else if (nuevo_estado_enum == EXEC)
+        {
+            mostrar_colas_cp();
+        }
+
         log_info(kernel_log, AZUL("## (%u) Pasa del estado ") VERDE("%s") AZUL(" al estado ") VERDE("%s"), PCB->PID, estado_to_string(PCB->Estado), estado_to_string(nuevo_estado_enum));
 
         bloquear_cola_por_estado(PCB->Estado);
@@ -323,7 +345,7 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
             LOG_DEBUG(kernel_log, "Nueva estimacion de rafaga del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
             PCB->tiempo_inicio_exec = -1;
 
-            if (strcmp(ALGORITMO_CORTO_PLAZO, "FIFO") != 0 && strcmp(archivo_pseudocodigo, "PLANI_CORTO_PLAZO") != 0)
+            if (strcmp(ALGORITMO_CORTO_PLAZO, "FIFO") != 0 && strcmp(archivo_pseudocodigo, "PLANI_CORTO_PLAZO") == 0)
             {
                 log_info(kernel_log, NARANJA("## (%d) - Estimación de ráfaga actualizada a %.3f ms"), PCB->PID, PCB->estimacion_rafaga);
             }
@@ -370,9 +392,13 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
     list_add(cola_destino, PCB);
     liberar_cola_por_estado(nuevo_estado_enum);
 
-    if (estado_viejo == NEW || estado_viejo == SUSP_READY || nuevo_estado_enum == NEW || nuevo_estado_enum == SUSP_READY)
+    if (nuevo_estado_enum == READY)
     {
         mostrar_colas_lp();
+    }
+    else if (nuevo_estado_enum == EXEC)
+    {
+        mostrar_colas_cp();
     }
 
     switch (nuevo_estado_enum)
@@ -544,7 +570,7 @@ void loguear_metricas_estado(t_pcb *pcb)
 
     unsigned promedio = pcb->ME[1] > 0 ? pcb->MT[1] / pcb->ME[1] : 0;
 
-    if (strcmp(ALGORITMO_CORTO_PLAZO, "FIFO") != 0 && strcmp(archivo_pseudocodigo, "PLANI_CORTO_PLAZO") != 0)
+    if (strcmp(ALGORITMO_CORTO_PLAZO, "FIFO") != 0 && strcmp(archivo_pseudocodigo, "PLANI_CORTO_PLAZO") == 0)
     {
         log_info(kernel_log, "    " NARANJA("%-24s") " | Tiempo: " VERDE("%6u ms"), "PROMEDIO DE ESPERA", promedio);
     }
@@ -639,15 +665,19 @@ void verificar_procesos_restantes()
 {
     LOG_TRACE(kernel_log, "EXIT: verificando si quedan procesos en el sistema");
 
-
     LOCK_CON_LOG(mutex_cantidad_procesos);
-    double cantidad = cantidad_procesos;
+    int cantidad = cantidad_procesos;
+
+    LOG_TRACE(kernel_log, "EXIT: Cantidad de procesos en el sistema: %d", cantidad);
+
+    if (cantidad > 1)
+    {
+        UNLOCK_CON_LOG(mutex_cantidad_procesos);
+        return;
+    }
     UNLOCK_CON_LOG(mutex_cantidad_procesos);
 
-    if (cantidad > 0)
-        return;
-
-    LOCK_CON_LOG(mutex_cola_new);
+    /*LOCK_CON_LOG(mutex_cola_new);
     int cantidad_new = list_size(cola_new);
     UNLOCK_CON_LOG(mutex_cola_new);
 
@@ -682,17 +712,20 @@ void verificar_procesos_restantes()
     int total_procesos = cantidad_new + cantidad_ready +
                          cantidad_running + cantidad_blocked +
                          cantidad_susp_ready + cantidad_susp_blocked +
-                         cantidad_exit + cantidad_procesos;
+                         cantidad_exit + cantidad_procesos;*/
 
-    LOG_TRACE(kernel_log, "EXIT: Total de procesos restantes en el sistema: %d", total_procesos);
+    LOCK_CON_LOG(mutex_cantidad_procesos);
+    cantidad = cantidad_procesos;
+    LOG_TRACE(kernel_log, "EXIT: Total de procesos restantes en el sistema: %d", cantidad);
 
-    if (total_procesos == 0)
+    if (cantidad <= 0)
     {
         mostrar_colas_estados();
         log_info(kernel_log, "Todos los procesos han terminado.");
         if (auto_start)
         {
             log_info(kernel_log, "Finalizando kernel...");
+            UNLOCK_CON_LOG(mutex_cantidad_procesos);
             terminar_kernel(EXIT_SUCCESS);
         }
         else
@@ -700,6 +733,7 @@ void verificar_procesos_restantes()
             log_info(kernel_log, "Esperando...");
         }
     }
+    UNLOCK_CON_LOG(mutex_cantidad_procesos);
 }
 
 void mostrar_colas_lp()
@@ -710,56 +744,203 @@ void mostrar_colas_lp()
         char buffer_new[1024] = "";
         char buffer_susp_ready[1024] = "";
 
-        // Mostrar cola SUSPENDED READY
-        LOCK_CON_LOG(mutex_cola_susp_ready);
-        if (!list_is_empty(cola_susp_ready))
+        if (strcmp(ALGORITMO_INGRESO_A_READY, "FIFO") == 0)
         {
-            strcat(buffer_susp_ready, "    - SUSP_READY: ");
-            for (int i = 0; i < list_size(cola_susp_ready); i++)
+            // Mostrar cola SUSPENDED READY
+            LOCK_CON_LOG(mutex_cola_susp_ready);
+            if (!list_is_empty(cola_susp_ready))
             {
-                t_pcb *pcb = (t_pcb *)list_get(cola_susp_ready, i);
-                if (pcb)
+                strcat(buffer_susp_ready, "    - SUSP_READY: ");
+                for (int i = 0; i < list_size(cola_susp_ready); i++)
                 {
-                    char temp[32];
-                    if (i == 0)
+                    t_pcb *pcb = (t_pcb *)list_get(cola_susp_ready, i);
+                    if (pcb)
                     {
-                        snprintf(temp, sizeof(temp), "(%d) %d B", pcb->PID, pcb->tamanio_memoria);
+                        char temp[32];
+                        if (i == 0)
+                        {
+                            snprintf(temp, sizeof(temp), "(%d)", pcb->PID);
+                        }
+                        else
+                        {
+                            snprintf(temp, sizeof(temp), ", (%d)", pcb->PID);
+                        }
+                        strcat(buffer_susp_ready, temp);
                     }
-                    else
-                    {
-                        snprintf(temp, sizeof(temp), ", (%d) %d B", pcb->PID, pcb->tamanio_memoria);
-                    }
-                    strcat(buffer_susp_ready, temp);
                 }
+                log_info(kernel_log, AZUL("%s"), buffer_susp_ready);
             }
-            log_info(kernel_log, AZUL("%s"), buffer_susp_ready);
-        }
-        UNLOCK_CON_LOG(mutex_cola_susp_ready);
+            UNLOCK_CON_LOG(mutex_cola_susp_ready);
 
-        // Mostrar cola NEW
-        LOCK_CON_LOG(mutex_cola_new);
-        if (!list_is_empty(cola_new))
-        {
-            strcat(buffer_new, "    - NEW: ");
-            for (int i = 0; i < list_size(cola_new); i++)
+            // Mostrar cola NEW
+            LOCK_CON_LOG(mutex_cola_new);
+            if (!list_is_empty(cola_new))
             {
-                t_pcb *pcb = (t_pcb *)list_get(cola_new, i);
-                if (pcb)
+                strcat(buffer_new, "    - NEW: ");
+                for (int i = 0; i < list_size(cola_new); i++)
                 {
-                    char temp[32];
-                    if (i == 0)
+                    t_pcb *pcb = (t_pcb *)list_get(cola_new, i);
+                    if (pcb)
                     {
-                        snprintf(temp, sizeof(temp), "(%d) %d B", pcb->PID, pcb->tamanio_memoria);
+                        char temp[32];
+                        if (i == 0)
+                        {
+                            snprintf(temp, sizeof(temp), "(%d)", pcb->PID);
+                        }
+                        else
+                        {
+                            snprintf(temp, sizeof(temp), ", (%d)", pcb->PID);
+                        }
+                        strcat(buffer_new, temp);
                     }
-                    else
+                }
+                log_info(kernel_log, VERDE("%s"), buffer_new);
+            }
+            UNLOCK_CON_LOG(mutex_cola_new);
+        }
+        else
+        {
+            // Mostrar cola SUSPENDED READY
+            LOCK_CON_LOG(mutex_cola_susp_ready);
+            if (!list_is_empty(cola_susp_ready))
+            {
+                strcat(buffer_susp_ready, "    - SUSP_READY: ");
+                for (int i = 0; i < list_size(cola_susp_ready); i++)
+                {
+                    t_pcb *pcb = (t_pcb *)list_get(cola_susp_ready, i);
+                    if (pcb)
                     {
-                        snprintf(temp, sizeof(temp), ", (%d) %d B", pcb->PID, pcb->tamanio_memoria);
+                        char temp[32];
+                        if (i == 0)
+                        {
+                            snprintf(temp, sizeof(temp), "(%d) %d B", pcb->PID, pcb->tamanio_memoria);
+                        }
+                        else
+                        {
+                            snprintf(temp, sizeof(temp), ", (%d) %d B", pcb->PID, pcb->tamanio_memoria);
+                        }
+                        strcat(buffer_susp_ready, temp);
                     }
-                    strcat(buffer_new, temp);
+                }
+                log_info(kernel_log, AZUL("%s"), buffer_susp_ready);
+            }
+            UNLOCK_CON_LOG(mutex_cola_susp_ready);
+
+            // Mostrar cola NEW
+            LOCK_CON_LOG(mutex_cola_new);
+            if (!list_is_empty(cola_new))
+            {
+                strcat(buffer_new, "    - NEW: ");
+                for (int i = 0; i < list_size(cola_new); i++)
+                {
+                    t_pcb *pcb = (t_pcb *)list_get(cola_new, i);
+                    if (pcb)
+                    {
+                        char temp[32];
+                        if (i == 0)
+                        {
+                            snprintf(temp, sizeof(temp), "(%d) %d B", pcb->PID, pcb->tamanio_memoria);
+                        }
+                        else
+                        {
+                            snprintf(temp, sizeof(temp), ", (%d) %d B", pcb->PID, pcb->tamanio_memoria);
+                        }
+                        strcat(buffer_new, temp);
+                    }
+                }
+                log_info(kernel_log, VERDE("%s"), buffer_new);
+            }
+            UNLOCK_CON_LOG(mutex_cola_new);
+        }
+    }
+}
+
+void mostrar_colas_cp()
+{
+    if (strcmp(archivo_pseudocodigo, "PLANI_CORTO_PLAZO") == 0)
+    {
+        // Buffer para construir los strings de las colas
+        char buffer_ready[1024] = "";
+        char buffer_running[1024] = "";
+
+        if (strcmp(ALGORITMO_CORTO_PLAZO, "SRT") == 0)
+        {
+
+            // Mostrar cola EXEC
+            LOCK_CON_LOG(mutex_cola_running);
+            if (!list_is_empty(cola_running))
+            {
+                strcat(buffer_running, "    - EXEC: ");
+                for (int i = 0; i < list_size(cola_running); i++)
+                {
+                    t_pcb *pcb = (t_pcb *)list_get(cola_running, i);
+                    if (pcb)
+                    {
+                        char temp[32];
+                        if (i == 0)
+                        {
+                            snprintf(temp, sizeof(temp), "(%d) %.0f ms", pcb->PID, pcb->estimacion_rafaga);
+                        }
+                        else
+                        {
+                            snprintf(temp, sizeof(temp), ", (%d) %.0f ms", pcb->PID, pcb->estimacion_rafaga);
+                        }
+                        strcat(buffer_running, temp);
+                    }
+                }
+                log_info(kernel_log, AZUL("%s"), buffer_running);
+            }
+            UNLOCK_CON_LOG(mutex_cola_running);
+        }
+
+        // Mostrar cola READY
+        LOCK_CON_LOG(mutex_cola_ready);
+        if (!list_is_empty(cola_ready))
+        {
+            strcat(buffer_ready, "    - READY: ");
+
+            if (strcmp(ALGORITMO_CORTO_PLAZO, "FIFO") == 0)
+            {
+                for (int i = 0; i < list_size(cola_ready); i++)
+                {
+                    t_pcb *pcb = (t_pcb *)list_get(cola_ready, i);
+                    if (pcb)
+                    {
+                        char temp[32];
+                        if (i == 0)
+                        {
+                            snprintf(temp, sizeof(temp), "(%d)", pcb->PID);
+                        }
+                        else
+                        {
+                            snprintf(temp, sizeof(temp), ", (%d)", pcb->PID);
+                        }
+                        strcat(buffer_ready, temp);
+                    }
                 }
             }
-            log_info(kernel_log, VERDE("%s"), buffer_new);
+            else
+            {
+                for (int i = 0; i < list_size(cola_ready); i++)
+                {
+                    t_pcb *pcb = (t_pcb *)list_get(cola_ready, i);
+                    if (pcb)
+                    {
+                        char temp[32];
+                        if (i == 0)
+                        {
+                            snprintf(temp, sizeof(temp), "(%d) %.0f ms", pcb->PID, pcb->estimacion_rafaga);
+                        }
+                        else
+                        {
+                            snprintf(temp, sizeof(temp), ", (%d) %.0f ms", pcb->PID, pcb->estimacion_rafaga);
+                        }
+                        strcat(buffer_ready, temp);
+                    }
+                }
+            }
+            log_info(kernel_log, VERDE("%s"), buffer_ready);
         }
-        UNLOCK_CON_LOG(mutex_cola_new);
+        UNLOCK_CON_LOG(mutex_cola_ready);
     }
 }

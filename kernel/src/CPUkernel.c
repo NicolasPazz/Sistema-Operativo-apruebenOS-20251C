@@ -212,8 +212,12 @@ cpu *hay_cpu_rafaga_restante_mayor()
     if (rafaga_ready_min < rafaga_exec_max)
     {
         LOG_DEBUG(kernel_log, "Proceso READY PID=%d tiene rafaga menor que el proceso RUNNING PID=%d", candidato_ready->PID, candidato_exec->PID);
-        log_info(kernel_log, NARANJA("## (%d) - Elegido con menor ráfaga estimada %.3f ms"), candidato_ready->PID, candidato_ready->estimacion_rafaga);
-        log_info(kernel_log, NARANJA("## (%d) - Elegido en ejecución con mayor ráfaga restante %.3f ms"), candidato_exec->PID, candidato_exec->estimacion_rafaga);
+        if (strcmp(archivo_pseudocodigo, "PLANI_CORTO_PLAZO") == 0)
+        {
+            log_info(kernel_log, NARANJA("## (%d) - Elegido con menor ráfaga estimada %.3f ms"), candidato_ready->PID, candidato_ready->estimacion_rafaga);
+            log_info(kernel_log, NARANJA("## (%d) - Elegido en ejecución con mayor ráfaga restante %.3f ms"), candidato_exec->PID, candidato_exec->estimacion_rafaga);
+        }
+
         UNLOCK_CON_LOG(mutex_cola_running);
         return (cpu *)get_cpu_dispatch_by_pid(candidato_exec->PID);
     }

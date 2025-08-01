@@ -553,7 +553,7 @@ t_resultado_memoria configurar_entrada_pagina(t_estructura_paginas* estructura, 
 int acceso_tabla_paginas(int pid, int numero_pagina) {
     t_proceso_memoria* proceso = obtener_proceso(pid);
     if (!proceso || !proceso->estructura_paginas) {
-        log_info(logger, "PID: %d - Estructura de páginas no encontrada", pid);
+        log_trace(logger, "PID: %d - Estructura de páginas no encontrada", pid);
         return -1;
     }
 
