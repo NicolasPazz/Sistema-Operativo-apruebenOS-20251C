@@ -38,6 +38,8 @@ t_list *cola_susp_ready = NULL;
 t_list *cola_susp_blocked = NULL;
 t_list *cola_exit = NULL;
 t_list *cola_procesos = NULL; // Cola con TODOS los procesos sin importar el estado (Procesos totales del sistema)
+double cantidad_procesos = 0;
+pthread_mutex_t mutex_cantidad_procesos;
 t_list *pcbs_bloqueados_por_dump_memory = NULL;
 t_list *pcbs_esperando_io = NULL;
 t_list *cola_interrupciones = NULL;
@@ -161,6 +163,7 @@ void iniciar_sincronizacion_kernel()
     pthread_mutex_init(&mutex_cola_blocked, NULL);
     pthread_mutex_init(&mutex_cola_exit, NULL);
     pthread_mutex_init(&mutex_cola_procesos, NULL);
+    pthread_mutex_init(&mutex_cantidad_procesos, NULL);
 
     pthread_mutex_init(&mutex_pcbs_esperando_io, NULL);
     pthread_mutex_init(&mutex_cola_interrupciones, NULL);
@@ -259,6 +262,7 @@ void terminar_kernel(int code)
 
     list_destroy_and_destroy_elements(cola_procesos, destruir_pcb);
     pthread_mutex_destroy(&mutex_cola_procesos);
+    pthread_mutex_destroy(&mutex_cantidad_procesos);
 
     list_destroy(cola_new);
     sem_destroy(&sem_proceso_a_new);
@@ -504,6 +508,10 @@ void *atender_cpu_dispatch(void *arg)
 
             t_pcb *pcb_a_finalizar = buscar_pcb(pid);
             cambiar_estado_pcb_mutex(pcb_a_finalizar, EXIT_ESTADO);
+
+            LOCK_CON_LOG(mutex_cantidad_procesos);
+            cantidad_procesos--;
+            UNLOCK_CON_LOG(mutex_cantidad_procesos);
 
             liberar_cpu(cpu_actual);
 

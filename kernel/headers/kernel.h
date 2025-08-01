@@ -51,6 +51,8 @@ extern t_list *cola_susp_ready;
 extern t_list *cola_susp_blocked;
 extern t_list *cola_exit;
 extern t_list *cola_procesos;
+extern double cantidad_procesos;
+extern pthread_mutex_t mutex_cantidad_procesos;
 extern t_list *pcbs_bloqueados_por_dump_memory;
 extern t_list *pcbs_esperando_io;
 extern t_list *cola_interrupciones;

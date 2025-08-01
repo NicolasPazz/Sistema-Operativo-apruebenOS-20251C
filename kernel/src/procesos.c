@@ -639,12 +639,12 @@ void verificar_procesos_restantes()
 {
     LOG_TRACE(kernel_log, "EXIT: verificando si quedan procesos en el sistema");
 
-    int total_estimado = list_size(cola_new) + list_size(cola_ready) +
-                         list_size(cola_running) + list_size(cola_blocked) +
-                         list_size(cola_susp_ready) + list_size(cola_susp_blocked) +
-                         list_size(cola_exit) + list_size(cola_procesos);
 
-    if (total_estimado > 1)
+    LOCK_CON_LOG(mutex_cantidad_procesos);
+    double cantidad = cantidad_procesos;
+    UNLOCK_CON_LOG(mutex_cantidad_procesos);
+
+    if (cantidad > 0)
         return;
 
     LOCK_CON_LOG(mutex_cola_new);
@@ -689,15 +689,15 @@ void verificar_procesos_restantes()
     if (total_procesos == 0)
     {
         mostrar_colas_estados();
-        //log_info(kernel_log, "Todos los procesos han terminado.");
+        log_info(kernel_log, "Todos los procesos han terminado.");
         if (auto_start)
         {
-            //log_info(kernel_log, "Finalizando kernel...");
+            log_info(kernel_log, "Finalizando kernel...");
             terminar_kernel(EXIT_SUCCESS);
         }
         else
         {
-            //log_info(kernel_log, "Esperando...");
+            log_info(kernel_log, "Esperando...");
         }
     }
 }

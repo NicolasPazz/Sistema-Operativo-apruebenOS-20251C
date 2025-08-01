@@ -203,6 +203,11 @@ void exit_procesos_relacionados(io *dispositivo)
     {
         LOG_TRACE(kernel_log, "Proceso PID=%d ejecutando en IO desconectada, moviendo a EXIT", dispositivo->proceso_actual->PID);
         cambiar_estado_pcb_mutex(dispositivo->proceso_actual, EXIT_ESTADO);
+
+        LOCK_CON_LOG(mutex_cantidad_procesos);
+        cantidad_procesos--;
+        UNLOCK_CON_LOG(mutex_cantidad_procesos);
+
         dispositivo->proceso_actual = NULL;
     }
     else
@@ -258,6 +263,11 @@ void exit_procesos_relacionados(io *dispositivo)
             t_pcb_io *pcb_io_actual = list_get(pcbs_afectados, i);
             LOG_TRACE(kernel_log, "Proceso PID=%d en IO desconectada, moviendo a EXIT", pcb_io_actual->pcb->PID);
             cambiar_estado_pcb_mutex(pcb_io_actual->pcb, EXIT_ESTADO);
+
+            LOCK_CON_LOG(mutex_cantidad_procesos);
+            cantidad_procesos--;
+            UNLOCK_CON_LOG(mutex_cantidad_procesos);
+
             free(pcb_io_actual);
         }
 
