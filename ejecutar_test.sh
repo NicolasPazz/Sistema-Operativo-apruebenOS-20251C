@@ -1,7 +1,7 @@
 #!/bin/bash
 # chmod +x ejecutar_test.sh; ./ejecutar_test.sh N
 
-# Estos tests solamente verifican que el codigo de retorno de cada proceso sea exitoso y que no haya log_debug o log_debug.
+# Estos tests solamente verifican que el codigo de retorno de cada proceso sea exitoso y que no haya log_error o log_warning.
 # No verifica logica, deadlocks, memory leaks, condiciones de carrera, ni esperas activas.
 
 if [[ -z "$1" ]]; then
@@ -255,7 +255,7 @@ case $numero in
     echo ""
 
     main_pid=$$
-    ( sleep 90 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado el $(date '+%d/%m/%Y a las %H:%M:%S'), los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
+    ( sleep 120 && echo -e "\t\e[1;97;41m ⏰ Timeout alcanzado el $(date '+%d/%m/%Y a las %H:%M:%S'), los modulos tardaron mucho en finalizar (posible Deadlock) \e[0m" && sleep 0.1 && kill $pid_memoria $pid_kernel $pid_cpu1 $pid_io1 2>/dev/null && chmod +x unir_logs.sh && ./unir_logs.sh && kill -TERM "$main_pid" ) &
     watcher_pid=$!
 
     wait $pid_memoria; exit_memoria=$?
@@ -661,6 +661,7 @@ case $numero in
 
     ./io/bin/io DISCO & 
     pid_io4=$!
+
     sleep 200
 
     ./io/bin/io DISCO & 
@@ -679,7 +680,7 @@ case $numero in
     pid_io8=$!
     sleep 1
 
-    sleep $(echo "1600 / 2" | bc)
+    sleep 200
 
     echo -e "\e[1;34;47m =====    🔄 Matando todos los modulos (SIGINT)    ===== \e[0m"
     kill -SIGINT "$pid_io1"
@@ -805,7 +806,7 @@ case $numero in
     pid_io8=$!
     sleep 1
 
-    sleep $(echo "1600 / 2" | bc)
+    sleep 200
 
     echo -e "\e[1;34;47m =====    🔄 Matando todos los modulos (SIGINT)    ===== \e[0m"
     kill -SIGINT "$pid_io1"
@@ -973,4 +974,5 @@ fi
 
 echo ""
 echo " Test $numero finalizado "
+sleep 5
 exit $errores

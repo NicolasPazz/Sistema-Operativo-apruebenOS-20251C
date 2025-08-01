@@ -218,8 +218,6 @@ void exit_procesos_relacionados(io *dispositivo)
     bool hay_otra_instancia = false;
     io *otra_io = NULL;
 
-    LOCK_CON_LOG(mutex_ios);
-
     for (int j = 0; j < list_size(lista_ios); j++)
     {
         otra_io = list_get(lista_ios, j);
@@ -229,7 +227,6 @@ void exit_procesos_relacionados(io *dispositivo)
             break;
         }
     }
-    UNLOCK_CON_LOG(mutex_ios);
 
     // Si no hay otras IO con el mismo nombre (LIBRES U OCUPADAS), mover los procesos afectados a EXIT
     if (!hay_otra_instancia)

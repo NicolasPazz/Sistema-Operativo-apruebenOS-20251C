@@ -801,7 +801,6 @@ void *atender_io(void *arg)
     LOCK_CON_LOG(mutex_ios);
 
     dispositivo_io->estado = IO_OCUPADO;
-    UNLOCK_CON_LOG(mutex_ios);
 
     // IO desconectada
     LOG_TRACE(kernel_log, "[SERVIDOR IO] IO '%s' desconectada (fd=%d)", dispositivo_io->nombre, fd_io);
@@ -810,8 +809,6 @@ void *atender_io(void *arg)
     exit_procesos_relacionados(dispositivo_io);
 
     // Eliminar la IO de la lista global
-
-    LOCK_CON_LOG(mutex_ios);
 
     for (int i = 0; i < list_size(lista_ios); i++)
     {

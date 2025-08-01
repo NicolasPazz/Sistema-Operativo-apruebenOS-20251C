@@ -1,207 +1,140 @@
 #!/bin/bash
-# chmod +x congestionar_red.sh; ./congestionar_red.sh
+# chmod +x congestionar_red.sh ; ./congestionar_red.sh
 
-# Colores para output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+#######################################
+# COLORES
+#######################################
+RED='\033[0;31m'     ; GREEN='\033[0;32m'
+BLUE='\033[0;34m'    ; YELLOW='\033[1;33m'
+NC='\033[0m'         # Reset
 
-# Función para aplicar congestión
+#######################################
+# APLICAR CONGESTIÓN
+#  arg1 = delay_base  (ms)
+#  arg2 = delay_jitter(ms)
+#  arg3 = limit_pkts  (cola netem)
+#  arg4 = rate_mbit   (0 => sin TBF)
+#######################################
 aplicar_congestion() {
     local delay_base=$1
-    local delay_variation=$2
-    
-    echo -e "${BLUE}🚨 Aplicando congestión de red...${NC}"
-    echo -e "   Latencia: ${delay_base}ms ± ${delay_variation}ms (rango: $((delay_base-delay_variation))-$((delay_base+delay_variation))ms)"
-    echo -e "   Puertos afectados: 8001, 8002, 8003, 8004"
-    
-    # Limpiar reglas existentes
-    sudo tc qdisc del dev lo root 2>/dev/null || true
-    
-    # Crear qdisc principal con 4 bandas
-    sudo tc qdisc add dev lo root handle 1: prio bands 4
-    
-    # Agregar congestión en banda 4
-    if sudo tc qdisc add dev lo parent 1:4 handle 40: netem delay ${delay_base}ms ${delay_variation}ms distribution normal; then
-        echo -e "${GREEN}✅ Regla netem aplicada correctamente${NC}"
+    local delay_var=$2
+    local limit_pkts=$3
+    local rate_mbit=$4
+
+    echo -e "${BLUE}🚨 Aplicando congestión...${NC}"
+    echo -e "   Latencia: ${delay_base}ms ± ${delay_var}ms"
+    echo -e "   Cola     : ${limit_pkts} paquetes"
+    if [[ "$rate_mbit" -gt 0 ]]; then
+        echo -e "   Rate TBF : ${rate_mbit} Mbit/s"
     else
-        echo -e "${RED}❌ Error al aplicar regla netem${NC}"
-        return 1
+        echo -e "   Rate TBF : (sin limitación)"
     fi
-    
-    # Filtros para puertos 8001-8004 (source y destination)
-    local filtros_ok=0
+    echo -e "   Puertos  : 8001-8004\n"
+
+    # 1) Limpio reglas previas
+    sudo tc qdisc del dev lo root 2>/dev/null || true
+
+    # 2) qdisc prio base
+    sudo tc qdisc add dev lo root handle 1: prio bands 4
+
+    # 3) Netem con cola parametrizable
+    sudo tc qdisc add dev lo parent 1:4 handle 40: netem \
+        delay ${delay_base}ms ${delay_var}ms distribution normal \
+        limit ${limit_pkts} || {
+            echo -e "${RED}❌ Error al aplicar netem${NC}"
+            return 1
+        }
+
+    # 4) (Opcional) TBF
+    if [[ "$rate_mbit" -gt 0 ]]; then
+        sudo tc qdisc add dev lo parent 40:1 handle 400: tbf \
+            rate ${rate_mbit}mbit burst 256kbit latency 400ms || {
+                echo -e "${RED}❌ Error al aplicar TBF${NC}"
+                return 1
+            }
+    fi
+
+    # 5) Filtros para los puertos 8001-8004
     for p in 8001 8002 8003 8004; do
-        if sudo tc filter add dev lo protocol ip parent 1:0 prio 1 u32 \
-             match ip sport $p 0xffff flowid 1:4 2>/dev/null && \
-           sudo tc filter add dev lo protocol ip parent 1:0 prio 1 u32 \
-             match ip dport $p 0xffff flowid 1:4 2>/dev/null; then
-            ((filtros_ok++))
-        fi
+        sudo tc filter add dev lo protocol ip parent 1:0 prio 1 u32 \
+            match ip sport $p 0xffff flowid 1:4
+        sudo tc filter add dev lo protocol ip parent 1:0 prio 1 u32 \
+            match ip dport $p 0xffff flowid 1:4
     done
-    
-    echo -e "${GREEN}✅ Congestión aplicada a puertos 8001-8004 ($filtros_ok/4 puertos configurados)${NC}"
-    
-    # Validar configuración
+
+    echo -e "${GREEN}✅ Reglas aplicadas correctamente${NC}"
     validar_congestion
 }
 
-# Función para validar que la congestión esté funcionando
+#######################################
+# VALIDAR CONFIGURACIÓN
+#######################################
 validar_congestion() {
     echo -e "\n${BLUE}📊 VALIDANDO CONFIGURACIÓN:${NC}"
-    
-    # Verificar reglas tc
     echo -e "${YELLOW}🔍 Reglas tc activas:${NC}"
-    local qdisc_output=$(tc qdisc show dev lo)
-    if echo "$qdisc_output" | grep -q "netem"; then
-        echo "$qdisc_output" | grep -E "(prio|netem)"
-        echo -e "${GREEN}✅ Reglas netem encontradas${NC}"
-    else
-        echo -e "${RED}❌ No se encontraron reglas netem${NC}"
-        return 1
-    fi
-    
-    # Verificar filtros
+    tc qdisc show dev lo | grep -E "(prio|netem|tbf)" || true
+
     echo -e "\n${YELLOW}🔍 Filtros activos:${NC}"
-    local filtros_count=$(tc filter show dev lo | grep -c "flowid 1:4" 2>/dev/null || echo "0")
-    echo "Filtros configurados: $filtros_count/8 (4 puertos x 2 direcciones)"
-    
-    if [ "$filtros_count" -eq 8 ]; then
-        echo -e "${GREEN}✅ Todos los filtros están configurados correctamente${NC}"
-    elif [ "$filtros_count" -gt 0 ]; then
-        echo -e "${YELLOW}⚠️ Solo $filtros_count filtros configurados (esperados: 8)${NC}"
-    else
-        echo -e "${RED}❌ No hay filtros configurados${NC}"
-    fi
-    
-    # Probar conectividad TCP
-    echo -e "\n${YELLOW}🔍 Probando puertos TCP:${NC}"
-    for p in 8001 8002 8003 8004; do
-        if timeout 2 nc -z localhost $p 2>/dev/null; then
-            echo -e "Puerto $p: ${GREEN}✅ Accesible${NC}"
-        else
-            echo -e "Puerto $p: ${YELLOW}⚠️ Cerrado (normal si no hay servicio)${NC}"
-        fi
-    done
-    
-    echo -e "\n${BLUE}ℹ️ NOTAS:${NC}"
-    echo "• La congestión solo afecta a los puertos TCP 8001-8004"
-    echo "• El ping a localhost NO mostrará latencia (no usa estos puertos)"
-    echo "• Para ver el efecto, ejecuta tu programa que use estos puertos"
-    echo -e "• Monitorear tráfico: ${YELLOW}sudo tcpdump -i lo port 8001 or port 8002 or port 8003 or port 8004${NC}"
+    local filtros=$(tc filter show dev lo | grep -c "flowid 1:4")
+    echo -e "Filtros configurados: $filtros/8"
+    [[ "$filtros" -eq 8 ]] && echo -e "${GREEN}✅ OK${NC}" \
+                           || echo -e "${RED}⚠️ Falta(n) filtro(s)${NC}"
+
+    echo -e "\n${BLUE}ℹ️ Recuerda: ping a localhost no mostrará latencia${NC}"
 }
 
-# Función para limpiar congestión
+#######################################
+# LIMPIAR
+#######################################
 limpiar_congestion() {
-    echo -e "${BLUE}🧹 Limpiando TODAS las reglas de congestión...${NC}"
-    
-    # Mostrar reglas actuales antes de limpiar
-    local reglas_antes=$(tc qdisc show dev lo | wc -l)
-    if [ "$reglas_antes" -gt 1 ]; then
-        echo -e "${YELLOW}🔍 Reglas actuales antes de limpiar:${NC}"
-        tc qdisc show dev lo
-    fi
-    
-    # Limpiar todas las reglas
-    if sudo tc qdisc del dev lo root 2>/dev/null; then
-        echo -e "${GREEN}✅ Reglas tc eliminadas correctamente${NC}"
-    else
-        echo -e "${YELLOW}⚠️ No había reglas tc que eliminar${NC}"
-    fi
-    
-    # Verificar limpieza
-    echo -e "\n${YELLOW}🔍 Verificando limpieza:${NC}"
-    local reglas_despues=$(tc qdisc show dev lo)
-    if echo "$reglas_despues" | grep -q "noqueue\|fq_codel"; then
-        echo -e "${GREEN}✅ Interfaz limpia - solo reglas por defecto${NC}"
-        echo "$reglas_despues"
-    else
-        echo -e "${RED}❌ Aún hay reglas personalizadas:${NC}"
-        echo "$reglas_despues"
-    fi
+    echo -e "${BLUE}🧹 Limpiando reglas...${NC}"
+    sudo tc qdisc del dev lo root 2>/dev/null && \
+        echo -e "${GREEN}✅ Limpieza completada${NC}" || \
+        echo -e "${YELLOW}ℹ️ No había reglas personalizadas${NC}"
 }
 
-# Función para leer número entero con validación
+#######################################
+# INPUT VALIDADO (ENTERO)
+#######################################
 leer_numero() {
-    local prompt="$1"
-    local min_val="$2"
-    local max_val="$3"
-    local numero
-    
+    local prompt="$1" min="$2" max="$3" n
     while true; do
-        read -p "$prompt" numero
-        if [[ "$numero" =~ ^[0-9]+$ ]] && [ "$numero" -ge "$min_val" ] && [ "$numero" -le "$max_val" ]; then
-            echo "$numero"
-            return 0
-        else
-            echo -e "${RED}❌ Error: Ingresa un número entero entre $min_val y $max_val${NC}"
+        read -p "$prompt" n
+        if [[ "$n" =~ ^[0-9]+$ ]] && [ "$n" -ge "$min" ] && [ "$n" -le "$max" ]; then
+            echo "$n"; return 0
         fi
+        echo -e "${RED}❌ Ingresa un valor entre $min y $max${NC}"
     done
 }
 
-# Función principal
+#######################################
+# MAIN
+#######################################
 main() {
-    echo -e "${BLUE}╔═══════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║     SIMULADOR DE CONGESTIÓN DE RED    ║${NC}"
-    echo -e "${BLUE}║           Puertos: 8001-8004          ║${NC}"
-    echo -e "${BLUE}╚═══════════════════════════════════════╝${NC}\n"
-    
-    echo "Selecciona una opción:"
-    echo "1) 🚨 Aplicar congestión de red"
-    echo "2) 🧹 Limpiar congestión de red"
-    echo -e "3) 📊 Solo validar configuración actual"
-    echo "4) ❌ Salir"
-    
-    local opcion
-    read -p "Opción [1-4]: " opcion
-    
-    case $opcion in
-        1)
-            echo -e "\n${YELLOW}📝 Configuración de latencia:${NC}"
-            echo "La latencia final será: LATENCIA_BASE ± VARIACIÓN"
-            echo "Ejemplo: 20ms ± 10ms = rango de 10ms a 30ms"
-            echo ""
-            
-            local latencia_base=$(leer_numero "Latencia base (ms) [1-1000]: " 1 1000)
-            local variacion=$(leer_numero "Variación (ms) [0-$latencia_base]: " 0 $latencia_base)
-            
-            echo ""
-            aplicar_congestion "$latencia_base" "$variacion"
-            ;;
-        2)
-            echo ""
-            limpiar_congestion
-            ;;
-        3)
-            echo ""
-            if tc qdisc show dev lo | grep -q "netem"; then
-                validar_congestion
-            else
-                echo -e "${YELLOW}ℹ️ No hay congestión configurada actualmente${NC}"
-                tc qdisc show dev lo
-            fi
-            ;;
-        4)
-            echo -e "${BLUE}👋 ¡Hasta luego!${NC}"
-            exit 0
-            ;;
-        *)
-            echo -e "${RED}❌ Opción inválida. Usa 1, 2, 3 o 4.${NC}"
-            exit 1
-            ;;
-    esac
-    
-    echo -e "\n${GREEN}✨ Operación completada${NC}"
+echo -e "${BLUE}\n╔═════════ SIMULADOR DE CONGESTIÓN ═════════╗${NC}"
+echo "1) Aplicar congestión"
+echo "2) Limpiar congestión"
+echo "3) Validar configuración actual"
+echo "4) Salir"
+read -p "Opción [1-4]: " op
+
+case $op in
+    1)
+        echo -e "\n${YELLOW}📝 CONFIGURAR PARÁMETROS${NC}"
+        base=$(leer_numero "Latencia base (ms)  [10-300]: " 10 300)
+        var=$(leer_numero  "Jitter (ms)         [0-$base]: " 0 $base)
+        limit=$(leer_numero "Tamaño cola pkts    [100-10000]: " 100 10000)
+        rate=$(leer_numero  "Rate TBF Mbit (0 = sin TBF) [0-100]: " 0 100)
+        aplicar_congestion "$base" "$var" "$limit" "$rate"
+        ;;
+    2) limpiar_congestion ;;
+    3) validar_congestion ;;
+    4) echo -e "${BLUE}👋 Bye${NC}"; exit 0 ;;
+    *) echo -e "${RED}Opción inválida${NC}" ;;
+esac
 }
 
-# Verificar que el usuario tenga permisos sudo
-if ! sudo -n true 2>/dev/null; then
-    echo -e "${YELLOW}🔐 Este script requiere permisos sudo para configurar reglas de red${NC}"
-    echo "Ingresa tu contraseña cuando se solicite..."
-    sudo true || exit 1
-fi
+# Verificar sudo
+sudo -n true 2>/dev/null || { echo -e "${YELLOW}Se solicitará sudo...${NC}"; sudo true; }
 
-# Ejecutar función principal
 main

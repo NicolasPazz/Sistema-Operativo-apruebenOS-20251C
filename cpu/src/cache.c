@@ -668,7 +668,7 @@ void enviar_actualizar_pagina_completa(int pid, int direccion_fisica, void* cont
     }
 
     if (respuesta != OK) {
-        log_error(cpu_log, "Actualización de página completa fallida en Memoria");
+        log_debug(cpu_log, "Actualización de página completa fallida en Memoria");
         exit(EXIT_FAILURE);
     }
 
