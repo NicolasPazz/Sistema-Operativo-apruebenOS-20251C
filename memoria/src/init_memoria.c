@@ -160,7 +160,7 @@ t_administrador_marcos* crear_administrador_marcos(int cantidad_frames, int tam_
         return NULL;
     }
     
-    // Crear lista de frames libres para acceso O(1)
+    // Crear lista de frames libres para acceso
     admin->lista_frames_libres = list_create();
     if (!admin->lista_frames_libres) {
         log_trace(logger, "Error al crear lista de frames libres");

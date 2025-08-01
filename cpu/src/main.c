@@ -81,22 +81,19 @@ int main(int argc, char* argv[]) {
         log_error(cpu_log, "Error al crear hilo de recepción de Kernel Dispatch");
         exit(EXIT_FAILURE);
     }
-    pthread_detach(atiende_respuestas_kernel_dispatch);
 
     pthread_t atiende_respuestas_kernel_interrupt;
     if (pthread_create(&atiende_respuestas_kernel_interrupt, NULL, (void *) recibir_kernel_interrupt, (void*)& fd_kernel_interrupt) != 0) {
         log_error(cpu_log, "Error al crear hilo de recepción de Kernel Interrupt");
         exit(EXIT_FAILURE);
     }
-    pthread_detach(atiende_respuestas_kernel_interrupt);
 
     // CAMBIO: Comentamos esta línea para que CPU no ejecute prematuramente
     // ejecutar_ciclo_instruccion();
     
-    // provisorio para que no finalice
-    while (1) {
-        sleep(1);
-    }
+    // Esperar a que terminen los hilos para mantener el programa vivo
+    pthread_join(atiende_respuestas_kernel_dispatch, NULL);
+    pthread_join(atiende_respuestas_kernel_interrupt, NULL);
     
     terminar_programa();
     return EXIT_SUCCESS;  

@@ -37,7 +37,7 @@ void destruir_administrador_marcos(t_administrador_marcos* admin);
 /**
  * @brief Asigna un marco libre del pool centralizado
  * 
- * Busca y asigna un marco libre de manera eficiente (O(1)) usando
+ * Busca y asigna un marco libre de manera eficiente
  * la lista de marcos libres.
  * 
  * @param pid PID del proceso solicitante
