@@ -51,7 +51,7 @@ typedef struct {
     
     // Estructuras para búsqueda eficiente
     t_bitarray* bitmap_frames;          // Bitmap: 1=ocupado, 0=libre
-    t_list* lista_frames_libres;        // Lista de números de frames libres (para acceso O(1))
+    t_list* lista_frames_libres;        // Lista de números de frames libres
     
     // Estadísticas y métricas
     int total_asignaciones;             // Total de asignaciones realizadas
@@ -172,7 +172,7 @@ typedef struct {
     int paginas_ocupadas_swap;      // Páginas en uso en swap
     
     // Estructuras para búsqueda eficiente
-    t_list* posiciones_libres;      // Lista de posiciones libres (acceso O(1))
+    t_list* posiciones_libres;      // Lista de posiciones libres
     
     // Estadísticas
     int total_escrituras_swap;      // Total de páginas escritas a swap
