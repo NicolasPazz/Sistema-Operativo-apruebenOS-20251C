@@ -39,7 +39,7 @@ int traducir_direccion_fisica(int direccion_logica) {
 
         if (hit) {
             log_info(cpu_log, "PID: %d - TLB HIT - Página: %d", pid_ejecutando, nro_pagina);
-        } else if (list_size(tlb) > 0) {
+        } else {
             log_info(cpu_log, "PID: %d - TLB MISS - Página: %d", pid_ejecutando, nro_pagina);
         }
     }
