@@ -96,20 +96,18 @@ void *timer_suspension(void *v_arg)
     }
     free(arg);
 
+    if (!suspender_proceso(pcb))
+    {
+        LOG_DEBUG(kernel_log, "No se pudo suspender el proceso PID=%d", pcb->PID);
+        UNLOCK_CON_LOG_PCB(pcb->mutex, pcb->PID);
+        return NULL;
+    }
     cambiar_estado_pcb(pcb, SUSP_BLOCKED);
-
-    suspender_proceso(pcb);
-
-    // cambiar_estado_pcb(pcb, SUSP_BLOCKED);
-
     UNLOCK_CON_LOG_PCB(pcb->mutex, pcb->PID);
 
-    if (strcmp(archivo_pseudocodigo, "PLANI_LYM_PLAZO") == 0)
-    {
-        log_info(kernel_log, NARANJA("## (%d) Confirmación de suspensión recibida"), pcb->PID);
-    }
+    LOG_DEBUG(kernel_log, AZUL("[PLANI MP] Proceso PID %d suspendido correctamente"), pcb->PID);
 
-    // SEM_POST(sem_liberacion_memoria);
+    SEM_POST(sem_liberacion_memoria);
 
     return NULL;
 }

@@ -156,10 +156,10 @@ static bool enviar_op_memoria(int op_code, int pid)
         log_info(kernel_log, AMARILLO("## (%d) - %d B - Memoria liberada: %d B ocupados, %d B libres"), pcb->PID, pcb->tamanio_memoria, memoria_ocupada, restante);
     }
 
-    if (op_code == SUSPENDER_PROCESO_OP)
+    /*if (op_code == SUSPENDER_PROCESO_OP)
     {
         SEM_POST(sem_liberacion_memoria);
-    }
+    }*/
 
     t_respuesta rsp;
     if (recv(fd_memoria, &rsp, sizeof(rsp), MSG_WAITALL) <= 0 ||
