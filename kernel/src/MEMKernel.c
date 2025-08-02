@@ -161,51 +161,55 @@ static bool enviar_op_memoria(int op_code, int pid)
         SEM_POST(sem_liberacion_memoria);
     }
 
-    t_respuesta rsp;
-    if (recv(fd_memoria, &rsp, sizeof(rsp), MSG_WAITALL) <= 0 ||
-        (rsp != OK && rsp != ERROR))
+    if (op_code != DESUSPENDER_PROCESO_OP)
     {
-        LOG_TRACE(kernel_log, "[KERNEL->MEMORIA] Error al recibir respuesta de Memoria para OP %d y PID %d", op_code, pid);
+        t_respuesta rsp;
+        if (recv(fd_memoria, &rsp, sizeof(rsp), MSG_WAITALL) <= 0 ||
+            (rsp != OK && rsp != ERROR))
+        {
+            LOG_TRACE(kernel_log, "[KERNEL->MEMORIA] Error al recibir respuesta de Memoria para OP %d y PID %d", op_code, pid);
+            desconectar_memoria(fd_memoria);
+            return false;
+        }
+
         desconectar_memoria(fd_memoria);
+
+        if (rsp == OK)
+        {
+            LOG_TRACE(kernel_log, "[KERNEL->MEMORIA] Operación %d exitosa para PID %d", op_code, pid);
+
+            if ((op_code == FINALIZAR_PROC_OP) && strcmp(archivo_pseudocodigo, "PLANI_LYM_PLAZO") == 0)
+            {
+                t_pcb *pcb = buscar_pcb(pid);
+                if (!pcb)
+                {
+                    LOG_TRACE(kernel_log, "[KERNEL->MEMORIA] No se encontró PCB para PID %d al finalizar/suspender", pid);
+                    return false;
+                }
+                memoria_ocupada -= pcb->tamanio_memoria;
+                int restante = 256 - memoria_ocupada;
+                log_info(kernel_log, AMARILLO("## (%d) - %d B - Memoria liberada: %d B ocupados, %d B libres"), pcb->PID, pcb->tamanio_memoria, memoria_ocupada, restante);
+            }
+            else if (op_code == DESUSPENDER_PROCESO_OP && strcmp(archivo_pseudocodigo, "PLANI_LYM_PLAZO") == 0)
+            {
+                t_pcb *pcb = buscar_pcb(pid);
+                if (!pcb)
+                {
+                    LOG_TRACE(kernel_log, "[KERNEL->MEMORIA] No se encontró PCB para PID %d al finalizar/suspender", pid);
+                    return false;
+                }
+                memoria_ocupada += pcb->tamanio_memoria;
+                int restante = 256 - memoria_ocupada;
+                log_info(kernel_log, AMARILLO("## (%d) - %d B - Memoria ocupada: %d B ocupados, %d B libres"), pcb->PID, pcb->tamanio_memoria, memoria_ocupada, restante);
+            }
+
+            return true;
+        }
+
+        LOG_TRACE(kernel_log, "[KERNEL->MEMORIA] Operación %d fallida para PID %d", op_code, pid);
         return false;
     }
-
-    desconectar_memoria(fd_memoria);
-
-    if (rsp == OK)
-    {
-        LOG_TRACE(kernel_log, "[KERNEL->MEMORIA] Operación %d exitosa para PID %d", op_code, pid);
-
-        if ((op_code == FINALIZAR_PROC_OP) && strcmp(archivo_pseudocodigo, "PLANI_LYM_PLAZO") == 0)
-        {
-            t_pcb *pcb = buscar_pcb(pid);
-            if (!pcb)
-            {
-                LOG_TRACE(kernel_log, "[KERNEL->MEMORIA] No se encontró PCB para PID %d al finalizar/suspender", pid);
-                return false;
-            }
-            memoria_ocupada -= pcb->tamanio_memoria;
-            int restante = 256 - memoria_ocupada;
-            log_info(kernel_log, AMARILLO("## (%d) - %d B - Memoria liberada: %d B ocupados, %d B libres"), pcb->PID, pcb->tamanio_memoria, memoria_ocupada, restante);
-        }
-        else if (op_code == DESUSPENDER_PROCESO_OP && strcmp(archivo_pseudocodigo, "PLANI_LYM_PLAZO") == 0)
-        {
-            t_pcb *pcb = buscar_pcb(pid);
-            if (!pcb)
-            {
-                LOG_TRACE(kernel_log, "[KERNEL->MEMORIA] No se encontró PCB para PID %d al finalizar/suspender", pid);
-                return false;
-            }
-            memoria_ocupada += pcb->tamanio_memoria;
-            int restante = 256 - memoria_ocupada;
-            log_info(kernel_log, AMARILLO("## (%d) - %d B - Memoria ocupada: %d B ocupados, %d B libres"), pcb->PID, pcb->tamanio_memoria, memoria_ocupada, restante);
-        }
-
-        return true;
-    }
-
-    LOG_TRACE(kernel_log, "[KERNEL->MEMORIA] Operación %d fallida para PID %d", op_code, pid);
-    return false;
+    return true;
 }
 
 bool suspender_proceso(t_pcb *pcb)
@@ -215,11 +219,11 @@ bool suspender_proceso(t_pcb *pcb)
 
 bool desuspender_proceso(t_pcb *pcb)
 {
-    /*if (!hay_espacio_suficiente_memoria(pcb->tamanio_memoria))
+    if (!hay_espacio_suficiente_memoria(pcb->tamanio_memoria))
     {
         LOG_TRACE(kernel_log, "[KERNEL->MEMORIA] No hay espacio suficiente en memoria para desuspender PID %d", pcb->PID);
         return false;
-    }*/
+    }
     return enviar_op_memoria(DESUSPENDER_PROCESO_OP, pcb->PID);
 }
 

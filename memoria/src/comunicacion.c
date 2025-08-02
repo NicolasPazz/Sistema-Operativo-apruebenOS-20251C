@@ -542,7 +542,7 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             int pid = *(int*)list_get(parametros, 0);
             
             log_info(logger, AMARILLO("## Kernel solicita DESUSPENDER_PROCESO para PID: %d"), pid);
-             list_destroy_and_destroy_elements(parametros, free);
+
 
             log_trace(logger, "Des-suspensión de proceso solicitada - PID: %d", pid);
 
@@ -553,7 +553,10 @@ void procesar_cod_ops(op_code cop, int cliente_socket) {
             }            
 
             t_respuesta respuesta = (resultado == MEMORIA_OK) ? OK : ERROR;
-            send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);
+            log_info(logger, NARANJA("## (%d) Confirmación de desuspensión enviada"), pid);
+            list_destroy_and_destroy_elements(parametros, free);
+            
+            /*send(cliente_socket, &respuesta, sizeof(t_respuesta), 0);*/
 
             log_trace(logger, "Des-suspensión de proceso %s - PID: %d",
                     (respuesta == OK) ? "exitosa" : "fallida", pid);
