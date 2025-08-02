@@ -72,7 +72,7 @@ void interrupt(cpu *cpu_a_desalojar)
     list_add(cola_interrupciones, nueva);
     UNLOCK_CON_LOG(mutex_cola_interrupciones);
 
-    LOG_DEBUG(kernel_log, "[INTERRUPT] Interrupción encolada para desalojar CPU %d (fd=%d)", cpu_a_desalojar->id, cpu_a_desalojar->fd);
+    LOG_TRACE(kernel_log, "[INTERRUPT] Interrupción encolada para desalojar CPU %d (fd=%d)", cpu_a_desalojar->id, cpu_a_desalojar->fd);
 
     SEM_POST(sem_interrupciones);
 }

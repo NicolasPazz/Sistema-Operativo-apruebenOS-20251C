@@ -41,7 +41,7 @@ extern pthread_mutex_t mutex_conexiones;
 extern t_list *lista_cpus;
 extern t_list *lista_ios;
 extern bool auto_start;
-extern char* archivo_pseudocodigo;
+extern char *archivo_pseudocodigo;
 
 extern t_list *cola_new;
 extern t_list *cola_ready;

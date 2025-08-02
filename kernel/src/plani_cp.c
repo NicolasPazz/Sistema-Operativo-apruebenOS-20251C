@@ -38,7 +38,6 @@ void *planificador_corto_plazo(void *arg)
         t_pcb *proceso_a_ejecutar = NULL;
 
         LOCK_CON_LOG(mutex_lista_cpus);
-        mostrar_colas_estados();
         if (strcmp(ALGORITMO_CORTO_PLAZO, "FIFO") == 0)
         {
             if (cpu_libre)
@@ -58,12 +57,12 @@ void *planificador_corto_plazo(void *arg)
         {
             if (cpu_libre)
             {
-                LOG_DEBUG(kernel_log, "[PLANI CP] [SJF] Hay CPU disponible, eligiendo proceso");
+                LOG_TRACE(kernel_log, "[PLANI CP] [SJF] Hay CPU disponible, eligiendo proceso");
                 proceso_a_ejecutar = elegir_por_sjf();
             }
             else
             {
-                LOG_DEBUG(kernel_log, "[PLANI CP] [SJF] No hay CPU disponible");
+                LOG_TRACE(kernel_log, "[PLANI CP] [SJF] No hay CPU disponible");
                 UNLOCK_CON_LOG(mutex_lista_cpus);
                 UNLOCK_CON_LOG(mutex_cola_ready);
                 continue;
@@ -198,30 +197,30 @@ void *menor_rafaga(void *a, void *b)
         return NULL;
     }
 
-    LOG_DEBUG(kernel_log, "[SJF] Comparando procesos:");
-    LOG_DEBUG(kernel_log, "  • PID %d - Estado: %s - Ráfaga estimada: %.3f ms", pcb_a->PID, estado_to_string(pcb_a->Estado), pcb_a->estimacion_rafaga);
-    LOG_DEBUG(kernel_log, "  • PID %d - Estado: %s - Ráfaga estimada: %.3f ms", pcb_b->PID, estado_to_string(pcb_b->Estado), pcb_b->estimacion_rafaga);
+    LOG_TRACE(kernel_log, "[SJF] Comparando procesos:");
+    LOG_TRACE(kernel_log, "  • PID %d - Estado: %s - Ráfaga estimada: %.3f ms", pcb_a->PID, estado_to_string(pcb_a->Estado), pcb_a->estimacion_rafaga);
+    LOG_TRACE(kernel_log, "  • PID %d - Estado: %s - Ráfaga estimada: %.3f ms", pcb_b->PID, estado_to_string(pcb_b->Estado), pcb_b->estimacion_rafaga);
 
     if (pcb_a->estimacion_rafaga < pcb_b->estimacion_rafaga)
     {
-        LOG_DEBUG(kernel_log, "[SJF] PID %d tiene menor estimación (%.3f ms) que PID %d (%.3f ms)", pcb_a->PID, pcb_a->estimacion_rafaga, pcb_b->PID, pcb_b->estimacion_rafaga);
+        LOG_TRACE(kernel_log, "[SJF] PID %d tiene menor estimación (%.3f ms) que PID %d (%.3f ms)", pcb_a->PID, pcb_a->estimacion_rafaga, pcb_b->PID, pcb_b->estimacion_rafaga);
         return (t_pcb *)pcb_a;
     }
 
     if (pcb_b->estimacion_rafaga < pcb_a->estimacion_rafaga)
     {
-        LOG_DEBUG(kernel_log, "[SJF] PID %d tiene menor estimación (%.3f ms) que PID %d (%.3f ms)", pcb_b->PID, pcb_b->estimacion_rafaga, pcb_a->PID, pcb_a->estimacion_rafaga);
+        LOG_TRACE(kernel_log, "[SJF] PID %d tiene menor estimación (%.3f ms) que PID %d (%.3f ms)", pcb_b->PID, pcb_b->estimacion_rafaga, pcb_a->PID, pcb_a->estimacion_rafaga);
         return (t_pcb *)pcb_b;
     }
 
     // En caso de empate, devolver el primero que llegó (FIFO)
-    LOG_DEBUG(kernel_log, "[SJF] Empate de estimación entre PID %d y PID %d. Se elige FIFO (PID %d)", pcb_a->PID, pcb_b->PID, pcb_a->PID);
+    LOG_TRACE(kernel_log, "[SJF] Empate de estimación entre PID %d y PID %d. Se elige FIFO (PID %d)", pcb_a->PID, pcb_b->PID, pcb_a->PID);
     return (t_pcb *)pcb_a;
 }
 
 t_pcb *elegir_por_srt(t_list *cola_a_evaluar)
 {
-    LOG_DEBUG(kernel_log, "[SRT] PLANIFICANDO SRT (Shortest Remaining Time)");
+    LOG_TRACE(kernel_log, "[SRT] PLANIFICANDO SRT (Shortest Remaining Time)");
 
     if (list_is_empty(cola_a_evaluar))
     {
@@ -259,7 +258,7 @@ void *menor_rafaga_restante(void *a, void *b)
 
     if (!a || !b)
     {
-        LOG_DEBUG(kernel_log, "[SRT] Error al comparar procesos: uno de los parámetros es NULL");
+        LOG_TRACE(kernel_log, "[SRT] Error al comparar procesos: uno de los parámetros es NULL");
         return NULL;
     }
 
@@ -285,22 +284,22 @@ void *menor_rafaga_restante(void *a, void *b)
         restante_b = pcb_b->estimacion_rafaga;
     }
 
-    LOG_DEBUG(kernel_log, "[SRT] Comparando procesos:");
-    LOG_DEBUG(kernel_log, "  • PID %d - Estado: %s - Ráfaga restante: %.3f ms", pcb_a->PID, estado_to_string(pcb_a->Estado), restante_a);
-    LOG_DEBUG(kernel_log, "  • PID %d - Estado: %s - Ráfaga restante: %.3f ms", pcb_b->PID, estado_to_string(pcb_b->Estado), restante_b);
+    LOG_TRACE(kernel_log, "[SRT] Comparando procesos:");
+    LOG_TRACE(kernel_log, "  • PID %d - Estado: %s - Ráfaga restante: %.3f ms", pcb_a->PID, estado_to_string(pcb_a->Estado), restante_a);
+    LOG_TRACE(kernel_log, "  • PID %d - Estado: %s - Ráfaga restante: %.3f ms", pcb_b->PID, estado_to_string(pcb_b->Estado), restante_b);
 
     if (restante_a < restante_b)
     {
-        LOG_DEBUG(kernel_log, "[SRT] PID %d tiene menor rafaga restante (%.3f ms) que PID %d (%.3f ms)", pcb_a->PID, restante_a, pcb_b->PID, restante_b);
+        LOG_TRACE(kernel_log, "[SRT] PID %d tiene menor rafaga restante (%.3f ms) que PID %d (%.3f ms)", pcb_a->PID, restante_a, pcb_b->PID, restante_b);
         return (t_pcb *)pcb_a;
     }
     if (restante_b < restante_a)
     {
-        LOG_DEBUG(kernel_log, "[SRT] PID %d tiene menor rafaga restante (%.3f ms) que PID %d (%.3f ms)", pcb_b->PID, restante_b, pcb_a->PID, restante_a);
+        LOG_TRACE(kernel_log, "[SRT] PID %d tiene menor rafaga restante (%.3f ms) que PID %d (%.3f ms)", pcb_b->PID, restante_b, pcb_a->PID, restante_a);
         return (t_pcb *)pcb_b;
     }
 
     // En caso de empate, devolver el primero que llegó (FIFO)
-    LOG_DEBUG(kernel_log, "[SRT] Empate de rafaga restante entre PID %d y PID %d. Se elige FIFO (PID %d)", pcb_a->PID, pcb_b->PID, pcb_a->PID);
+    LOG_TRACE(kernel_log, "[SRT] Empate de rafaga restante entre PID %d y PID %d. Se elige FIFO (PID %d)", pcb_a->PID, pcb_b->PID, pcb_a->PID);
     return (t_pcb *)pcb_a;
 }

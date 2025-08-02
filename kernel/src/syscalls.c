@@ -33,9 +33,9 @@ void INIT_PROC(char *nombre_archivo, int tam_memoria)
     cantidad_procesos++;
     UNLOCK_CON_LOG(mutex_cantidad_procesos);
 
-    cambiar_estado_pcb_mutex(nuevo_proceso, NEW);
-
     log_info(kernel_log, CYAN("## (%d) Se crea el proceso - Estado: ") AZUL("NEW"), nuevo_proceso->PID);
+
+    cambiar_estado_pcb_mutex(nuevo_proceso, NEW);
 }
 
 //////////////////////////////////////////////////////////// IO ////////////////////////////////////////////////////////////

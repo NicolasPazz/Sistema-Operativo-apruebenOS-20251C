@@ -157,7 +157,7 @@ cpu *hay_cpu_rafaga_restante_mayor()
     }
 
     double rafaga_ready_min = candidato_ready->estimacion_rafaga;
-    LOG_DEBUG(kernel_log, "Proceso READY PID=%d tiene rafaga mínima %.3f ms", candidato_ready->PID, rafaga_ready_min);
+    LOG_TRACE(kernel_log, "Proceso READY PID=%d tiene rafaga mínima %.3f ms", candidato_ready->PID, rafaga_ready_min);
 
     LOCK_CON_LOG(mutex_cola_running);
 
@@ -191,7 +191,7 @@ cpu *hay_cpu_rafaga_restante_mayor()
             {
                 rafaga_exec_max = restante_exec;
                 candidato_exec = candidato_exec_actual;
-                LOG_DEBUG(kernel_log, "Proceso RUNNING PID=%d tiene rafaga restante %.3f ms", candidato_exec->PID, rafaga_exec_max);
+                LOG_TRACE(kernel_log, "Proceso RUNNING PID=%d tiene rafaga restante %.3f ms", candidato_exec->PID, rafaga_exec_max);
             }
         }
         else
@@ -211,7 +211,7 @@ cpu *hay_cpu_rafaga_restante_mayor()
 
     if (rafaga_ready_min < rafaga_exec_max)
     {
-        LOG_DEBUG(kernel_log, "Proceso READY PID=%d tiene rafaga menor que el proceso RUNNING PID=%d", candidato_ready->PID, candidato_exec->PID);
+        LOG_TRACE(kernel_log, "Proceso READY PID=%d tiene rafaga menor que el proceso RUNNING PID=%d", candidato_ready->PID, candidato_exec->PID);
         if (strcmp(archivo_pseudocodigo, "PLANI_CORTO_PLAZO") == 0)
         {
             log_info(kernel_log, NARANJA("## (%d) - Elegido con menor ráfaga estimada %.3f ms"), candidato_ready->PID, candidato_ready->estimacion_rafaga);
@@ -277,7 +277,7 @@ void interrumpir_ejecucion(cpu *cpu_a_desalojar)
 
     UNLOCK_CON_LOG(mutex_lista_cpus);
 
-    LOG_DEBUG(kernel_log, VERDE("[INTERRUPT] Enviando interrupción a CPU %d (fd=%d)"), cpu_a_desalojar->id, fd_interrupt);
+    LOG_TRACE(kernel_log, VERDE("[INTERRUPT] Enviando interrupción a CPU %d (fd=%d)"), cpu_a_desalojar->id, fd_interrupt);
 
     t_paquete *paquete = crear_paquete_op(INTERRUPCION_OP);
     agregar_entero_a_paquete(paquete, pid_exec);
@@ -289,7 +289,7 @@ void interrumpir_ejecucion(cpu *cpu_a_desalojar)
     switch (respuesta)
     {
     case OK:
-        LOG_DEBUG(kernel_log, VERDE("[INTERRUPT] CPU %d respondió OK"), cpu_a_desalojar->id);
+        LOG_TRACE(kernel_log, VERDE("[INTERRUPT] CPU %d respondió OK"), cpu_a_desalojar->id);
 
         t_list *contenido = recibir_contenido_paquete(fd_interrupt);
         if (!contenido)

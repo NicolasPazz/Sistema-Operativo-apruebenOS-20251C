@@ -589,7 +589,7 @@ int acceso_tabla_paginas(int pid, int numero_pagina) {
         
         // Verificar que la entrada esté presente
         if (!entrada->presente) {
-            log_info(logger, "PID: %d - Página %d no presente en nivel %d", pid, numero_pagina, nivel);
+            log_trace(logger, "PID: %d - Página %d no presente en nivel %d", pid, numero_pagina, nivel);
             pthread_mutex_unlock(&estructura->mutex_estructura);
             return -1;
         }

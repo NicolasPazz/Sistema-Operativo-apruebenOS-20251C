@@ -69,7 +69,7 @@ void mostrar_metrica(const char *nombre, int *metrica)
 
 void mostrar_colas_estados()
 {
-    LOG_TRACE(kernel_log, "Colas -> [NEW: %d, READY: %d, EXEC: %d, BLOCK: %d, SUSP.BLOCK: %d, SUSP.READY: %d, EXIT: %d] | Procesos en total: %d / %f ", list_size(cola_new), list_size(cola_ready), list_size(cola_running), list_size(cola_blocked), list_size(cola_susp_blocked), list_size(cola_susp_ready), list_size(cola_exit), list_size(cola_procesos), cantidad_procesos);
+    log_debug(kernel_log, "  [N: %d, R: %d, E: %d, B: %d, SB: %d, SR: %d, E: %d] | %d ", list_size(cola_new), list_size(cola_ready), list_size(cola_running), list_size(cola_blocked), list_size(cola_susp_blocked), list_size(cola_susp_ready), list_size(cola_exit), (int)cantidad_procesos);
 }
 
 void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
@@ -207,6 +207,7 @@ void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
     {
         mostrar_colas_cp();
     }
+    mostrar_colas_estados();
 
     switch (nuevo_estado_enum)
     {
@@ -237,7 +238,6 @@ void cambiar_estado_pcb_srt(t_pcb *PCB, Estados nuevo_estado_enum)
         LOG_TRACE(kernel_log, "nuevo_estado_enum: Error al pasar PCB de %s a %s", estado_to_string(estado_viejo), estado_to_string(nuevo_estado_enum));
         return;
     }
-    mostrar_colas_estados();
 }
 void cambiar_estado_pcb_mutex_srt(t_pcb *PCB, Estados nuevo_estado_enum)
 {
@@ -336,13 +336,13 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
         }
         else if (PCB->Estado == EXEC && nuevo_estado_enum != EXIT_ESTADO)
         {
-            LOG_DEBUG(kernel_log, "estimacion rafaga anterior del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
+            LOG_TRACE(kernel_log, "estimacion rafaga anterior del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
             double rafaga_real = get_time() - PCB->tiempo_inicio_exec;
 
-            LOG_DEBUG(kernel_log, "Rafaga real del PID %d: %.3f", PCB->PID, rafaga_real);
+            LOG_TRACE(kernel_log, "Rafaga real del PID %d: %.3f", PCB->PID, rafaga_real);
             PCB->estimacion_rafaga = ALFA * rafaga_real + (1.0 - ALFA) * PCB->estimacion_rafaga;
 
-            LOG_DEBUG(kernel_log, "Nueva estimacion de rafaga del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
+            LOG_TRACE(kernel_log, "Nueva estimacion de rafaga del PID %d: %.3f", PCB->PID, PCB->estimacion_rafaga);
             PCB->tiempo_inicio_exec = -1;
 
             if (strcmp(ALGORITMO_CORTO_PLAZO, "FIFO") != 0 && strcmp(archivo_pseudocodigo, "PLANI_CORTO_PLAZO") == 0)
@@ -400,6 +400,7 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
     {
         mostrar_colas_cp();
     }
+    mostrar_colas_estados();
 
     switch (nuevo_estado_enum)
     {
@@ -430,7 +431,6 @@ void cambiar_estado_pcb(t_pcb *PCB, Estados nuevo_estado_enum)
         LOG_TRACE(kernel_log, "nuevo_estado_enum: Error al pasar PCB de %s a %s", estado_to_string(estado_viejo), estado_to_string(nuevo_estado_enum));
         return;
     }
-    mostrar_colas_estados();
 }
 
 bool transicion_valida(Estados actual, Estados destino)
@@ -734,7 +734,6 @@ void verificar_procesos_restantes()
         }
     }
     UNLOCK_CON_LOG(mutex_cantidad_procesos);
-    mostrar_colas_estados();
 }
 
 void mostrar_colas_lp()
