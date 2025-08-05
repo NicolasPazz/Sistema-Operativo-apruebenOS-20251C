@@ -4,6 +4,17 @@ Simulación de un sistema operativo distribuido, desarrollado para la materia Si
 
 ---
 
+## 👥 Integrantes
+
+| Módulo  | Responsable(s) |
+|---------|----------------|
+| **Kernel** | [@NicolasPazz](https://github.com/NicolasPazz) |
+| **Memoria** | [@matefernandezcc](https://github.com/matefernandezcc), [@Agustoledo10](https://github.com/Agustoledo10) |
+| **CPU** | [@elucangioli](https://github.com/elucangioli), [@lucasmartin2004](https://github.com/lucasmartin2004) |
+| **IO** | Todos los integrantes |
+
+---
+
 ## 🧩 Descripción general de los módulos
 
 ### 🟦 Kernel
