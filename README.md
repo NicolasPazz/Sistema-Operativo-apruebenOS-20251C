@@ -1,138 +1,45 @@
-# 💻 TP 2025 1C - apruebenOS
+# Distributed Operating System Simulation (apruebenOS)
 
-Simulación de un sistema operativo distribuido, desarrollado para la materia Sistemas Operativos (UTN-FRBA). El proyecto implementa los conceptos de planificación de procesos, administración de memoria, manejo de dispositivos de entrada/salida y comunicación entre módulos, todo bajo una arquitectura modular y concurrente.
+Simulation of a distributed operating system written in C for Linux, built by a team of five for the Operating Systems course at UTN FRBA (2025). Four modules run as separate processes and talk to each other over sockets, using POSIX threads with semaphores and mutexes for concurrency.
 
----
+## Team
 
-## 👥 Integrantes
+| Module | Owner |
+| --- | --- |
+| Kernel | [@NicolasPazz](https://github.com/NicolasPazz) |
+| Memory | [@matefernandezcc](https://github.com/matefernandezcc), [@Agustoledo10](https://github.com/Agustoledo10) |
+| CPU | [@elucangioli](https://github.com/elucangioli), [@lucasmartin2004](https://github.com/lucasmartin2004) |
+| IO | Whole team |
 
-| Módulo  | Responsable(s) |
-|---------|----------------|
-| **Kernel** | [@NicolasPazz](https://github.com/NicolasPazz) |
-| **Memoria** | [@matefernandezcc](https://github.com/matefernandezcc), [@Agustoledo10](https://github.com/Agustoledo10) |
-| **CPU** | [@elucangioli](https://github.com/elucangioli), [@lucasmartin2004](https://github.com/lucasmartin2004) |
-| **IO** | Todos los integrantes |
+## Modules
 
----
+- **Kernel:** long, medium and short-term scheduling; process states (NEW, READY, EXEC, BLOCKED, SUSPENDED, EXIT); CPU assignment, IO device management and syscalls coming from the CPU.
+  - Short-term scheduling: FIFO, SJF and SRT (preemptive).
+  - Admission to READY: FIFO and smallest-process-first (PMCP).
+- **Memory:** main memory and swap with multi-level paging, frame allocation, process suspension and resumption, usage metrics and memory dumps.
+- **CPU:** fetch–decode–execute–interrupt cycle, MMU address translation, TLB (FIFO/LRU) and page cache (CLOCK/CLOCK-M). Several CPU instances can run at once.
+- **IO:** simulated devices that block processes for the requested time and notify the kernel when done.
 
-## 🧩 Descripción general de los módulos
+## Build and run
 
-### 🟦 Kernel
-El corazón del sistema. Se encarga de la planificación de procesos (largo, mediano y corto plazo), la gestión de los estados de los procesos (NEW, READY, EXEC, BLOCKED, SUSPENDED, EXIT), la coordinación con la memoria, la asignación de CPUs y la administración de dispositivos de IO. Orquesta la ejecución de los procesos y resuelve las syscalls provenientes de la CPU.
+Requires Linux, `gcc`, `make` and the course's [so-commons-library](https://github.com/sisoputnfrba/so-commons-library).
 
-### 🟩 Memoria
-Simula la memoria principal y el espacio de swap. Implementa paginación multinivel, administra la asignación y liberación de marcos, responde a pedidos de lectura/escritura y gestiona la suspensión y reanudación de procesos. Lleva métricas detalladas de uso y permite realizar dumps del estado de la memoria.
-
-### 🟧 CPU
-Simula el ciclo de instrucción de una CPU real: fetch, decode, execute y check interrupt. Interpreta instrucciones, traduce direcciones lógicas a físicas (MMU), implementa TLB y caché de páginas, y ejecuta syscalls que requieren intervención del Kernel o Memoria. Puede ser instanciada múltiples veces para simular multiprocesamiento.
-
-### 🟨 IO
-Simula dispositivos de entrada/salida (por ejemplo, impresoras). Atiende solicitudes de IO enviadas por el Kernel, bloquea procesos durante el tiempo requerido y notifica al Kernel al finalizar la operación. Permite simular múltiples dispositivos con diferentes nombres.
-
----
-
-## 🛠️ Uso del Makefile principal
-
-El Makefile principal permite compilar, limpiar, ejecutar y administrar todos los módulos del proyecto de forma centralizada.
-
-### Principales reglas disponibles
-
-- **all**
-  > Compila todos los módulos (`utils`, `io`, `memoria`, `cpu`, `kernel`).
-  ```sh
-  make all
-  ```
-
-- **run [LOG_LEVEL]**
-  > Compila, limpia, setea el nivel de log y ejecuta todos los módulos. Levanta memoria, kernel (en foreground), y lanza CPU e IO en background. El LOG_LEVEL es opcional (por defecto TRACE).
-  ```sh
-  make run
-  make run INFO   # Ejecuta con nivel de log INFO
-  ```
-
-- **stop**
-  > Detiene todos los procesos de los módulos y libera los puertos utilizados (8000-8004).
-  ```sh
-  make stop
-  ```
-
-- **kernel / memoria / cpu / io**
-  > Ejecuta individualmente el módulo correspondiente. Ejemplo:
-  ```sh
-  make kernel
-  make memoria
-  make cpu
-  make io
-  ```
-
-- **set_log_level**
-  > Cambia el nivel de log (`LOG_LEVEL`) en todos los archivos `.config` del proyecto.
-  ```sh
-  make set_log_level LOG_LEVEL=INFO
-  ```
-
-- **logs**
-  > Limpia los códigos de color ANSI de todos los archivos `.log` (útil para ver logs sin colores en editores o herramientas que no los soportan).
-  ```sh
-  make logs
-  ```
-
-- **clean**
-  > Elimina archivos de dump (`.dmp`) y limpia los archivos de compilación de todos los módulos.
-  ```sh
-  make clean
-  ```
-
-- **dos2unix**
-  > Convierte los saltos de línea de los archivos `.config` a formato Unix (útil si se editaron en Windows).
-  ```sh
-  make dos2unix
-  ```
-
----
-
-## 🚀 Ejecución rápida
-
-1. **Compilar todo:**
-   ```sh
-   make all
-   ```
-2. **Ejecutar todo (con logs limpios):**
-   ```sh
-   make run
-   ```
-3. **Detener todos los módulos:**
-   ```sh
-   make stop
-   ```
-
----
-
-## 📦 Dependencias
-- [so-commons-library] (instalada automáticamente por el script de deploy de la cátedra)
-
----
-
-## 📝 Notas
-- Cada módulo puede compilarse y ejecutarse de forma independiente desde su carpeta.
-- Los logs de cada módulo se encuentran en su respectiva carpeta (`*.log`).
-- Los archivos de configuración (`*.config`) permiten ajustar parámetros de cada módulo.
-- Para más detalles sobre la arquitectura y consignas, consultar el enunciado oficial de la materia.
-
----
-
-## ✔ Entrega y despliegue
-
-Para desplegar el proyecto en una máquina Ubuntu Server, se recomienda utilizar el script [so-deploy] de la cátedra:
-
-```sh
-git clone https://github.com/sisoputnfrba/so-deploy.git
-cd so-deploy
-./deploy.sh -r=release -p=utils -p=kernel -p=cpu -p=memoria -p=io "tp-{año}-{cuatri}-{grupo}"
+```bash
+make all     # build utils, io, memory, cpu and kernel
+make run     # start every module (optional log level: make run INFO)
+make stop    # stop every module and free ports 8000-8004
 ```
 
-El script instalará las Commons, clonará el repo y compilará el proyecto en la máquina remota.
+Each module can also be built and started from its own folder or with `make kernel`, `make memoria`, `make cpu`, `make io`. Parameters are set in each module's `.config` file.
 
----
+## Tests
 
-> Ante cualquier duda, consultar la documentación oficial de la cátedra o el foro de la materia.
+`pruebas/` contains the course's test scenarios (scheduling, memory, TLB, IO and stability). `ejecutar_test.sh N` runs scenario `N` (1–13) and checks that every module exits successfully without errors or warnings in the logs. The same scenarios run on GitHub Actions.
+
+```bash
+./ejecutar_test.sh 1
+```
+
+## Deployment
+
+The project is deployed on Ubuntu Server with the course's [so-deploy](https://github.com/sisoputnfrba/so-deploy) script, which installs the commons library and builds every module.
